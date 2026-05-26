@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Silly Sleeve — Design PDF</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="styles.css" />
+
+<style>
+  /* Print layout: one screen per page */
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #2a2620;
+    overflow: visible;
+  }
+
+  .print-page {
+    width: 1400px;
+    height: 900px;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+    position: relative;
+    margin: 0 auto;
+    box-shadow: 0 6px 30px -8px #0006;
+    background: var(--bg);
+  }
+  .print-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .print-page .ss-app {
+    height: 900px;
+  }
+
+  /* Hide scrollbars in print */
+  .print-page .scroll::-webkit-scrollbar { display: none; }
+  .print-page .scroll { scrollbar-width: none; }
+
+  /* Make scroll areas show their top content cleanly */
+  .print-page * { animation: none !important; }
+
+  /* Caption strip between pages on screen, hidden in print */
+  .page-caption {
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.55);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font: 500 11px/1 "JetBrains Mono", monospace;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  @media print {
+    body { background: #fff; }
+    .print-page { box-shadow: none; margin: 0; }
+    .page-caption { display: none; }
+    @page { size: 1400px 900px; margin: 0; }
+  }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+  window.TWEAK_DEFAULTS = {
+    "dark": true,
+    "accent": "#e07a4f",
+    "sidebar": "compact",
+    "density": "regular",
+    "showStepBadges": true
+  };
+</script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="components.jsx"></script>
+<script type="text/babel" src="screens-styles.jsx"></script>
+<script type="text/babel" src="screens-meta.jsx"></script>
+<script type="text/babel" src="screen-crawler.jsx"></script>
+<script type="text/babel" src="screen-editor.jsx"></script>
+<script type="text/babel" src="screen-lorebook.jsx"></script>
+<script type="text/babel" src="screen-project-image.jsx"></script>
+<script type="text/babel" src="screen-image.jsx"></script>
+<script type="text/babel" src="screen-export.jsx"></script>
+<script type="text/babel" src="screen-export-hub.jsx"></script>
+
+<script type="text/babel">
+// ─── Print app: each screen on its own page ───────────────
+
+const PRINT_ROUTES = [
+  { id: 'dashboard',    caption: '01 · Projects (dashboard)' },
+  { id: 'crawler',      caption: '02 · Crawl' },
+  { id: 'editor',       caption: '03 · Compose' },
+  { id: 'lorebook',     caption: '04 · Lorebook' },
+  { id: 'projectImage', caption: '05 · Project image' },
+  { id: 'image',        caption: '06 · Portrait (ComfyUI)' },
+  { id: 'preview',      caption: '07 · Preview' },
+  { id: 'export',       caption: '08 · Export' },
+  { id: 'settings',     caption: '09 · Settings' },
+];
+
+const PRINT_CHARACTERS = [
+  { id: 'C1', name: 'Elara Wynd',       initial: 'E', epithet: 'Crimson Lark',  tokens: 1247, ready: true },
+  { id: 'C2', name: 'Olly Aldelwynd',   initial: 'O', epithet: 'Tavernkeeper',  tokens: 840,  ready: true },
+  { id: 'C3', name: 'Halbreck Crae',    initial: 'H', epithet: 'Master Harper', tokens: 610,  ready: false },
+];
+
+function PrintApp() {
+  const t = window.TWEAK_DEFAULTS;
+  React.useEffect(() => {
+    document.documentElement.dataset.theme = t.dark ? 'dark' : 'light';
+    document.documentElement.style.setProperty('--acc', t.accent);
+    const acc = t.accent;
+    document.documentElement.style.setProperty('--acc-soft', acc + (t.dark ? '2d' : '20'));
+    document.documentElement.style.setProperty('--acc-line', acc + '66');
+  }, []);
+
+  injectStyles();
+  injectScreenStyles();
+
+  const characters = PRINT_CHARACTERS;
+  const activeCharId = 'C1';
+  const activeChar = characters[0];
+  const project = {
+    name: "Baldur's Gate · Harper cell",
+    updated: 'just now',
+    unsaved: false,
+    tokens: characters.reduce((s, c) => s + c.tokens, 0),
+    onSave: () => {},
+  };
+  const llm = { status: 'ok', name: 'koboldcpp · mistral-7b' };
+  const comfy = { status: 'ok', name: 'sdxl · 127.0.0.1:8188' };
+  const noop = () => {};
+  const charContext = {
+    characters, activeCharId, activeChar,
+    onSelectChar: noop, onAddChar: noop, onDeleteChar: noop,
+  };
+
+  const screenFor = (id) => {
+    switch (id) {
+      case 'dashboard':    return <Dashboard onNav={noop} onNew={noop}/>;
+      case 'crawler':      return <Crawler onContinue={noop}/>;
+      case 'editor':       return <Editor onContinue={noop} {...charContext}/>;
+      case 'lorebook':     return <Lorebook onContinue={noop} characters={characters}/>;
+      case 'projectImage': return <ProjectImage onContinue={noop} project={project}/>;
+      case 'image':        return <ImageGen onContinue={noop} {...charContext}/>;
+      case 'preview':      return <Preview onContinue={noop} {...charContext}/>;
+      case 'export':       return <ExportHub onFinish={noop} characters={characters}/>;
+      case 'settings':     return <Settings tweak={t} setTweak={noop}/>;
+    }
+  };
+
+  const routeLabels = {
+    dashboard: 'PROJECTS', crawler: 'CRAWL · STEP 01',
+    editor: 'COMPOSE · STEP 02', lorebook: 'LOREBOOK · STEP 03',
+    projectImage: 'PROJECT IMAGE · STEP 04',
+    image: 'PORTRAIT · STEP 05', preview: 'PREVIEW · STEP 06',
+    export: 'EXPORT · STEP 07', settings: 'SETTINGS',
+  };
+
+  return (
+    <>
+      {PRINT_ROUTES.map(({ id, caption }) => (
+        <div className="print-page" key={id}>
+          <div className="page-caption">{caption}</div>
+          <div className="ss-app" data-sidebar={t.sidebar}>
+            <TitleBar project={project}/>
+            <div className="ss-main">
+              <Sidebar current={id} onNav={noop} project={project} showStepBadges={t.showStepBadges}/>
+              <main className="ss-content">{screenFor(id)}</main>
+            </div>
+            <StatusBar project={project} llm={llm} comfy={comfy} route={routeLabels[id]}/>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<PrintApp />);
+
+// Auto-print once fonts + Babel are settled
+(async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  // Babel scripts have already executed by the time this inline JSX runs (it's
+  // the last babel block). Wait one more frame plus 500ms to let React commit
+  // and screen-level styles inject.
+  await new Promise(r => setTimeout(r, 1200));
+  window.print();
+})();
+</script>
+
+</body>
+</html>

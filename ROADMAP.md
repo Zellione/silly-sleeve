@@ -25,11 +25,11 @@ All screens, data models, and interaction patterns are defined in `design_handof
 
 Goal: A runnable desktop shell with routing, theme, and settings UI.
 
-- [ ] **0.1** Bootstrap Wails v2 project (`wails init -n silly-sleeve -t react-ts`)
-- [ ] **0.2** Port design tokens (`styles.css`) into frontend global styles
-- [ ] **0.3** Port root layout: TitleBar, Sidebar nav, PageHead, StatusBar primitives
-- [ ] **0.4** Implement route state: `dashboard`, `crawler`, `editor`, `lorebook`, `projectImage`, `image`, `preview`, `export`, `settings`
-- [ ] **0.5** Theme toggle: light/dark mode (no accent picker yet)
+- [x] **0.1** Bootstrap Wails v2 project (`wails init -n silly-sleeve -t react-ts`)
+- [x] **0.2** Port design tokens (`styles.css`) into frontend global styles
+- [x] **0.3** Port root layout: TitleBar, Sidebar nav, PageHead, StatusBar primitives
+- [x] **0.4** Implement route state: `dashboard`, `crawler`, `editor`, `lorebook`, `projectImage`, `image`, `preview`, `export`, `settings`
+- [x] **0.5** Theme toggle: light/dark mode (no accent picker yet)
 - [ ] **0.6** Toast system (bottom-right stack, auto-dismiss)
 - [ ] **0.7** Settings screen: single LLM endpoint editor flyout (name, URL, model, API key, Test button)
 - [ ] **0.8** Go bindings: `GetSettings`, `SaveSettings`, `TestLLMEndpoint`

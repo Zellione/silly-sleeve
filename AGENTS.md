@@ -2,23 +2,48 @@
 
 This is a cross-platform desktop application built with Go and the Fyne toolkit. The purpose is to create character cards and lore books for SillyTavern.
 
+## Tech Stack
 
-## Project
+- **Language:** Go 1.22+
+- **UI Framework:** [Fyne v2](https://fyne.io/)
+- **Lint:** [golangci-lint](https://golangci-lint.run/)
+- **Test:** Go standard `testing` package
+- **Config:** `os.UserConfigDir()` for cross-platform config storage
+- **AI API:** OpenAI-compatible chat completions API (covers ollama, llama.cpp, koboldcpp)
+- **Scraping:** MediaWiki API (fandom wikis)
 
-`silly-sleeve` — sleeves for character cards and lore books.
+## Build & Run
 
-Greenfield project. No language, framework, build system, linter, test runner, or CI has been chosen yet.
+```bash
+go run ./cmd/silly-sleeve
+```
+
+```bash
+go build -o silly-sleeve ./cmd/silly-sleeve
+```
+
+## Lint
+
+```bash
+golangci-lint run ./...
+```
+
+## Test
+
+```bash
+go test ./...
+```
 
 ## Function
 
-- Connect local AIs (for now).
-- Scrape fandom wikis and sanitize the result.
-- Use AI to summarize the scraped content with a special output format
-- Use that special output format to create character card or lorebook compatible with SillyTavern
-- In the end save the character card as JSON
-- Settings menu for connecting with llama.cpp, ollama or koboldcpp
-- Save configuration
-- Save option for current work as project
+- Connect local AIs via OpenAI-compatible API (ollama, llama.cpp, koboldcpp).
+- Scrape fandom wikis via the MediaWiki API and sanitize the result.
+- Use AI to summarize the scraped content with a special output format.
+- Use that special output format to create character card or lorebook compatible with SillyTavern.
+- Save the character card as JSON.
+- Settings menu for AI connection configuration.
+- Save configuration (separate from project data).
+- Save current work as a project bundle.
 
 ## References
 

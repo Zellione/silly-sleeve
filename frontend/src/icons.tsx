@@ -37,3 +37,8 @@ export const LinkIcon: React.FC<IconProps> = (p) => <Icon {...p}><path d="M10 14
 export const SunIcon: React.FC<IconProps> = (p) => <Icon {...p}><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4L7 17M17 7l1.4-1.4"/></Icon>;
 export const MoonIcon: React.FC<IconProps> = (p) => <Icon d="M20 14.5A8 8 0 119.5 4 6.5 6.5 0 0020 14.5z" {...p} />;
 export const SparksIcon: React.FC<IconProps> = (p) => <Icon {...p}><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z"/><path d="M19 14l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z"/></Icon>;
+export const MoreIcon: React.FC<IconProps> = (p) => <Icon {...p}><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/></Icon>;
+export const KeyIcon: React.FC<IconProps> = (p) => <Icon {...p}><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 3l-5 5m0 0l-2.5 2.5m2.5-2.5l-2.5 2.5m2.5-2.5l-2.5 2.5"/></Icon>;
+export const DownIcon: React.FC<IconProps> = (p) => <Icon d="M6 9l6 6 6-6" {...p} />;
+export const BoltIcon: React.FC<IconProps> = (p) => <Icon d="M13 2L4 14h7l-2 8 9-12h-7l2-8z" {...p} />;
+export const CopyIcon: React.FC<IconProps> = (p) => <Icon {...p}><rect x="9" y="9" width="11" height="11" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></Icon>;

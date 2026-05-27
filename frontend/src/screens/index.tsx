@@ -1,4 +1,5 @@
 import React from 'react';
+import SettingsScreen from './SettingsScreen';
 
 const Placeholder: React.FC<{ title: string }> = ({ title }) => (
   <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -17,4 +18,4 @@ export const ProjectImageScreen: React.FC = () => <Placeholder title="Project im
 export const PortraitScreen: React.FC = () => <Placeholder title="Portrait" />;
 export const PreviewScreen: React.FC = () => <Placeholder title="Preview character card" />;
 export const ExportScreen: React.FC = () => <Placeholder title="Export hub" />;
-export const SettingsScreen: React.FC = () => <Placeholder title="Settings" />;
+export { SettingsScreen };

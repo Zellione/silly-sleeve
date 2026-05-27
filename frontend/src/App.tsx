@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './style.css';
 import {
   TitleBar, Sidebar, StatusBar, ThemeToggle,
   type Route,
 } from './components/Layout';
+import { ToastProvider } from './components/ToastProvider';
 import {
   DashboardScreen, CrawlerScreen, EditorScreen, LorebookScreen,
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
+import { GetSettings } from '../wailsjs/go/main/App';
+import { settings } from '../wailsjs/go/models';
 
-function App() {
+function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
+  const [settingsData, setSettingsData] = useState<settings.Settings | null>(null);
+
+  useEffect(() => {
+    GetSettings().then(s => setSettingsData(s)).catch(() => setSettingsData(settings.Settings.createFrom({ endpoints: [] })));
+  }, []);
 
   const routeLabels: Record<Route, string> = {
     dashboard: 'PROJECTS',
@@ -24,6 +32,10 @@ function App() {
     export: 'EXPORT · STEP 07',
     settings: 'SETTINGS',
   };
+
+  const defaultEp = settingsData?.endpoints.find(e => e.isDefault) ?? settingsData?.endpoints[0];
+  const llmStatus: 'ok' | 'warn' | 'bad' | 'idle' = defaultEp ? (defaultEp.ok ? 'ok' : 'idle') : 'idle';
+  const llmName = defaultEp?.name ?? '—';
 
   const renderScreen = () => {
     switch (route) {
@@ -49,13 +61,21 @@ function App() {
           {renderScreen()}
         </main>
       </div>
-      <StatusBar routeLabel={routeLabels[route]} />
+      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} />
 
       {/* Floating theme toggle for now */}
       <div style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 50 }}>
         <ThemeToggle />
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppShell />
+    </ToastProvider>
   );
 }
 

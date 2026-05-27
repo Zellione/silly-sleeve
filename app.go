@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+
+	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/settings"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	settings settings.Settings
 }
 
 // NewApp creates a new App application struct
@@ -19,6 +23,40 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	s, err := settings.Load()
+	if err != nil {
+		fmt.Println("settings load error:", err)
+		s = settings.Settings{Endpoints: []settings.LLMEndpoint{}}
+	}
+	a.settings = s
+}
+
+// GetSettings returns the current settings.
+func (a *App) GetSettings() settings.Settings {
+	return a.settings
+}
+
+// SaveSettings persists settings to disk.
+func (a *App) SaveSettings(s settings.Settings) error {
+	if err := settings.Save(s); err != nil {
+		return err
+	}
+	a.settings = s
+	return nil
+}
+
+// TestLLMEndpoint verifies connectivity to an LLM endpoint.
+func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
+	return llm.TestEndpoint(llm.LLMEndpoint{
+		ID:           ep.ID,
+		Name:         ep.Name,
+		URL:          ep.URL,
+		Model:        ep.Model,
+		Key:          ep.Key,
+		ContextSize:  ep.ContextSize,
+		Temperature:  ep.Temperature,
+		SystemPrompt: ep.SystemPrompt,
+	})
 }
 
 // Greet returns a greeting for the given name

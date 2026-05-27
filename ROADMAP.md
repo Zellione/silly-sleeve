@@ -30,10 +30,10 @@ Goal: A runnable desktop shell with routing, theme, and settings UI.
 - [x] **0.3** Port root layout: TitleBar, Sidebar nav, PageHead, StatusBar primitives
 - [x] **0.4** Implement route state: `dashboard`, `crawler`, `editor`, `lorebook`, `projectImage`, `image`, `preview`, `export`, `settings`
 - [x] **0.5** Theme toggle: light/dark mode (no accent picker yet)
-- [ ] **0.6** Toast system (bottom-right stack, auto-dismiss)
-- [ ] **0.7** Settings screen: single LLM endpoint editor flyout (name, URL, model, API key, Test button)
-- [ ] **0.8** Go bindings: `GetSettings`, `SaveSettings`, `TestLLMEndpoint`
-- [ ] **0.9** Persist settings to config dir as JSON
+- [x] **0.6** Toast system (bottom-right stack, auto-dismiss)
+- [x] **0.7** Settings screen: single LLM endpoint editor flyout (name, URL, model, API key, Test button)
+- [x] **0.8** Go bindings: `GetSettings`, `SaveSettings`, `TestLLMEndpoint`
+- [x] **0.9** Persist settings to config dir as JSON
 
 ---
 
@@ -123,3 +123,11 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **0.5** Theme toggle: light/dark mode (persists to `localStorage`)
 
 > **Build note:** The frontend compiles and Wails bindings generate successfully. The native binary cannot be linked in this headless environment because GTK3/WebKit2GTK dev libraries are missing. This is expected — the app will build and run on a standard Linux desktop with `libgtk-3-dev` and `libwebkit2gtk-4.0-dev` installed (see Wails prerequisites).
+
+#### Completed today (continued)
+
+- [x] **0.6** Toast system — `ToastProvider` with `useToast()` hook, 4 kinds (`ok`/`bad`/`warn`/`info`), 4.2 s auto-dismiss with CSS progress bar
+- [x] **0.7** Settings screen — section nav, LLM endpoint list cards, full endpoint editor flyout (slide-in from right) with URL, auth toggle + key input, model, context-size slider + presets, temperature slider, system prompt
+- [x] **0.8** Go bindings — `GetSettings`, `SaveSettings`, `TestLLMEndpoint`; test sends a minimal 1-token OpenAI-compatible chat completion
+- [x] **0.9** Settings persistence — JSON stored in `os.UserConfigDir()/silly-sleeve/settings.json`; `internal/settings` package with future-proof `[]LLMEndpoint` array
+- StatusBar now shows the default endpoint name and live connection dot

@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create dummy frontend/dist for go:embed
+        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -27,7 +29,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - run: npm ci --no-optional
         working-directory: frontend
       - run: npm run lint
         working-directory: frontend
@@ -37,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create dummy frontend/dist for go:embed
+        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -65,7 +69,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - run: npm ci --no-optional
         working-directory: frontend
       - run: npm run test:coverage
         working-directory: frontend

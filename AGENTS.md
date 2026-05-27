@@ -8,7 +8,7 @@ This is a cross-platform desktop application built with **Wails v2** (Go backend
 - **Frontend:** React 18 + Vite + TypeScript
 - **Desktop bridge:** Wails v2
 - **Lint:** `golangci-lint` (Go), ESLint (React)
-- **Test:** Go standard `testing`; Jest / Vitest (React)
+- **Test:** Go standard `testing` + `stretchr/testify`; Vitest + Testing Library (React)
 - **Config:** `os.UserConfigDir()` for cross-platform config storage
 - **AI API:** OpenAI-compatible chat completions API (covers ollama, llama.cpp, koboldcpp)
 - **Scraping:** MediaWiki API (fandom wikis)
@@ -28,14 +28,18 @@ wails build
 ## Lint
 
 ```bash
-cd frontend && npm run lint && cd ..
+go vet ./...
 golangci-lint run ./...
+cd frontend && npm run lint && cd ..
 ```
 
 ## Test
 
 ```bash
-go test ./...
+go test ./... -race -cover
+```
+```bash
+cd frontend && npm test && cd ..
 ```
 
 ## Function
@@ -93,14 +97,20 @@ Only ever load references if needed !
 
 ## Testing
 
-- Use Go's standard `testing` package.
+- Use Go's standard `testing` package with `stretchr/testify` for assertions.
 - Place test files next to the code they test (e.g., `mycode_test.go`).
+- Every feature must have tests — both backend and frontend. Minimum **80%** coverage.
+- Complex workflows require integration tests.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed testing rules and CI expectations.
 
 ## Boundaries
 
 - **Never** modify `go.mod` or `go.sum` directly. Only use `go get` or `go mod tidy`.
 - **Never** modify `frontend/package.json` or `package-lock.json` directly. Only use `npm install`.
 - **Never** commit code that doesn't compile.
+- **Never** commit code that drops test coverage below 80% or lacks tests for new features.
+- **Never** commit code that has lint errors or warnings.
+- **Never** commit code that fails `go vet`, `golangci-lint`, `tsc --noEmit`, or `eslint`.
 - **Always ask** before adding a new external dependency.
 - **Default agent:** `build` is fine — edits are local-file-only and easily reversible.
 - **Bash:** read-only commands (`ls`, `grep`, `git status`, `git diff`) are safe to auto-allow. Writes (`rm`, `mv`, `git commit`, `git push`) should always require confirmation.
@@ -111,6 +121,7 @@ Only ever load references if needed !
 
 - **Match the README's tone.** Practical, mental-model-first, prescriptive ("Reach for it when…"). No marketing fluff.
 - **Update the `Last updated` date** in `ROADMAP.md` when making material changes.
+- **Run all lint + test + coverage checks before committing.** Execute `go vet ./...`, `golangci-lint run ./...`, `go test ./... -race -cover`, `cd frontend && npm run lint`, and `cd frontend && npm run test:coverage && cd ..`. Only commit when all commands exit with **0 errors, 0 warnings, and ≥ 80% coverage**.
 
 ### Never
 

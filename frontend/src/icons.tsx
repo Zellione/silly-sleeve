@@ -6,7 +6,7 @@ interface IconProps {
   style?: React.CSSProperties;
 }
 
-const Icon: React.FC<IconProps & { d?: string; children?: React.ReactNode; fill?: boolean }> = ({ d, size = 18, className = '', children, fill, ...rest }) => (
+const Icon: React.FC<IconProps & { d?: string; children?: React.ReactNode; fill?: boolean }> = ({ d, size = 18, className = '', children, fill: _fill, ...rest }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
        stroke="currentColor" strokeWidth="1.6"
        strokeLinecap="round" strokeLinejoin="round"

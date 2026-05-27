@@ -1,4 +1,21 @@
+# Build artifacts
 build/bin
-node_modules
 frontend/dist
-.opencode/
+frontend/coverage
+coverage.out
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Wails auto-generated
+frontend/package.json.md5

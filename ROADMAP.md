@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2025-05-27
+> Last updated: 2026-05-29
 
 ## Overview
 
@@ -107,14 +107,16 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ## Progress Log
 
-### 2025-05-27
+> Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-05-27
 
 - Created roadmap, updated README and AGENTS.md.
 - Approved switch from Fyne to **Wails v2 + React + Vite**.
 - Approved postponing: image generation (Phase 3), multi-endpoint LLM (Phase 4), project dashboard (Phase 4).
 - Started Phase 0 skeleton implementation.
 
-#### Completed today
+#### Completed 2026-05-29
 
 - [x] **0.1** Bootstrapped Wails v2 project (`wails init -n silly-sleeve -t react-ts`)
 - [x] **0.2** Ported design tokens (`styles.css`) into frontend global styles
@@ -124,7 +126,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 > **Build note:** The frontend compiles and Wails bindings generate successfully. The native binary cannot be linked in this headless environment because GTK3/WebKit2GTK dev libraries are missing. This is expected — the app will build and run on a standard Linux desktop with `libgtk-3-dev` and `libwebkit2gtk-4.0-dev` installed (see Wails prerequisites).
 
-#### Completed today (continued)
+#### Completed 2026-05-29 (continued)
 
 - [x] **0.6** Toast system — `ToastProvider` with `useToast()` hook, 4 kinds (`ok`/`bad`/`warn`/`info`), 4.2 s auto-dismiss with CSS progress bar
 - [x] **0.7** Settings screen — section nav, LLM endpoint list cards, full endpoint editor flyout (slide-in from right) with URL, auth toggle + key input, model, context-size slider + presets, temperature slider, system prompt

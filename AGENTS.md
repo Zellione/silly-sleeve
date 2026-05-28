@@ -129,6 +129,85 @@ Only ever load references if needed !
 - **Don't add `Co-Authored-By` lines to commits** unless the user asks for them.
 - **Don't `git push --force` to `main`**, ever, without explicit permission.
 
+## Workflow: Feature & Milestone Implementation
+
+This section defines the step-by-step process for implementing any milestone or feature from `ROADMAP.md`.
+
+### 1. Planning & Branching
+
+- Identify the milestone or feature from `ROADMAP.md`.
+- Ensure `main` is up to date: `git checkout main && git pull`.
+- Create a branch using the approved naming convention:
+  ```bash
+  git checkout -b milestone/2-crawler
+  # or
+  git checkout -b feature/toast-system
+  ```
+- Update `ROADMAP.md`:
+  - Update `Last updated:` date to today's date (YYYY-MM-DD).
+  - Mark the first substep as in progress: `- [~] **1.1** ...`.
+  - Add a new progress log entry with today's date.
+- Commit:
+  ```text
+  chore(roadmap): start <milestone name>
+  ```
+
+### 2. Substep Implementation
+
+For each substep (e.g., `1.1`, `1.2`):
+1. Implement code and tests.
+2. Run the full local quality gate:
+   ```bash
+   go vet ./...
+   golangci-lint run ./...
+   go test ./... -race -cover
+   cd frontend && npm run lint && npm run test:coverage && cd ..
+   wails build
+   ```
+3. Verify **0 errors, 0 warnings**, and **≥80% coverage**.
+4. Commit using the substep number in the subject line:
+   ```text
+   feat(crawler): 1.1 add URL input and crawl options UI
+   ```
+   Include the full substep description in the commit body.
+
+### 3. Milestone Completion
+
+- Mark all substeps as completed in `ROADMAP.md`: `- [x]`.
+- Ensure the progress log reflects completion with today's date.
+- Run the full pre-commit checklist one final time.
+- **Do not push.**
+
+### 4. Approval Gate
+
+Before pushing, generate an `APPROVAL_REQUEST.md` file in the repository root containing:
+- Branch name.
+- List of commits mapped to their ROADMAP substeps.
+- Lint and coverage summary.
+- Any deviations or assumptions made.
+- `git diff --stat` summary.
+
+**`APPROVAL_REQUEST.md` must never be committed or pushed.**
+It is for local review only.
+
+Wait for explicit user approval before proceeding.
+
+### 5. Push & PR
+
+Once approved:
+- **Delete `APPROVAL_REQUEST.md`** before pushing.
+- Push the branch:
+  ```bash
+  git push -u origin <branch-name>
+  ```
+- Open a Pull Request describing each commit and its corresponding substep.
+- Ensure CI passes before merge.
+
+If rejected:
+- Revise the code as requested.
+- Delete `APPROVAL_REQUEST.md`.
+- Re-generate it after fixes and return to step 4.
+
 ## License
 
 - License: MIT

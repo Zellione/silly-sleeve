@@ -6,9 +6,11 @@ import { ToastProvider } from '../components/ToastProvider';
 import { crawler } from '../../wailsjs/go/models';
 
 const mockCrawlPage = vi.fn();
+const mockGetCachedCrawl = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   CrawlPage: (...args: any[]) => mockCrawlPage(...args),
+  GetCachedCrawl: () => mockGetCachedCrawl(),
 }));
 
 const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
@@ -35,6 +37,7 @@ const renderWithProviders = (ui: React.ReactElement) =>
 describe('CrawlerScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCachedCrawl.mockResolvedValue(null);
   });
 
   it('renders URL input with default value', () => {

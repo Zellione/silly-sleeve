@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
@@ -11,8 +12,10 @@ import (
 
 // App struct
 type App struct {
-	ctx      context.Context
-	settings settings.Settings
+	ctx         context.Context
+	settings    settings.Settings
+	mu          sync.Mutex
+	cachedCrawl *crawler.CrawlResult
 }
 
 // NewApp creates a new App application struct
@@ -30,6 +33,16 @@ func (a *App) startup(ctx context.Context) {
 		s = settings.Settings{Endpoints: []settings.LLMEndpoint{}}
 	}
 	a.settings = s
+
+	c, err := crawler.LoadCache()
+	if err != nil {
+		fmt.Println("cache load error:", err)
+	}
+	if c != nil {
+		a.mu.Lock()
+		a.cachedCrawl = c
+		a.mu.Unlock()
+	}
 }
 
 // GetSettings returns the current settings.
@@ -72,7 +85,7 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 		}
 	}
 	sections, infobox := crawler.SectionsFromRawHTML(result.RawHTML)
-	return crawler.CrawlResult{
+	cr := crawler.CrawlResult{
 		Title:      result.Title,
 		URL:        pageURL,
 		Domain:     result.Domain,
@@ -83,6 +96,20 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 		StatusCode: 200,
 		LatencyMs:  result.LatencyMs,
 	}
+	a.mu.Lock()
+	a.cachedCrawl = &cr
+	a.mu.Unlock()
+	if err := crawler.SaveCache(cr); err != nil {
+		fmt.Println("cache save error:", err)
+	}
+	return cr
+}
+
+// GetCachedCrawl returns the previously cached crawl result, if any.
+func (a *App) GetCachedCrawl() *crawler.CrawlResult {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.cachedCrawl
 }
 
 // Greet returns a greeting for the given name

@@ -10,6 +10,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
   GetSettings: () => mockGetSettings(),
   SaveSettings: vi.fn(),
   TestLLMEndpoint: vi.fn(),
+  GetCachedCrawl: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('./style.css', () => ({}));

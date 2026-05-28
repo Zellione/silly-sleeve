@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { ToastProvider } from '../components/ToastProvider';
 import {
@@ -6,6 +6,11 @@ import {
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './index';
+
+vi.mock('../../wailsjs/go/main/App', () => ({
+  GetCachedCrawl: vi.fn().mockResolvedValue(null),
+  CrawlPage: vi.fn(),
+}));
 
 const placeholders = [
   { name: 'DashboardScreen', component: DashboardScreen, title: 'Your projects' },

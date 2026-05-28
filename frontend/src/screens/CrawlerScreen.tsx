@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
-import { CrawlPage } from '../../wailsjs/go/main/App';
+import { CrawlPage, GetCachedCrawl } from '../../wailsjs/go/main/App';
 import { crawler } from '../../wailsjs/go/models';
 
 const RECENT_WIKIS = [
@@ -24,6 +24,15 @@ const CrawlerScreen: React.FC = () => {
   });
   const [result, setResult] = useState<crawler.CrawlResult | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    GetCachedCrawl().then(r => {
+      if (r) {
+        setResult(r);
+        setPhase('crawled');
+      }
+    }).catch(() => {});
+  }, []);
 
   const toggleInclude = (k: string) => {
     setInclude(prev => ({ ...prev, [k]: !prev[k] }));

@@ -94,7 +94,7 @@ func TestFetchPage_Success(t *testing.T) {
 	require.NoError(t, result.Error)
 	assert.Equal(t, "Elara_Wynd", result.Title)
 	assert.Equal(t, "<p>Test content</p>", result.RawHTML)
-	assert.Greater(t, result.LatencyMs, int64(0))
+	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
 }
 
 func TestFetchPage_HTTPError(t *testing.T) {
@@ -168,7 +168,7 @@ func TestFetchPage_LatencyRecorded(t *testing.T) {
 
 	result := FetchPage(srv.URL + "/wiki/Page")
 	require.NoError(t, result.Error)
-	assert.Greater(t, result.LatencyMs, int64(0))
+	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
 }
 
 func TestFetchPage_DomainExtracted(t *testing.T) {

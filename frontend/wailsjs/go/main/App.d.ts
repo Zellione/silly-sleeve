@@ -6,6 +6,8 @@ import {crawler} from '../models';
 
 export function CrawlPage(arg1:string, arg2:crawler.CrawlOptions):Promise<crawler.CrawlResult>;
 
+export function GetCachedCrawl():Promise<crawler.CrawlResult>;
+
 export function GetSettings():Promise<settings.Settings>;
 
 export function Greet(arg1:string):Promise<string>;

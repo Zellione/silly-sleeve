@@ -250,3 +250,76 @@ func TestCrawlPage_HTTPError(t *testing.T) {
 	assert.Zero(t, result.StatusCode)
 	assert.NotEmpty(t, result.Domain)
 }
+
+func TestGetCachedCrawl_NilByDefault(t *testing.T) {
+	app := NewApp()
+	assert.Nil(t, app.GetCachedCrawl())
+}
+
+func TestCrawlPage_CachesResult(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "CacheTest",
+				"text":  map[string]any{"*": "<p>cached content here</p>"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	result := app.CrawlPage(srv.URL+"/wiki/CacheTest", crawler.CrawlOptions{})
+
+	assert.Equal(t, "CacheTest", result.Title)
+
+	cached := app.GetCachedCrawl()
+	require.NotNil(t, cached)
+	assert.Equal(t, "CacheTest", cached.Title)
+}
+
+func TestCrawlPage_CachePersistsToDisk(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "DiskCache",
+				"text":  map[string]any{"*": "<p>disk content</p>"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.CrawlPage(srv.URL+"/wiki/DiskCache", crawler.CrawlOptions{})
+
+	loaded, err := crawler.LoadCache()
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, "DiskCache", loaded.Title)
+}
+
+func TestStartup_LoadsCachedCrawl(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	require.NoError(t, crawler.SaveCache(crawler.CrawlResult{Title: "BootCache"}))
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	cached := app.GetCachedCrawl()
+	require.NotNil(t, cached)
+	assert.Equal(t, "BootCache", cached.Title)
+}
+
+func TestGetCachedCrawl_ReturnsNilForFailedCrawl(t *testing.T) {
+	app := NewApp()
+	app.CrawlPage("://invalid", crawler.CrawlOptions{})
+	assert.Nil(t, app.GetCachedCrawl())
+}

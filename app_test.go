@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -203,44 +204,61 @@ func TestTestLLMEndpoint_ReturnsLLMTestResult(t *testing.T) {
 	assert.True(t, result.Ok)
 }
 
-func TestCrawlPage_ReturnsSampleData(t *testing.T) {
-	app := NewApp()
-	opts := crawler.CrawlOptions{
-		FollowLinks: 0,
-		Include:     map[string]bool{"infobox": true},
-	}
-	result := app.CrawlPage("https://baldursgate.fandom.com/wiki/Test", opts)
+func TestCrawlPage_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "Test_Page",
+				"text":  map[string]any{"*": "<p>Hello world from wiki</p>"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
 
-	assert.Equal(t, "elara_wynd", result.Title)
-	assert.NotEmpty(t, result.URL)
-	assert.Equal(t, "baldursgate.fandom.com", result.Domain)
-	assert.NotEmpty(t, result.Sections)
-	assert.Equal(t, 1842, result.WordCount)
+	app := NewApp()
+	result := app.CrawlPage(srv.URL+"/wiki/Test_Page", crawler.CrawlOptions{})
+
+	assert.Equal(t, "Test_Page", result.Title)
+	assert.Equal(t, srv.URL+"/wiki/Test_Page", result.URL)
+	assert.NotEmpty(t, result.Domain)
+	assert.Contains(t, result.RawHTML, "Hello world from wiki")
 	assert.Equal(t, 200, result.StatusCode)
-	assert.Equal(t, int64(412), result.LatencyMs)
+	assert.Greater(t, result.LatencyMs, int64(0))
+	assert.Greater(t, result.WordCount, 0)
 }
 
-func TestCrawlPage_UsesProvidedURL(t *testing.T) {
+func TestCrawlPage_Error(t *testing.T) {
 	app := NewApp()
-	result := app.CrawlPage("https://custom.wiki.com/wiki/Foo", crawler.CrawlOptions{})
+	result := app.CrawlPage("://invalid", crawler.CrawlOptions{})
 
-	assert.Equal(t, "https://custom.wiki.com/wiki/Foo", result.URL)
+	assert.Equal(t, "://invalid", result.URL)
+	assert.Zero(t, result.StatusCode)
+	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
 }
 
-func TestCrawlPage_ReturnsInfoboxEntries(t *testing.T) {
-	app := NewApp()
-	result := app.CrawlPage("", crawler.CrawlOptions{})
+func TestCrawlPage_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
 
-	assert.Len(t, result.Infobox, 8)
-	assert.Equal(t, "race", result.Infobox[0].Key)
-	assert.Equal(t, "Half-elf", result.Infobox[0].Value)
+	app := NewApp()
+	result := app.CrawlPage(srv.URL+"/wiki/Test", crawler.CrawlOptions{})
+
+	assert.Zero(t, result.StatusCode)
+	assert.NotEmpty(t, result.Domain)
 }
 
-func TestCrawlPage_SectionsHaveLevels(t *testing.T) {
-	app := NewApp()
-	result := app.CrawlPage("", crawler.CrawlOptions{})
+func TestCountWords_Empty(t *testing.T) {
+	assert.Equal(t, 0, countWords(""))
+}
 
-	require.Len(t, result.Sections, 4)
-	assert.Equal(t, 1, result.Sections[0].Level)
-	assert.Equal(t, 2, result.Sections[1].Level)
+func TestCountWords_HTML(t *testing.T) {
+	assert.Greater(t, countWords("<p>Hello world</p>"), 0)
+}
+
+func TestCountWords_PlainText(t *testing.T) {
+	assert.Equal(t, 5, countWords("One two three four five"))
 }

@@ -122,6 +122,7 @@ Only ever load references if needed !
 - **Match the README's tone.** Practical, mental-model-first, prescriptive ("Reach for it when…"). No marketing fluff.
 - **Update the `Last updated` date** in `ROADMAP.md` when making material changes.
 - **Run all lint + test + coverage checks before committing.** Execute `go vet ./...`, `golangci-lint run ./...`, `go test ./... -race -cover`, `cd frontend && npm run lint`, and `cd frontend && npm run test:coverage && cd ..`. Only commit when all commands exit with **0 errors, 0 warnings, and ≥ 80% coverage**.
+- **Run `wails build -clean` at milestone completion** to verify the binary compiles and links correctly on the target platform.
 
 ### Never
 
@@ -175,7 +176,14 @@ For each substep (e.g., `1.1`, `1.2`):
 
 - Mark all substeps as completed in `ROADMAP.md`: `- [x]`.
 - Ensure the progress log reflects completion with today's date.
-- Run the full pre-commit checklist one final time.
+- Run the full pre-commit checklist one final time:
+   ```bash
+   go vet ./...
+   golangci-lint run ./...
+   go test ./... -race -cover
+   cd frontend && npm run lint && npm run test:coverage && cd ..
+   wails build -clean
+   ```
 - **Do not push.**
 
 ### 4. Approval Gate

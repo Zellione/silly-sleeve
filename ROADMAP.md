@@ -114,6 +114,14 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - Created milestone workflow in AGENTS.md.
 - Started Milestone 2 — Crawler (`milestone/2-crawler`).
 
+#### Completed Milestone 2 — Crawler
+
+- [x] **1.1** Crawler screen with URL input, crawl options, recent wiki chips
+- [x] **1.2** MediaWiki action=parse fetcher with URL parsing
+- [x] **1.3** HTML sanitization (nav, refs, TOC, galleries stripped; sections + infobox extracted)
+- [x] **1.4** Crawl preview panel with headings, infobox, word count, footer metadata
+- [x] **1.5** Disk-persisted crawl cache in config dir, survives app restart
+
 ### 2026-05-27
 
 - Created roadmap, updated README and AGENTS.md.

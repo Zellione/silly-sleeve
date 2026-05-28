@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/settings"
 )
@@ -200,4 +201,46 @@ func TestTestLLMEndpoint_ReturnsLLMTestResult(t *testing.T) {
 	result := app.TestLLMEndpoint(ep)
 	assert.IsType(t, llm.TestResult{}, result)
 	assert.True(t, result.Ok)
+}
+
+func TestCrawlPage_ReturnsSampleData(t *testing.T) {
+	app := NewApp()
+	opts := crawler.CrawlOptions{
+		FollowLinks: 0,
+		Include:     map[string]bool{"infobox": true},
+	}
+	result := app.CrawlPage("https://baldursgate.fandom.com/wiki/Test", opts)
+
+	assert.Equal(t, "elara_wynd", result.Title)
+	assert.NotEmpty(t, result.URL)
+	assert.Equal(t, "baldursgate.fandom.com", result.Domain)
+	assert.NotEmpty(t, result.Sections)
+	assert.Equal(t, 1842, result.WordCount)
+	assert.Equal(t, 200, result.StatusCode)
+	assert.Equal(t, int64(412), result.LatencyMs)
+}
+
+func TestCrawlPage_UsesProvidedURL(t *testing.T) {
+	app := NewApp()
+	result := app.CrawlPage("https://custom.wiki.com/wiki/Foo", crawler.CrawlOptions{})
+
+	assert.Equal(t, "https://custom.wiki.com/wiki/Foo", result.URL)
+}
+
+func TestCrawlPage_ReturnsInfoboxEntries(t *testing.T) {
+	app := NewApp()
+	result := app.CrawlPage("", crawler.CrawlOptions{})
+
+	assert.Len(t, result.Infobox, 8)
+	assert.Equal(t, "race", result.Infobox[0].Key)
+	assert.Equal(t, "Half-elf", result.Infobox[0].Value)
+}
+
+func TestCrawlPage_SectionsHaveLevels(t *testing.T) {
+	app := NewApp()
+	result := app.CrawlPage("", crawler.CrawlOptions{})
+
+	require.Len(t, result.Sections, 4)
+	assert.Equal(t, 1, result.Sections[0].Level)
+	assert.Equal(t, 2, result.Sections[1].Level)
 }

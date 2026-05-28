@@ -43,8 +43,8 @@ Goal: Paste a wiki URL, generate a character via bulk prompt, edit fields, save 
 
 ### Milestone 2 — Crawler
 
-- [~] **1.1** Crawler screen: URL input, crawl options, "Crawl page" button
-- [ ] **1.2** Go backend: Fandom/MediaWiki `action=parse` fetcher
+- [x] **1.1** Crawler screen: URL input, crawl options, "Crawl page" button
+- [~] **1.2** Go backend: Fandom/MediaWiki `action=parse` fetcher
 - [ ] **1.3** HTML sanitization: strip nav, refs, TOC, empty headings, galleries
 - [ ] **1.4** Crawl preview panel: headings, infobox key/value table, word count
 - [ ] **1.5** Session caching: raw crawl persisted to disk, survives app restart

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
+import { ToastProvider } from '../components/ToastProvider';
 import {
   DashboardScreen, CrawlerScreen, EditorScreen, LorebookScreen,
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
@@ -8,7 +9,6 @@ import {
 
 const placeholders = [
   { name: 'DashboardScreen', component: DashboardScreen, title: 'Your projects' },
-  { name: 'CrawlerScreen', component: CrawlerScreen, title: 'Crawl a wiki page' },
   { name: 'EditorScreen', component: EditorScreen, title: 'Compose character' },
   { name: 'LorebookScreen', component: LorebookScreen, title: 'Author lorebook' },
   { name: 'ProjectImageScreen', component: ProjectImageScreen, title: 'Project image' },
@@ -31,6 +31,20 @@ describe('screens/index', () => {
 
     it('is a function component', () => {
       expect(typeof Comp).toBe('function');
+    });
+  });
+
+  describe('CrawlerScreen', () => {
+    it('renders crawl input UI', () => {
+      const { container } = render(
+        <ToastProvider><CrawlerScreen /></ToastProvider>
+      );
+      expect(container.textContent).toContain('Source URL');
+      expect(container.textContent).toContain('Crawl page');
+    });
+
+    it('is a function component', () => {
+      expect(typeof CrawlerScreen).toBe('function');
     });
   });
 

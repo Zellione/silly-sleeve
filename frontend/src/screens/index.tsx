@@ -1,4 +1,5 @@
 import React from 'react';
+import CrawlerScreen from './CrawlerScreen';
 import SettingsScreen from './SettingsScreen';
 
 const Placeholder: React.FC<{ title: string }> = ({ title }) => (
@@ -11,7 +12,7 @@ const Placeholder: React.FC<{ title: string }> = ({ title }) => (
 );
 
 export const DashboardScreen: React.FC = () => <Placeholder title="Your projects" />;
-export const CrawlerScreen: React.FC = () => <Placeholder title="Crawl a wiki page" />;
+export { CrawlerScreen };
 export const EditorScreen: React.FC = () => <Placeholder title="Compose character" />;
 export const LorebookScreen: React.FC = () => <Placeholder title="Author lorebook" />;
 export const ProjectImageScreen: React.FC = () => <Placeholder title="Project image" />;

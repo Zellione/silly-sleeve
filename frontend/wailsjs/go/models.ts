@@ -1,3 +1,98 @@
+export namespace crawler {
+
+	export class CrawlOptions {
+	    followLinks: number;
+	    include: Record<string, boolean>;
+
+	    static createFrom(source: any = {}) {
+	        return new CrawlOptions(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.followLinks = source["followLinks"];
+	        this.include = source["include"];
+	    }
+	}
+	export class Section {
+	    heading: string;
+	    body: string;
+	    level: number;
+
+	    static createFrom(source: any = {}) {
+	        return new Section(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.heading = source["heading"];
+	        this.body = source["body"];
+	        this.level = source["level"];
+	    }
+	}
+	export class InfoboxEntry {
+	    key: string;
+	    value: string;
+
+	    static createFrom(source: any = {}) {
+	        return new InfoboxEntry(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	    }
+	}
+	export class CrawlResult {
+	    title: string;
+	    url: string;
+	    domain: string;
+	    rawHtml: string;
+	    sections: Section[];
+	    infobox: InfoboxEntry[];
+	    wordCount: number;
+	    statusCode: number;
+	    latencyMs: number;
+
+	    static createFrom(source: any = {}) {
+	        return new CrawlResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.url = source["url"];
+	        this.domain = source["domain"];
+	        this.rawHtml = source["rawHtml"];
+	        this.sections = this.convertValues(source["sections"], Section);
+	        this.infobox = this.convertValues(source["infobox"], InfoboxEntry);
+	        this.wordCount = source["wordCount"];
+	        this.statusCode = source["statusCode"];
+	        this.latencyMs = source["latencyMs"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace llm {
 	
 	export class TestResult {

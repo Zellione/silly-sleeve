@@ -250,15 +250,3 @@ func TestCrawlPage_HTTPError(t *testing.T) {
 	assert.Zero(t, result.StatusCode)
 	assert.NotEmpty(t, result.Domain)
 }
-
-func TestCountWords_Empty(t *testing.T) {
-	assert.Equal(t, 0, countWords(""))
-}
-
-func TestCountWords_HTML(t *testing.T) {
-	assert.Greater(t, countWords("<p>Hello world</p>"), 0)
-}
-
-func TestCountWords_PlainText(t *testing.T) {
-	assert.Equal(t, 5, countWords("One two three four five"))
-}

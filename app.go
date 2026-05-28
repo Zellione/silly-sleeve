@@ -65,40 +65,24 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 	result := crawler.FetchPage(pageURL)
 	if result.Error != nil {
 		return crawler.CrawlResult{
-			URL:    pageURL,
-			Domain: result.Domain,
+			URL:        pageURL,
+			Domain:     result.Domain,
 			StatusCode: 0,
 			LatencyMs:  result.LatencyMs,
 		}
 	}
+	sections, infobox := crawler.SectionsFromRawHTML(result.RawHTML)
 	return crawler.CrawlResult{
 		Title:      result.Title,
 		URL:        pageURL,
 		Domain:     result.Domain,
 		RawHTML:    result.RawHTML,
-		WordCount:  countWords(result.RawHTML),
+		Sections:   sections,
+		Infobox:    infobox,
+		WordCount:  crawler.TotalWordCount(sections, infobox),
 		StatusCode: 200,
 		LatencyMs:  result.LatencyMs,
 	}
-}
-
-func countWords(s string) int {
-	if s == "" {
-		return 0
-	}
-	words := 0
-	inWord := false
-	for _, r := range s {
-		if r == ' ' || r == '\n' || r == '\t' || r == '<' || r == '>' || r == '=' || r == '"' || r == '\'' {
-			inWord = false
-		} else {
-			if !inWord {
-				words++
-				inWord = true
-			}
-		}
-	}
-	return words
 }
 
 // Greet returns a greeting for the given name

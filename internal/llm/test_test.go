@@ -19,7 +19,7 @@ func TestTestEndpoint_Success(t *testing.T) {
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		w.WriteHeader(200)
-		w.Write([]byte(`{"choices":[{"message":{"content":"hi"}}]}`))
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"hi"}}]}`))
 	}))
 	defer srv.Close()
 

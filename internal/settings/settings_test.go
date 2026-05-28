@@ -164,7 +164,7 @@ func TestLoad_ConfigPathError(t *testing.T) {
 	// Set XDG_CONFIG_HOME to a file (can't create directory)
 	tmpFile, err := os.CreateTemp("", "notadir")
 	require.NoError(t, err)
-	tmpFile.WriteString("block")
+	_, _ = tmpFile.WriteString("block")
 	tmpFile.Close()
 
 	oldDir := os.Getenv("XDG_CONFIG_HOME")

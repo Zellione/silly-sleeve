@@ -43,11 +43,11 @@ Goal: Paste a wiki URL, generate a character via bulk prompt, edit fields, save 
 
 ### Milestone 2 — Crawler
 
-- [ ] **1.1** Crawler screen: URL input, crawl options, "Crawl page" button
+- [~] **1.1** Crawler screen: URL input, crawl options, "Crawl page" button
 - [ ] **1.2** Go backend: Fandom/MediaWiki `action=parse` fetcher
 - [ ] **1.3** HTML sanitization: strip nav, refs, TOC, empty headings, galleries
 - [ ] **1.4** Crawl preview panel: headings, infobox key/value table, word count
-- [ ] **1.5** Session caching: raw crawl held in backend memory for the active project
+- [ ] **1.5** Session caching: raw crawl persisted to disk, survives app restart
 
 ### Milestone 3 — Compose (Bulk Only)
 
@@ -108,6 +108,11 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-05-29
+
+- Created milestone workflow in AGENTS.md.
+- Started Milestone 2 — Crawler (`milestone/2-crawler`).
 
 ### 2026-05-27
 

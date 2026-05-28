@@ -13,6 +13,8 @@ const RECENT_WIKIS = [
 
 type Phase = 'idle' | 'fetching' | 'crawled';
 
+const SECTION_TAGS: Record<number, string> = { 1: 'lede', 2: 'section', 3: 'subsection' };
+
 const CrawlerScreen: React.FC = () => {
   const [url, setUrl] = useState('https://baldursgate.fandom.com/wiki/Elara_Wynd');
   const [phase, setPhase] = useState<Phase>('idle');
@@ -166,7 +168,7 @@ const CrawlerScreen: React.FC = () => {
                       {s.heading && <h4>{s.heading}</h4>}
                       {s.body && (
                         <p>
-                          {s.level <= 1 && <span className="section-tag">lede</span>}
+                          {SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
                           {s.body}
                         </p>
                       )}

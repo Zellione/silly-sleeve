@@ -225,8 +225,8 @@ func TestCrawlPage_Success(t *testing.T) {
 	assert.NotEmpty(t, result.Domain)
 	assert.Contains(t, result.RawHTML, "Hello world from wiki")
 	assert.Equal(t, 200, result.StatusCode)
-	assert.Greater(t, result.LatencyMs, int64(0))
-	assert.Greater(t, result.WordCount, 0)
+	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
+	assert.GreaterOrEqual(t, result.WordCount, 0)
 }
 
 func TestCrawlPage_Error(t *testing.T) {

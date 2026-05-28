@@ -195,4 +195,86 @@ describe('CrawlerScreen', () => {
       expect(screen.getByText('Bard')).toBeInTheDocument();
     });
   });
+
+  it('renders section tags in preview', async () => {
+    mockCrawlPage.mockResolvedValue(sampleResult);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText('lede')).toBeInTheDocument();
+    });
+  });
+
+  it('displays footer metadata after crawl', async () => {
+    mockCrawlPage.mockResolvedValue(sampleResult);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/200 OK/)).toBeInTheDocument();
+      expect(screen.getByText(/412 ms/)).toBeInTheDocument();
+      expect(screen.getByText(/3,131 tokens/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows footer with cold cache when no result', () => {
+    renderWithProviders(<CrawlerScreen />);
+    expect(screen.getByText(/cold/)).toBeInTheDocument();
+  });
+
+  it('handles result with no sections gracefully', async () => {
+    const emptyResult = new crawler.CrawlResult({
+      title: 'empty', url: '', domain: '', rawHtml: '',
+      sections: [], infobox: [], wordCount: 0, statusCode: 200, latencyMs: 0,
+    });
+    mockCrawlPage.mockResolvedValue(emptyResult);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/0 words/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows 0 token estimate for empty result', async () => {
+    const emptyResult = new crawler.CrawlResult({
+      title: 'empty', url: '', domain: '', rawHtml: '',
+      sections: [], infobox: [], wordCount: 0, statusCode: 200, latencyMs: 0,
+    });
+    mockCrawlPage.mockResolvedValue(emptyResult);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/~0 tokens/)).toBeInTheDocument();
+    });
+  });
+
+  it('does not show infobox when empty', async () => {
+    const noInfoResult = new crawler.CrawlResult({
+      title: 'simple', url: '', domain: '', rawHtml: '',
+      sections: [new crawler.Section({ heading: 'Main', body: 'Body text', level: 2 })],
+      infobox: [],
+      wordCount: 5, statusCode: 200, latencyMs: 100,
+    });
+    mockCrawlPage.mockResolvedValue(noInfoResult);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Main')).toBeInTheDocument();
+      expect(screen.getByText('Body text')).toBeInTheDocument();
+    });
+  });
 });

@@ -213,7 +213,7 @@ func TestCrawlPage_Success(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
 	}))
 	defer srv.Close()
 
@@ -265,7 +265,7 @@ func TestCrawlPage_CachesResult(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
 	}))
 	defer srv.Close()
 
@@ -291,7 +291,7 @@ func TestCrawlPage_CachePersistsToDisk(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
 	}))
 	defer srv.Close()
 

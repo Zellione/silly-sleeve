@@ -333,7 +333,19 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 			collecting = true
 			return
 		}
-		if n.Type == html.ElementNode && n.Data == "p" {
+		if n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery") {
+			if current != nil {
+				text := cleanParagraph(getTextContent(n))
+				if text != "" {
+					if current.Body != "" {
+						current.Body += "\n\n"
+					}
+					current.Body += text
+				}
+			}
+			return
+		}
+		if n.Type == html.ElementNode && (n.Data == "p" || n.Data == "ul" || n.Data == "ol") {
 			if !collecting {
 				current = &Section{Heading: "", Level: 1}
 				collecting = true
@@ -347,18 +359,6 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 					current.Body += text
 				}
 			}
-		}
-		if n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery") {
-			if current != nil {
-				text := cleanParagraph(getTextContent(n))
-				if text != "" {
-					if current.Body != "" {
-						current.Body += "\n\n"
-					}
-					current.Body += text
-				}
-			}
-			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)

@@ -422,3 +422,28 @@ func TestSanitize_KeepsInfoboxWhenNil(t *testing.T) {
 	require.Len(t, infobox, 1)
 	assert.Equal(t, "Elf", infobox[0].Value)
 }
+
+func TestExtractSections_CollectsListContent(t *testing.T) {
+	html := `<h2>Trivia</h2><ul><li>Fact one.</li><li>Fact two.</li></ul>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Equal(t, "Trivia", sections[0].Heading)
+	assert.Contains(t, sections[0].Body, "Fact one.")
+	assert.Contains(t, sections[0].Body, "Fact two.")
+	assert.NotEmpty(t, sections[0].Body)
+}
+
+func TestExtractSections_CollectsOrderedListContent(t *testing.T) {
+	html := `<h2>Steps</h2><ol><li>First step.</li><li>Second step.</li></ol>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Contains(t, sections[0].Body, "First step.")
+	assert.Contains(t, sections[0].Body, "Second step.")
+}
+
+func TestExtractSections_SkipsReferenceList(t *testing.T) {
+	html := `<h2>Section</h2><p>Content.</p><ol class="references"><li>Ref 1</li></ol>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.NotContains(t, sections[0].Body, "Ref 1")
+}

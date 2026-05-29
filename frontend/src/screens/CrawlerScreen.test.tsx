@@ -280,4 +280,25 @@ describe('CrawlerScreen', () => {
       expect(screen.getByText('Body text')).toBeInTheDocument();
     });
   });
+
+  it('renders body paragraphs separated by double newline', async () => {
+    const multiPara = new crawler.CrawlResult({
+      title: 'multi', url: '', domain: '', rawHtml: '',
+      sections: [
+        new crawler.Section({ heading: 'Appearance', body: 'First paragraph.\n\nSecond paragraph.', level: 2 }),
+      ],
+      infobox: [],
+      wordCount: 5, statusCode: 200, latencyMs: 100,
+    });
+    mockCrawlPage.mockResolvedValue(multiPara);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText('First paragraph.')).toBeInTheDocument();
+      expect(screen.getByText('Second paragraph.')).toBeInTheDocument();
+    });
+  });
 });

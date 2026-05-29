@@ -370,9 +370,18 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 		sections = append(sections, *current)
 	}
 
+	skipTrivia := include != nil && !include["trivia"]
+	skipQuotes := include != nil && !include["quotes"]
+
 	var filtered []Section
 	for _, s := range sections {
 		if strings.EqualFold(s.Heading, "Navigation") {
+			continue
+		}
+		if skipTrivia && strings.EqualFold(s.Heading, "Trivia") {
+			continue
+		}
+		if skipQuotes && strings.EqualFold(s.Heading, "Quotes") {
 			continue
 		}
 		filtered = append(filtered, s)
@@ -403,7 +412,9 @@ func cleanHeading(s string) string {
 
 // Sanitize runs the full sanitization pipeline on raw wiki HTML.
 func Sanitize(rawHTML string, include map[string]bool) (sections []Section, infobox []InfoboxEntry) {
-	infobox = ExtractInfobox(rawHTML)
+	if include == nil || include["infobox"] {
+		infobox = ExtractInfobox(rawHTML)
+	}
 	sections = ExtractSections(rawHTML, include)
 	return sections, infobox
 }

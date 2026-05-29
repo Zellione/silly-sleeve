@@ -377,3 +377,48 @@ func TestExtractSections_NavigationWithContent(t *testing.T) {
 	assert.Equal(t, "Introduction", sections[0].Heading)
 	assert.Equal(t, "After", sections[1].Heading)
 }
+
+func TestExtractSections_SkipsTriviaWhenUnchecked(t *testing.T) {
+	html := `<h2>Appearance</h2><p>Tall.</p><h2>Trivia</h2><p>Fun fact.</p><h2>Personality</h2><p>Friendly.</p>`
+	sections := ExtractSections(html, map[string]bool{"trivia": false})
+	require.Len(t, sections, 2)
+	assert.Equal(t, "Appearance", sections[0].Heading)
+	assert.Equal(t, "Personality", sections[1].Heading)
+}
+
+func TestExtractSections_KeepsTriviaWhenChecked(t *testing.T) {
+	html := `<h2>Appearance</h2><p>Tall.</p><h2>Trivia</h2><p>Fun fact.</p><h2>Personality</h2><p>Friendly.</p>`
+	sections := ExtractSections(html, map[string]bool{"trivia": true})
+	require.Len(t, sections, 3)
+	assert.Equal(t, "Trivia", sections[1].Heading)
+	assert.Equal(t, "Fun fact.", sections[1].Body)
+}
+
+func TestExtractSections_SkipsQuotesWhenUnchecked(t *testing.T) {
+	html := `<h2>Appearance</h2><p>Tall.</p><h2>Quotes</h2><p>Quote text.</p><h2>Personality</h2><p>Friendly.</p>`
+	sections := ExtractSections(html, map[string]bool{"quotes": false})
+	require.Len(t, sections, 2)
+	assert.Equal(t, "Appearance", sections[0].Heading)
+	assert.Equal(t, "Personality", sections[1].Heading)
+}
+
+func TestExtractSections_KeepsQuotesWhenChecked(t *testing.T) {
+	html := `<h2>Appearance</h2><p>Tall.</p><h2>Quotes</h2><p>Quote text.</p><h2>Personality</h2><p>Friendly.</p>`
+	sections := ExtractSections(html, map[string]bool{"quotes": true})
+	require.Len(t, sections, 3)
+	assert.Equal(t, "Quotes", sections[1].Heading)
+	assert.Equal(t, "Quote text.", sections[1].Body)
+}
+
+func TestSanitize_SkipsInfoboxWhenUnchecked(t *testing.T) {
+	html := `<aside class="portable-infobox"><div data-source="race"><div class="pi-data-value">Elf</div></div></aside><h2>Section</h2><p>Content.</p>`
+	_, infobox := Sanitize(html, map[string]bool{"infobox": false})
+	assert.Empty(t, infobox)
+}
+
+func TestSanitize_KeepsInfoboxWhenNil(t *testing.T) {
+	html := `<aside class="portable-infobox"><div data-source="race"><div class="pi-data-value">Elf</div></div></aside><h2>Section</h2><p>Content.</p>`
+	_, infobox := Sanitize(html, nil)
+	require.Len(t, infobox, 1)
+	assert.Equal(t, "Elf", infobox[0].Value)
+}

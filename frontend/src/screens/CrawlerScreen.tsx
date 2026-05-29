@@ -172,17 +172,17 @@ const CrawlerScreen: React.FC = () => {
                       ))}
                     </dl>
                   )}
-                  {result.sections && result.sections.map((s, i) => (
-                    <React.Fragment key={i}>
-                      {s.heading && <h4>{s.heading}</h4>}
-                      {s.body && (
-                        <p>
-                          {SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
-                          {s.body}
-                        </p>
-                      )}
-                    </React.Fragment>
-                  ))}
+                   {result.sections && result.sections.map((s, i) => (
+                     <React.Fragment key={i}>
+                       {s.heading && <h4>{s.heading}</h4>}
+                       {s.body && s.body.split('\n\n').map((para, j) => (
+                         <p key={j}>
+                           {j === 0 && SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
+                           {para}
+                         </p>
+                       ))}
+                     </React.Fragment>
+                   ))}
                 </>
               ) : (
                 <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>

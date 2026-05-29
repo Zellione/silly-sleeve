@@ -51,11 +51,11 @@ Goal: Paste a wiki URL, generate a character via bulk prompt, edit fields, save 
 
 ### Milestone 3 — Compose (Bulk Only)
 
-- [~] **2.1** Editor screen: 10 field cards (line, text, tags, quotes, stats input types)
-- [ ] **2.2** Bulk generation: send bulk prompt to LLM, parse JSON response into all fields
-- [ ] **2.3** Character strip: add/switch/delete characters in the current project
-- [ ] **2.4** Manual field editing with dirty flag tracking
-- [ ] **2.5** Word/token count per field
+- [x] **2.1** Editor screen: 10 field cards (line, text, tags, quotes, stats input types)
+- [x] **2.2** Bulk generation: send bulk prompt to LLM, parse JSON response into all fields
+- [x] **2.3** Character strip: add/switch/delete characters in the current project
+- [x] **2.4** Manual field editing with dirty flag tracking
+- [x] **2.5** Word/token count per field
 
 ### Milestone 4 — Save & Export
 
@@ -150,3 +150,14 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ### 2026-05-30
 
 - Started Milestone 3 — Compose (Bulk Only) (`milestone/3-compose`).
+
+#### Completed Milestone 3 — Compose (Bulk Only)
+
+- [x] **2.1** Editor screen with 10 field cards (line, text, tags, quotes, stats) and source panel
+- [x] **2.2** Bulk generation via LLM with adapted SillyTavern prompt, JSON parsing, lock support
+- [x] **2.3** Character strip with add/switch/delete and last-character safety guard
+- [x] **2.4** Manual field editing with per-field dirty flag tracking
+- [x] **2.5** Word count per field + token count via tiktoken-go
+- Added `github.com/pkoukk/tiktoken-go` dependency for accurate token estimation
+- Added `internal/llm/complete.go` for full chat-completion calls
+- Added `internal/compose/` package: models, token counting, prompt builder, LLM generation

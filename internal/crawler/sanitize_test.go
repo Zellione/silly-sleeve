@@ -264,10 +264,19 @@ func TestSectionsFromRawHTML(t *testing.T) {
 
 func TestCleanInfoboxText(t *testing.T) {
 	result := cleanInfoboxText("  Hello\nWorld  ")
-	assert.Equal(t, "Hello World", result)
+	assert.Equal(t, "Hello\nWorld", result)
 
 	result = cleanInfoboxText("a\u00a0b")
 	assert.Equal(t, "a b", result)
+
+	result = cleanInfoboxText("Line1\n\nLine2")
+	assert.Equal(t, "Line1\nLine2", result)
+
+	result = cleanInfoboxText("Text\twith\ttabs")
+	assert.Equal(t, "Text with tabs", result)
+
+	result = cleanInfoboxText("Before \n After")
+	assert.Equal(t, "Before\nAfter", result)
 }
 
 func TestCleanText(t *testing.T) {
@@ -514,4 +523,18 @@ func TestExtractSections_ListWithBr(t *testing.T) {
 	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Contains(t, sections[0].Body, "Line one.\nLine two.")
+}
+
+func TestExtractInfobox_PortableWithBr(t *testing.T) {
+	html := `<aside class="portable-infobox">
+		<div data-source="family"><div class="pi-data-value">Tatsumi (Husband)<br />Unnamed child</div></div>
+		<div data-source="manga"><div class="pi-data-value">Chapter 1<br />Chapter 59</div></div>
+	</aside>`
+
+	entries := ExtractInfobox(html)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "family", entries[0].Key)
+	assert.Equal(t, "Tatsumi (Husband)\nUnnamed child", entries[0].Value)
+	assert.Equal(t, "manga", entries[1].Key)
+	assert.Equal(t, "Chapter 1\nChapter 59", entries[1].Value)
 }

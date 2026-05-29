@@ -112,6 +112,30 @@ func getTextContent(node *html.Node) string {
 	return strings.TrimSpace(buf.String())
 }
 
+func getInlineText(node *html.Node) string {
+	var buf strings.Builder
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if shouldSkip(n) {
+			return
+		}
+		if n.Type == html.ElementNode && n.Data == "br" {
+			buf.WriteString("\n")
+			return
+		}
+		if n.Type == html.TextNode {
+			buf.WriteString(n.Data)
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		walk(c)
+	}
+	return strings.TrimSpace(buf.String())
+}
+
 func getParagraphText(node *html.Node) string {
 	var buf strings.Builder
 	var walk func(*html.Node)
@@ -348,7 +372,7 @@ func getPortableInfoboxValue(node *html.Node) string {
 	var findValue func(*html.Node)
 	findValue = func(n *html.Node) {
 		if n.Type == html.ElementNode && hasClass(n, "pi-data-value") {
-			value = cleanInfoboxText(getTextContent(n))
+			value = cleanInfoboxText(getInlineText(n))
 			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -357,7 +381,7 @@ func getPortableInfoboxValue(node *html.Node) string {
 	}
 	findValue(node)
 	if value == "" {
-		value = cleanInfoboxText(getTextContent(node))
+		value = cleanInfoboxText(getInlineText(node))
 	}
 	return value
 }
@@ -366,14 +390,31 @@ func cleanInfoboxText(s string) string {
 	s = strings.TrimSpace(s)
 	s = strings.ReplaceAll(s, "\u00a0", " ")
 	var result []rune
+	prevWasNewline := false
 	for _, r := range s {
-		if r == '\n' || r == '\r' || r == '\t' {
+		if r == '\r' || r == '\t' {
 			result = append(result, ' ')
+		} else if r == '\n' {
+			if !prevWasNewline {
+				result = append(result, '\n')
+				prevWasNewline = true
+			}
 		} else {
 			result = append(result, r)
+			prevWasNewline = false
 		}
 	}
-	return strings.Join(strings.Fields(string(result)), " ")
+	s = string(result)
+	for strings.Contains(s, " \n") {
+		s = strings.ReplaceAll(s, " \n", "\n")
+	}
+	for strings.Contains(s, "\n ") {
+		s = strings.ReplaceAll(s, "\n ", "\n")
+	}
+	for strings.Contains(s, "  ") {
+		s = strings.ReplaceAll(s, "  ", " ")
+	}
+	return s
 }
 
 // ExtractSections parses raw HTML into structured sections.

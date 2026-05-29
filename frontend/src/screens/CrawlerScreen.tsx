@@ -173,7 +173,14 @@ const CrawlerScreen: React.FC = () => {
                            <React.Fragment key={i}>
                              {showSection && <div className="infobox-section">{entry.section}</div>}
                              <dt>{entry.key}</dt>
-                             <dd>{entry.value}</dd>
+                              <dd>
+                                {entry.value.split('\n').map((line, j) => (
+                                  <React.Fragment key={j}>
+                                    {j > 0 && <br />}
+                                    {line}
+                                  </React.Fragment>
+                                ))}
+                              </dd>
                            </React.Fragment>
                          );
                        })}

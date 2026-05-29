@@ -13,7 +13,7 @@ const Placeholder: React.FC<{ title: string }> = ({ title }) => (
 
 export const DashboardScreen: React.FC = () => <Placeholder title="Your projects" />;
 export { CrawlerScreen };
-export const EditorScreen: React.FC = () => <Placeholder title="Compose character" />;
+export { default as EditorScreen } from './EditorScreen';
 export const LorebookScreen: React.FC = () => <Placeholder title="Author lorebook" />;
 export const ProjectImageScreen: React.FC = () => <Placeholder title="Project image" />;
 export const PortraitScreen: React.FC = () => <Placeholder title="Portrait" />;

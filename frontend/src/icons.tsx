@@ -42,3 +42,5 @@ export const KeyIcon: React.FC<IconProps> = (p) => <Icon {...p}><circle cx="7.5"
 export const DownIcon: React.FC<IconProps> = (p) => <Icon d="M6 9l6 6 6-6" {...p} />;
 export const BoltIcon: React.FC<IconProps> = (p) => <Icon d="M13 2L4 14h7l-2 8 9-12h-7l2-8z" {...p} />;
 export const CopyIcon: React.FC<IconProps> = (p) => <Icon {...p}><rect x="9" y="9" width="11" height="11" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></Icon>;
+export const LockIcon: React.FC<IconProps> = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></Icon>;
+export const DiceIcon: React.FC<IconProps> = (p) => <Icon {...p}><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.2" fill="currentColor" stroke="none"/></Icon>;

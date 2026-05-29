@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/settings"
@@ -322,4 +323,140 @@ func TestGetCachedCrawl_ReturnsNilForFailedCrawl(t *testing.T) {
 	app := NewApp()
 	app.CrawlPage("://invalid", crawler.CrawlOptions{})
 	assert.Nil(t, app.GetCachedCrawl())
+}
+
+func TestCharacters_InitialState(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	chars := app.GetCharacters()
+	require.Len(t, chars, 1)
+	assert.Equal(t, 1, chars[0].ID)
+	assert.Equal(t, "Untitled", chars[0].Name)
+}
+
+func TestAddCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.AddCharacter()
+	assert.Equal(t, 2, ch.ID)
+	assert.Equal(t, "Untitled", ch.Name)
+
+	chars := app.GetCharacters()
+	assert.Len(t, chars, 2)
+}
+
+func TestUpdateCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GetActiveCharacter()
+	ch.Name = "Elara"
+
+	err := app.UpdateCharacter(ch)
+	require.NoError(t, err)
+
+	updated := app.GetActiveCharacter()
+	assert.Equal(t, "Elara", updated.Name)
+}
+
+func TestUpdateCharacter_NotFound(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	err := app.UpdateCharacter(compose.Character{ID: 999})
+	assert.Error(t, err)
+}
+
+func TestDeleteCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.AddCharacter()
+
+	err := app.DeleteCharacter(1)
+	require.NoError(t, err)
+
+	chars := app.GetCharacters()
+	assert.Len(t, chars, 1)
+	assert.Equal(t, 2, chars[0].ID)
+}
+
+func TestDeleteCharacter_LastOneFails(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	err := app.DeleteCharacter(1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "last character")
+}
+
+func TestDeleteCharacter_NotFound(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	err := app.DeleteCharacter(999)
+	assert.Error(t, err)
+}
+
+func TestDeleteCharacter_UpdatesActive(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	app.SetActiveCharacter(1)
+	_ = app.DeleteCharacter(1)
+
+	active := app.GetActiveCharacter()
+	assert.Equal(t, 2, active.ID)
+}
+
+func TestGetActiveCharacter_Default(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GetActiveCharacter()
+	assert.Equal(t, 1, ch.ID)
+}
+
+func TestSetActiveCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	app.SetActiveCharacter(2)
+	ch := app.GetActiveCharacter()
+	assert.Equal(t, 2, ch.ID)
+}
+
+func TestSetActiveCharacter_Nonexistent(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.SetActiveCharacter(999)
+	ch := app.GetActiveCharacter()
+	assert.Equal(t, 0, ch.ID)
+}
+
+func TestCountTokens_Integration(t *testing.T) {
+	app := NewApp()
+	n := app.CountTokens("hello world")
+	assert.Greater(t, n, 0)
+}
+
+func TestCountTokens_Empty(t *testing.T) {
+	app := NewApp()
+	n := app.CountTokens("")
+	assert.Equal(t, 0, n)
+}
+
+func TestStartup_InitializesCharacters(t *testing.T) {
+	app := NewApp()
+	assert.Len(t, app.characters, 0)
+
+	app.startup(context.Background())
+	assert.Len(t, app.characters, 1)
+	assert.Equal(t, 1, app.activeCharID)
 }

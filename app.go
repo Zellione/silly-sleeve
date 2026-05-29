@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/settings"
@@ -12,10 +13,12 @@ import (
 
 // App struct
 type App struct {
-	ctx         context.Context
-	settings    settings.Settings
-	mu          sync.Mutex
-	cachedCrawl *crawler.CrawlResult
+	ctx          context.Context
+	settings     settings.Settings
+	mu           sync.Mutex
+	cachedCrawl  *crawler.CrawlResult
+	characters   []compose.Character
+	activeCharID int
 }
 
 // NewApp creates a new App application struct
@@ -43,6 +46,9 @@ func (a *App) startup(ctx context.Context) {
 		a.cachedCrawl = c
 		a.mu.Unlock()
 	}
+
+	a.characters = []compose.Character{compose.NewCharacter(1)}
+	a.activeCharID = 1
 }
 
 // GetSettings returns the current settings.
@@ -115,4 +121,92 @@ func (a *App) GetCachedCrawl() *crawler.CrawlResult {
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// GetCharacters returns all characters in the current project.
+func (a *App) GetCharacters() []compose.Character {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.characters
+}
+
+// AddCharacter creates a new character and returns it.
+func (a *App) AddCharacter() compose.Character {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	nextID := a.nextCharID()
+	ch := compose.NewCharacter(nextID)
+	a.characters = append(a.characters, ch)
+	a.activeCharID = nextID
+	return ch
+}
+
+// UpdateCharacter replaces a character by ID with the given data.
+func (a *App) UpdateCharacter(ch compose.Character) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for i, c := range a.characters {
+		if c.ID == ch.ID {
+			a.characters[i] = ch
+			return nil
+		}
+	}
+	return fmt.Errorf("character %d not found", ch.ID)
+}
+
+// DeleteCharacter removes a character by ID.
+func (a *App) DeleteCharacter(id int) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if len(a.characters) <= 1 {
+		return fmt.Errorf("cannot delete the last character")
+	}
+	for i, c := range a.characters {
+		if c.ID == id {
+			a.characters = append(a.characters[:i], a.characters[i+1:]...)
+			if a.activeCharID == id {
+				if i >= len(a.characters) {
+					a.activeCharID = a.characters[0].ID
+				} else {
+					a.activeCharID = a.characters[i].ID
+				}
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("character %d not found", id)
+}
+
+// GetActiveCharacter returns the currently active character.
+func (a *App) GetActiveCharacter() compose.Character {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			return c
+		}
+	}
+	return compose.Character{}
+}
+
+// SetActiveCharacter switches the active character by ID.
+func (a *App) SetActiveCharacter(id int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.activeCharID = id
+}
+
+// CountTokens returns the approximate token count for text.
+func (a *App) CountTokens(text string) int {
+	return compose.CountTokens(text)
+}
+
+func (a *App) nextCharID() int {
+	max := 0
+	for _, c := range a.characters {
+		if c.ID > max {
+			max = c.ID
+		}
+	}
+	return max + 1
 }

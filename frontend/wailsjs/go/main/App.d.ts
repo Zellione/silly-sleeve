@@ -9,6 +9,8 @@ export function AddCharacter():Promise<compose.Character>;
 
 export function CountTokens(arg1:string):Promise<number>;
 
+export function GenerateCharacterBulk(arg1:string[]):Promise<compose.Character>;
+
 export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler.CrawlResult>;
 
 export function DeleteCharacter(arg1:number):Promise<void>;

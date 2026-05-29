@@ -210,3 +210,68 @@ func (a *App) nextCharID() int {
 	}
 	return max + 1
 }
+
+// GenerateCharacterBulk sends the cached crawl to the default LLM endpoint
+// and generates a character from the bulk prompt. lockedFields are field IDs
+// that should not be overwritten.
+func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
+	a.mu.Lock()
+	crawl := a.cachedCrawl
+	existing := compose.Character{}
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			existing = c
+			break
+		}
+	}
+	a.mu.Unlock()
+
+	if crawl == nil {
+		return existing
+	}
+
+	a.mu.Lock()
+	def := a.defaultEndpoint()
+	a.mu.Unlock()
+
+	ep := llm.LLMEndpoint{
+		ID:           def.ID,
+		Name:         def.Name,
+		URL:          def.URL,
+		Model:        def.Model,
+		Key:          def.Key,
+		ContextSize:  def.ContextSize,
+		Temperature:  def.Temperature,
+		SystemPrompt: def.SystemPrompt,
+	}
+
+	ch, err := compose.GenerateBulk(*crawl, ep, lockedFields, existing)
+	if err != nil {
+		fmt.Println("bulk generate error:", err)
+		return existing
+	}
+
+	a.mu.Lock()
+	for i, c := range a.characters {
+		if c.ID == a.activeCharID {
+			ch.ID = c.ID
+			a.characters[i] = ch
+			break
+		}
+	}
+	a.mu.Unlock()
+
+	return ch
+}
+
+func (a *App) defaultEndpoint() settings.LLMEndpoint {
+	for _, ep := range a.settings.Endpoints {
+		if ep.IsDefault {
+			return ep
+		}
+	}
+	if len(a.settings.Endpoints) > 0 {
+		return a.settings.Endpoints[0]
+	}
+	return settings.LLMEndpoint{}
+}

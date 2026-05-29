@@ -38,6 +38,7 @@ const mockDeleteCharacter = vi.fn();
 const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
+const mockGenerateCharacterBulk = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -47,6 +48,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   SetActiveCharacter: (id: any) => mockSetActiveCharacter(id),
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
+  GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -61,6 +63,7 @@ describe('EditorScreen', () => {
     mockUpdateCharacter.mockResolvedValue(undefined);
     mockDeleteCharacter.mockResolvedValue(undefined);
     mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGenerateCharacterBulk.mockResolvedValue(mockCharacter);
   });
 
   it('renders the PageHead with step 2 and character name', async () => {
@@ -213,11 +216,11 @@ describe('EditorScreen', () => {
     });
   });
 
-  it('shows re-roll all button as disabled', async () => {
+  it('shows re-roll all button as enabled', async () => {
     renderWithProviders(<EditorScreen />);
     await waitFor(() => {
       const rerollBtn = screen.getByText('Re-roll all').closest('button')!;
-      expect(rerollBtn).toBeDisabled();
+      expect(rerollBtn).not.toBeDisabled();
     });
   });
 
@@ -312,6 +315,37 @@ describe('EditorScreen', () => {
     await waitFor(() => {
       const continueBtn = screen.getByText('Continue to Lorebook').closest('button')!;
       expect(continueBtn).toBeDisabled();
+    });
+  });
+
+  it('triggers compose on re-roll all click', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<EditorScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Re-roll all')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Re-roll all'));
+
+    await waitFor(() => {
+      expect(mockGenerateCharacterBulk).toHaveBeenCalled();
+    });
+  });
+
+  it('shows compose error toast on failure', async () => {
+    mockGenerateCharacterBulk.mockRejectedValue(new Error('compose error'));
+    const user = userEvent.setup();
+    renderWithProviders(<EditorScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Re-roll all')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Re-roll all'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Compose failed')).toBeInTheDocument();
     });
   });
 });

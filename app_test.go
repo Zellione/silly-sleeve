@@ -460,3 +460,124 @@ func TestStartup_InitializesCharacters(t *testing.T) {
 	assert.Len(t, app.characters, 1)
 	assert.Equal(t, 1, app.activeCharID)
 }
+
+func TestDefaultEndpoint_ReturnsDefault(t *testing.T) {
+	app := NewApp()
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{
+			{ID: 1, Name: "first", IsDefault: false},
+			{ID: 2, Name: "second", IsDefault: true},
+		},
+	}
+
+	ep := app.defaultEndpoint()
+	assert.Equal(t, 2, ep.ID)
+	assert.Equal(t, "second", ep.Name)
+}
+
+func TestDefaultEndpoint_FirstWhenNone(t *testing.T) {
+	app := NewApp()
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{
+			{ID: 1, Name: "only"},
+		},
+	}
+
+	ep := app.defaultEndpoint()
+	assert.Equal(t, 1, ep.ID)
+}
+
+func TestDefaultEndpoint_EmptySettings(t *testing.T) {
+	app := NewApp()
+	ep := app.defaultEndpoint()
+	assert.Equal(t, 0, ep.ID)
+}
+
+func TestGenerateCharacterBulk_NoCrawl(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GenerateCharacterBulk(nil)
+	assert.Equal(t, "Untitled", ch.Name)
+}
+
+func TestGenerateCharacterBulk_WithCrawl(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"name":          "Generated",
+			"epithet":       "Gen",
+			"tags":          []string{"tag1"},
+			"appearance":    "app",
+			"personality":   "pers",
+			"backstory":     "back",
+			"abilities":     "abil",
+			"relationships": "rel",
+			"quotes":        []string{"q1"},
+			"stats":         [][]string{{"K", "V"}},
+		}
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": mustMarshal(t, resp)}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID:          1,
+			Name:        "test",
+			URL:         srv.URL,
+			Model:       "model",
+			IsDefault:   true,
+			Temperature: 0.8,
+		}},
+	}
+
+	app.cachedCrawl = &crawler.CrawlResult{
+		Title: "Test Page",
+	}
+
+	ch := app.GenerateCharacterBulk(nil)
+	assert.Equal(t, "Generated", ch.Name)
+	assert.True(t, ch.Dirty)
+}
+
+func TestGenerateCharacterBulk_LLMErrorReturnsExisting(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID: 1, Name: "err", URL: srv.URL, Model: "model", IsDefault: true,
+		}},
+	}
+
+	app.cachedCrawl = &crawler.CrawlResult{Title: "Page"}
+	app.characters[0].Name = "Original"
+
+	ch := app.GenerateCharacterBulk(nil)
+	assert.Equal(t, "Original", ch.Name)
+}
+
+func mustMarshal(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return string(b)
+}

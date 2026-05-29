@@ -8,7 +8,7 @@ import {
 } from '../icons';
 import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
-  SetActiveCharacter, GetCachedCrawl, CountTokens,
+  SetActiveCharacter, GetCachedCrawl, CountTokens, GenerateCharacterBulk,
 } from '../../wailsjs/go/main/App';
 import { compose, crawler } from '../../wailsjs/go/models';
 
@@ -382,6 +382,11 @@ const EditorScreen: React.FC = () => {
     [fields],
   );
 
+  const lockedCount = useMemo(() =>
+    Object.values(fields).filter(f => f.locked).length,
+    [fields],
+  );
+
   const loadActive = useCallback(async (id: number) => {
     const chars = await refreshCharacters();
     const ch = chars.find(c => c.id === id) ?? null;
@@ -440,6 +445,36 @@ const EditorScreen: React.FC = () => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   }, []);
 
+  const handleCompose = useCallback(async () => {
+    if (!activeChar) return;
+    const locked = FIELDS.filter(f => fields[f.id]?.locked).map(f => f.id);
+
+    for (const f of FIELDS) {
+      if (!fields[f.id]?.locked) {
+        patchField(f.id, { rolling: true });
+      }
+    }
+
+    try {
+      const ch = await GenerateCharacterBulk(locked);
+      await refreshCharacters();
+      setActiveChar(ch);
+
+      for (const f of FIELDS) {
+        const val = fieldStateFromChar(ch, FIELDS.find(x => x.id === f.id)!);
+        setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], value: val.value, dirty: false, rolling: false, history: prev[f.id]?.history ? prev[f.id].history + 1 : 2 } }));
+      }
+      toast({ kind: 'ok', title: 'Composed', body: `"${ch.name}" generated from ${locked.length > 0 ? (FIELDS.length - locked.length) + ' of ' + FIELDS.length : 'all'} fields.` });
+    } catch (e: any) {
+      for (const f of FIELDS) {
+        patchField(f.id, { rolling: false });
+      }
+      toast({ kind: 'bad', title: 'Compose failed', body: e?.message || 'Could not reach the LLM endpoint.' });
+    }
+  }, [activeChar, fields, patchField, toast, refreshCharacters]);
+
+  const isComposing = FIELDS.some(f => fields[f.id]?.rolling);
+
   if (!activeChar || Object.keys(fields).length === 0) {
     return (
       <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -465,8 +500,8 @@ const EditorScreen: React.FC = () => {
             <button className="btn ghost" onClick={handleSave}>
               <SaveIcon size={14} /> Save
             </button>
-            <button className="btn ghost" disabled title="Re-roll all — coming in step 2.2">
-              <DiceIcon size={14} /> Re-roll all
+            <button className="btn ghost" onClick={handleCompose} disabled={isComposing}>
+              <DiceIcon size={14} /> Re-roll all{lockedCount > 0 && <span style={{ opacity: 0.6, marginLeft: 4 }}>({FIELDS.length - lockedCount})</span>}
             </button>
             <button className="btn primary" disabled title="Coming in a later phase">
               Continue to Lorebook <ArrowIcon size={14} />

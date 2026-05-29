@@ -8,14 +8,19 @@ import (
 )
 
 var skipClasses = map[string]bool{
-	"navbox":        true,
-	"navbox-styles": true,
-	"navbox-inner":  true,
-	"mw-editsection":   true,
-	"mw-empty-elt":     true,
-	"mw-reflink-text":  true,
-	"mw-cite-backlink": true,
-	"visualClear":      true,
+	"navbox":              true,
+	"navbox-styles":       true,
+	"navbox-inner":        true,
+	"mw-editsection":      true,
+	"mw-editsection-bracket": true,
+	"mw-empty-elt":        true,
+	"mw-reflink-text":     true,
+	"mw-cite-backlink":    true,
+	"visualClear":         true,
+	"portable-infobox":    true,
+	"toccolours":          true,
+	"mw-collapsible":      true,
+	"mw-collapsed":        true,
 }
 
 var skipTags = map[string]bool{
@@ -58,6 +63,9 @@ func shouldSkip(node *html.Node) bool {
 	if skipTags[node.Data] {
 		return true
 	}
+	if node.Data == "aside" && hasClass(node, "portable-infobox") {
+		return true
+	}
 	if node.Data == "table" || node.Data == "div" || node.Data == "span" {
 		for c := range skipClasses {
 			if hasClass(node, c) {
@@ -81,13 +89,13 @@ func getTextContent(node *html.Node) string {
 	var buf strings.Builder
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
+		if shouldSkip(n) {
+			return
+		}
 		if n.Type == html.TextNode {
 			buf.WriteString(n.Data)
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if shouldSkip(c) {
-				continue
-			}
 			walk(c)
 		}
 	}
@@ -162,7 +170,7 @@ func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 		if n.Type == html.ElementNode {
 			source := findAttr(n, "data-source")
 			if source != "" {
-				value := cleanInfoboxText(getTextContent(n))
+				value := getPortableInfoboxValue(n)
 				if value != "" {
 					entries = append(entries, InfoboxEntry{Key: source, Value: value})
 				}
@@ -174,6 +182,25 @@ func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 	}
 	walk(aside)
 	return entries
+}
+
+func getPortableInfoboxValue(node *html.Node) string {
+	var value string
+	var findValue func(*html.Node)
+	findValue = func(n *html.Node) {
+		if n.Type == html.ElementNode && hasClass(n, "pi-data-value") {
+			value = cleanInfoboxText(getTextContent(n))
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			findValue(c)
+		}
+	}
+	findValue(node)
+	if value == "" {
+		value = cleanInfoboxText(getTextContent(node))
+	}
+	return value
 }
 
 func cleanInfoboxText(s string) string {
@@ -207,7 +234,7 @@ func ExtractSections(rawHTML string) []Section {
 			return
 		}
 		if n.Type == html.ElementNode && (n.Data == "h2" || n.Data == "h3" || n.Data == "h4") {
-			heading := cleanText(getTextContent(n))
+			heading := cleanHeading(cleanText(getTextContent(n)))
 			if heading == "" {
 				return
 			}
@@ -266,6 +293,13 @@ func cleanText(s string) string {
 		}
 	}
 	return strings.Join(strings.Fields(string(result)), " ")
+}
+
+func cleanHeading(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimSuffix(s, "[]")
+	s = strings.TrimSuffix(s, " edit")
+	return s
 }
 
 // Sanitize runs the full sanitization pipeline on raw wiki HTML.

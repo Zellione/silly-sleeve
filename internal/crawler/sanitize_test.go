@@ -228,3 +228,93 @@ func TestCleanText(t *testing.T) {
 	result := cleanText("  Hello\nWorld\tTest  ")
 	assert.Equal(t, "Hello World Test", result)
 }
+
+func TestSanitize_MinePage(t *testing.T) {
+	html := `<div class="mw-parser-output">
+<aside class="portable-infobox pi-background pi-border-color pi-theme-wikia pi-layout-default">
+<h2 class="pi-item pi-item-spacing pi-title pi-secondary-background" data-source="name">Mine</h2>
+<div class="pi-item pi-data pi-item-spacing pi-border-color" data-source="katakana">
+<h3 class="pi-data-label pi-secondary-font"><b>Kanji/Kana</b></h3>
+<div class="pi-data-value pi-font">マイン</div>
+</div>
+<div class="pi-item pi-data pi-item-spacing pi-border-color" data-source="age">
+<h3 class="pi-data-label pi-secondary-font"><b>Age</b></h3>
+<div class="pi-data-value pi-font">Teens</div>
+</div>
+</aside>
+<div id="toc" class="toc" role="navigation"><h2>Contents</h2></div>
+<h2><span class="mw-headline" id="Appearance">Appearance</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><span class="mw-editsection-bracket">]</span></span></h2>
+<p>Mine is a young girl of below-average height.</p>
+<h2><span class="mw-headline" id="Personality">Personality</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><span class="mw-editsection-bracket">]</span></span></h2>
+<p>Often quick to anger, and easily irritated.</p>
+<h2><span class="mw-headline" id="Equipment_and_Skills">Equipment and Skills</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><span class="mw-editsection-bracket">]</span></span></h2>
+<p>Mine wielded a powerful Teigu.</p>
+<table class="toccolours mw-collapsible mw-collapsed"><tr><td>Navigation content</td></tr></table>
+</div>`
+
+	sections, infobox := Sanitize(html)
+
+	assert.NotEmpty(t, infobox)
+	assert.Len(t, infobox, 3)
+	assert.Equal(t, "name", infobox[0].Key)
+	assert.Equal(t, "Mine", infobox[0].Value)
+	assert.Equal(t, "katakana", infobox[1].Key)
+	assert.Equal(t, "マイン", infobox[1].Value)
+	assert.Equal(t, "age", infobox[2].Key)
+	assert.Equal(t, "Teens", infobox[2].Value)
+
+	for _, s := range sections {
+		assert.NotContains(t, s.Heading, "[", "heading %q contains brackets", s.Heading)
+		assert.NotContains(t, s.Heading, "]", "heading %q contains brackets", s.Heading)
+		assert.NotContains(t, s.Heading, "edit", "heading %q contains edit", s.Heading)
+		assert.NotEqual(t, "Kanji/Kana", s.Heading, "infobox key leaked into section heading")
+		assert.NotEqual(t, "Age", s.Heading, "infobox key leaked into section heading")
+		assert.NotContains(t, s.Body, "Navigation content", "nav table leaked into section body")
+		assert.NotContains(t, s.Body, "Contents", "TOC leaked into section body")
+	}
+
+	var headings []string
+	for _, s := range sections {
+		if s.Heading != "" {
+			headings = append(headings, s.Heading)
+		}
+	}
+	assert.Contains(t, headings, "Appearance")
+	assert.Contains(t, headings, "Personality")
+	assert.Contains(t, headings, "Equipment and Skills")
+}
+
+func TestCleanHeading_StripsBrackets(t *testing.T) {
+	assert.Equal(t, "Appearance", cleanHeading("Appearance[]"))
+	assert.Equal(t, "Personality", cleanHeading("Personality[]"))
+	assert.Equal(t, "Equipment and Skills", cleanHeading("Equipment and Skills[]"))
+}
+
+func TestCleanHeading_StripsEdit(t *testing.T) {
+	assert.Equal(t, "Equipment and Skills", cleanHeading("Equipment and Skills edit"))
+	assert.Equal(t, "Appearance", cleanHeading("Appearance edit"))
+}
+
+func TestCleanHeading_NoChange(t *testing.T) {
+	assert.Equal(t, "Normal heading", cleanHeading("Normal heading"))
+	assert.Equal(t, "Normal heading", cleanHeading("Normal heading "))
+}
+
+func TestCleanHeading_OnlyBrackets(t *testing.T) {
+	assert.Equal(t, "", cleanHeading("[]"))
+}
+
+func TestGetTextContent_SkipsEditsection(t *testing.T) {
+	html := `<h2><span class="mw-headline">Appearance</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a>edit</a><span class="mw-editsection-bracket">]</span></span></h2>`
+	sections := ExtractSections(html)
+	require.Len(t, sections, 1)
+	assert.Equal(t, "Appearance", sections[0].Heading)
+}
+
+func TestGetTextContent_SkipsPortableInfobox(t *testing.T) {
+	html := `<aside class="portable-infobox"><h3>Should Not Appear</h3></aside><h2>Real Section</h2><p>Real content.</p>`
+	sections := ExtractSections(html)
+	require.Len(t, sections, 1)
+	assert.Equal(t, "Real Section", sections[0].Heading)
+	assert.NotContains(t, sections[0].Heading, "Should")
+}

@@ -3,6 +3,8 @@ build/bin
 frontend/dist
 frontend/coverage
 coverage.out
+silly-sleeve
+wails-bootstrap
 
 # Dependencies
 node_modules/
@@ -22,3 +24,6 @@ frontend/package.json.md5
 
 # Local approval request (never committed)
 APPROVAL_REQUEST.md
+
+# AI session artifacts
+session-*.md

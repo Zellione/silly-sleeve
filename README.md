@@ -55,13 +55,67 @@ sudo dnf install gtk3-devel webkit2gtk3-devel
 
 > Requires [Wails CLI](https://wails.io/docs/gettingstarted/installation) and Go 1.22+.
 
+### Development (hot-reload)
+
 ```bash
 cd frontend && npm install && cd ..
 wails dev
 ```
 
+### Production build (current platform)
+
 ```bash
-wails build
+cd frontend && npm install && cd ..
+wails build -clean
+```
+
+> `-clean` ensures a fresh build by cleaning the build directory first.
+
+## Building Release Binaries
+
+### Linux
+
+```bash
+wails build -clean
+```
+
+For Ubuntu 22.04+ with `libwebkit2gtk-4.1-dev`:
+
+```bash
+wails build -clean -tags webkit2_41
+```
+
+Cross-compile for specific architecture:
+
+```bash
+wails build -clean -platform linux/amd64
+wails build -clean -platform linux/arm64
+```
+
+### macOS
+
+```bash
+wails build -clean
+```
+
+Universal binary (Intel + Apple Silicon):
+
+```bash
+wails build -clean -platform darwin/universal
+```
+
+### Windows
+
+From Windows directly:
+
+```bash
+wails build -clean
+```
+
+Cross-compile from Linux (requires `mingw-w64`):
+
+```bash
+wails build -clean -platform windows/amd64
 ```
 
 ## Lint

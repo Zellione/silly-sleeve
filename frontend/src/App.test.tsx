@@ -10,6 +10,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
   GetSettings: () => mockGetSettings(),
   SaveSettings: vi.fn(),
   TestLLMEndpoint: vi.fn(),
+  GetCachedCrawl: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('./style.css', () => ({}));
@@ -103,10 +104,10 @@ describe('App', () => {
       expect(screen.getByText('Your projects')).toBeInTheDocument();
     });
 
-    // Click "Crawl" which renders a placeholder (simple, no complex deps)
+    // Click "Crawl" which renders the crawler screen
     await user.click(screen.getByText('Crawl'));
     await waitFor(() => {
-      expect(screen.getByText('Crawl a wiki page')).toBeInTheDocument();
+      expect(screen.getByText('Source URL')).toBeInTheDocument();
     });
   });
 

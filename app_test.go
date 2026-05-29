@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/settings"
 )
@@ -200,4 +202,124 @@ func TestTestLLMEndpoint_ReturnsLLMTestResult(t *testing.T) {
 	result := app.TestLLMEndpoint(ep)
 	assert.IsType(t, llm.TestResult{}, result)
 	assert.True(t, result.Ok)
+}
+
+func TestCrawlPage_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "Test_Page",
+				"text":  map[string]any{"*": "<p>Hello world from wiki</p>"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	result := app.CrawlPage(srv.URL+"/wiki/Test_Page", crawler.CrawlOptions{})
+
+	assert.Equal(t, "Test_Page", result.Title)
+	assert.Equal(t, srv.URL+"/wiki/Test_Page", result.URL)
+	assert.NotEmpty(t, result.Domain)
+	assert.Contains(t, result.RawHTML, "Hello world from wiki")
+	assert.Equal(t, 200, result.StatusCode)
+	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
+	assert.GreaterOrEqual(t, result.WordCount, 0)
+}
+
+func TestCrawlPage_Error(t *testing.T) {
+	app := NewApp()
+	result := app.CrawlPage("://invalid", crawler.CrawlOptions{})
+
+	assert.Equal(t, "://invalid", result.URL)
+	assert.Zero(t, result.StatusCode)
+	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
+}
+
+func TestCrawlPage_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	result := app.CrawlPage(srv.URL+"/wiki/Test", crawler.CrawlOptions{})
+
+	assert.Zero(t, result.StatusCode)
+	assert.NotEmpty(t, result.Domain)
+}
+
+func TestGetCachedCrawl_NilByDefault(t *testing.T) {
+	app := NewApp()
+	assert.Nil(t, app.GetCachedCrawl())
+}
+
+func TestCrawlPage_CachesResult(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "CacheTest",
+				"text":  map[string]any{"*": "<p>cached content here</p>"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	result := app.CrawlPage(srv.URL+"/wiki/CacheTest", crawler.CrawlOptions{})
+
+	assert.Equal(t, "CacheTest", result.Title)
+
+	cached := app.GetCachedCrawl()
+	require.NotNil(t, cached)
+	assert.Equal(t, "CacheTest", cached.Title)
+}
+
+func TestCrawlPage_CachePersistsToDisk(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "DiskCache",
+				"text":  map[string]any{"*": "<p>disk content</p>"},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.CrawlPage(srv.URL+"/wiki/DiskCache", crawler.CrawlOptions{})
+
+	loaded, err := crawler.LoadCache()
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, "DiskCache", loaded.Title)
+}
+
+func TestStartup_LoadsCachedCrawl(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	require.NoError(t, crawler.SaveCache(crawler.CrawlResult{Title: "BootCache"}))
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	cached := app.GetCachedCrawl()
+	require.NotNil(t, cached)
+	assert.Equal(t, "BootCache", cached.Title)
+}
+
+func TestGetCachedCrawl_ReturnsNilForFailedCrawl(t *testing.T) {
+	app := NewApp()
+	app.CrawlPage("://invalid", crawler.CrawlOptions{})
+	assert.Nil(t, app.GetCachedCrawl())
 }

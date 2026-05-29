@@ -301,4 +301,32 @@ describe('CrawlerScreen', () => {
       expect(screen.getByText('Second paragraph.')).toBeInTheDocument();
     });
   });
+
+  it('renders infobox section headers when section changes', async () => {
+    const sectionResult = new crawler.CrawlResult({
+      title: 'sectioned', url: '', domain: '', rawHtml: '',
+      sections: [],
+      infobox: [
+        new crawler.InfoboxEntry({ key: 'race', value: 'Elf', section: 'Info' }),
+        new crawler.InfoboxEntry({ key: 'class', value: 'Mage', section: 'Info' }),
+        new crawler.InfoboxEntry({ key: 'hp', value: '100', section: 'Combat' }),
+      ],
+      wordCount: 5, statusCode: 200, latencyMs: 100,
+    });
+    mockCrawlPage.mockResolvedValue(sectionResult);
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+
+    await user.click(screen.getByText('Crawl page'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Info')).toBeInTheDocument();
+      expect(screen.getByText('Combat')).toBeInTheDocument();
+      expect(screen.getByText('Elf')).toBeInTheDocument();
+      expect(screen.getByText('Mage')).toBeInTheDocument();
+      expect(screen.getByText('100')).toBeInTheDocument();
+    });
+    const sectionHeaders = screen.getAllByText(/^(Info|Combat)$/);
+    expect(sectionHeaders).toHaveLength(2);
+  });
 });

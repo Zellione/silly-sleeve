@@ -165,13 +165,19 @@ const CrawlerScreen: React.FC = () => {
                 </div>
               ) : result ? (
                 <>
-                  {result.infobox && result.infobox.length > 0 && (
-                    <dl className="infobox">
-                      {result.infobox.map((entry, i) => (
-                        <React.Fragment key={i}><dt>{entry.key}</dt><dd>{entry.value}</dd></React.Fragment>
-                      ))}
-                    </dl>
-                  )}
+                   {result.infobox && result.infobox.length > 0 && (
+                     <div className="infobox">
+                       {result.infobox.map((entry, i) => {
+                         const showSection = entry.section && (i === 0 || result.infobox[i - 1].section !== entry.section);
+                         return (
+                           <React.Fragment key={i}>
+                             {showSection && <div className="infobox-section">{entry.section}</div>}
+                             <dl><dt>{entry.key}</dt><dd>{entry.value}</dd></dl>
+                           </React.Fragment>
+                         );
+                       })}
+                     </div>
+                   )}
                    {result.sections && result.sections.map((s, i) => (
                      <React.Fragment key={i}>
                        {s.heading && <h4>{s.heading}</h4>}

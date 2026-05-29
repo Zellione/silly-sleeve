@@ -447,3 +447,64 @@ func TestExtractSections_SkipsReferenceList(t *testing.T) {
 	require.Len(t, sections, 1)
 	assert.NotContains(t, sections[0].Body, "Ref 1")
 }
+
+func TestExtractSections_ListWithBullets(t *testing.T) {
+	html := `<h2>Trivia</h2><ul><li>Fact one.</li><li>Fact two.</li></ul>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Equal(t, "- Fact one.\n- Fact two.", sections[0].Body)
+}
+
+func TestExtractSections_NestedList(t *testing.T) {
+	html := `<h2>Trivia</h2><ul><li>Main fact.<ul><li>Sub detail.</li></ul></li></ul>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Contains(t, sections[0].Body, "- Main fact.")
+	assert.Contains(t, sections[0].Body, "  - Sub detail.")
+}
+
+func TestExtractSections_ListWithInlineElement(t *testing.T) {
+	html := `<h2>Trivia</h2><ul><li>Mine is a <a href="/wiki/Tatsumi">Tatsumi</a> fan.</li></ul>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Contains(t, sections[0].Body, "Tatsumi")
+	assert.Contains(t, sections[0].Body, "- Mine is a")
+}
+
+func TestExtractInfobox_PortableWithSections(t *testing.T) {
+	html := `<aside class="portable-infobox">
+		<h2 class="pi-header"><b>Info</b></h2>
+		<div data-source="race"><div class="pi-data-value">Elf</div></div>
+		<h2 class="pi-header"><b>Combat</b></h2>
+		<div data-source="weapon"><div class="pi-data-value">Sword</div></div>
+		<div data-source="armor"><div class="pi-data-value">Plate</div></div>
+	</aside>`
+
+	entries := ExtractInfobox(html)
+	require.Len(t, entries, 3)
+	assert.Equal(t, "race", entries[0].Key)
+	assert.Equal(t, "Elf", entries[0].Value)
+	assert.Equal(t, "Info", entries[0].Section)
+	assert.Equal(t, "weapon", entries[1].Key)
+	assert.Equal(t, "Sword", entries[1].Value)
+	assert.Equal(t, "Combat", entries[1].Section)
+	assert.Equal(t, "armor", entries[2].Key)
+	assert.Equal(t, "Plate", entries[2].Value)
+	assert.Equal(t, "Combat", entries[2].Section)
+}
+
+func TestExtractInfobox_EmptySectionForTitle(t *testing.T) {
+	html := `<aside class="portable-infobox">
+		<h2 data-source="name">Character</h2>
+		<h2 class="pi-header"><b>Stats</b></h2>
+		<div data-source="age"><div class="pi-data-value">30</div></div>
+	</aside>`
+
+	entries := ExtractInfobox(html)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "name", entries[0].Key)
+	assert.Equal(t, "Character", entries[0].Value)
+	assert.Equal(t, "", entries[0].Section)
+	assert.Equal(t, "age", entries[1].Key)
+	assert.Equal(t, "Stats", entries[1].Section)
+}

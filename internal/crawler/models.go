@@ -15,8 +15,9 @@ type Section struct {
 
 // InfoboxEntry is a key/value pair from a wiki infobox.
 type InfoboxEntry struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+	Section string `json:"section,omitempty"`
 }
 
 // CrawlResult holds the parsed content from a crawled page.

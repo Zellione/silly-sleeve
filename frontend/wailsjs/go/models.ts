@@ -1,47 +1,49 @@
 export namespace crawler {
-
+	
 	export class CrawlOptions {
 	    followLinks: number;
 	    include: Record<string, boolean>;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new CrawlOptions(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.followLinks = source["followLinks"];
 	        this.include = source["include"];
 	    }
 	}
+	export class InfoboxEntry {
+	    key: string;
+	    value: string;
+	    section?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InfoboxEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	        this.section = source["section"];
+	    }
+	}
 	export class Section {
 	    heading: string;
 	    body: string;
 	    level: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new Section(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.heading = source["heading"];
 	        this.body = source["body"];
 	        this.level = source["level"];
-	    }
-	}
-	export class InfoboxEntry {
-	    key: string;
-	    value: string;
-
-	    static createFrom(source: any = {}) {
-	        return new InfoboxEntry(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.key = source["key"];
-	        this.value = source["value"];
 	    }
 	}
 	export class CrawlResult {
@@ -54,11 +56,11 @@ export namespace crawler {
 	    wordCount: number;
 	    statusCode: number;
 	    latencyMs: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new CrawlResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
@@ -71,7 +73,7 @@ export namespace crawler {
 	        this.statusCode = source["statusCode"];
 	        this.latencyMs = source["latencyMs"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -90,6 +92,7 @@ export namespace crawler {
 		    return a;
 		}
 	}
+	
 
 }
 

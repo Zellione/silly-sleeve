@@ -181,6 +181,55 @@ func cleanParagraph(s string) string {
 	return strings.TrimSpace(string(out))
 }
 
+func getListContent(node *html.Node) string {
+	var lines []string
+	var walk func(*html.Node, int)
+	walk = func(n *html.Node, depth int) {
+		for li := n.FirstChild; li != nil; li = li.NextSibling {
+			if li.Type != html.ElementNode || li.Data != "li" {
+				continue
+			}
+			indent := strings.Repeat("  ", depth)
+			var textParts []string
+			for c := li.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					if t := strings.TrimSpace(c.Data); t != "" {
+						textParts = append(textParts, t)
+					}
+				} else if c.Type == html.ElementNode {
+					if c.Data == "ul" || c.Data == "ol" {
+						if len(textParts) > 0 {
+							text := strings.Join(strings.Fields(strings.Join(textParts, " ")), " ")
+							lines = append(lines, indent+"- "+text)
+							textParts = nil
+						}
+						walk(c, depth+1)
+					} else if c.Data == "br" {
+						textParts = append(textParts, "\n")
+					} else if !shouldSkip(c) {
+						inner := strings.TrimSpace(getTextContent(c))
+						if inner != "" {
+							textParts = append(textParts, inner)
+						}
+					}
+				}
+			}
+			if len(textParts) > 0 {
+				text := strings.Join(strings.Fields(strings.Join(textParts, " ")), " ")
+				for strings.Contains(text, " \n") {
+					text = strings.ReplaceAll(text, " \n", "\n")
+				}
+				for strings.Contains(text, "\n ") {
+					text = strings.ReplaceAll(text, "\n ", "\n")
+				}
+				lines = append(lines, indent+"- "+text)
+			}
+		}
+	}
+	walk(node, 0)
+	return strings.Join(lines, "\n")
+}
+
 // ExtractInfobox parses infobox key/value pairs from raw HTML.
 func ExtractInfobox(rawHTML string) []InfoboxEntry {
 	doc, err := html.Parse(strings.NewReader(rawHTML))
@@ -241,14 +290,22 @@ func extractTableInfobox(table *html.Node) []InfoboxEntry {
 
 func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 	var entries []InfoboxEntry
+	var currentSection string
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode {
+			if n.Data == "h2" && hasClass(n, "pi-header") {
+				currentSection = cleanText(getTextContent(n))
+			}
 			source := findAttr(n, "data-source")
 			if source != "" {
 				value := getPortableInfoboxValue(n)
 				if value != "" {
-					entries = append(entries, InfoboxEntry{Key: source, Value: value})
+					entries = append(entries, InfoboxEntry{
+						Key:     source,
+						Value:   value,
+						Section: currentSection,
+					})
 				}
 			}
 		}
@@ -351,7 +408,12 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 				collecting = true
 			}
 			if current != nil {
-				text := cleanParagraph(getParagraphText(n))
+				var text string
+				if n.Data == "ul" || n.Data == "ol" {
+					text = getListContent(n)
+				} else {
+					text = cleanParagraph(getParagraphText(n))
+				}
 				if text != "" {
 					if current.Body != "" {
 						current.Body += "\n\n"

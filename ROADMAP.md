@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-05-29
+> Last updated: 2026-05-30
 
 ## Overview
 
@@ -51,7 +51,7 @@ Goal: Paste a wiki URL, generate a character via bulk prompt, edit fields, save 
 
 ### Milestone 3 — Compose (Bulk Only)
 
-- [ ] **2.1** Editor screen: 10 field cards (line, text, tags, quotes, stats input types)
+- [~] **2.1** Editor screen: 10 field cards (line, text, tags, quotes, stats input types)
 - [ ] **2.2** Bulk generation: send bulk prompt to LLM, parse JSON response into all fields
 - [ ] **2.3** Character strip: add/switch/delete characters in the current project
 - [ ] **2.4** Manual field editing with dirty flag tracking
@@ -146,3 +146,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **0.8** Go bindings — `GetSettings`, `SaveSettings`, `TestLLMEndpoint`; test sends a minimal 1-token OpenAI-compatible chat completion
 - [x] **0.9** Settings persistence — JSON stored in `os.UserConfigDir()/silly-sleeve/settings.json`; `internal/settings` package with future-proof `[]LLMEndpoint` array
 - StatusBar now shows the default endpoint name and live connection dot
+
+### 2026-05-30
+
+- Started Milestone 3 — Compose (Bulk Only) (`milestone/3-compose`).

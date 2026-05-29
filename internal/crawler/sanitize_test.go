@@ -75,7 +75,7 @@ func TestExtractInfobox_NoInfobox(t *testing.T) {
 func TestExtractSections_Basic(t *testing.T) {
 	html := `<h2>Appearance</h2><p>Tall and dark.</p><h2>Personality</h2><p>Friendly.</p>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 2)
 	assert.Equal(t, "Appearance", sections[0].Heading)
 	assert.Equal(t, "Tall and dark.", sections[0].Body)
@@ -86,7 +86,7 @@ func TestExtractSections_Basic(t *testing.T) {
 func TestExtractSections_WithLede(t *testing.T) {
 	html := `<p>A lede paragraph without a heading.</p><h2>Section One</h2><p>Content here.</p>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 2)
 	assert.Equal(t, "", sections[0].Heading)
 	assert.Equal(t, "A lede paragraph without a heading.", sections[0].Body)
@@ -96,7 +96,7 @@ func TestExtractSections_WithLede(t *testing.T) {
 func TestExtractSections_SkipsNavbox(t *testing.T) {
 	html := `<h2>Good</h2><p>Content.</p><div class="navbox">Skip me</div>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Equal(t, "Good", sections[0].Heading)
 	assert.NotContains(t, sections[0].Body, "Skip me")
@@ -105,7 +105,7 @@ func TestExtractSections_SkipsNavbox(t *testing.T) {
 func TestExtractSections_SkipsTOC(t *testing.T) {
 	html := `<div id="toc">TOC</div><h2>Section</h2><p>Content.</p>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Equal(t, "Section", sections[0].Heading)
 }
@@ -113,7 +113,7 @@ func TestExtractSections_SkipsTOC(t *testing.T) {
 func TestExtractSections_SkipsReferences(t *testing.T) {
 	html := `<h2>Section</h2><p>Content.</p><ol class="references"><li>Ref</li></ol>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.NotContains(t, sections[0].Body, "Ref")
 }
@@ -121,15 +121,23 @@ func TestExtractSections_SkipsReferences(t *testing.T) {
 func TestExtractSections_SkipsGallery(t *testing.T) {
 	html := `<h2>Section</h2><p>Content.</p><ul class="gallery"><li>Image</li></ul>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.NotContains(t, sections[0].Body, "Image")
+}
+
+func TestExtractSections_IncludesGalleryWithOption(t *testing.T) {
+	html := `<h2>Section</h2><p>Content.</p><ul class="gallery"><li>Image text</li></ul>`
+
+	sections := ExtractSections(html, map[string]bool{"gallery": true})
+	require.Len(t, sections, 1)
+	assert.Contains(t, sections[0].Body, "Image text")
 }
 
 func TestExtractSections_SkipsScriptAndStyle(t *testing.T) {
 	html := `<script>alert('xss')</script><h2>Safe</h2><p>Clean content.</p><style>.bad{}</style>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Equal(t, "Safe", sections[0].Heading)
 	assert.Equal(t, "Clean content.", sections[0].Body)
@@ -138,16 +146,32 @@ func TestExtractSections_SkipsScriptAndStyle(t *testing.T) {
 func TestExtractSections_MultipleParagraphs(t *testing.T) {
 	html := `<h2>Section</h2><p>First paragraph.</p><p>Second paragraph.</p>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Contains(t, sections[0].Body, "First paragraph.")
 	assert.Contains(t, sections[0].Body, "Second paragraph.")
 }
 
+func TestExtractSections_ParagraphSeparation(t *testing.T) {
+	html := `<h2>Section</h2><p>First paragraph.</p><p>Second paragraph.</p>`
+
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Equal(t, "First paragraph.\n\nSecond paragraph.", sections[0].Body)
+}
+
+func TestExtractSections_BrInParagraph(t *testing.T) {
+	html := `<h2>Section</h2><p>Line one.<br>Line two.</p>`
+
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Contains(t, sections[0].Body, "Line one.\nLine two.")
+}
+
 func TestExtractSections_H3Headings(t *testing.T) {
 	html := `<h2>Main</h2><p>Main content.</p><h3>Sub</h3><p>Sub content.</p>`
 
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 2)
 	assert.Equal(t, "Main", sections[0].Heading)
 	assert.Equal(t, 2, sections[0].Level)
@@ -156,18 +180,36 @@ func TestExtractSections_H3Headings(t *testing.T) {
 }
 
 func TestExtractSections_EmptyInput(t *testing.T) {
-	sections := ExtractSections("")
+	sections := ExtractSections("", nil)
 	assert.Empty(t, sections)
 }
 
 func TestExtractSections_MalformedHTML(t *testing.T) {
-	sections := ExtractSections("<p>Unclosed paragraph")
+	sections := ExtractSections("<p>Unclosed paragraph", nil)
 	assert.Len(t, sections, 1)
 	assert.Equal(t, "Unclosed paragraph", sections[0].Body)
 }
 
+func TestExtractSections_SkipsNavigationHeading(t *testing.T) {
+	html := `<h2>Appearance</h2><p>Tall.</p><h2>Navigation</h2><h2>Personality</h2><p>Friendly.</p>`
+
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 2)
+	assert.Equal(t, "Appearance", sections[0].Heading)
+	assert.Equal(t, "Personality", sections[1].Heading)
+}
+
+func TestExtractSections_SkipsNavigationCaseInsensitive(t *testing.T) {
+	html := `<h2>Appearance</h2><p>Tall.</p><h2>NAVIGATION</h2><h2>Personality</h2><p>Friendly.</p>`
+
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 2)
+	assert.Equal(t, "Appearance", sections[0].Heading)
+	assert.Equal(t, "Personality", sections[1].Heading)
+}
+
 func TestSanitize_FullPipeline(t *testing.T) {
-	sections, infobox := Sanitize(sampleWikiHTML)
+	sections, infobox := Sanitize(sampleWikiHTML, nil)
 
 	assert.NotEmpty(t, infobox)
 	assert.NotEmpty(t, sections)
@@ -192,6 +234,10 @@ func TestWordCount_ExtraSpaces(t *testing.T) {
 	assert.Equal(t, 3, WordCount("  Hello   world  test  "))
 }
 
+func TestWordCount_WithNewlines(t *testing.T) {
+	assert.Equal(t, 3, WordCount("Hello\n\nWorld\nTest"))
+}
+
 func TestTotalWordCount(t *testing.T) {
 	sections := []Section{
 		{Heading: "Intro", Body: "Welcome to this page"},
@@ -208,7 +254,7 @@ func TestTotalWordCount(t *testing.T) {
 func TestSectionsFromRawHTML(t *testing.T) {
 	html := `<p>Lede text here.</p><h2>Appearance</h2><p>Tall.</p><h2>Appearance</h2><p>Duplicate heading.</p>`
 
-	sections, _ := SectionsFromRawHTML(html)
+	sections, _ := SectionsFromRawHTML(html, nil)
 	assert.NotEmpty(t, sections)
 
 	if len(sections) > 0 && sections[0].Heading == "" {
@@ -227,6 +273,11 @@ func TestCleanInfoboxText(t *testing.T) {
 func TestCleanText(t *testing.T) {
 	result := cleanText("  Hello\nWorld\tTest  ")
 	assert.Equal(t, "Hello World Test", result)
+}
+
+func TestCleanParagraph(t *testing.T) {
+	result := cleanParagraph("  Hello  World  ")
+	assert.Equal(t, "Hello World", result)
 }
 
 func TestSanitize_MinePage(t *testing.T) {
@@ -252,7 +303,7 @@ func TestSanitize_MinePage(t *testing.T) {
 <table class="toccolours mw-collapsible mw-collapsed"><tr><td>Navigation content</td></tr></table>
 </div>`
 
-	sections, infobox := Sanitize(html)
+	sections, infobox := Sanitize(html, nil)
 
 	assert.NotEmpty(t, infobox)
 	assert.Len(t, infobox, 3)
@@ -306,15 +357,23 @@ func TestCleanHeading_OnlyBrackets(t *testing.T) {
 
 func TestGetTextContent_SkipsEditsection(t *testing.T) {
 	html := `<h2><span class="mw-headline">Appearance</span><span class="mw-editsection"><span class="mw-editsection-bracket">[</span><a>edit</a><span class="mw-editsection-bracket">]</span></span></h2>`
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Equal(t, "Appearance", sections[0].Heading)
 }
 
 func TestGetTextContent_SkipsPortableInfobox(t *testing.T) {
 	html := `<aside class="portable-infobox"><h3>Should Not Appear</h3></aside><h2>Real Section</h2><p>Real content.</p>`
-	sections := ExtractSections(html)
+	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
 	assert.Equal(t, "Real Section", sections[0].Heading)
 	assert.NotContains(t, sections[0].Heading, "Should")
+}
+
+func TestExtractSections_NavigationWithContent(t *testing.T) {
+	html := `<h2>Introduction</h2><p>Intro text.</p><h2>Navigation</h2><p>Nav text.</p><h2>After</h2><p>After text.</p>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 2)
+	assert.Equal(t, "Introduction", sections[0].Heading)
+	assert.Equal(t, "After", sections[1].Heading)
 }

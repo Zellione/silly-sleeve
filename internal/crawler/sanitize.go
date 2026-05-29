@@ -8,19 +8,19 @@ import (
 )
 
 var skipClasses = map[string]bool{
-	"navbox":              true,
-	"navbox-styles":       true,
-	"navbox-inner":        true,
-	"mw-editsection":      true,
+	"navbox":                 true,
+	"navbox-styles":          true,
+	"navbox-inner":           true,
+	"mw-editsection":         true,
 	"mw-editsection-bracket": true,
-	"mw-empty-elt":        true,
-	"mw-reflink-text":     true,
-	"mw-cite-backlink":    true,
-	"visualClear":         true,
-	"portable-infobox":    true,
-	"toccolours":          true,
-	"mw-collapsible":      true,
-	"mw-collapsed":        true,
+	"mw-empty-elt":           true,
+	"mw-reflink-text":        true,
+	"mw-cite-backlink":       true,
+	"visualClear":            true,
+	"portable-infobox":       true,
+	"toccolours":             true,
+	"mw-collapsible":         true,
+	"mw-collapsed":           true,
 }
 
 var skipTags = map[string]bool{
@@ -79,10 +79,17 @@ func shouldSkip(node *html.Node) bool {
 	if node.Data == "ol" && hasClass(node, "references") {
 		return true
 	}
-	if node.Data == "ul" && hasClass(node, "gallery") {
-		return true
-	}
 	return false
+}
+
+func shouldSkipSections(node *html.Node, include map[string]bool) bool {
+	if node.Type != html.ElementNode {
+		return false
+	}
+	if node.Data == "ul" && hasClass(node, "gallery") {
+		return !include["gallery"]
+	}
+	return shouldSkip(node)
 }
 
 func getTextContent(node *html.Node) string {
@@ -103,6 +110,75 @@ func getTextContent(node *html.Node) string {
 		walk(c)
 	}
 	return strings.TrimSpace(buf.String())
+}
+
+func getParagraphText(node *html.Node) string {
+	var buf strings.Builder
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if shouldSkip(n) {
+			return
+		}
+		if n.Type == html.ElementNode && n.Data == "br" {
+			buf.WriteString("\n")
+			return
+		}
+		if n.Type == html.TextNode {
+			text := strings.ReplaceAll(n.Data, "\u00a0", " ")
+			text = strings.ReplaceAll(text, "\t", " ")
+			text = strings.ReplaceAll(text, "\r", " ")
+			text = strings.ReplaceAll(text, "\n", " ")
+			buf.WriteString(text)
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	for c := node.FirstChild; c != nil; c = c.NextSibling {
+		walk(c)
+	}
+	result := buf.String()
+	for strings.Contains(result, "  ") {
+		result = strings.ReplaceAll(result, "  ", " ")
+	}
+	for strings.Contains(result, " \n") {
+		result = strings.ReplaceAll(result, " \n", "\n")
+	}
+	for strings.Contains(result, "\n ") {
+		result = strings.ReplaceAll(result, "\n ", "\n")
+	}
+	for strings.Contains(result, "\n\n\n") {
+		result = strings.ReplaceAll(result, "\n\n\n", "\n\n")
+	}
+	return strings.TrimSpace(result)
+}
+
+func cleanParagraph(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "\u00a0", " ")
+	var out []rune
+	inSpace := false
+	for _, r := range s {
+		switch {
+		case r == '\t' || r == '\r':
+			if !inSpace {
+				out = append(out, ' ')
+				inSpace = true
+			}
+		case r == '\n':
+			out = append(out, '\n')
+			inSpace = false
+		case r == ' ':
+			if !inSpace {
+				out = append(out, ' ')
+				inSpace = true
+			}
+		default:
+			out = append(out, r)
+			inSpace = false
+		}
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // ExtractInfobox parses infobox key/value pairs from raw HTML.
@@ -218,7 +294,7 @@ func cleanInfoboxText(s string) string {
 }
 
 // ExtractSections parses raw HTML into structured sections.
-func ExtractSections(rawHTML string) []Section {
+func ExtractSections(rawHTML string, include map[string]bool) []Section {
 	doc, err := html.Parse(strings.NewReader(rawHTML))
 	if err != nil {
 		return nil
@@ -230,12 +306,15 @@ func ExtractSections(rawHTML string) []Section {
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
-		if shouldSkip(n) {
+		if shouldSkipSections(n, include) {
 			return
 		}
 		if n.Type == html.ElementNode && (n.Data == "h2" || n.Data == "h3" || n.Data == "h4") {
 			heading := cleanHeading(cleanText(getTextContent(n)))
 			if heading == "" {
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					walk(c)
+				}
 				return
 			}
 			if current != nil {
@@ -260,14 +339,26 @@ func ExtractSections(rawHTML string) []Section {
 				collecting = true
 			}
 			if current != nil {
-				text := cleanText(getTextContent(n))
+				text := cleanParagraph(getParagraphText(n))
 				if text != "" {
 					if current.Body != "" {
-						current.Body += " "
+						current.Body += "\n\n"
 					}
 					current.Body += text
 				}
 			}
+		}
+		if n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery") {
+			if current != nil {
+				text := cleanParagraph(getTextContent(n))
+				if text != "" {
+					if current.Body != "" {
+						current.Body += "\n\n"
+					}
+					current.Body += text
+				}
+			}
+			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)
@@ -278,7 +369,15 @@ func ExtractSections(rawHTML string) []Section {
 	if current != nil {
 		sections = append(sections, *current)
 	}
-	return sections
+
+	var filtered []Section
+	for _, s := range sections {
+		if strings.EqualFold(s.Heading, "Navigation") {
+			continue
+		}
+		filtered = append(filtered, s)
+	}
+	return filtered
 }
 
 func cleanText(s string) string {
@@ -303,9 +402,9 @@ func cleanHeading(s string) string {
 }
 
 // Sanitize runs the full sanitization pipeline on raw wiki HTML.
-func Sanitize(rawHTML string) (sections []Section, infobox []InfoboxEntry) {
+func Sanitize(rawHTML string, include map[string]bool) (sections []Section, infobox []InfoboxEntry) {
 	infobox = ExtractInfobox(rawHTML)
-	sections = ExtractSections(rawHTML)
+	sections = ExtractSections(rawHTML, include)
 	return sections, infobox
 }
 
@@ -331,10 +430,9 @@ func TotalWordCount(sections []Section, infobox []InfoboxEntry) int {
 
 // SectionsFromRawHTML is a convenience wrapper that extracts sections with better section grouping.
 // It groups consecutive paragraphs after headings into the same section.
-func SectionsFromRawHTML(rawHTML string) ([]Section, []InfoboxEntry) {
-	sections, infobox := Sanitize(rawHTML)
+func SectionsFromRawHTML(rawHTML string, include map[string]bool) ([]Section, []InfoboxEntry) {
+	sections, infobox := Sanitize(rawHTML, include)
 
-	// Deduplicate sections by heading
 	var deduped []Section
 	seen := map[string]bool{}
 	for _, s := range sections {
@@ -349,7 +447,6 @@ func SectionsFromRawHTML(rawHTML string) ([]Section, []InfoboxEntry) {
 		deduped = append(deduped, s)
 	}
 
-	// If the first section has no heading, it's the lede
 	if len(deduped) > 0 && deduped[0].Heading == "" {
 		deduped[0].Level = 1
 	}

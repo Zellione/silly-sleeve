@@ -84,7 +84,7 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 			LatencyMs:  result.LatencyMs,
 		}
 	}
-	sections, infobox := crawler.SectionsFromRawHTML(result.RawHTML)
+	sections, infobox := crawler.SectionsFromRawHTML(result.RawHTML, opts.Include)
 	cr := crawler.CrawlResult{
 		Title:      result.Title,
 		URL:        pageURL,

@@ -86,7 +86,7 @@ func TestFetchPage_Success(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
 	}))
 	defer srv.Close()
 
@@ -122,7 +122,8 @@ func TestFetchPage_HTTP404(t *testing.T) {
 func TestFetchPage_InvalidJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("not json"))
+		_, err := w.Write([]byte("not json"))
+		require.NoError(t, err)
 	}))
 	defer srv.Close()
 
@@ -134,7 +135,8 @@ func TestFetchPage_InvalidJSON(t *testing.T) {
 func TestFetchPage_EmptyResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"parse":{"title":"","text":{"*":""}}}`))
+		_, err := w.Write([]byte(`{"parse":{"title":"","text":{"*":""}}}`))
+		require.NoError(t, err)
 	}))
 	defer srv.Close()
 
@@ -162,7 +164,7 @@ func TestFetchPage_LatencyRecorded(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
 	}))
 	defer srv.Close()
 
@@ -180,7 +182,7 @@ func TestFetchPage_DomainExtracted(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
 	}))
 	defer srv.Close()
 

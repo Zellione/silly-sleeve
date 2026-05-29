@@ -181,6 +181,38 @@ func cleanParagraph(s string) string {
 	return strings.TrimSpace(string(out))
 }
 
+func joinTextParts(parts []string) string {
+	var buf strings.Builder
+	needSpace := false
+	needNewline := false
+	for _, part := range parts {
+		if part == "\n" {
+			needNewline = true
+			needSpace = false
+			continue
+		}
+		if needNewline {
+			buf.WriteString("\n")
+			needNewline = false
+		}
+		if needSpace {
+			buf.WriteString(" ")
+		}
+		buf.WriteString(part)
+		needSpace = true
+	}
+	result := buf.String()
+	for strings.Contains(result, "  ") {
+		result = strings.ReplaceAll(result, "  ", " ")
+	}
+	for strings.Contains(result, " \n") {
+		result = strings.ReplaceAll(result, " \n", "\n")
+	}
+	for strings.Contains(result, "\n ") {
+		result = strings.ReplaceAll(result, "\n ", "\n")
+	}
+	return strings.TrimSpace(result)
+}
 func getListContent(node *html.Node) string {
 	var lines []string
 	var walk func(*html.Node, int)
@@ -199,7 +231,7 @@ func getListContent(node *html.Node) string {
 				} else if c.Type == html.ElementNode {
 					if c.Data == "ul" || c.Data == "ol" {
 						if len(textParts) > 0 {
-							text := strings.Join(strings.Fields(strings.Join(textParts, " ")), " ")
+							text := joinTextParts(textParts)
 							lines = append(lines, indent+"- "+text)
 							textParts = nil
 						}
@@ -215,19 +247,13 @@ func getListContent(node *html.Node) string {
 				}
 			}
 			if len(textParts) > 0 {
-				text := strings.Join(strings.Fields(strings.Join(textParts, " ")), " ")
-				for strings.Contains(text, " \n") {
-					text = strings.ReplaceAll(text, " \n", "\n")
-				}
-				for strings.Contains(text, "\n ") {
-					text = strings.ReplaceAll(text, "\n ", "\n")
-				}
+				text := joinTextParts(textParts)
 				lines = append(lines, indent+"- "+text)
 			}
 		}
 	}
 	walk(node, 0)
-	return strings.Join(lines, "\n")
+	return strings.Join(lines, "\n\n")
 }
 
 // ExtractInfobox parses infobox key/value pairs from raw HTML.

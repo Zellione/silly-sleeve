@@ -452,7 +452,7 @@ func TestExtractSections_ListWithBullets(t *testing.T) {
 	html := `<h2>Trivia</h2><ul><li>Fact one.</li><li>Fact two.</li></ul>`
 	sections := ExtractSections(html, nil)
 	require.Len(t, sections, 1)
-	assert.Equal(t, "- Fact one.\n- Fact two.", sections[0].Body)
+	assert.Equal(t, "- Fact one.\n\n- Fact two.", sections[0].Body)
 }
 
 func TestExtractSections_NestedList(t *testing.T) {
@@ -507,4 +507,11 @@ func TestExtractInfobox_EmptySectionForTitle(t *testing.T) {
 	assert.Equal(t, "", entries[0].Section)
 	assert.Equal(t, "age", entries[1].Key)
 	assert.Equal(t, "Stats", entries[1].Section)
+}
+
+func TestExtractSections_ListWithBr(t *testing.T) {
+	html := `<h2>Trivia</h2><ul><li>Line one.<br>Line two.</li></ul>`
+	sections := ExtractSections(html, nil)
+	require.Len(t, sections, 1)
+	assert.Contains(t, sections[0].Body, "Line one.\nLine two.")
 }

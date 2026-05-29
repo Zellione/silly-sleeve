@@ -887,6 +887,22 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   padding-top: 3px;
 }
 .crawl-preview .body .infobox dd { margin: 0; color: var(--ink); }
+.crawl-preview .body .infobox-section {
+  grid-column: 1 / -1;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--hair);
+  margin-top: 4px;
+}
+.crawl-preview .body .infobox-section:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
 .crawl-preview .foot {
   display: flex; gap: 10px; align-items: center;
   padding: 12px 14px;

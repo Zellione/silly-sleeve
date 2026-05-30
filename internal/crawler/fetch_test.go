@@ -146,7 +146,10 @@ func TestFetchPage_EmptyResponse(t *testing.T) {
 }
 
 func TestFetchPage_NetworkError(t *testing.T) {
-	result := FetchPage("http://127.0.0.1:1/wiki/Test")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close()
+
+	result := FetchPage(srv.URL + "/wiki/Test")
 	assert.Error(t, result.Error)
 }
 

@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/settings"
 )
 
@@ -19,6 +25,7 @@ type App struct {
 	cachedCrawl  *crawler.CrawlResult
 	characters   []compose.Character
 	activeCharID int
+	projectDir   string
 }
 
 // NewApp creates a new App application struct
@@ -274,4 +281,241 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 		return a.settings.Endpoints[0]
 	}
 	return settings.LLMEndpoint{}
+}
+
+// PickSaveFolder opens a native folder picker dialog for saving a project.
+func (a *App) PickSaveFolder() (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Choose folder to save project",
+	})
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+// SaveProjectTo writes the current project state to a folder.
+func (a *App) SaveProjectTo(folderPath string) error {
+	a.mu.Lock()
+	chars := make([]compose.Character, len(a.characters))
+	copy(chars, a.characters)
+	activeID := a.activeCharID
+	sourceURL := ""
+	crawlTitle := ""
+	if a.cachedCrawl != nil {
+		sourceURL = a.cachedCrawl.URL
+		crawlTitle = a.cachedCrawl.Title
+	}
+	a.mu.Unlock()
+
+	projectName := "Untitled Project"
+	if len(chars) > 0 && chars[0].Name != "Untitled" {
+		projectName = chars[0].Name
+	}
+	if crawlTitle != "" {
+		projectName = crawlTitle
+	}
+
+	m := project.ProjectManifest{
+		Name:         projectName,
+		ActiveCharID: activeID,
+		SourceURL:    sourceURL,
+		CrawlTitle:   crawlTitle,
+	}
+
+	base := folderPath
+	if !strings.HasSuffix(folderPath, "/"+slugify(projectName)) {
+		base = folderPath
+	}
+
+	if err := project.SaveProject(base, m, chars); err != nil {
+		return err
+	}
+
+	a.mu.Lock()
+	a.projectDir = base
+	a.mu.Unlock()
+	return nil
+}
+
+// OpenProject opens a native folder picker and loads a project from disk.
+func (a *App) OpenProject() (project.ProjectManifest, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Open project folder",
+	})
+	if err != nil {
+		return project.ProjectManifest{}, err
+	}
+	if dir == "" {
+		return project.ProjectManifest{}, fmt.Errorf("no folder selected")
+	}
+
+	m, chars, err := project.LoadProject(dir)
+	if err != nil {
+		return project.ProjectManifest{}, err
+	}
+
+	a.mu.Lock()
+	a.characters = chars
+	a.activeCharID = m.ActiveCharID
+	a.projectDir = dir
+
+	if len(a.characters) == 0 {
+		a.characters = []compose.Character{compose.NewCharacter(1)}
+		a.activeCharID = 1
+	}
+
+	if m.CrawlTitle != "" {
+		c, err := crawler.LoadCache()
+		if err == nil && c != nil && c.Title == m.CrawlTitle {
+			a.cachedCrawl = c
+		}
+	}
+	a.mu.Unlock()
+
+	return m, nil
+}
+
+// PickExportFolder opens a native folder picker for exporting characters.
+func (a *App) PickExportFolder() (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Choose export folder",
+	})
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+// ExportCharacter exports a single character as SillyTavern-compatible JSON.
+func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
+	a.mu.Lock()
+	charCopy := make([]compose.Character, len(a.characters))
+	copy(charCopy, a.characters)
+	a.mu.Unlock()
+
+	var found *compose.Character
+	for i := range charCopy {
+		if charCopy[i].ID == charID {
+			found = &charCopy[i]
+			break
+		}
+	}
+	if found == nil {
+		return "", fmt.Errorf("character %d not found", charID)
+	}
+
+	// export will be written by the export package
+	filePath, writeErr := saveCharacterAsST(*found, folderPath)
+	if writeErr != nil {
+		return "", writeErr
+	}
+	return filePath, nil
+}
+
+func slugify(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	s = strings.ReplaceAll(s, "_", "-")
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			b.WriteRune(r)
+		}
+	}
+	result := b.String()
+	result = strings.Trim(result, "-")
+	var sb strings.Builder
+	prevDash := false
+	for _, r := range result {
+		if r == '-' {
+			if prevDash {
+				continue
+			}
+			prevDash = true
+		} else {
+			prevDash = false
+		}
+		sb.WriteRune(r)
+	}
+	return sb.String()
+}
+
+func saveCharacterAsST(ch compose.Character, folderPath string) (string, error) {
+	// Build SillyTavern-compatible description from all text fields
+	var descParts []string
+	if ch.Appearance != "" {
+		descParts = append(descParts, "### Appearance\n"+ch.Appearance)
+	}
+	if ch.Personality != "" {
+		descParts = append(descParts, "### Personality\n"+ch.Personality)
+	}
+	if ch.Backstory != "" {
+		descParts = append(descParts, "### Backstory\n"+ch.Backstory)
+	}
+	if ch.Abilities != "" {
+		descParts = append(descParts, "### Abilities & Skills\n"+ch.Abilities)
+	}
+	if ch.Relationships != "" {
+		descParts = append(descParts, "### Relationships\n"+ch.Relationships)
+	}
+	if len(ch.Stats) > 0 {
+		var sb strings.Builder
+		sb.WriteString("### Stats\n")
+		for _, s := range ch.Stats {
+			if s.Key != "" || s.Value != "" {
+				sb.WriteString(fmt.Sprintf("- **%s**: %s\n", s.Key, s.Value))
+			}
+		}
+		descParts = append(descParts, sb.String())
+	}
+
+	firstMes := ""
+	mesExample := ""
+	if len(ch.Quotes) > 0 {
+		firstMes = ch.Quotes[0]
+		if len(ch.Quotes) > 1 {
+			var sb strings.Builder
+			for i, q := range ch.Quotes[1:] {
+				if i > 0 {
+					sb.WriteString("\n")
+				}
+				sb.WriteString("<START>\n{{user}}: ...\n{{char}}: " + q + "\n")
+			}
+			mesExample = sb.String()
+		}
+	}
+
+	st := map[string]any{
+		"name":              ch.Name,
+		"description":       strings.Join(descParts, "\n\n"),
+		"personality":       ch.Personality,
+		"scenario":          "",
+		"first_mes":         firstMes,
+		"mes_example":       mesExample,
+		"creatorcomment":    ch.Epithet,
+		"tags":              ch.Tags,
+		"creator":           "Silly Sleeve",
+		"character_version": "1.0",
+	}
+
+	// Ensure tags is an array in JSON even when empty
+	if st["tags"] == nil {
+		st["tags"] = []string{}
+	}
+
+	data, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	fname := slugify(ch.Name)
+	if fname == "" {
+		fname = "character"
+	}
+	filePath := folderPath + "/" + fname + ".json"
+	if err := os.WriteFile(filePath, data, 0o644); err != nil {
+		return "", fmt.Errorf("write character JSON: %w", err)
+	}
+	return filePath, nil
 }

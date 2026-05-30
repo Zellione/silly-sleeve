@@ -9,17 +9,17 @@ export function AddCharacter():Promise<compose.Character>;
 
 export function CountTokens(arg1:string):Promise<number>;
 
-export function GenerateCharacterBulk(arg1:string[]):Promise<compose.Character>;
-
 export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler.CrawlResult>;
 
 export function DeleteCharacter(arg1:number):Promise<void>;
+
+export function GenerateCharacterBulk(arg1:Array<string>):Promise<compose.Character>;
 
 export function GetActiveCharacter():Promise<compose.Character>;
 
 export function GetCachedCrawl():Promise<crawler.CrawlResult>;
 
-export function GetCharacters():Promise<compose.Character[]>;
+export function GetCharacters():Promise<Array<compose.Character>>;
 
 export function GetSettings():Promise<settings.Settings>;
 

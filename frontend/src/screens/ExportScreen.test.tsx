@@ -96,10 +96,8 @@ describe('ExportScreen', () => {
   });
 
   it('calls PickExportFolder on folder button click', async () => {
-    const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
     await waitFor(() => {
-      // just verify the component renders without error with the mock
       expect(document.body.textContent).toContain('Export');
     });
   });

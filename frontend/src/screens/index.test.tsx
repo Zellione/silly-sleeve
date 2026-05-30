@@ -75,7 +75,6 @@ describe('screens/index', () => {
         expect(document.body.textContent).toContain('Save project');
       });
       await user.click(document.querySelector('button')!);
-      // verify no crash
       await waitFor(() => {
         expect(true).toBe(true);
       });
@@ -83,7 +82,6 @@ describe('screens/index', () => {
 
     it('calls OpenProject on open project click', async () => {
       mockOpenProject.mockResolvedValue({ name: 'Test', activeCharId: 1, version: '1', createdAt: '', updatedAt: '', sourceUrl: '', crawlTitle: '' });
-      const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
         expect(document.body.textContent).toContain('Open project');
@@ -95,12 +93,10 @@ describe('screens/index', () => {
 
     it('handles save project dialog cancel', async () => {
       mockPickSaveFolder.mockResolvedValue('');
-      const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
         expect(document.body.textContent).toContain('Save project');
       });
-      // should handle empty folder gracefully
     });
 
     it('is a function component', () => {

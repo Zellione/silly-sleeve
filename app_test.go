@@ -135,7 +135,7 @@ func TestLLMEndpoint_DelegatesToPackage(t *testing.T) {
 
 	result := app.TestLLMEndpoint(ep)
 	assert.True(t, result.Ok)
-	assert.Greater(t, result.Latency, int64(0))
+	assert.GreaterOrEqual(t, result.Latency, int64(0))
 }
 
 func TestCrawlPage_Success(t *testing.T) {

@@ -59,9 +59,9 @@ Goal: Paste a wiki URL, generate a character via bulk prompt, edit fields, save 
 
 ### Milestone 4 — Save & Export
 
-- [~] **3.1** "Save project" dialog: write manifest + per-character JSON to a folder
-- [ ] **3.2** "Open project" dialog: load manifest + characters from a folder
-- [ ] **3.3** Export character as SillyTavern-compatible JSON (no PNG embedding yet)
+- [x] **3.1** "Save project" dialog: write manifest + per-character JSON to a folder
+- [x] **3.2** "Open project" dialog: load manifest + characters from a folder
+- [x] **3.3** Export character as SillyTavern-compatible JSON (no PNG embedding yet)
 
 ---
 
@@ -165,3 +165,13 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ### 2026-05-31
 
 - Started Milestone 4 — Save & Export (`milestone/4-save-export`).
+
+#### Completed Milestone 4 — Save & Export
+
+- [x] **3.1** Save project: PickSaveFolder + SaveProjectTo bindings, internal/project/ package (ProjectManifest, SaveProject, LoadProject), UI buttons in Editor + Dashboard
+- [x] **3.2** Open project: OpenProject binding, LoadProject from folder, state hydration
+- [x] **3.3** Export character: SillyTavern-compatible JSON mapping (description, first_mes, mes_example), ExportScreen with character picker + format selector + destination picker
+- Added `internal/project/` package with folder-based project persistence
+- Added `PickSaveFolder`, `SaveProjectTo`, `OpenProject`, `PickExportFolder`, `ExportCharacter` bindings
+- Added `ExportScreen` with character picker, JSON-only format, destination input
+- DashboardScreen now has functional Save/Open project buttons

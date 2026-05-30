@@ -57,3 +57,23 @@ export function TestLLMEndpoint(arg1) {
 export function UpdateCharacter(arg1) {
   return window['go']['main']['App']['UpdateCharacter'](arg1);
 }
+
+export function ExportCharacter(arg1, arg2) {
+  return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
+}
+
+export function OpenProject() {
+  return window['go']['main']['App']['OpenProject']();
+}
+
+export function PickExportFolder() {
+  return window['go']['main']['App']['PickExportFolder']();
+}
+
+export function PickSaveFolder() {
+  return window['go']['main']['App']['PickSaveFolder']();
+}
+
+export function SaveProjectTo(arg1) {
+  return window['go']['main']['App']['SaveProjectTo'](arg1);
+}

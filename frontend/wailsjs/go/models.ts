@@ -188,6 +188,35 @@ export namespace llm {
 
 }
 
+export namespace project {
+	
+	export class ProjectManifest {
+	    version: string;
+	    name: string;
+	    createdAt: string;
+	    updatedAt: string;
+	    activeCharId: number;
+	    sourceUrl: string;
+	    crawlTitle: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectManifest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.name = source["name"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	        this.activeCharId = source["activeCharId"];
+	        this.sourceUrl = source["sourceUrl"];
+	        this.crawlTitle = source["crawlTitle"];
+	    }
+	}
+
+}
+
 export namespace settings {
 	
 	export class LLMEndpoint {

@@ -151,7 +151,7 @@ Only ever load references if needed !
 - **Match the README's tone.** Practical, mental-model-first, prescriptive ("Reach for it when…"). No marketing fluff.
 - **Update the `Last updated` date** in `ROADMAP.md` when making material changes.
 - **Run all lint + test + coverage checks before committing.** Execute `go vet ./...`, `golangci-lint run ./...`, `go test ./... -race -cover`, `cd frontend && npm run lint`, and `cd frontend && npm run test:coverage && cd ..`. Only commit when all commands exit with **0 errors, 0 warnings, and ≥ 80% coverage**.
-- **Run `wails build -clean` at milestone completion** to verify the binary compiles and links correctly on the target platform.
+- **Run `wails build -clean` at milestone completion** to verify the binary compiles and links correctly on the target platform. Add `-tags webkit2_41` on Ubuntu 22.04+ with `libwebkit2gtk-4.1-dev`.
 
 ### Never
 
@@ -213,6 +213,7 @@ For each substep (e.g., `1.1`, `1.2`):
    cd frontend && npm run lint && npm run test:coverage && cd ..
    wails build -clean
    ```
+   > Add `-tags webkit2_41` on Ubuntu 22.04+ with `libwebkit2gtk-4.1-dev`.
 - **Do not push.**
 
 ### 4. Approval Gate

@@ -8,13 +8,18 @@ import {
 } from './index';
 
 vi.mock('../../wailsjs/go/main/App', () => ({
+  GetCharacters: vi.fn().mockResolvedValue([]),
+  AddCharacter: vi.fn(),
+  UpdateCharacter: vi.fn(),
+  DeleteCharacter: vi.fn(),
+  SetActiveCharacter: vi.fn(),
   GetCachedCrawl: vi.fn().mockResolvedValue(null),
+  CountTokens: vi.fn().mockResolvedValue(0),
   CrawlPage: vi.fn(),
 }));
 
 const placeholders = [
   { name: 'DashboardScreen', component: DashboardScreen, title: 'Your projects' },
-  { name: 'EditorScreen', component: EditorScreen, title: 'Compose character' },
   { name: 'LorebookScreen', component: LorebookScreen, title: 'Author lorebook' },
   { name: 'ProjectImageScreen', component: ProjectImageScreen, title: 'Project image' },
   { name: 'PortraitScreen', component: PortraitScreen, title: 'Portrait' },
@@ -36,6 +41,12 @@ describe('screens/index', () => {
 
     it('is a function component', () => {
       expect(typeof Comp).toBe('function');
+    });
+  });
+
+  describe('EditorScreen', () => {
+    it('is a function component', () => {
+      expect(typeof EditorScreen).toBe('function');
     });
   });
 

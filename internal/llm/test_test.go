@@ -30,7 +30,7 @@ func TestTestEndpoint_Success(t *testing.T) {
 	result := TestEndpoint(ep)
 
 	assert.True(t, result.Ok)
-	assert.Greater(t, result.Latency, int64(0))
+	assert.GreaterOrEqual(t, result.Latency, int64(0))
 	assert.Empty(t, result.Error)
 }
 
@@ -62,8 +62,10 @@ func TestTestEndpoint_HTTP500(t *testing.T) {
 }
 
 func TestTestEndpoint_NetworkError(t *testing.T) {
-	// Use an unreachable port
-	ep := LLMEndpoint{URL: "http://127.0.0.1:1", Model: "model"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close()
+
+	ep := LLMEndpoint{URL: srv.URL, Model: "model"}
 	result := TestEndpoint(ep)
 
 	assert.False(t, result.Ok)

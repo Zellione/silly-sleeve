@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
-	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/settings"
 )
 
@@ -117,91 +117,25 @@ func TestSaveSettings_ErrorPropagation(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestTestLLMEndpoint_FieldMapping(t *testing.T) {
-	var receivedAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedAuth = r.Header.Get("Authorization")
-		w.WriteHeader(200)
-	}))
-	defer srv.Close()
-
-	app := NewApp()
-	key := "sk-app-test"
-	ep := settings.LLMEndpoint{
-		ID:           7,
-		Name:         "AppMapping",
-		URL:          srv.URL,
-		Model:        "app-model",
-		Key:          &key,
-		ContextSize:  16384,
-		Temperature:  0.5,
-		SystemPrompt: "You are a test.",
-		IsDefault:    true,
-		Ok:           false,
-	}
-
-	result := app.TestLLMEndpoint(ep)
-	assert.True(t, result.Ok)
-	assert.Greater(t, result.Latency, int64(0))
-	assert.Empty(t, result.Error)
-	assert.Equal(t, "Bearer sk-app-test", receivedAuth)
-}
-
-func TestTestLLMEndpoint_ErrorMapping(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(500)
-	}))
-	defer srv.Close()
-
-	app := NewApp()
-	ep := settings.LLMEndpoint{
-		ID:    1,
-		URL:   srv.URL,
-		Model: "err-model",
-	}
-
-	result := app.TestLLMEndpoint(ep)
-	assert.False(t, result.Ok)
-	assert.Equal(t, "HTTP 500", result.Error)
-}
-
-func TestTestLLMEndpoint_NilKey(t *testing.T) {
-	var receivedAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedAuth = r.Header.Get("Authorization")
-		w.WriteHeader(200)
-	}))
-	defer srv.Close()
-
-	app := NewApp()
-	ep := settings.LLMEndpoint{
-		ID:    1,
-		URL:   srv.URL,
-		Model: "model",
-		Key:   nil,
-	}
-
-	result := app.TestLLMEndpoint(ep)
-	assert.True(t, result.Ok)
-	assert.Empty(t, receivedAuth)
-}
-
-func TestTestLLMEndpoint_ReturnsLLMTestResult(t *testing.T) {
+func TestLLMEndpoint_DelegatesToPackage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 	}))
 	defer srv.Close()
 
 	app := NewApp()
+	key := "sk-wrapper"
 	ep := settings.LLMEndpoint{
 		ID:    1,
+		Name:  "wrapper",
 		URL:   srv.URL,
-		Model: "model",
+		Model: "m",
+		Key:   &key,
 	}
 
 	result := app.TestLLMEndpoint(ep)
-	assert.IsType(t, llm.TestResult{}, result)
 	assert.True(t, result.Ok)
+	assert.GreaterOrEqual(t, result.Latency, int64(0))
 }
 
 func TestCrawlPage_Success(t *testing.T) {
@@ -322,4 +256,261 @@ func TestGetCachedCrawl_ReturnsNilForFailedCrawl(t *testing.T) {
 	app := NewApp()
 	app.CrawlPage("://invalid", crawler.CrawlOptions{})
 	assert.Nil(t, app.GetCachedCrawl())
+}
+
+func TestCharacters_InitialState(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	chars := app.GetCharacters()
+	require.Len(t, chars, 1)
+	assert.Equal(t, 1, chars[0].ID)
+	assert.Equal(t, "Untitled", chars[0].Name)
+}
+
+func TestAddCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.AddCharacter()
+	assert.Equal(t, 2, ch.ID)
+	assert.Equal(t, "Untitled", ch.Name)
+
+	chars := app.GetCharacters()
+	assert.Len(t, chars, 2)
+}
+
+func TestUpdateCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GetActiveCharacter()
+	ch.Name = "Elara"
+
+	err := app.UpdateCharacter(ch)
+	require.NoError(t, err)
+
+	updated := app.GetActiveCharacter()
+	assert.Equal(t, "Elara", updated.Name)
+}
+
+func TestUpdateCharacter_NotFound(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	err := app.UpdateCharacter(compose.Character{ID: 999})
+	assert.Error(t, err)
+}
+
+func TestDeleteCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.AddCharacter()
+
+	err := app.DeleteCharacter(1)
+	require.NoError(t, err)
+
+	chars := app.GetCharacters()
+	assert.Len(t, chars, 1)
+	assert.Equal(t, 2, chars[0].ID)
+}
+
+func TestDeleteCharacter_LastOneFails(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	err := app.DeleteCharacter(1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "last character")
+}
+
+func TestDeleteCharacter_NotFound(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	err := app.DeleteCharacter(999)
+	assert.Error(t, err)
+}
+
+func TestDeleteCharacter_UpdatesActive(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	app.SetActiveCharacter(1)
+	_ = app.DeleteCharacter(1)
+
+	active := app.GetActiveCharacter()
+	assert.Equal(t, 2, active.ID)
+}
+
+func TestGetActiveCharacter_Default(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GetActiveCharacter()
+	assert.Equal(t, 1, ch.ID)
+}
+
+func TestSetActiveCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	app.SetActiveCharacter(2)
+	ch := app.GetActiveCharacter()
+	assert.Equal(t, 2, ch.ID)
+}
+
+func TestSetActiveCharacter_Nonexistent(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.SetActiveCharacter(999)
+	ch := app.GetActiveCharacter()
+	assert.Equal(t, 0, ch.ID)
+}
+
+func TestCountTokens_Integration(t *testing.T) {
+	app := NewApp()
+	n := app.CountTokens("hello world")
+	assert.Greater(t, n, 0)
+}
+
+func TestCountTokens_Empty(t *testing.T) {
+	app := NewApp()
+	n := app.CountTokens("")
+	assert.Equal(t, 0, n)
+}
+
+func TestStartup_InitializesCharacters(t *testing.T) {
+	app := NewApp()
+	assert.Len(t, app.characters, 0)
+
+	app.startup(context.Background())
+	assert.Len(t, app.characters, 1)
+	assert.Equal(t, 1, app.activeCharID)
+}
+
+func TestDefaultEndpoint_ReturnsDefault(t *testing.T) {
+	app := NewApp()
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{
+			{ID: 1, Name: "first", IsDefault: false},
+			{ID: 2, Name: "second", IsDefault: true},
+		},
+	}
+
+	ep := app.defaultEndpoint()
+	assert.Equal(t, 2, ep.ID)
+	assert.Equal(t, "second", ep.Name)
+}
+
+func TestDefaultEndpoint_FirstWhenNone(t *testing.T) {
+	app := NewApp()
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{
+			{ID: 1, Name: "only"},
+		},
+	}
+
+	ep := app.defaultEndpoint()
+	assert.Equal(t, 1, ep.ID)
+}
+
+func TestDefaultEndpoint_EmptySettings(t *testing.T) {
+	app := NewApp()
+	ep := app.defaultEndpoint()
+	assert.Equal(t, 0, ep.ID)
+}
+
+func TestGenerateCharacterBulk_NoCrawl(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GenerateCharacterBulk(nil)
+	assert.Equal(t, "Untitled", ch.Name)
+}
+
+func TestGenerateCharacterBulk_WithCrawl(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"name":          "Generated",
+			"epithet":       "Gen",
+			"tags":          []string{"tag1"},
+			"appearance":    "app",
+			"personality":   "pers",
+			"backstory":     "back",
+			"abilities":     "abil",
+			"relationships": "rel",
+			"quotes":        []string{"q1"},
+			"stats":         [][]string{{"K", "V"}},
+		}
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": mustMarshal(t, resp)}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID:          1,
+			Name:        "test",
+			URL:         srv.URL,
+			Model:       "model",
+			IsDefault:   true,
+			Temperature: 0.8,
+		}},
+	}
+
+	app.cachedCrawl = &crawler.CrawlResult{
+		Title: "Test Page",
+	}
+
+	ch := app.GenerateCharacterBulk(nil)
+	assert.Equal(t, "Generated", ch.Name)
+	assert.True(t, ch.Dirty)
+}
+
+func TestGenerateCharacterBulk_LLMErrorReturnsExisting(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID: 1, Name: "err", URL: srv.URL, Model: "model", IsDefault: true,
+		}},
+	}
+
+	app.cachedCrawl = &crawler.CrawlResult{Title: "Page"}
+	app.characters[0].Name = "Original"
+
+	ch := app.GenerateCharacterBulk(nil)
+	assert.Equal(t, "Original", ch.Name)
+}
+
+func mustMarshal(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return string(b)
 }

@@ -17,13 +17,42 @@ This is a cross-platform desktop application built with **Wails v2** (Go backend
 
 Requires [Wails CLI](https://wails.io/docs/gettingstarted/installation).
 
+### Linux prerequisites
+
 ```bash
+# Ubuntu 22.04+
+sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev
+# Ubuntu 20.04 / older Debian
+sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
+# Arch
+sudo pacman -S gtk3 webkit2gtk
+# Fedora
+sudo dnf install gtk3-devel webkit2gtk3-devel
+```
+
+### Development (hot-reload)
+
+```bash
+cd frontend && npm install && cd ..
 wails dev
 ```
 
+### Production build
+
 ```bash
-wails build
+cd frontend && npm install && cd ..
+wails build -clean
 ```
+
+> With `libwebkit2gtk-4.1-dev` (Ubuntu 22.04+), add the build tag:
+> ```bash
+> wails build -clean -tags webkit2_41
+> ```
+
+> In headless environments without GTK3 / WebKit2GTK dev libraries, the
+> CGo link step will fail. This is expected — verify Go compilation with
+> `go build ./...` and the frontend with `cd frontend && npm run build`
+> instead.
 
 ## Lint
 
@@ -163,7 +192,7 @@ For each substep (e.g., `1.1`, `1.2`):
    golangci-lint run ./...
    go test ./... -race -cover
    cd frontend && npm run lint && npm run test:coverage && cd ..
-   wails build
+   wails build -clean
    ```
 3. Verify **0 errors, 0 warnings**, and **≥80% coverage**.
 4. Commit using the substep number in the subject line:

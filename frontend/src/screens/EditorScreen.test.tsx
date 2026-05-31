@@ -39,6 +39,8 @@ const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
 const mockGenerateCharacterBulk = vi.fn();
+const mockPickSaveFolder = vi.fn();
+const mockSaveProjectTo = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -49,6 +51,8 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
   GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
+  PickSaveFolder: () => mockPickSaveFolder(),
+  SaveProjectTo: (p: any) => mockSaveProjectTo(p),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -315,6 +319,46 @@ describe('EditorScreen', () => {
     await waitFor(() => {
       const continueBtn = screen.getByText('Continue to Lorebook').closest('button')!;
       expect(continueBtn).toBeDisabled();
+    });
+  });
+
+  it('shows Save project button', async () => {
+    renderWithProviders(<EditorScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Save project')).toBeInTheDocument();
+    });
+  });
+
+  it('calls SaveProjectTo on save project click', async () => {
+    mockPickSaveFolder.mockResolvedValue('/tmp/test-project');
+    mockSaveProjectTo.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderWithProviders(<EditorScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Save project')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Save project'));
+
+    await waitFor(() => {
+      expect(mockPickSaveFolder).toHaveBeenCalled();
+    });
+  });
+
+  it('handles save project error gracefully', async () => {
+    mockPickSaveFolder.mockRejectedValue(new Error('permission denied'));
+    const user = userEvent.setup();
+    renderWithProviders(<EditorScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Save project')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Save project'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Save project failed')).toBeInTheDocument();
     });
   });
 

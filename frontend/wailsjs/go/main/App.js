@@ -18,6 +18,10 @@ export function DeleteCharacter(arg1) {
   return window['go']['main']['App']['DeleteCharacter'](arg1);
 }
 
+export function ExportCharacter(arg1, arg2) {
+  return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
+}
+
 export function GenerateCharacterBulk(arg1) {
   return window['go']['main']['App']['GenerateCharacterBulk'](arg1);
 }
@@ -40,6 +44,22 @@ export function GetSettings() {
 
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function OpenProject() {
+  return window['go']['main']['App']['OpenProject']();
+}
+
+export function PickExportFolder() {
+  return window['go']['main']['App']['PickExportFolder']();
+}
+
+export function PickSaveFolder() {
+  return window['go']['main']['App']['PickSaveFolder']();
+}
+
+export function SaveProjectTo(arg1) {
+  return window['go']['main']['App']['SaveProjectTo'](arg1);
 }
 
 export function SaveSettings(arg1) {

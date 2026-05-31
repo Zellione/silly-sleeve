@@ -13,6 +13,7 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/settings"
 )
 
@@ -427,6 +428,8 @@ func TestDefaultEndpoint_EmptySettings(t *testing.T) {
 }
 
 func TestGenerateCharacterBulk_NoCrawl(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 
@@ -506,6 +509,168 @@ func TestGenerateCharacterBulk_LLMErrorReturnsExisting(t *testing.T) {
 
 	ch := app.GenerateCharacterBulk(nil)
 	assert.Equal(t, "Original", ch.Name)
+}
+
+func TestSaveProjectTo(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters = []compose.Character{
+		{ID: 1, Name: "Alice", Epithet: "Brave"},
+		{ID: 2, Name: "Bob"},
+	}
+	app.activeCharID = 1
+	app.cachedCrawl = &crawler.CrawlResult{URL: "https://test.wiki/Alice", Title: "Alice_Wiki"}
+
+	projectDir := tmpDir + "/alice-project"
+	err := app.SaveProjectTo(projectDir)
+	require.NoError(t, err)
+
+	assert.Equal(t, projectDir, app.projectDir)
+
+	m, chars, err := project.LoadProject(projectDir)
+	require.NoError(t, err)
+	assert.Equal(t, "Alice_Wiki", m.Name)
+	assert.Equal(t, 1, m.ActiveCharID)
+	assert.Equal(t, "https://test.wiki/Alice", m.SourceURL)
+	assert.Len(t, chars, 2)
+}
+
+func TestSaveProjectTo_NoCrawlTitle(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters = []compose.Character{
+		{ID: 1, Name: "Untitled"},
+	}
+
+	err := app.SaveProjectTo(tmpDir + "/project")
+	require.NoError(t, err)
+
+	m, _, err := project.LoadProject(tmpDir + "/project")
+	require.NoError(t, err)
+	assert.Equal(t, "Untitled Project", m.Name)
+}
+
+func TestSaveProjectTo_NoCharacters(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters = nil
+
+	err := app.SaveProjectTo(tmpDir + "/empty")
+	require.NoError(t, err)
+	assert.Equal(t, tmpDir+"/empty", app.projectDir)
+}
+
+func TestOpenProject_LoadsCharacters(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters[0].Name = "Elara"
+
+	err := app.SaveProjectTo(tmpDir + "/load-test")
+	require.NoError(t, err)
+
+	m, chars, err := project.LoadProject(tmpDir + "/load-test")
+	require.NoError(t, err)
+	assert.Equal(t, "Elara", m.Name)
+	assert.Len(t, chars, 1)
+	assert.Equal(t, "Elara", chars[0].Name)
+}
+
+func TestOpenProject_EmptyCharactersDirDefaults(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters = []compose.Character{}
+
+	err := app.SaveProjectTo(tmpDir + "/empty-char")
+	require.NoError(t, err)
+
+	m, chars, err := project.LoadProject(tmpDir + "/empty-char")
+	require.NoError(t, err)
+	assert.Equal(t, "Untitled Project", m.Name)
+	assert.Len(t, chars, 0)
+
+	// Simulate OpenProject's fallback for empty characters
+	chars = []compose.Character{compose.NewCharacter(1)}
+	assert.Len(t, chars, 1)
+	assert.Equal(t, 1, chars[0].ID)
+}
+
+func TestExportCharacter(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters = []compose.Character{
+		{
+			ID:            1,
+			Name:          "Alice",
+			Epithet:       "The Brave",
+			Tags:          []string{"hero", "elf"},
+			Appearance:    "Tall and slender.",
+			Personality:   "Cheerful and brave.",
+			Backstory:     "Born in a forest.",
+			Abilities:     "Archery, tracking.",
+			Relationships: "Bob — ally.",
+			Quotes:        []string{"Let's go!", "I won't give up."},
+			Stats:         []compose.StatKV{{Key: "STR", Value: "12"}, {Key: "DEX", Value: "18"}},
+		},
+	}
+
+	filePath, err := app.ExportCharacter(1, tmpDir)
+	require.NoError(t, err)
+	assert.Contains(t, filePath, ".json")
+
+	data, err := os.ReadFile(filePath)
+	require.NoError(t, err)
+
+	var st map[string]any
+	require.NoError(t, json.Unmarshal(data, &st))
+
+	assert.Equal(t, "Alice", st["name"])
+	assert.Equal(t, "Cheerful and brave.", st["personality"])
+	assert.Equal(t, "Let's go!", st["first_mes"])
+	assert.Contains(t, st["mes_example"], "I won't give up.")
+	assert.Contains(t, st["description"], "Appearance")
+	assert.Contains(t, st["description"], "Personality")
+	assert.Contains(t, st["description"], "Backstory")
+	assert.Contains(t, st["description"], "Abilities")
+	assert.Contains(t, st["description"], "Relationships")
+	assert.Contains(t, st["description"], "Stats")
+	assert.Contains(t, st["description"], "STR")
+	assert.Equal(t, "Silly Sleeve", st["creator"])
+	assert.Equal(t, "The Brave", st["creatorcomment"])
+	assert.Equal(t, "1.0", st["character_version"])
+
+	tags := st["tags"].([]interface{})
+	assert.Len(t, tags, 2)
+}
+
+func TestExportCharacter_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+
+	_, err := app.ExportCharacter(999, t.TempDir())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestSlugify(t *testing.T) {
+	assert.Equal(t, "alice-the-brave", slugify("Alice the Brave"))
+	assert.Equal(t, "test-character", slugify("Test_Character"))
+	assert.Equal(t, "hello-world", slugify("Hello! World?"))
+	assert.Equal(t, "", slugify("?! "))
+	assert.Equal(t, "123", slugify("123"))
 }
 
 func mustMarshal(t *testing.T, v any) string {

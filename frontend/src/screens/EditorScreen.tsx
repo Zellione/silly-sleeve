@@ -4,11 +4,12 @@ import { useToast } from '../components/ToastProvider';
 import {
   LockIcon, CopyIcon, RerollIcon, SparksIcon,
   SaveIcon, ArrowIcon, PlusIcon, XIcon, DownIcon,
-  CheckIcon, TrashIcon, DiceIcon, GlobeIcon,
+  CheckIcon, TrashIcon, DiceIcon, GlobeIcon, FolderIcon,
 } from '../icons';
 import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
   SetActiveCharacter, GetCachedCrawl, CountTokens, GenerateCharacterBulk,
+  PickSaveFolder, SaveProjectTo,
 } from '../../wailsjs/go/main/App';
 import { compose, crawler } from '../../wailsjs/go/models';
 
@@ -437,6 +438,19 @@ const EditorScreen: React.FC = () => {
     }
   }, [activeChar, fields, dirtyCount, toast, refreshCharacters]);
 
+  const handleSaveProject = useCallback(async () => {
+    try {
+      const folder = await PickSaveFolder();
+      if (!folder) return;
+      await SaveProjectTo(folder);
+      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${folder}.` });
+    } catch (e: any) {
+      if (e?.message) {
+        toast({ kind: 'bad', title: 'Save project failed', body: e.message });
+      }
+    }
+  }, [toast]);
+
   const setFieldValue = useCallback((id: string, value: any) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], value } }));
   }, []);
@@ -499,6 +513,9 @@ const EditorScreen: React.FC = () => {
             </button>
             <button className="btn ghost" onClick={handleSave}>
               <SaveIcon size={14} /> Save
+            </button>
+            <button className="btn ghost" onClick={handleSaveProject}>
+              <FolderIcon size={14} /> Save project
             </button>
             <button className="btn ghost" onClick={handleCompose} disabled={isComposing}>
               <DiceIcon size={14} /> Re-roll all{lockedCount > 0 && <span style={{ opacity: 0.6, marginLeft: 4 }}>({FIELDS.length - lockedCount})</span>}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -283,15 +284,26 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	return settings.LLMEndpoint{}
 }
 
-// PickSaveFolder opens a native folder picker dialog for saving a project.
+// PickSaveFolder opens a native save dialog for creating a project folder.
+// Uses SaveFileDialog so the action button says "Save". The chosen filename
+// becomes the project folder name.
 func (a *App) PickSaveFolder() (string, error) {
-	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Choose folder to save project",
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Save project",
+		DefaultFilename: "silly-sleeve-project",
 	})
 	if err != nil {
 		return "", err
 	}
-	return dir, nil
+	if filePath == "" {
+		return "", nil
+	}
+	// Use the chosen filename (stripped of any extension) as the folder name.
+	base := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+	if base == "" {
+		base = "silly-sleeve-project"
+	}
+	return filepath.Join(filepath.Dir(filePath), base), nil
 }
 
 // SaveProjectTo writes the current project state to a folder.

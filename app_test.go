@@ -428,6 +428,8 @@ func TestDefaultEndpoint_EmptySettings(t *testing.T) {
 }
 
 func TestGenerateCharacterBulk_NoCrawl(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 

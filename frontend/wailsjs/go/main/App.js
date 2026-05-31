@@ -18,6 +18,10 @@ export function DeleteCharacter(arg1) {
   return window['go']['main']['App']['DeleteCharacter'](arg1);
 }
 
+export function ExportCharacter(arg1, arg2) {
+  return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
+}
+
 export function GenerateCharacterBulk(arg1) {
   return window['go']['main']['App']['GenerateCharacterBulk'](arg1);
 }
@@ -42,26 +46,6 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
-export function SaveSettings(arg1) {
-  return window['go']['main']['App']['SaveSettings'](arg1);
-}
-
-export function SetActiveCharacter(arg1) {
-  return window['go']['main']['App']['SetActiveCharacter'](arg1);
-}
-
-export function TestLLMEndpoint(arg1) {
-  return window['go']['main']['App']['TestLLMEndpoint'](arg1);
-}
-
-export function UpdateCharacter(arg1) {
-  return window['go']['main']['App']['UpdateCharacter'](arg1);
-}
-
-export function ExportCharacter(arg1, arg2) {
-  return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
-}
-
 export function OpenProject() {
   return window['go']['main']['App']['OpenProject']();
 }
@@ -76,4 +60,20 @@ export function PickSaveFolder() {
 
 export function SaveProjectTo(arg1) {
   return window['go']['main']['App']['SaveProjectTo'](arg1);
+}
+
+export function SaveSettings(arg1) {
+  return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SetActiveCharacter(arg1) {
+  return window['go']['main']['App']['SetActiveCharacter'](arg1);
+}
+
+export function TestLLMEndpoint(arg1) {
+  return window['go']['main']['App']['TestLLMEndpoint'](arg1);
+}
+
+export function UpdateCharacter(arg1) {
+  return window['go']['main']['App']['UpdateCharacter'](arg1);
 }

@@ -359,12 +359,23 @@ const EditorScreen: React.FC = () => {
 
   useEffect(() => {
     if (!activeChar) return;
-    const next: Record<string, FieldState> = {};
-    for (const f of FIELDS) {
-      next[f.id] = fieldStateFromChar(activeChar, f);
-    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFields(next);
+    setFields(prev => {
+      const next: Record<string, FieldState> = {};
+      for (const f of FIELDS) {
+        const charVal = fieldStateFromChar(activeChar, f);
+        next[f.id] = {
+          value: charVal.value,
+          locked: prev[f.id]?.locked ?? false,
+          dirty: prev[f.id]?.dirty ?? false,
+          showPrompt: prev[f.id]?.showPrompt ?? false,
+          prompt: prev[f.id]?.prompt ?? '',
+          rolling: false,
+          history: prev[f.id]?.history ?? 1,
+        };
+      }
+      return next;
+    });
   }, [activeChar]);
 
   useEffect(() => {

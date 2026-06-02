@@ -9,11 +9,12 @@ import {
 } from './index';
 
 const mockGetCharacters = vi.fn();
-const mockSaveProjectTo = vi.fn();
-const mockPickSaveFolder = vi.fn();
+const mockSaveProjectBundle = vi.fn();
+const mockPickSaveBundle = vi.fn();
 const mockPickExportFolder = vi.fn();
 const mockExportCharacter = vi.fn();
-const mockOpenProject = vi.fn();
+const mockPickOpenBundle = vi.fn();
+const mockOpenProjectBundle = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -24,11 +25,12 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetCachedCrawl: vi.fn().mockResolvedValue(null),
   CountTokens: vi.fn().mockResolvedValue(0),
   CrawlPage: vi.fn(),
-  SaveProjectTo: (...args: unknown[]) => mockSaveProjectTo(...args),
-  PickSaveFolder: () => mockPickSaveFolder(),
+  SaveProjectBundle: (...args: unknown[]) => mockSaveProjectBundle(...args),
+  PickSaveBundle: () => mockPickSaveBundle(),
   PickExportFolder: () => mockPickExportFolder(),
   ExportCharacter: (...args: unknown[]) => mockExportCharacter(...args),
-  OpenProject: () => mockOpenProject(),
+  PickOpenBundle: () => mockPickOpenBundle(),
+  OpenProjectBundle: (...args: unknown[]) => mockOpenProjectBundle(...args),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
@@ -45,9 +47,10 @@ describe('screens/index', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCharacters.mockResolvedValue([]);
-    mockPickSaveFolder.mockResolvedValue('');
+    mockPickSaveBundle.mockResolvedValue('');
     mockPickExportFolder.mockResolvedValue('');
-    mockOpenProject.mockResolvedValue({ name: 'Test', version: '1', createdAt: '', updatedAt: '', sourceUrl: '', crawlTitle: '', activeCharId: 1 });
+    mockPickOpenBundle.mockResolvedValue('');
+    mockOpenProjectBundle.mockResolvedValue({ name: 'Test', version: '1', createdAt: '', updatedAt: '', sourceUrl: '', crawlTitle: '', activeCharId: 1 });
   });
 
   describe('DashboardScreen', () => {
@@ -67,8 +70,8 @@ describe('screens/index', () => {
     });
 
     it('saves project when save button clicked', async () => {
-      mockPickSaveFolder.mockResolvedValue('/tmp/test-project');
-      mockSaveProjectTo.mockResolvedValue(undefined);
+      mockPickSaveBundle.mockResolvedValue('/tmp/test-project');
+      mockSaveProjectBundle.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -76,16 +79,16 @@ describe('screens/index', () => {
       });
       await user.click(screen.getByText('Save project'));
       await waitFor(() => {
-        expect(mockPickSaveFolder).toHaveBeenCalled();
+        expect(mockPickSaveBundle).toHaveBeenCalled();
       });
       await waitFor(() => {
-        expect(mockSaveProjectTo).toHaveBeenCalledWith('/tmp/test-project');
+        expect(mockSaveProjectBundle).toHaveBeenCalledWith('/tmp/test-project');
       });
     });
 
     it('shows toast on successful save', async () => {
-      mockPickSaveFolder.mockResolvedValue('/tmp/test');
-      mockSaveProjectTo.mockResolvedValue(undefined);
+      mockPickSaveBundle.mockResolvedValue('/tmp/test');
+      mockSaveProjectBundle.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -98,7 +101,7 @@ describe('screens/index', () => {
     });
 
     it('shows error toast on save failure', async () => {
-      mockPickSaveFolder.mockRejectedValue(new Error('permission denied'));
+      mockPickSaveBundle.mockRejectedValue(new Error('permission denied'));
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -111,7 +114,7 @@ describe('screens/index', () => {
     });
 
     it('does not save when folder is empty', async () => {
-      mockPickSaveFolder.mockResolvedValue('');
+      mockPickSaveBundle.mockResolvedValue('');
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -119,12 +122,13 @@ describe('screens/index', () => {
       });
       await user.click(screen.getByText('Save project'));
       await waitFor(() => {
-        expect(mockPickSaveFolder).toHaveBeenCalled();
-        expect(mockSaveProjectTo).not.toHaveBeenCalled();
+        expect(mockPickSaveBundle).toHaveBeenCalled();
+        expect(mockSaveProjectBundle).not.toHaveBeenCalled();
       });
     });
 
     it('opens project when open button clicked', async () => {
+      mockPickOpenBundle.mockResolvedValue('/tmp/test.slv');
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -132,11 +136,13 @@ describe('screens/index', () => {
       });
       await user.click(screen.getByText('Open project'));
       await waitFor(() => {
-        expect(mockOpenProject).toHaveBeenCalled();
+        expect(mockPickOpenBundle).toHaveBeenCalled();
+        expect(mockOpenProjectBundle).toHaveBeenCalled();
       });
     });
 
     it('shows toast on successful open', async () => {
+      mockPickOpenBundle.mockResolvedValue('/tmp/test.slv');
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -149,7 +155,8 @@ describe('screens/index', () => {
     });
 
     it('shows error toast on open failure', async () => {
-      mockOpenProject.mockRejectedValue(new Error('not found'));
+      mockPickOpenBundle.mockResolvedValue('/tmp/test.slv');
+      mockOpenProjectBundle.mockRejectedValue(new Error('not found'));
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {

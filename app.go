@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -16,6 +15,7 @@ import (
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
+	"silly-sleeve/internal/bundle"
 	"silly-sleeve/internal/settings"
 )
 
@@ -351,39 +351,38 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	return settings.LLMEndpoint{}
 }
 
-// PickSaveFolder opens a native save dialog for creating a project folder.
-// Uses SaveFileDialog so the action button says "Save". The chosen filename
-// becomes the project folder name.
-func (a *App) PickSaveFolder() (string, error) {
+// PickSaveBundle opens a native save dialog for creating a .slv project bundle.
+func (a *App) PickSaveBundle() (string, error) {
 	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Save project",
-		DefaultFilename: "silly-sleeve-project",
+		Title:           "Save project bundle",
+		DefaultFilename: "silly-sleeve-project.slv",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
+		},
 	})
 	if err != nil {
 		return "", err
 	}
-	if filePath == "" {
-		return "", nil
-	}
-	// Use the chosen filename (stripped of any extension) as the folder name.
-	base := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
-	if base == "" {
-		base = "silly-sleeve-project"
-	}
-	return filepath.Join(filepath.Dir(filePath), base), nil
+	return filePath, nil
 }
 
-// SaveProjectTo writes the current project state to a folder.
-func (a *App) SaveProjectTo(folderPath string) error {
+// SaveProjectBundle writes the current project state as a .slv bundle.
+func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
 	chars := make([]compose.Character, len(a.characters))
 	copy(chars, a.characters)
 	activeID := a.activeCharID
 	sourceURL := ""
 	crawlTitle := ""
+	var cachedCrawl *crawler.CrawlResult
 	if a.cachedCrawl != nil {
 		sourceURL = a.cachedCrawl.URL
 		crawlTitle = a.cachedCrawl.Title
+		cachedCrawl = a.cachedCrawl
+	}
+	templates := a.settings.PromptTemplates
+	if len(templates.FieldPrompts) == 0 {
+		templates = prompts.Defaults()
 	}
 	a.mu.Unlock()
 
@@ -402,57 +401,73 @@ func (a *App) SaveProjectTo(folderPath string) error {
 		CrawlTitle:   crawlTitle,
 	}
 
-	base := folderPath
-	if !strings.HasSuffix(folderPath, "/"+slugify(projectName)) {
-		base = folderPath
+	b := bundle.Bundle{
+		Manifest:   m,
+		Characters:  chars,
+		Prompts:    templates,
+		CrawlCache: cachedCrawl,
 	}
 
-	if err := project.SaveProject(base, m, chars); err != nil {
+	if err := bundle.WriteBundle(filePath, b); err != nil {
 		return err
 	}
 
 	a.mu.Lock()
-	a.projectDir = base
+	a.projectDir = filePath
 	a.mu.Unlock()
 	return nil
 }
 
-// OpenProject opens a native folder picker and loads a project from disk.
-func (a *App) OpenProject() (project.ProjectManifest, error) {
-	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Open project folder",
+// PickOpenBundle opens a native file picker for loading a .slv project bundle.
+func (a *App) PickOpenBundle() (string, error) {
+	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Open project bundle",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
+		},
 	})
 	if err != nil {
-		return project.ProjectManifest{}, err
+		return "", err
 	}
-	if dir == "" {
-		return project.ProjectManifest{}, fmt.Errorf("no folder selected")
+	return filePath, nil
+}
+
+// OpenProjectBundle loads a project from a .slv bundle file.
+func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error) {
+	if filePath == "" {
+		return project.ProjectManifest{}, fmt.Errorf("no file selected")
 	}
 
-	m, chars, err := project.LoadProject(dir)
+	b, err := bundle.ReadBundle(filePath)
 	if err != nil {
 		return project.ProjectManifest{}, err
 	}
 
 	a.mu.Lock()
-	a.characters = chars
-	a.activeCharID = m.ActiveCharID
-	a.projectDir = dir
+	a.characters = b.Characters
+	a.activeCharID = b.Manifest.ActiveCharID
+	a.projectDir = filePath
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}
 		a.activeCharID = 1
 	}
 
-	if m.CrawlTitle != "" {
+	if b.CrawlCache != nil {
+		a.cachedCrawl = b.CrawlCache
+	} else if b.Manifest.CrawlTitle != "" {
 		c, err := crawler.LoadCache()
-		if err == nil && c != nil && c.Title == m.CrawlTitle {
+		if err == nil && c != nil && c.Title == b.Manifest.CrawlTitle {
 			a.cachedCrawl = c
 		}
 	}
+
+	if len(b.Prompts.FieldPrompts) > 0 {
+		a.settings.PromptTemplates = b.Prompts
+	}
 	a.mu.Unlock()
 
-	return m, nil
+	return b.Manifest, nil
 }
 
 // PickExportFolder opens a native folder picker for exporting characters.

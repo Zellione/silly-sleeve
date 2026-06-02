@@ -33,13 +33,15 @@ export function GetSettings():Promise<settings.Settings>;
 
 export function Greet(arg1:string):Promise<string>;
 
-export function OpenProject():Promise<project.ProjectManifest>;
+export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 
 export function PickExportFolder():Promise<string>;
 
-export function PickSaveFolder():Promise<string>;
+export function PickOpenBundle():Promise<string>;
 
-export function SaveProjectTo(arg1:string):Promise<void>;
+export function PickSaveBundle():Promise<string>;
+
+export function SaveProjectBundle(arg1:string):Promise<void>;
 
 export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 

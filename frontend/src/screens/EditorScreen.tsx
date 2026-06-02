@@ -10,7 +10,7 @@ import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
   SetActiveCharacter, GetCachedCrawl, CountTokens,
   GenerateField,
-  PickSaveFolder, SaveProjectTo,
+  PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
 import { compose, crawler } from '../../wailsjs/go/models';
 
@@ -441,10 +441,10 @@ const EditorScreen: React.FC = () => {
 
   const handleSaveProject = useCallback(async () => {
     try {
-      const folder = await PickSaveFolder();
-      if (!folder) return;
-      await SaveProjectTo(folder);
-      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${folder}.` });
+      const filePath = await PickSaveBundle();
+      if (!filePath) return;
+      await SaveProjectBundle(filePath);
+      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
     } catch (e: any) {
       if (e?.message) {
         toast({ kind: 'bad', title: 'Save project failed', body: e.message });

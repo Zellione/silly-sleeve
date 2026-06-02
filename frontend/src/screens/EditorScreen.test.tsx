@@ -39,8 +39,8 @@ const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
 const mockGenerateField = vi.fn();
-const mockPickSaveFolder = vi.fn();
-const mockSaveProjectTo = vi.fn();
+const mockPickSaveBundle = vi.fn();
+const mockSaveProjectBundle = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -51,8 +51,8 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
   GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
-  PickSaveFolder: () => mockPickSaveFolder(),
-  SaveProjectTo: (p: any) => mockSaveProjectTo(p),
+  PickSaveBundle: () => mockPickSaveBundle(),
+  SaveProjectBundle: (p: any) => mockSaveProjectBundle(p),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -329,9 +329,9 @@ describe('EditorScreen', () => {
     });
   });
 
-  it('calls SaveProjectTo on save project click', async () => {
-    mockPickSaveFolder.mockResolvedValue('/tmp/test-project');
-    mockSaveProjectTo.mockResolvedValue(undefined);
+  it('calls SaveProjectBundle on save project click', async () => {
+    mockPickSaveBundle.mockResolvedValue('/tmp/test.slv');
+    mockSaveProjectBundle.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderWithProviders(<EditorScreen />);
 
@@ -342,12 +342,12 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Save project'));
 
     await waitFor(() => {
-      expect(mockPickSaveFolder).toHaveBeenCalled();
+      expect(mockPickSaveBundle).toHaveBeenCalled();
     });
   });
 
   it('handles save project error gracefully', async () => {
-    mockPickSaveFolder.mockRejectedValue(new Error('permission denied'));
+    mockPickSaveBundle.mockRejectedValue(new Error('permission denied'));
     const user = userEvent.setup();
     renderWithProviders(<EditorScreen />);
 

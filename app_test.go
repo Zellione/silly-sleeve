@@ -13,7 +13,7 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
-	"silly-sleeve/internal/project"
+	"silly-sleeve/internal/bundle"
 	"silly-sleeve/internal/settings"
 )
 
@@ -511,7 +511,7 @@ func TestGenerateCharacterBulk_LLMErrorReturnsExisting(t *testing.T) {
 	assert.Equal(t, "Original", ch.Name)
 }
 
-func TestSaveProjectTo(t *testing.T) {
+func TestSaveProjectBundle(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
@@ -523,21 +523,21 @@ func TestSaveProjectTo(t *testing.T) {
 	app.activeCharID = 1
 	app.cachedCrawl = &crawler.CrawlResult{URL: "https://test.wiki/Alice", Title: "Alice_Wiki"}
 
-	projectDir := tmpDir + "/alice-project"
-	err := app.SaveProjectTo(projectDir)
+	filePath := tmpDir + "/alice-project.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	assert.Equal(t, projectDir, app.projectDir)
+	assert.Equal(t, filePath, app.projectDir)
 
-	m, chars, err := project.LoadProject(projectDir)
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Alice_Wiki", m.Name)
-	assert.Equal(t, 1, m.ActiveCharID)
-	assert.Equal(t, "https://test.wiki/Alice", m.SourceURL)
-	assert.Len(t, chars, 2)
+	assert.Equal(t, "Alice_Wiki", b.Manifest.Name)
+	assert.Equal(t, 1, b.Manifest.ActiveCharID)
+	assert.Equal(t, "https://test.wiki/Alice", b.Manifest.SourceURL)
+	assert.Len(t, b.Characters, 2)
 }
 
-func TestSaveProjectTo_NoCrawlTitle(t *testing.T) {
+func TestSaveProjectBundle_NoCrawlTitle(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
@@ -546,60 +546,63 @@ func TestSaveProjectTo_NoCrawlTitle(t *testing.T) {
 		{ID: 1, Name: "Untitled"},
 	}
 
-	err := app.SaveProjectTo(tmpDir + "/project")
+	filePath := tmpDir + "/project.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	m, _, err := project.LoadProject(tmpDir + "/project")
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Untitled Project", m.Name)
+	assert.Equal(t, "Untitled Project", b.Manifest.Name)
 }
 
-func TestSaveProjectTo_NoCharacters(t *testing.T) {
+func TestSaveProjectBundle_NoCharacters(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 	app.characters = nil
 
-	err := app.SaveProjectTo(tmpDir + "/empty")
+	filePath := tmpDir + "/empty.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, tmpDir+"/empty", app.projectDir)
+	assert.Equal(t, filePath, app.projectDir)
 }
 
-func TestOpenProject_LoadsCharacters(t *testing.T) {
+func TestOpenProjectBundle_LoadsCharacters(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 	app.characters[0].Name = "Elara"
 
-	err := app.SaveProjectTo(tmpDir + "/load-test")
+	filePath := tmpDir + "/load-test.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	m, chars, err := project.LoadProject(tmpDir + "/load-test")
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Elara", m.Name)
-	assert.Len(t, chars, 1)
-	assert.Equal(t, "Elara", chars[0].Name)
+	assert.Equal(t, "Elara", b.Manifest.Name)
+	assert.Len(t, b.Characters, 1)
+	assert.Equal(t, "Elara", b.Characters[0].Name)
 }
 
-func TestOpenProject_EmptyCharactersDirDefaults(t *testing.T) {
+func TestOpenProjectBundle_EmptyCharactersDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 	app.characters = []compose.Character{}
 
-	err := app.SaveProjectTo(tmpDir + "/empty-char")
+	filePath := tmpDir + "/empty-char.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	m, chars, err := project.LoadProject(tmpDir + "/empty-char")
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Untitled Project", m.Name)
-	assert.Len(t, chars, 0)
+	assert.Equal(t, "Untitled Project", b.Manifest.Name)
+	assert.Len(t, b.Characters, 0)
 
-	// Simulate OpenProject's fallback for empty characters
-	chars = []compose.Character{compose.NewCharacter(1)}
+	chars := []compose.Character{compose.NewCharacter(1)}
 	assert.Len(t, chars, 1)
 	assert.Equal(t, 1, chars[0].ID)
 }

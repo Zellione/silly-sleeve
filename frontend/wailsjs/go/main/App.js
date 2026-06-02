@@ -54,20 +54,24 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
-export function OpenProject() {
-  return window['go']['main']['App']['OpenProject']();
+export function OpenProjectBundle(arg1) {
+  return window['go']['main']['App']['OpenProjectBundle'](arg1);
 }
 
 export function PickExportFolder() {
   return window['go']['main']['App']['PickExportFolder']();
 }
 
-export function PickSaveFolder() {
-  return window['go']['main']['App']['PickSaveFolder']();
+export function PickOpenBundle() {
+  return window['go']['main']['App']['PickOpenBundle']();
 }
 
-export function SaveProjectTo(arg1) {
-  return window['go']['main']['App']['SaveProjectTo'](arg1);
+export function PickSaveBundle() {
+  return window['go']['main']['App']['PickSaveBundle']();
+}
+
+export function SaveProjectBundle(arg1) {
+  return window['go']['main']['App']['SaveProjectBundle'](arg1);
 }
 
 export function SavePromptTemplates(arg1) {

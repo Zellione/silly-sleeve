@@ -145,9 +145,6 @@ func truncate(s string, n int) string {
 	return s[:n] + "..."
 }
 
-// fieldSingleResponse is used to unmarshal a single-field JSON response.
-type fieldSingleResponse map[string]chan any
-
 // GenerateField sends a per-field prompt to the LLM and returns the
 // character with that field updated. customPrompt is appended to the
 // field-specific instruction. templates provides the system prompt.

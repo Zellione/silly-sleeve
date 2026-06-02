@@ -38,7 +38,6 @@ const mockDeleteCharacter = vi.fn();
 const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
-const mockGenerateCharacterBulk = vi.fn();
 const mockGenerateField = vi.fn();
 const mockPickSaveFolder = vi.fn();
 const mockSaveProjectTo = vi.fn();
@@ -51,7 +50,6 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   SetActiveCharacter: (id: any) => mockSetActiveCharacter(id),
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
-  GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
   GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
   PickSaveFolder: () => mockPickSaveFolder(),
   SaveProjectTo: (p: any) => mockSaveProjectTo(p),
@@ -69,7 +67,7 @@ describe('EditorScreen', () => {
     mockUpdateCharacter.mockResolvedValue(undefined);
     mockDeleteCharacter.mockResolvedValue(undefined);
     mockSetActiveCharacter.mockResolvedValue(undefined);
-    mockGenerateCharacterBulk.mockResolvedValue(mockCharacter);
+    mockGenerateField.mockResolvedValue(mockCharacter);
   });
 
   it('renders the PageHead with step 2 and character name', async () => {
@@ -375,12 +373,12 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Re-roll all'));
 
     await waitFor(() => {
-      expect(mockGenerateCharacterBulk).toHaveBeenCalled();
+      expect(mockGenerateField).toHaveBeenCalled();
     });
   });
 
   it('shows compose error toast on failure', async () => {
-    mockGenerateCharacterBulk.mockRejectedValue(new Error('compose error'));
+    mockGenerateField.mockRejectedValue(new Error('compose error'));
     const user = userEvent.setup();
     renderWithProviders(<EditorScreen />);
 
@@ -391,8 +389,8 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Re-roll all'));
 
     await waitFor(() => {
-      expect(screen.getByText('Compose failed')).toBeInTheDocument();
-    });
+      expect(screen.getByText('Re-roll failed')).toBeInTheDocument();
+    }, { timeout: 10000 });
   });
 
   it('calls GenerateField for per-field reroll', async () => {

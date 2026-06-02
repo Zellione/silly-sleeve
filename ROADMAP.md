@@ -69,12 +69,12 @@ Goal: Paste a wiki URL, generate a character via bulk prompt, edit fields, save 
 
 Goal: Per-field AI assistance, lorebook basics, and project bundles.
 
-- [ ] **4.1** Per-field rerolls: lock toggle, custom prompt input, shimmer loading, version history
-- [ ] **4.2** "Re-roll all" with staggered calls, skipping locked fields
-- [~] **4.3** Prompt templates screen: default templates per field + bulk, variable chips, reset-to-default
-- [ ] **4.4** Auto-save: configurable (off / on change / on blur / timed intervals)
-- [ ] **4.5** Lorebook (basic): entry list, detail editor (triggers, content, position), export as `world_info` JSON
-- [ ] **4.6** `.slv` project bundle format: zip of manifest, characters, lorebook, prompts, crawl cache
+- [x] **4.1** Per-field rerolls: lock toggle, custom prompt input, shimmer loading, version history
+- [x] **4.2** "Re-roll all" with staggered calls, skipping locked fields
+- [x] **4.3** Prompt templates screen: default templates per field + bulk, variable chips, reset-to-default
+- [x] **4.4** Auto-save: configurable (off / on change / on blur / timed intervals)
+- [x] **4.5** Lorebook (basic): entry list, detail editor (triggers, content, position), export as `world_info` JSON
+- [x] **4.6** `.slv` project bundle format: zip of manifest, characters, lorebook, prompts, crawl cache
 
 ---
 
@@ -181,6 +181,15 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - Started Phase 2 — Iterative Refinement (`milestone/5-phase2`).
 - Planning complete: per-field LLM calls for rerolls, full handoff lorebook editor, `.slv` zip bundles replacing folder save.
 
-#### 4.3 Prompt Templates (in progress)
+#### Completed Phase 2 — Iterative Refinement
 
-- [~] **4.3** Prompt templates: Go model (`internal/prompts/`), settings integration, Wails bindings, SettingsScreen UI
+- [x] **4.3** Prompt templates: `internal/prompts/` package with TemplateSet, variable substitution, SettingsScreen editor
+- [x] **4.1** Per-field rerolls: `GenerateField` backend, separate LLM calls per field, real `GenerateField` binding
+- [x] **4.2** Re-roll all staggered: sequential `GenerateField` calls with 300ms delays, progress tracking
+- [x] **4.6** `.slv` project bundles: `internal/bundle/` zip format, replaced folder save with bundle save/open
+- [x] **4.5** Lorebook basics: `internal/lorebook/` Entry model, full two-pane editor, world_info JSON export
+- [x] **4.4** Auto-save: `useAutoSave` hook with off/onChange/onBlur/timed modes, integrated in EditorScreen
+- New packages: `internal/prompts/`, `internal/lorebook/`, `internal/bundle/`
+- Updated packages: `internal/settings/`, `internal/compose/generate.go`
+- Frontend: prompt template editor, per-field reroll wiring, lorebook editor, auto-save hook
+- Go tests: 231 in 10 packages; Frontend tests: ~330 (including lorebook + auto-save tests)

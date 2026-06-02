@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
+import { useAutoSave } from '../components/useAutoSave';
 import {
   LockIcon, CopyIcon, RerollIcon, SparksIcon,
   SaveIcon, ArrowIcon, PlusIcon, XIcon, DownIcon,
@@ -322,7 +323,21 @@ const EditorScreen: React.FC = () => {
   const [crawl, setCrawl] = useState<crawler.CrawlResult | null>(null);
   const [fields, setFields] = useState<Record<string, FieldState>>({});
   const [tokenCache, setTokenCache] = useState<Record<string, number>>({});
+  const [projectPath, setProjectPath] = useState('');
   const { toast } = useToast();
+
+  const doSaveBundle = useCallback(async (path: string) => {
+    try {
+      await SaveProjectBundle(path);
+    } catch {
+      // silently skip auto-save failures
+    }
+  }, []);
+
+  const { handleChange: autoSaveChange } = useAutoSave({
+    projectPath,
+    onSave: doSaveBundle,
+  });
 
   const refreshCharacters = useCallback(async () => {
     const chars = await GetCharacters();
@@ -444,6 +459,7 @@ const EditorScreen: React.FC = () => {
       const filePath = await PickSaveBundle();
       if (!filePath) return;
       await SaveProjectBundle(filePath);
+      setProjectPath(filePath);
       toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
     } catch (e: any) {
       if (e?.message) {
@@ -454,7 +470,8 @@ const EditorScreen: React.FC = () => {
 
   const setFieldValue = useCallback((id: string, value: any) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], value } }));
-  }, []);
+    autoSaveChange();
+  }, [autoSaveChange]);
 
   const patchField = useCallback((id: string, patch: Partial<FieldState>) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));

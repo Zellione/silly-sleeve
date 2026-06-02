@@ -41,6 +41,7 @@ const mockCountTokens = vi.fn();
 const mockGenerateField = vi.fn();
 const mockPickSaveBundle = vi.fn();
 const mockSaveProjectBundle = vi.fn();
+const mockGetSettings = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -53,6 +54,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
   PickSaveBundle: () => mockPickSaveBundle(),
   SaveProjectBundle: (p: any) => mockSaveProjectBundle(p),
+  GetSettings: () => mockGetSettings(),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -68,6 +70,7 @@ describe('EditorScreen', () => {
     mockDeleteCharacter.mockResolvedValue(undefined);
     mockSetActiveCharacter.mockResolvedValue(undefined);
     mockGenerateField.mockResolvedValue(mockCharacter);
+    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'off' });
   });
 
   it('renders the PageHead with step 2 and character name', async () => {

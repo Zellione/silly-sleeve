@@ -182,11 +182,29 @@ func GenerateField(
 
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(content), &raw); err != nil {
+		// Fallback: if the LLM returned plain text instead of a JSON object,
+		// use the raw text as the field value for text-type fields.
+		if isTextField(fieldID) && content != "" {
+			ch := existing
+			applyField(&ch, fieldID, content)
+			ch.Dirty = true
+			return ch, nil
+		}
 		return existing, fmt.Errorf("parse field response: %w (raw: %s)", err, truncate(content, 200))
 	}
 
 	ch := existing
-	applyField(&ch, fieldID, raw[fieldID])
+	val := raw[fieldID]
+	// If the field value is nil or empty string, try reading the raw content directly
+	// as a fallback (some models return the content without proper JSON wrapping).
+	if val == nil || (isTextField(fieldID) && isEmptyString(val)) {
+		if isTextField(fieldID) && content != "" {
+			applyField(&ch, fieldID, content)
+			ch.Dirty = true
+			return ch, nil
+		}
+	}
+	applyField(&ch, fieldID, val)
 	ch.Dirty = true
 
 	return ch, nil
@@ -227,6 +245,18 @@ func buildCrawlContent(result crawler.CrawlResult) string {
 	}
 
 	return sb.String()
+}
+
+// isTextField returns true for fields that are freeform text (not arrays or scalars).
+func isTextField(fieldID string) bool {
+	return fieldID == "appearance" || fieldID == "personality" ||
+		fieldID == "backstory" || fieldID == "abilities" || fieldID == "relationships"
+}
+
+// isEmptyString returns true if the value is a JSON string that is empty.
+func isEmptyString(v any) bool {
+	s, ok := v.(string)
+	return ok && s == ""
 }
 
 // applyField sets a single field on the character from the LLM response value.

@@ -363,13 +363,14 @@ const EditorScreen: React.FC = () => {
     setFields(prev => {
       const next: Record<string, FieldState> = {};
       for (const f of FIELDS) {
+        const isLocked = prev[f.id]?.locked ?? false;
         const charVal = fieldStateFromChar(activeChar, f);
         next[f.id] = {
-          value: charVal.value,
-          locked: prev[f.id]?.locked ?? false,
-          dirty: prev[f.id]?.dirty ?? false,
-          showPrompt: prev[f.id]?.showPrompt ?? false,
-          prompt: prev[f.id]?.prompt ?? '',
+          value: isLocked ? (prev[f.id]?.value ?? charVal.value) : charVal.value,
+          locked: isLocked,
+          dirty: isLocked ? (prev[f.id]?.dirty ?? false) : false,
+          showPrompt: isLocked ? (prev[f.id]?.showPrompt ?? false) : false,
+          prompt: isLocked ? (prev[f.id]?.prompt ?? '') : '',
           rolling: false,
           history: prev[f.id]?.history ?? 1,
         };

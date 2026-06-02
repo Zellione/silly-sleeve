@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-05-31
+> Last updated: 2026-06-02
 
 ## Overview
 
@@ -71,7 +71,7 @@ Goal: Per-field AI assistance, lorebook basics, and project bundles.
 
 - [ ] **4.1** Per-field rerolls: lock toggle, custom prompt input, shimmer loading, version history
 - [ ] **4.2** "Re-roll all" with staggered calls, skipping locked fields
-- [ ] **4.3** Prompt templates screen: default templates per field + bulk, variable chips, reset-to-default
+- [~] **4.3** Prompt templates screen: default templates per field + bulk, variable chips, reset-to-default
 - [ ] **4.4** Auto-save: configurable (off / on change / on blur / timed intervals)
 - [ ] **4.5** Lorebook (basic): entry list, detail editor (triggers, content, position), export as `world_info` JSON
 - [ ] **4.6** `.slv` project bundle format: zip of manifest, characters, lorebook, prompts, crawl cache
@@ -175,3 +175,12 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - Added `PickSaveFolder`, `SaveProjectTo`, `OpenProject`, `PickExportFolder`, `ExportCharacter` bindings
 - Added `ExportScreen` with character picker, JSON-only format, destination input
 - DashboardScreen now has functional Save/Open project buttons
+
+### 2026-06-02
+
+- Started Phase 2 — Iterative Refinement (`milestone/5-phase2`).
+- Planning complete: per-field LLM calls for rerolls, full handoff lorebook editor, `.slv` zip bundles replacing folder save.
+
+#### 4.3 Prompt Templates (in progress)
+
+- [~] **4.3** Prompt templates: Go model (`internal/prompts/`), settings integration, Wails bindings, SettingsScreen UI

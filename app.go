@@ -15,6 +15,7 @@ import (
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/project"
+	"silly-sleeve/internal/prompts"
 	"silly-sleeve/internal/settings"
 )
 
@@ -85,6 +86,20 @@ func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
 		Temperature:  ep.Temperature,
 		SystemPrompt: ep.SystemPrompt,
 	})
+}
+
+// GetPromptTemplates returns the current prompt templates from settings.
+func (a *App) GetPromptTemplates() prompts.TemplateSet {
+	if len(a.settings.PromptTemplates.FieldPrompts) == 0 {
+		return prompts.Defaults()
+	}
+	return a.settings.PromptTemplates
+}
+
+// SavePromptTemplates persists prompt templates to settings.
+func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
+	a.settings.PromptTemplates = t
+	return settings.Save(a.settings)
 }
 
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.

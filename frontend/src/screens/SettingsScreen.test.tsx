@@ -3,16 +3,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SettingsScreen from './SettingsScreen';
 import { ToastProvider } from '../components/ToastProvider';
-import { settings, llm } from '../../wailsjs/go/models';
+import { settings, prompts, llm } from '../../wailsjs/go/models';
 
 const mockGetSettings = vi.fn();
 const mockSaveSettings = vi.fn();
 const mockTestLLMEndpoint = vi.fn();
+const mockGetPromptTemplates = vi.fn();
+const mockSavePromptTemplates = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetSettings: () => mockGetSettings(),
   SaveSettings: (...args: any[]) => mockSaveSettings(...args),
   TestLLMEndpoint: (...args: any[]) => mockTestLLMEndpoint(...args),
+  GetPromptTemplates: () => mockGetPromptTemplates(),
+  SavePromptTemplates: (...args: any[]) => mockSavePromptTemplates(...args),
 }));
 
 const createEndpoint = (overrides: Partial<settings.LLMEndpoint> = {}) =>
@@ -429,6 +433,10 @@ describe('SettingsScreen', () => {
   it('switches between settings sections', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    mockGetPromptTemplates.mockResolvedValue(prompts.TemplateSet.createFrom({
+      systemPrompt: 'test prompt',
+      fieldPrompts: { name: 'name prompt', epithet: 'ep prompt', tags: 'tag prompt', appearance: 'app prompt', personality: 'pers prompt', backstory: 'back prompt', abilities: 'abi prompt', relationships: 'rel prompt', quotes: 'quo prompt', stats: 'stat prompt' },
+    }));
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
@@ -436,10 +444,142 @@ describe('SettingsScreen', () => {
       expect(labels.length).toBeGreaterThanOrEqual(1);
     });
 
-    await user.click(screen.getByText('About'));
+    // The prompts section should now render the prompt editor, not "Coming in a later phase"
+    await user.click(screen.getByText('Prompts'));
 
     await waitFor(() => {
-      expect(screen.getByText('Coming in a later phase.')).toBeInTheDocument();
+      expect(screen.getByText('Prompt templates')).toBeInTheDocument();
+    });
+  });
+
+  describe('prompt template editor', () => {
+    const defaultPT = prompts.TemplateSet.createFrom({
+      systemPrompt: 'system prompt default',
+      fieldPrompts: {
+        name: 'name template content',
+        epithet: 'epithet template content',
+        tags: 'tags template content',
+        appearance: 'appearance template content',
+        personality: 'personality template content',
+        backstory: 'backstory template content',
+        abilities: 'abilities template content',
+        relationships: 'relationships template content',
+        quotes: 'quotes template content',
+        stats: 'stats template content',
+      },
+    });
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('loads and displays prompt templates', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      mockGetPromptTemplates.mockResolvedValue(defaultPT);
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Prompts'));
+
+      await waitFor(() => {
+        expect(screen.getByText('system prompt default')).toBeInTheDocument();
+      });
+    });
+
+    it('switches between bulk and per-field templates', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      mockGetPromptTemplates.mockResolvedValue(defaultPT);
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Prompts'));
+
+      await waitFor(() => {
+        expect(screen.getByText('system prompt default')).toBeInTheDocument();
+      });
+
+      // Switch to Name field
+      await user.click(screen.getByText('Name'));
+      await waitFor(() => {
+        expect(screen.getByText('name template content')).toBeInTheDocument();
+      });
+    });
+
+    it('inserts variable chip into textarea', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      mockGetPromptTemplates.mockResolvedValue(defaultPT);
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Prompts'));
+
+      await waitFor(() => {
+        expect(screen.getByText('system prompt default')).toBeInTheDocument();
+      });
+
+      const chip = screen.getByText('{{crawl.title}}');
+      await user.click(chip);
+
+      const textarea = screen.getByRole('textbox');
+      expect((textarea as HTMLTextAreaElement).value).toContain('{{crawl.title}}');
+    });
+
+    it('saves prompt template changes', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      mockGetPromptTemplates.mockResolvedValue(defaultPT);
+      mockSavePromptTemplates.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Prompts'));
+
+      await waitFor(() => {
+        expect(screen.getByText('system prompt default')).toBeInTheDocument();
+      });
+
+      const textarea = screen.getByRole('textbox');
+      await user.clear(textarea);
+      await user.type(textarea, 'updated prompt');
+
+      await user.click(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(mockSavePromptTemplates).toHaveBeenCalled();
+      });
+    });
+
+    it('handles prompt template load error', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      mockGetPromptTemplates.mockRejectedValue(new Error('load fail'));
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Prompts'));
+
+      // Should still render the section title (from default state or shimmer)
+      await waitFor(() => {
+        expect(screen.getByText('Prompt templates')).toBeInTheDocument();
+      });
     });
   });
 

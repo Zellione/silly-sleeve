@@ -237,6 +237,25 @@ export namespace project {
 
 }
 
+export namespace prompts {
+	
+	export class TemplateSet {
+	    systemPrompt: string;
+	    fieldPrompts: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.systemPrompt = source["systemPrompt"];
+	        this.fieldPrompts = source["fieldPrompts"];
+	    }
+	}
+
+}
+
 export namespace settings {
 	
 	export class LLMEndpoint {
@@ -271,6 +290,9 @@ export namespace settings {
 	}
 	export class Settings {
 	    endpoints: LLMEndpoint[];
+	    promptTemplates?: prompts.TemplateSet;
+	    autoSaveMode?: string;
+	    autoSaveInterval?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -279,6 +301,9 @@ export namespace settings {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.endpoints = this.convertValues(source["endpoints"], LLMEndpoint);
+	        this.promptTemplates = this.convertValues(source["promptTemplates"], prompts.TemplateSet);
+	        this.autoSaveMode = source["autoSaveMode"];
+	        this.autoSaveInterval = source["autoSaveInterval"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

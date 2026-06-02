@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"silly-sleeve/internal/prompts"
 )
 
 func TestConfigPath(t *testing.T) {
@@ -178,4 +180,42 @@ func TestLoad_ConfigPathError(t *testing.T) {
 	// On some systems MkdirAll may succeed anyway if the file is removed,
 	// but the env being a file path, the join should create a path issue
 	assert.Error(t, err)
+}
+
+func TestLoad_FillsDefaultPromptTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	// Save settings without promptTemplates (backward compat simulation)
+	s := Settings{
+		Endpoints: []LLMEndpoint{
+			{ID: 1, Name: "Test", URL: "https://example.com/v1"},
+		},
+	}
+	require.NoError(t, Save(s))
+
+	loaded, err := Load()
+	require.NoError(t, err)
+	assert.NotEmpty(t, loaded.PromptTemplates.SystemPrompt)
+	assert.Len(t, loaded.PromptTemplates.FieldPrompts, len(prompts.FieldIDs()))
+}
+
+func TestSave_RoundtripPromptTemplates(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	custom := prompts.Defaults()
+	custom.FieldPrompts["name"] = "custom name prompt"
+	custom.SystemPrompt = "custom system prompt"
+
+	s := Settings{
+		Endpoints:       []LLMEndpoint{},
+		PromptTemplates: custom,
+	}
+	require.NoError(t, Save(s))
+
+	loaded, err := Load()
+	require.NoError(t, err)
+	assert.Equal(t, "custom system prompt", loaded.PromptTemplates.SystemPrompt)
+	assert.Equal(t, "custom name prompt", loaded.PromptTemplates.FieldPrompts["name"])
 }

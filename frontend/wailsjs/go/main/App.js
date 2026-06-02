@@ -38,6 +38,10 @@ export function GetCharacters() {
   return window['go']['main']['App']['GetCharacters']();
 }
 
+export function GetPromptTemplates() {
+  return window['go']['main']['App']['GetPromptTemplates']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -60,6 +64,10 @@ export function PickSaveFolder() {
 
 export function SaveProjectTo(arg1) {
   return window['go']['main']['App']['SaveProjectTo'](arg1);
+}
+
+export function SavePromptTemplates(arg1) {
+  return window['go']['main']['App']['SavePromptTemplates'](arg1);
 }
 
 export function SaveSettings(arg1) {

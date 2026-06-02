@@ -771,6 +771,90 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   margin: 4px -1px;
 }
 
+/* ─── Prompt template editor ─────────────────────────────── */
+.prompt-templates-editor {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.prompt-field-nav {
+  display: flex; flex-direction: column; gap: 1px;
+  background: var(--panel-2);
+  border-right: 1px solid var(--hair);
+  padding: 4px;
+  overflow-y: auto;
+  max-height: 420px;
+}
+.prompt-field-nav button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 8px 10px;
+  border-radius: 3px;
+  font: 500 11.5px/1 var(--f-sans);
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.prompt-field-nav button:hover { background: var(--hair); color: var(--ink); }
+.prompt-field-nav button[data-on="1"] {
+  background: var(--ink); color: var(--bg);
+}
+.prompt-editor-body {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px;
+  min-height: 0;
+}
+.prompt-editor-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+}
+.prompt-textarea {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  padding: 12px 14px;
+  font: 12.5px/1.6 var(--f-mono);
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+  min-height: 200px;
+}
+.prompt-textarea:focus { border-color: var(--hair-strong); }
+.prompt-variables {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.var-chips {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.var-chip {
+  appearance: none;
+  background: var(--panel-2);
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: 500 10.5px/1 var(--f-mono);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.var-chip:hover { background: var(--acc-soft); border-color: var(--acc-line); color: var(--acc); }
+.prompt-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  font: 500 10.5px/1 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-3);
+  padding-top: 6px;
+  border-top: 1px solid var(--hair);
+}
+
 /* ─── Crawler ──────────────────────────────────── */
 .crawler-grid {
   display: grid;

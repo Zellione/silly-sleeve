@@ -493,6 +493,10 @@ const EditorScreen: React.FC = () => {
       setActiveChar(ch);
 
       for (const f of FIELDS) {
+        if (fields[f.id]?.locked) {
+          patchField(f.id, { rolling: false });
+          continue;
+        }
         const val = fieldStateFromChar(ch, FIELDS.find(x => x.id === f.id)!);
         setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], value: val.value, dirty: false, rolling: false, history: prev[f.id]?.history ? prev[f.id].history + 1 : 2 } }));
       }

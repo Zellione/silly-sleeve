@@ -26,6 +26,10 @@ export function GenerateCharacterBulk(arg1) {
   return window['go']['main']['App']['GenerateCharacterBulk'](arg1);
 }
 
+export function GenerateField(arg1, arg2) {
+  return window['go']['main']['App']['GenerateField'](arg1, arg2);
+}
+
 export function GetActiveCharacter() {
   return window['go']['main']['App']['GetActiveCharacter']();
 }

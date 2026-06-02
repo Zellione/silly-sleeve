@@ -9,6 +9,7 @@ import {
 import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
   SetActiveCharacter, GetCachedCrawl, CountTokens, GenerateCharacterBulk,
+  GenerateField,
   PickSaveFolder, SaveProjectTo,
 } from '../../wailsjs/go/main/App';
 import { compose, crawler } from '../../wailsjs/go/models';
@@ -163,14 +164,14 @@ const FieldCard: React.FC<{
   tokenCount: number;
   onChange: (v: any) => void;
   onPatch: (p: Partial<FieldState>) => void;
-}> = ({ field, idx, st, tokenCount, onChange, onPatch }) => {
+  onReroll: () => void;
+}> = ({ field, idx, st, tokenCount, onChange, onPatch, onReroll }) => {
   if (!st) return null;
   const displayCount = wordCountLabel(st.value, field.type);
 
   const startReroll = () => {
     if (st.locked) return;
-    onPatch({ rolling: true });
-    setTimeout(() => onPatch({ rolling: false, history: st.history + 1, showPrompt: false, prompt: '' }), 1100);
+    onReroll();
   };
 
   return (
@@ -487,6 +488,39 @@ const EditorScreen: React.FC = () => {
     }
   }, [activeChar, fields, patchField, toast, refreshCharacters]);
 
+  const handleFieldReroll = useCallback(async (fieldID: string) => {
+    const st = fields[fieldID];
+    if (!st || !activeChar) return;
+    const customPrompt = st.prompt || '';
+
+    patchField(fieldID, { rolling: true });
+
+    try {
+      const ch = await GenerateField(fieldID, customPrompt);
+      await refreshCharacters();
+      setActiveChar(ch);
+      const spec = FIELDS.find(x => x.id === fieldID);
+      if (spec) {
+        const val = fieldStateFromChar(ch, spec);
+        patchField(fieldID, {
+          value: val.value,
+          rolling: false,
+          dirty: false,
+          history: (st.history || 1) + 1,
+          showPrompt: false,
+          prompt: '',
+        });
+      } else {
+        patchField(fieldID, { rolling: false });
+      }
+      const label = spec?.label || fieldID;
+      toast({ kind: 'ok', title: `${label} rerolled`, body: 'Field updated from LLM.' });
+    } catch (e: any) {
+      patchField(fieldID, { rolling: false });
+      toast({ kind: 'bad', title: 'Reroll failed', body: e?.message || 'Could not reach the LLM endpoint.' });
+    }
+  }, [fields, activeChar, patchField, toast, refreshCharacters]);
+
   const isComposing = FIELDS.some(f => fields[f.id]?.rolling);
 
   if (!activeChar || Object.keys(fields).length === 0) {
@@ -589,6 +623,7 @@ const EditorScreen: React.FC = () => {
                 tokenCount={tokenCache[f.id] ?? 0}
                 onChange={v => setFieldValue(f.id, v)}
                 onPatch={p => patchField(f.id, p)}
+                onReroll={() => handleFieldReroll(f.id)}
               />
             ))}
             <div className="row" style={{ justifyContent: 'space-between', padding: '12px 4px', color: 'var(--ink-3)' }}>

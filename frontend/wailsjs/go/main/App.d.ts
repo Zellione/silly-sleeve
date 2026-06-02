@@ -19,6 +19,8 @@ export function ExportCharacter(arg1:number,arg2:string):Promise<string>;
 
 export function GenerateCharacterBulk(arg1:Array<string>):Promise<compose.Character>;
 
+export function GenerateField(arg1:string,arg2:string):Promise<compose.Character>;
+
 export function GetActiveCharacter():Promise<compose.Character>;
 
 export function GetCachedCrawl():Promise<crawler.CrawlResult>;

@@ -287,6 +287,58 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	return ch
 }
 
+// GenerateField sends a per-field prompt to the LLM for a single character field.
+func (a *App) GenerateField(fieldID string, customPrompt string) compose.Character {
+	a.mu.Lock()
+	crawl := a.cachedCrawl
+	existing := compose.Character{}
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			existing = c
+			break
+		}
+	}
+	def := a.defaultEndpoint()
+	templates := a.settings.PromptTemplates
+	if len(templates.FieldPrompts) == 0 {
+		templates = prompts.Defaults()
+	}
+	a.mu.Unlock()
+
+	if crawl == nil {
+		return existing
+	}
+
+	ep := llm.LLMEndpoint{
+		ID:           def.ID,
+		Name:         def.Name,
+		URL:          def.URL,
+		Model:        def.Model,
+		Key:          def.Key,
+		ContextSize:  def.ContextSize,
+		Temperature:  def.Temperature,
+		SystemPrompt: def.SystemPrompt,
+	}
+
+	ch, err := compose.GenerateField(fieldID, *crawl, ep, customPrompt, existing, templates)
+	if err != nil {
+		fmt.Println("generate field error:", err)
+		return existing
+	}
+
+	a.mu.Lock()
+	for i, c := range a.characters {
+		if c.ID == a.activeCharID {
+			ch.ID = c.ID
+			a.characters[i] = ch
+			break
+		}
+	}
+	a.mu.Unlock()
+
+	return ch
+}
+
 func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	for _, ep := range a.settings.Endpoints {
 		if ep.IsDefault {

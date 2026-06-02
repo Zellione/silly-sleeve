@@ -39,6 +39,7 @@ const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
 const mockGenerateCharacterBulk = vi.fn();
+const mockGenerateField = vi.fn();
 const mockPickSaveFolder = vi.fn();
 const mockSaveProjectTo = vi.fn();
 
@@ -51,6 +52,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
   GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
+  GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
   PickSaveFolder: () => mockPickSaveFolder(),
   SaveProjectTo: (p: any) => mockSaveProjectTo(p),
 }));
@@ -390,6 +392,29 @@ describe('EditorScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Compose failed')).toBeInTheDocument();
+    });
+  });
+
+  it('calls GenerateField for per-field reroll', async () => {
+    mockGenerateField.mockResolvedValue({
+      id: 1, name: 'Test', epithet: '', tags: [], appearance: 'new look',
+      personality: 'friendly', backstory: '', abilities: '', relationships: '',
+      quotes: [], stats: [], dirty: false,
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<EditorScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Re-roll all')).toBeInTheDocument();
+    });
+
+    const rerollBtns = screen.getAllByTitle('Re-roll this field');
+    if (rerollBtns.length > 0) {
+      await user.click(rerollBtns[0]);
+    }
+
+    await waitFor(() => {
+      expect(mockGenerateField).toHaveBeenCalled();
     });
   });
 });

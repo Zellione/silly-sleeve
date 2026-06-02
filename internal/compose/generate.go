@@ -7,6 +7,7 @@ import (
 
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/prompts"
 )
 
 type generateResponse struct {
@@ -142,4 +143,163 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// fieldSingleResponse is used to unmarshal a single-field JSON response.
+type fieldSingleResponse map[string]chan any
+
+// GenerateField sends a per-field prompt to the LLM and returns the
+// character with that field updated. customPrompt is appended to the
+// field-specific instruction. templates provides the system prompt.
+func GenerateField(
+	fieldID string,
+	result crawler.CrawlResult,
+	ep llm.LLMEndpoint,
+	customPrompt string,
+	existing Character,
+	templates prompts.TemplateSet,
+) (Character, error) {
+	fieldTemplate := templates.FieldPrompts[fieldID]
+	if fieldTemplate == "" {
+		return existing, fmt.Errorf("no template for field %s", fieldID)
+	}
+
+	vars := prompts.BuildVars(result.Title, result.URL, buildCrawlContent(result))
+	userPrompt := prompts.Substitute(fieldTemplate, vars)
+
+	if customPrompt != "" {
+		userPrompt += "\n\nAdditional instructions: " + customPrompt
+	}
+
+	sysPrompt := templates.SystemPrompt
+	if sysPrompt == "" {
+		sysPrompt = systemPrompt
+	}
+
+	content, err := llm.Complete(ep, sysPrompt, userPrompt)
+	if err != nil {
+		return existing, fmt.Errorf("llm complete: %w", err)
+	}
+
+	content = cleanResponse(content)
+
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(content), &raw); err != nil {
+		return existing, fmt.Errorf("parse field response: %w (raw: %s)", err, truncate(content, 200))
+	}
+
+	ch := existing
+	applyField(&ch, fieldID, raw[fieldID])
+	ch.Dirty = true
+
+	return ch, nil
+}
+
+// buildCrawlContent renders the crawl result as a flat string for template substitution.
+func buildCrawlContent(result crawler.CrawlResult) string {
+	var sb strings.Builder
+	sb.WriteString("Wiki page title: ")
+	sb.WriteString(result.Title)
+	sb.WriteString("\n\n")
+
+	if len(result.Infobox) > 0 {
+		sb.WriteString("Infobox:\n")
+		for _, entry := range result.Infobox {
+			if entry.Key != "" {
+				sb.WriteString("- ")
+				sb.WriteString(entry.Key)
+				sb.WriteString(": ")
+				sb.WriteString(entry.Value)
+				sb.WriteString("\n")
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("Content:\n")
+	for _, section := range result.Sections {
+		if section.Heading != "" {
+			sb.WriteString("\n## ")
+			sb.WriteString(section.Heading)
+			sb.WriteString("\n")
+		}
+		if section.Body != "" {
+			sb.WriteString(section.Body)
+			sb.WriteString("\n\n")
+		}
+	}
+
+	return sb.String()
+}
+
+// applyField sets a single field on the character from the LLM response value.
+func applyField(ch *Character, fieldID string, value any) {
+	if value == nil {
+		return
+	}
+
+	switch fieldID {
+	case "name":
+		if s, ok := value.(string); ok && s != "" {
+			ch.Name = s
+		}
+	case "epithet":
+		if s, ok := value.(string); ok {
+			ch.Epithet = s
+		}
+	case "tags":
+		if arr, ok := value.([]any); ok && len(arr) > 0 {
+			tags := make([]string, 0, len(arr))
+			for _, v := range arr {
+				if s, ok := v.(string); ok {
+					tags = append(tags, s)
+				}
+			}
+			ch.Tags = tags
+		}
+	case "appearance":
+		if s, ok := value.(string); ok && s != "" {
+			ch.Appearance = s
+		}
+	case "personality":
+		if s, ok := value.(string); ok && s != "" {
+			ch.Personality = s
+		}
+	case "backstory":
+		if s, ok := value.(string); ok && s != "" {
+			ch.Backstory = s
+		}
+	case "abilities":
+		if s, ok := value.(string); ok && s != "" {
+			ch.Abilities = s
+		}
+	case "relationships":
+		if s, ok := value.(string); ok && s != "" {
+			ch.Relationships = s
+		}
+	case "quotes":
+		if arr, ok := value.([]any); ok && len(arr) > 0 {
+			quotes := make([]string, 0, len(arr))
+			for _, v := range arr {
+				if s, ok := v.(string); ok {
+					quotes = append(quotes, s)
+				}
+			}
+			ch.Quotes = quotes
+		}
+	case "stats":
+		if arr, ok := value.([]any); ok && len(arr) > 0 {
+			stats := make([]StatKV, 0, len(arr))
+			for _, v := range arr {
+				pair, ok := v.([]any)
+				if !ok || len(pair) < 2 {
+					continue
+				}
+				k, _ := pair[0].(string)
+				val, _ := pair[1].(string)
+				stats = append(stats, StatKV{Key: k, Value: val})
+			}
+			ch.Stats = stats
+		}
+	}
 }

@@ -10,7 +10,7 @@ import {
 import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
   SetActiveCharacter, GetCachedCrawl, CountTokens,
-  GenerateField,
+  GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
 import { compose, crawler } from '../../wailsjs/go/models';
@@ -480,44 +480,29 @@ const EditorScreen: React.FC = () => {
   const handleCompose = useCallback(async () => {
     if (!activeChar) return;
     const locked = FIELDS.filter(f => fields[f.id]?.locked).map(f => f.id);
-    const unlocked = FIELDS.filter(f => !fields[f.id]?.locked);
 
-    for (const f of unlocked) {
-      patchField(f.id, { rolling: true });
+    for (const f of FIELDS) {
+      if (!fields[f.id]?.locked) {
+        patchField(f.id, { rolling: true });
+      }
     }
 
-    let generatedCount = 0;
-    const delayMs = 300;
+    try {
+      const ch = await GenerateCharacterBulk(locked);
+      await refreshCharacters();
+      setActiveChar(ch);
 
-    for (const f of unlocked) {
-      try {
-        const customPrompt = fields[f.id]?.prompt || '';
-        const ch = await GenerateField(f.id, customPrompt);
-        await refreshCharacters();
-        setActiveChar(ch);
-        const spec = FIELDS.find(x => x.id === f.id);
-        if (spec) {
-          const val = fieldStateFromChar(ch, spec);
-          setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], value: val.value, dirty: false, rolling: false, history: (prev[f.id]?.history || 1) + 1 } }));
-        } else {
-          patchField(f.id, { rolling: false });
-        }
-        generatedCount++;
-      } catch {
+      for (const f of FIELDS) {
+        const val = fieldStateFromChar(ch, FIELDS.find(x => x.id === f.id)!);
+        setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], value: val.value, dirty: false, rolling: false, history: prev[f.id]?.history ? prev[f.id].history + 1 : 2 } }));
+      }
+      toast({ kind: 'ok', title: 'Composed', body: `"${ch.name}" generated from ${locked.length > 0 ? (FIELDS.length - locked.length) + ' of ' + FIELDS.length : 'all'} fields.` });
+    } catch (e: any) {
+      for (const f of FIELDS) {
         patchField(f.id, { rolling: false });
       }
-
-      // Stagger delay between calls to avoid overwhelming local LLM
-      if (unlocked.indexOf(f) < unlocked.length - 1) {
-        await new Promise(r => setTimeout(r, delayMs));
-      }
+      toast({ kind: 'bad', title: 'Compose failed', body: e?.message || 'Could not reach the LLM endpoint.' });
     }
-
-    toast({
-      kind: generatedCount > 0 ? 'ok' : 'bad',
-      title: generatedCount > 0 ? 'Re-roll complete' : 'Re-roll failed',
-      body: `${generatedCount} of ${unlocked.length} fields generated${locked.length > 0 ? ` (${locked.length} locked)` : ''}.`,
-    });
   }, [activeChar, fields, patchField, toast, refreshCharacters]);
 
   const handleFieldReroll = useCallback(async (fieldID: string) => {

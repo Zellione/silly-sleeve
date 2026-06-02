@@ -39,6 +39,7 @@ const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
 const mockGenerateField = vi.fn();
+const mockGenerateCharacterBulk = vi.fn();
 const mockPickSaveBundle = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 const mockGetSettings = vi.fn();
@@ -52,6 +53,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
   GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
+  GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
   PickSaveBundle: () => mockPickSaveBundle(),
   SaveProjectBundle: (p: any) => mockSaveProjectBundle(p),
   GetSettings: () => mockGetSettings(),
@@ -70,6 +72,7 @@ describe('EditorScreen', () => {
     mockDeleteCharacter.mockResolvedValue(undefined);
     mockSetActiveCharacter.mockResolvedValue(undefined);
     mockGenerateField.mockResolvedValue(mockCharacter);
+    mockGenerateCharacterBulk.mockResolvedValue(mockCharacter);
     mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'off' });
   });
 
@@ -376,12 +379,12 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Re-roll all'));
 
     await waitFor(() => {
-      expect(mockGenerateField).toHaveBeenCalled();
+      expect(mockGenerateCharacterBulk).toHaveBeenCalled();
     });
   });
 
   it('shows compose error toast on failure', async () => {
-    mockGenerateField.mockRejectedValue(new Error('compose error'));
+    mockGenerateCharacterBulk.mockRejectedValue(new Error('compose error'));
     const user = userEvent.setup();
     renderWithProviders(<EditorScreen />);
 
@@ -392,8 +395,8 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Re-roll all'));
 
     await waitFor(() => {
-      expect(screen.getByText('Re-roll failed')).toBeInTheDocument();
-    }, { timeout: 10000 });
+      expect(screen.getByText('Compose failed')).toBeInTheDocument();
+    });
   });
 
   it('calls GenerateField for per-field reroll', async () => {

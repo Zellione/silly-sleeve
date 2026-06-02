@@ -182,8 +182,8 @@ func GenerateField(
 
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(content), &raw); err != nil {
-		// Fallback: if the LLM returned plain text instead of a JSON object,
-		// use the raw text as the field value for text-type fields.
+		// Fallback: LLM returned plain text instead of a JSON object.
+		// Use the raw text as the field value for text-type fields.
 		if isTextField(fieldID) && content != "" {
 			ch := existing
 			applyField(&ch, fieldID, content)
@@ -195,13 +195,25 @@ func GenerateField(
 
 	ch := existing
 	val := raw[fieldID]
-	// If the field value is nil or empty string, try reading the raw content directly
-	// as a fallback (some models return the content without proper JSON wrapping).
-	if val == nil || (isTextField(fieldID) && isEmptyString(val)) {
-		if isTextField(fieldID) && content != "" {
+	if val == nil {
+		val = findCaseInsensitive(raw, fieldID)
+	}
+	// If the resolved value is still nil, empty string, or an empty array,
+	// fall back to using the raw content for text-type fields.
+	if isTextField(fieldID) && (val == nil || isEmptyString(val) || isEmptyArray(val)) {
+		if content != "" {
 			applyField(&ch, fieldID, content)
 			ch.Dirty = true
 			return ch, nil
+		}
+	}
+	// Convert array values to a JSON string for text fields (LLM returned an array).
+	if isTextField(fieldID) {
+		if arr, ok := val.([]any); ok {
+			b, err := json.Marshal(arr)
+			if err == nil {
+				val = string(b)
+			}
 		}
 	}
 	applyField(&ch, fieldID, val)
@@ -257,6 +269,24 @@ func isTextField(fieldID string) bool {
 func isEmptyString(v any) bool {
 	s, ok := v.(string)
 	return ok && s == ""
+}
+
+// isEmptyArray returns true if the value is a JSON array with no elements.
+func isEmptyArray(v any) bool {
+	arr, ok := v.([]any)
+	return ok && len(arr) == 0
+}
+
+// findCaseInsensitive looks for a key in the map ignoring case differences.
+// Some LLMs return capitalized keys like "Relationships" instead of "relationships".
+func findCaseInsensitive(raw map[string]any, key string) any {
+	lower := strings.ToLower(key)
+	for k, v := range raw {
+		if strings.ToLower(k) == lower {
+			return v
+		}
+	}
+	return nil
 }
 
 // applyField sets a single field on the character from the LLM response value.

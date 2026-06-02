@@ -22,6 +22,10 @@ export function ExportCharacter(arg1, arg2) {
   return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
 }
 
+export function ExportLorebook(arg1) {
+  return window['go']['main']['App']['ExportLorebook'](arg1);
+}
+
 export function GenerateCharacterBulk(arg1) {
   return window['go']['main']['App']['GenerateCharacterBulk'](arg1);
 }
@@ -40,6 +44,10 @@ export function GetCachedCrawl() {
 
 export function GetCharacters() {
   return window['go']['main']['App']['GetCharacters']();
+}
+
+export function GetLorebook() {
+  return window['go']['main']['App']['GetLorebook']();
 }
 
 export function GetPromptTemplates() {
@@ -68,6 +76,10 @@ export function PickOpenBundle() {
 
 export function PickSaveBundle() {
   return window['go']['main']['App']['PickSaveBundle']();
+}
+
+export function SaveLorebook(arg1) {
+  return window['go']['main']['App']['SaveLorebook'](arg1);
 }
 
 export function SaveProjectBundle(arg1) {

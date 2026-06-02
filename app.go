@@ -16,18 +16,20 @@ import (
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 	"silly-sleeve/internal/bundle"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/settings"
 )
 
 // App struct
 type App struct {
-	ctx          context.Context
-	settings     settings.Settings
-	mu           sync.Mutex
-	cachedCrawl  *crawler.CrawlResult
-	characters   []compose.Character
-	activeCharID int
-	projectDir   string
+	ctx             context.Context
+	settings        settings.Settings
+	mu              sync.Mutex
+	cachedCrawl     *crawler.CrawlResult
+	characters      []compose.Character
+	activeCharID    int
+	projectDir      string
+	lorebookEntries []lorebook.Entry
 }
 
 // NewApp creates a new App application struct
@@ -384,6 +386,8 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	if len(templates.FieldPrompts) == 0 {
 		templates = prompts.Defaults()
 	}
+	entries := make([]lorebook.Entry, len(a.lorebookEntries))
+	copy(entries, a.lorebookEntries)
 	a.mu.Unlock()
 
 	projectName := "Untitled Project"
@@ -404,6 +408,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	b := bundle.Bundle{
 		Manifest:   m,
 		Characters:  chars,
+		Lorebook:   entries,
 		Prompts:    templates,
 		CrawlCache: cachedCrawl,
 	}
@@ -447,6 +452,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.characters = b.Characters
 	a.activeCharID = b.Manifest.ActiveCharID
 	a.projectDir = filePath
+	a.lorebookEntries = b.Lorebook
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}
@@ -503,6 +509,34 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 	filePath, writeErr := saveCharacterAsST(*found, folderPath)
 	if writeErr != nil {
 		return "", writeErr
+	}
+	return filePath, nil
+}
+
+// GetLorebook returns all lorebook entries.
+func (a *App) GetLorebook() []lorebook.Entry {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.lorebookEntries
+}
+
+// SaveLorebook replaces all lorebook entries.
+func (a *App) SaveLorebook(entries []lorebook.Entry) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.lorebookEntries = entries
+}
+
+// ExportLorebook writes lorebook entries to a world_info.json file.
+func (a *App) ExportLorebook(folderPath string) (string, error) {
+	a.mu.Lock()
+	entries := make([]lorebook.Entry, len(a.lorebookEntries))
+	copy(entries, a.lorebookEntries)
+	a.mu.Unlock()
+
+	filePath := folderPath + "/world_info.json"
+	if err := lorebook.ExportWorldInfo(entries, filePath); err != nil {
+		return "", err
 	}
 	return filePath, nil
 }

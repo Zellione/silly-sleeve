@@ -78,7 +78,7 @@ const DashboardScreen: React.FC = () => {
 export { DashboardScreen };
 export { CrawlerScreen };
 export { default as EditorScreen } from './EditorScreen';
-export const LorebookScreen: React.FC = () => <Placeholder title="Author lorebook" />;
+export { default as LorebookScreen } from './LorebookScreen';
 export const ProjectImageScreen: React.FC = () => <Placeholder title="Project image" />;
 export const PortraitScreen: React.FC = () => <Placeholder title="Portrait" />;
 export const PreviewScreen: React.FC = () => <Placeholder title="Preview character card" />;

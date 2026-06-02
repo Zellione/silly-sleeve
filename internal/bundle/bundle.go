@@ -9,14 +9,16 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 )
 
 // Bundle holds all data to be serialized into a .slv file.
 type Bundle struct {
-	Manifest  project.ProjectManifest `json:"manifest"`
+	Manifest   project.ProjectManifest `json:"manifest"`
 	Characters []compose.Character     `json:"characters"`
+	Lorebook   []lorebook.Entry        `json:"lorebook"`
 	Prompts    prompts.TemplateSet     `json:"prompts"`
 	CrawlCache *crawler.CrawlResult    `json:"crawlCache"`
 }
@@ -50,6 +52,10 @@ func WriteBundle(filePath string, b Bundle) error {
 		return err
 	}
 
+	if err := writeJSON(zw, "lorebook.json", b.Lorebook); err != nil {
+		return err
+	}
+
 	if b.CrawlCache != nil {
 		if err := writeJSON(zw, "crawl_cache.json", b.CrawlCache); err != nil {
 			return err
@@ -80,6 +86,10 @@ func ReadBundle(filePath string) (Bundle, error) {
 		case "prompts.json":
 			if err := readJSON(f, &b.Prompts); err != nil {
 				return Bundle{}, fmt.Errorf("read prompts: %w", err)
+			}
+		case "lorebook.json":
+			if err := readJSON(f, &b.Lorebook); err != nil {
+				return Bundle{}, fmt.Errorf("read lorebook: %w", err)
 			}
 		case "crawl_cache.json":
 			var cc crawler.CrawlResult

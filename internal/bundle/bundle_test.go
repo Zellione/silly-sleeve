@@ -10,6 +10,7 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 )
@@ -30,6 +31,10 @@ func TestWriteReadRoundtrip(t *testing.T) {
 			{ID: 2, Name: "Kethric", Tags: []string{}, Quotes: []string{}, Stats: []compose.StatKV{}},
 		},
 		Prompts: prompts.Defaults(),
+		Lorebook: []lorebook.Entry{
+			{UID: 0, Comment: "Faction info", Key: []string{"Harpers"}, Content: "secret network", Order: 100},
+			{UID: 1, Comment: "Location", Key: []string{"Elfsong"}, Content: "tavern", Order: 80},
+		},
 		CrawlCache: &crawler.CrawlResult{
 			Title:  "Test Character",
 			URL:    "https://example.com/wiki/Test",
@@ -58,6 +63,11 @@ func TestWriteReadRoundtrip(t *testing.T) {
 
 	assert.NotEmpty(t, loaded.Prompts.SystemPrompt)
 	assert.Len(t, loaded.Prompts.FieldPrompts, len(prompts.FieldIDs()))
+
+	assert.Len(t, loaded.Lorebook, 2)
+	assert.Equal(t, "Faction info", loaded.Lorebook[0].Comment)
+	assert.Equal(t, []string{"Harpers"}, loaded.Lorebook[0].Key)
+	assert.Equal(t, 100, loaded.Lorebook[0].Order)
 
 	require.NotNil(t, loaded.CrawlCache)
 	assert.Equal(t, "Test Character", loaded.CrawlCache.Title)

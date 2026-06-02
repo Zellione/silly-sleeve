@@ -15,6 +15,9 @@ const mockPickExportFolder = vi.fn();
 const mockExportCharacter = vi.fn();
 const mockPickOpenBundle = vi.fn();
 const mockOpenProjectBundle = vi.fn();
+const mockGetLorebook = vi.fn();
+const mockSaveLorebook = vi.fn();
+const mockExportLorebook = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -31,13 +34,15 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   ExportCharacter: (...args: unknown[]) => mockExportCharacter(...args),
   PickOpenBundle: () => mockPickOpenBundle(),
   OpenProjectBundle: (...args: unknown[]) => mockOpenProjectBundle(...args),
+  GetLorebook: () => mockGetLorebook(),
+  SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
+  ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
 
 const placeholders = [
-  { name: 'LorebookScreen', component: LorebookScreen, title: 'Author lorebook' },
   { name: 'ProjectImageScreen', component: ProjectImageScreen, title: 'Project image' },
   { name: 'PortraitScreen', component: PortraitScreen, title: 'Portrait' },
   { name: 'PreviewScreen', component: PreviewScreen, title: 'Preview character card' },
@@ -51,6 +56,8 @@ describe('screens/index', () => {
     mockPickExportFolder.mockResolvedValue('');
     mockPickOpenBundle.mockResolvedValue('');
     mockOpenProjectBundle.mockResolvedValue({ name: 'Test', version: '1', createdAt: '', updatedAt: '', sourceUrl: '', crawlTitle: '', activeCharId: 1 });
+    mockGetLorebook.mockResolvedValue([]);
+    mockSaveLorebook.mockResolvedValue(undefined);
   });
 
   describe('DashboardScreen', () => {
@@ -170,6 +177,27 @@ describe('screens/index', () => {
 
     it('is a function component', () => {
       expect(typeof DashboardScreen).toBe('function');
+    });
+  });
+
+  describe('LorebookScreen', () => {
+    it('renders after loading', async () => {
+      const { container } = renderWithToast(<LorebookScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('Lorebook');
+        expect(container.textContent).toContain('New entry');
+      });
+    });
+
+    it('shows empty state', async () => {
+      const { container } = renderWithToast(<LorebookScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('No entries yet');
+      });
+    });
+
+    it('is a function component', () => {
+      expect(typeof LorebookScreen).toBe('function');
     });
   });
 

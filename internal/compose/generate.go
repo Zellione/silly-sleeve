@@ -192,8 +192,8 @@ func GenerateField(
 
 // resolveFieldValue parses the LLM response for a single field and extracts
 // the field value. It handles JSON objects, raw text fallback, case-insensitive
-// key lookups, and array-to-string conversion for text fields.
-func resolveFieldValue(fieldID string, content string) (any, error) {
+// key lookups, and delegates text-field scenarios to resolveTextFieldValue.
+func resolveFieldValue(fieldID, content string) (any, error) {
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(content), &raw); err != nil {
 		if isTextField(fieldID) {
@@ -207,23 +207,30 @@ func resolveFieldValue(fieldID string, content string) (any, error) {
 		val = findCaseInsensitive(raw, fieldID)
 	}
 
-	if isTextField(fieldID) && (val == nil || isEmptyString(val) || isEmptyArray(val)) {
-		if content != "" {
-			return content, nil
-		}
-	}
-
 	if isTextField(fieldID) {
-		if arr, ok := val.([]any); ok {
-			b, err := json.Marshal(arr)
-			if err == nil {
-				val = string(b)
-			}
-		}
+		return resolveTextFieldValue(content, val)
 	}
 
 	if val == nil {
 		return nil, nil
+	}
+	return val, nil
+}
+
+// resolveTextFieldValue handles text-field-specific resolution: empty-value
+// fallback, array-to-string conversion, and nil checks.
+func resolveTextFieldValue(content string, val any) (any, error) {
+	if val == nil || isEmptyString(val) || isEmptyArray(val) {
+		if content != "" {
+			return content, nil
+		}
+		return nil, nil
+	}
+	if arr, ok := val.([]any); ok {
+		b, err := json.Marshal(arr)
+		if err == nil {
+			return string(b), nil
+		}
 	}
 	return val, nil
 }

@@ -44,13 +44,12 @@ const TokenInput: React.FC<{
       {value.map((k, i) => (
         <span key={k + String(i)} className={'lb-key' + (accentFirst && i === 0 ? ' primary' : '')}>
           {k}
-          <span
+          <button
+            type="button"
             className="x"
-            role="button"
-            tabIndex={0}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(value.filter((_, j) => j !== i)); } }}
             onClick={() => onChange(value.filter((_, j) => j !== i))}
-          >×</span>
+          >×</button>
         </span>
       ))}
       <input
@@ -118,23 +117,17 @@ const LbDetail: React.FC<{
         <div className="lb-sect">
           <div className="lb-sect-h"><h4>Triggers</h4><hr/></div>
           <div className="lb-row">
-            <span>Primary keys
-              <small>Any match activates this entry.</small>
-            </span>
+            <span>Primary keys<small>Any match activates this entry.</small></span>
             <TokenInput value={entry.key || []} onChange={v => set('key', v)} accentFirst
                         placeholder='e.g. "Harpers", "silver harp"…'/>
           </div>
           <div className="lb-row">
-            <span>Secondary keys
-              <small>Combined with primary via the logic below.</small>
-            </span>
+            <span>Secondary keys<small>Combined with primary via the logic below.</small></span>
             <TokenInput value={entry.keysecondary || []} onChange={v => set('keysecondary', v)}
                         placeholder="Optional…"/>
           </div>
           <div className="lb-row">
-            <span>Selective logic
-              <small>How primary &amp; secondary keys combine.</small>
-            </span>
+            <span>Selective logic<small>How primary &amp; secondary keys combine.</small></span>
             <div className="lb-grid-2">
               <div className="lb-seg">
                 {SEL_LOGIC.map(o => (
@@ -181,9 +174,7 @@ const LbDetail: React.FC<{
           </div>
           {entry.position === 4 && (
             <div className="lb-row">
-              <span>Depth
-                <small>Injected N messages back into chat history.</small>
-              </span>
+              <span>Depth<small>Injected N messages back into chat history.</small></span>
               <div className="lb-mini" style={{maxWidth:200}}>
                 <input type="number" min={0} max={64} value={entry.depth || 4}
                        onChange={e => set('depth', +e.target.value)}/>
@@ -213,9 +204,7 @@ const LbDetail: React.FC<{
             </div>
           </div>
           <div className="lb-row">
-            <span>Probability
-              <small>Chance the entry fires when keys match.</small>
-            </span>
+            <span>Probability<small>Chance the entry fires when keys match.</small></span>
             <div className="col" style={{gap:8}}>
               <div className="prob-bar">
                 <input type="range" min={0} max={100} value={entry.probability || 100}

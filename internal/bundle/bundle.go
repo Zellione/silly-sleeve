@@ -14,6 +14,8 @@ import (
 	"silly-sleeve/internal/prompts"
 )
 
+const manifestFile = "manifest.json"
+
 // Bundle holds all data to be serialized into a .slv file.
 type Bundle struct {
 	Manifest   project.ProjectManifest `json:"manifest"`
@@ -34,7 +36,7 @@ func WriteBundle(filePath string, b Bundle) error {
 	zw := zip.NewWriter(f)
 	defer zw.Close()
 
-	if err := writeJSON(zw, "manifest.json", b.Manifest); err != nil {
+	if err := writeJSON(zw, manifestFile, b.Manifest); err != nil {
 		return err
 	}
 
@@ -75,7 +77,7 @@ func ReadBundle(filePath string) (Bundle, error) {
 
 	b := Bundle{}
 	fileReaders := map[string]func(*zip.File) error{
-		"manifest.json":    func(f *zip.File) error { return readJSON(f, &b.Manifest) },
+		manifestFile:    func(f *zip.File) error { return readJSON(f, &b.Manifest) },
 		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts) },
 		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
 		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, &b) },
@@ -88,7 +90,7 @@ func ReadBundle(filePath string) (Bundle, error) {
 			if err := reader(f); err != nil {
 				return Bundle{}, fmt.Errorf("read %s: %w", f.Name, err)
 			}
-			if f.Name == "manifest.json" {
+			if f.Name == manifestFile {
 				foundManifest = true
 			}
 		} else if isCharacterFile(f.Name) {

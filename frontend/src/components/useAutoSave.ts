@@ -33,7 +33,7 @@ export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSave
     if (!enabled || initedRef.current) return;
 
     const s = settingsRef.current;
-    if (!s || !s.autoSaveMode || s.autoSaveMode === 'off' || s.autoSaveMode !== 'timed') return;
+    if (s?.autoSaveMode !== 'timed') return;
 
     const interval = (s.autoSaveInterval || 30) * 1000;
     timerRef.current = setInterval(() => {
@@ -50,7 +50,7 @@ export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSave
 
   const handleChange = useCallback(() => {
     const s = settingsRef.current;
-    if (!s || !s.autoSaveMode || s.autoSaveMode !== 'onChange') return;
+    if (s?.autoSaveMode !== 'onChange') return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       const p = pathRef.current;
@@ -60,7 +60,7 @@ export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSave
 
   const handleBlur = useCallback(() => {
     const s = settingsRef.current;
-    if (!s || !s.autoSaveMode || s.autoSaveMode !== 'onBlur') return;
+    if (s?.autoSaveMode !== 'onBlur') return;
     const p = pathRef.current;
     if (p) onSaveRef.current(p);
   }, []);

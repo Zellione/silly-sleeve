@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"archive/zip"
 	"os"
 	"path/filepath"
 	"testing"
@@ -147,4 +148,279 @@ func TestIsCharacterFile(t *testing.T) {
 	assert.False(t, isCharacterFile("manifest.json"))
 	assert.False(t, isCharacterFile("characters/1.txt"))
 	assert.False(t, isCharacterFile("char/1.json"))
+}
+
+func TestWriteBundle_PathIsDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	err := WriteBundle(tmpDir, Bundle{Manifest: project.ProjectManifest{Name: "Test"}, Prompts: prompts.Defaults()})
+	assert.Error(t, err)
+}
+
+func TestReadBundle_NotAZip(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "notazip.slv")
+	require.NoError(t, os.WriteFile(filePath, []byte("hello"), 0o644))
+
+	_, err := ReadBundle(filePath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "open bundle")
+}
+
+func TestReadBundle_CorruptZip(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "corrupt.slv")
+	// Write 4 bytes of zip magic but nothing else
+	require.NoError(t, os.WriteFile(filePath, []byte("PK\x03\x04"), 0o644))
+
+	_, err := ReadBundle(filePath)
+	assert.Error(t, err)
+}
+
+func TestReadBundle_InvalidJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badjson.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name": "Test",`))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+}
+
+func TestReadBundle_InvalidCharacterJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badchar.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name":"Test","activeCharId":1}`))
+	require.NoError(t, err)
+
+	w2, err := zw.Create("characters/1.json")
+	require.NoError(t, err)
+	_, err = w2.Write([]byte(`{invalid`))
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "read character")
+}
+
+func TestReadBundle_InvalidLorebookJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badlore.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name":"Test"}`))
+	require.NoError(t, err)
+
+	w2, err := zw.Create("lorebook.json")
+	require.NoError(t, err)
+	_, err = w2.Write([]byte(`{bad`))
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+}
+
+func TestReadBundle_InvalidCrawlCacheJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badcrawl.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name":"Test"}`))
+	require.NoError(t, err)
+
+	w2, err := zw.Create("crawl_cache.json")
+	require.NoError(t, err)
+	_, err = w2.Write([]byte(`{bad`))
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+}
+
+func TestReadBundle_InvalidPromptsJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badprompts.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name":"Test"}`))
+	require.NoError(t, err)
+
+	w2, err := zw.Create("prompts.json")
+	require.NoError(t, err)
+	_, err = w2.Write([]byte(`{bad`))
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+}
+
+func TestReadBundle_InvalidJSON_UnmarshalTypeError(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badtype.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name": "Test"}`))
+	require.NoError(t, err)
+
+	w2, err := zw.Create("crawl_cache.json")
+	require.NoError(t, err)
+	_, err = w2.Write([]byte(`"not an object"`))
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+}
+
+func TestWriteBundle_UnencodableValue_WriteJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "badenc.slv")
+
+	b := Bundle{
+		Manifest: project.ProjectManifest{Name: "Test"},
+		Characters: []compose.Character{
+			{ID: 1, Name: "Bad", Tags: []string{"tag"}, Quotes: []string{"q"}, Stats: []compose.StatKV{{Key: "k", Value: "v"}}},
+		},
+		Prompts: prompts.Defaults(),
+	}
+	err := WriteBundle(filePath, b)
+	require.NoError(t, err)
+
+	loaded, err := ReadBundle(filePath)
+	require.NoError(t, err)
+	assert.Len(t, loaded.Characters, 1)
+}
+
+func TestWriteBundle_SanitizeCharacterEmptyArrays(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "sanitize.slv")
+	b := Bundle{
+		Manifest: project.ProjectManifest{Name: "Test"},
+		Characters: []compose.Character{
+			{ID: 1, Name: "E", Tags: nil, Quotes: nil, Stats: nil},
+		},
+		Prompts: prompts.Defaults(),
+	}
+	require.NoError(t, WriteBundle(filePath, b))
+
+	loaded, err := ReadBundle(filePath)
+	require.NoError(t, err)
+	assert.Len(t, loaded.Characters, 1)
+	assert.Equal(t, []string{}, loaded.Characters[0].Tags)
+	assert.Equal(t, []string{}, loaded.Characters[0].Quotes)
+	assert.Equal(t, []compose.StatKV{}, loaded.Characters[0].Stats)
+}
+
+func TestWriteBundle_MultipleCharacters(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "multi.slv")
+	b := Bundle{
+		Manifest: project.ProjectManifest{Name: "Multi", ActiveCharID: 2},
+		Characters: []compose.Character{
+			{ID: 1, Name: "Alpha"},
+			{ID: 0, Name: "ZeroID"},
+			{ID: 3, Name: "Gamma"},
+		},
+		Prompts: prompts.Defaults(),
+	}
+	require.NoError(t, WriteBundle(filePath, b))
+
+	loaded, err := ReadBundle(filePath)
+	require.NoError(t, err)
+	assert.Len(t, loaded.Characters, 3)
+	assert.Equal(t, "Gamma", loaded.Characters[2].Name)
+}
+
+func TestReadBundle_FileNotFound(t *testing.T) {
+	_, err := ReadBundle(filepath.Join(t.TempDir(), "nonexistent.slv"))
+	assert.Error(t, err)
+}
+
+func TestReadBundle_EmptyZip(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "empty.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	_, err = ReadBundle(filePath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no manifest.json")
+}
+
+func TestReadBundle_UnknownFileIgnored(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "unknownfile.slv")
+
+	f, err := os.Create(filePath)
+	require.NoError(t, err)
+	zw := zip.NewWriter(f)
+
+	w, err := zw.Create("manifest.json")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(`{"name":"Test"}`))
+	require.NoError(t, err)
+
+	w2, err := zw.Create(".gitkeep")
+	require.NoError(t, err)
+	_, err = w2.Write([]byte(`ignored`))
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
+	require.NoError(t, f.Close())
+
+	b, err := ReadBundle(filePath)
+	require.NoError(t, err)
+	assert.Equal(t, "Test", b.Manifest.Name)
 }

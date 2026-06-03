@@ -44,7 +44,13 @@ const TokenInput: React.FC<{
       {value.map((k, i) => (
         <span key={k + String(i)} className={'lb-key' + (accentFirst && i === 0 ? ' primary' : '')}>
           {k}
-          <span className="x" onClick={() => onChange(value.filter((_, j) => j !== i))}>×</span>
+          <span
+            className="x"
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(value.filter((_, j) => j !== i)); } }}
+            onClick={() => onChange(value.filter((_, j) => j !== i))}
+          >×</span>
         </span>
       ))}
       <input
@@ -112,23 +118,23 @@ const LbDetail: React.FC<{
         <div className="lb-sect">
           <div className="lb-sect-h"><h4>Triggers</h4><hr/></div>
           <div className="lb-row">
-            <label>Primary keys
+            <span>Primary keys
               <small>Any match activates this entry.</small>
-            </label>
+            </span>
             <TokenInput value={entry.key || []} onChange={v => set('key', v)} accentFirst
                         placeholder='e.g. "Harpers", "silver harp"…'/>
           </div>
           <div className="lb-row">
-            <label>Secondary keys
+            <span>Secondary keys
               <small>Combined with primary via the logic below.</small>
-            </label>
+            </span>
             <TokenInput value={entry.keysecondary || []} onChange={v => set('keysecondary', v)}
                         placeholder="Optional…"/>
           </div>
           <div className="lb-row">
-            <label>Selective logic
+            <span>Selective logic
               <small>How primary &amp; secondary keys combine.</small>
-            </label>
+            </span>
             <div className="lb-grid-2">
               <div className="lb-seg">
                 {SEL_LOGIC.map(o => (
@@ -175,9 +181,9 @@ const LbDetail: React.FC<{
           </div>
           {entry.position === 4 && (
             <div className="lb-row">
-              <label>Depth
+              <span>Depth
                 <small>Injected N messages back into chat history.</small>
-              </label>
+              </span>
               <div className="lb-mini" style={{maxWidth:200}}>
                 <input type="number" min={0} max={64} value={entry.depth || 4}
                        onChange={e => set('depth', +e.target.value)}/>
@@ -191,25 +197,25 @@ const LbDetail: React.FC<{
           <div className="lb-sect-h"><h4>Activation</h4><hr/></div>
           <div className="lb-grid-3">
             <div className="lb-mini">
-              <label>Order</label>
+              <span>Order</span>
               <input type="number" value={entry.order || 100} onChange={e => set('order', +e.target.value)}/>
               <span className="help">Higher = inserted first.</span>
             </div>
             <div className="lb-mini">
-              <label>Sticky</label>
+              <span>Sticky</span>
               <input type="number" min={0} value={entry.sticky || 0} onChange={e => set('sticky', +e.target.value)}/>
               <span className="help">Stay active N messages after trigger.</span>
             </div>
             <div className="lb-mini">
-              <label>UID</label>
+              <span>UID</span>
               <input type="number" value={entry.uid || 0} disabled style={{opacity:0.6}}/>
               <span className="help">Auto-assigned on save.</span>
             </div>
           </div>
           <div className="lb-row">
-            <label>Probability
+            <span>Probability
               <small>Chance the entry fires when keys match.</small>
-            </label>
+            </span>
             <div className="col" style={{gap:8}}>
               <div className="prob-bar">
                 <input type="range" min={0} max={100} value={entry.probability || 100}
@@ -258,6 +264,12 @@ const LbDetail: React.FC<{
 };
 
 /* ─── Lorebook screen ───────────────────────────────── */
+
+function positionLabel(e: lorebook.Entry): string {
+  if (e.constant) return 'A';
+  if (e.vectorized) return 'V';
+  return `P${e.position || 0}`;
+}
 
 const LorebookScreen: React.FC = () => {
   const [entries, setEntries] = useState<lorebook.Entry[]>([]);
@@ -324,7 +336,7 @@ const LorebookScreen: React.FC = () => {
     const next = [...entries, fresh];
     setEntries(next);
     SaveLorebook(next).catch(() => {});
-    setSelectedUid(fresh.uid!);
+    setSelectedUid(fresh.uid);
   };
 
   const deleteSelected = () => {
@@ -342,7 +354,7 @@ const LorebookScreen: React.FC = () => {
     const next = [...entries, copy];
     setEntries(next);
     SaveLorebook(next).catch(() => {});
-    setSelectedUid(copy.uid!);
+    setSelectedUid(copy.uid);
   };
 
   const handleExport = useCallback(async () => {
@@ -374,9 +386,7 @@ const LorebookScreen: React.FC = () => {
       <PageHead step={3} subtitle="Build the world around them"
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
         actions={
-          <>
             <button className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
-          </>
         } />
       <div className="ss-page-body scroll">
         <div className="lb-grid">
@@ -400,13 +410,13 @@ const LorebookScreen: React.FC = () => {
                 <button key={e.uid} className="lb-entry"
                         data-on={selectedUid === e.uid ? '1' : '0'}
                         data-disabled={e.disable ? '1' : '0'}
-                        onClick={() => setSelectedUid(e.uid!)}>
+                        onClick={() => setSelectedUid(e.uid)}>
                   <span className="grip"><MoreIcon size={12}/></span>
                   <span className="uid">{String(e.uid || 0).padStart(2, '0')}</span>
                   <div className="body">
                     <b>{e.comment || 'Untitled'}</b>
                     <div className="keys">
-                      {(e.key || []).slice(0, 3).map((k, i) => <span key={i} className="k">{k}</span>)}
+                      {(e.key || []).slice(0, 3).map(k => <span key={k} className="k">{k}</span>)}
                       {(e.key || []).length > 3 && <span className="ko">+{(e.key || []).length - 3}</span>}
                       {(e.key || []).length === 0 && <span className="ko">no keys</span>}
                     </div>
@@ -414,7 +424,7 @@ const LorebookScreen: React.FC = () => {
                   <div className="meta">
                     <span className="ord">{e.order || 100}</span>
                     <span className={'pos' + (e.constant ? ' constant' : '') + (e.vectorized ? ' vec' : '')}>
-                      {e.constant ? 'A' : e.vectorized ? 'V' : `P${e.position || 0}`}
+                      {positionLabel(e)}
                     </span>
                   </div>
                 </button>

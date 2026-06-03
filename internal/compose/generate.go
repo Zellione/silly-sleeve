@@ -178,36 +178,41 @@ func GenerateField(
 		return existing, fmt.Errorf("llm complete: %w", err)
 	}
 
-	content = cleanResponse(content)
-
-	var raw map[string]any
-	if err := json.Unmarshal([]byte(content), &raw); err != nil {
-		// Fallback: LLM returned plain text instead of a JSON object.
-		// Use the raw text as the field value for text-type fields.
-		if isTextField(fieldID) && content != "" {
-			ch := existing
-			applyField(&ch, fieldID, content)
-			ch.Dirty = true
-			return ch, nil
-		}
-		return existing, fmt.Errorf("parse field response: %w (raw: %s)", err, truncate(content, 200))
+	val, err := resolveFieldValue(fieldID, cleanResponse(content))
+	if err != nil {
+		return existing, err
 	}
 
 	ch := existing
+	applyField(&ch, fieldID, val)
+	ch.Dirty = true
+
+	return ch, nil
+}
+
+// resolveFieldValue parses the LLM response for a single field and extracts
+// the field value. It handles JSON objects, raw text fallback, case-insensitive
+// key lookups, and array-to-string conversion for text fields.
+func resolveFieldValue(fieldID string, content string) (any, error) {
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(content), &raw); err != nil {
+		if isTextField(fieldID) {
+			return stripJSONQuotes(content), nil
+		}
+		return nil, fmt.Errorf("parse field response: %w (raw: %s)", err, truncate(content, 200))
+	}
+
 	val := raw[fieldID]
 	if val == nil {
 		val = findCaseInsensitive(raw, fieldID)
 	}
-	// If the resolved value is still nil, empty string, or an empty array,
-	// fall back to using the raw content for text-type fields.
+
 	if isTextField(fieldID) && (val == nil || isEmptyString(val) || isEmptyArray(val)) {
 		if content != "" {
-			applyField(&ch, fieldID, content)
-			ch.Dirty = true
-			return ch, nil
+			return content, nil
 		}
 	}
-	// Convert array values to a JSON string for text fields (LLM returned an array).
+
 	if isTextField(fieldID) {
 		if arr, ok := val.([]any); ok {
 			b, err := json.Marshal(arr)
@@ -216,10 +221,24 @@ func GenerateField(
 			}
 		}
 	}
-	applyField(&ch, fieldID, val)
-	ch.Dirty = true
 
-	return ch, nil
+	if val == nil {
+		return nil, nil
+	}
+	return val, nil
+}
+
+// stripJSONQuotes removes surrounding double-quotes if content is a valid
+// JSON string literal (e.g. `"hello"` → `hello`).
+func stripJSONQuotes(s string) string {
+	if len(s) < 2 || s[0] != '"' {
+		return s
+	}
+	var str string
+	if err := json.Unmarshal([]byte(s), &str); err != nil {
+		return s
+	}
+	return str
 }
 
 // buildCrawlContent renders the crawl result as a flat string for template substitution.
@@ -296,67 +315,82 @@ func applyField(ch *Character, fieldID string, value any) {
 	}
 
 	switch fieldID {
-	case "name":
-		if s, ok := value.(string); ok && s != "" {
-			ch.Name = s
-		}
-	case "epithet":
-		if s, ok := value.(string); ok {
-			ch.Epithet = s
-		}
 	case "tags":
-		if arr, ok := value.([]any); ok && len(arr) > 0 {
-			tags := make([]string, 0, len(arr))
-			for _, v := range arr {
-				if s, ok := v.(string); ok {
-					tags = append(tags, s)
-				}
-			}
-			ch.Tags = tags
-		}
-	case "appearance":
-		if s, ok := value.(string); ok && s != "" {
-			ch.Appearance = s
-		}
-	case "personality":
-		if s, ok := value.(string); ok && s != "" {
-			ch.Personality = s
-		}
-	case "backstory":
-		if s, ok := value.(string); ok && s != "" {
-			ch.Backstory = s
-		}
-	case "abilities":
-		if s, ok := value.(string); ok && s != "" {
-			ch.Abilities = s
-		}
-	case "relationships":
-		if s, ok := value.(string); ok && s != "" {
-			ch.Relationships = s
-		}
+		applyTagsField(ch, value)
 	case "quotes":
-		if arr, ok := value.([]any); ok && len(arr) > 0 {
-			quotes := make([]string, 0, len(arr))
-			for _, v := range arr {
-				if s, ok := v.(string); ok {
-					quotes = append(quotes, s)
-				}
-			}
-			ch.Quotes = quotes
-		}
+		applyQuotesField(ch, value)
 	case "stats":
-		if arr, ok := value.([]any); ok && len(arr) > 0 {
-			stats := make([]StatKV, 0, len(arr))
-			for _, v := range arr {
-				pair, ok := v.([]any)
-				if !ok || len(pair) < 2 {
-					continue
-				}
-				k, _ := pair[0].(string)
-				val, _ := pair[1].(string)
-				stats = append(stats, StatKV{Key: k, Value: val})
-			}
-			ch.Stats = stats
+		applyStatsField(ch, value)
+	default:
+		applyStringField(ch, fieldID, value)
+	}
+}
+
+func applyStringField(ch *Character, fieldID string, value any) {
+	s, ok := value.(string)
+	if !ok || s == "" && fieldID != "epithet" {
+		return
+	}
+	switch fieldID {
+	case "name":
+		ch.Name = s
+	case "epithet":
+		ch.Epithet = s
+	case "appearance":
+		ch.Appearance = s
+	case "personality":
+		ch.Personality = s
+	case "backstory":
+		ch.Backstory = s
+	case "abilities":
+		ch.Abilities = s
+	case "relationships":
+		ch.Relationships = s
+	}
+}
+
+func applyTagsField(ch *Character, value any) {
+	arr, ok := value.([]any)
+	if !ok || len(arr) == 0 {
+		return
+	}
+	tags := make([]string, 0, len(arr))
+	for _, v := range arr {
+		if s, ok := v.(string); ok {
+			tags = append(tags, s)
 		}
 	}
+	ch.Tags = tags
+}
+
+func applyQuotesField(ch *Character, value any) {
+	arr, ok := value.([]any)
+	if !ok || len(arr) == 0 {
+		return
+	}
+	quotes := make([]string, 0, len(arr))
+	for _, v := range arr {
+		if s, ok := v.(string); ok {
+			quotes = append(quotes, s)
+		}
+	}
+	ch.Quotes = quotes
+}
+
+func applyStatsField(ch *Character, value any) {
+	arr, ok := value.([]any)
+	if !ok || len(arr) == 0 {
+		return
+	}
+	stats := make([]StatKV, 0, len(arr))
+	for _, v := range arr {
+		pair, ok := v.([]any)
+		if !ok || len(pair) < 2 {
+			continue
+		}
+		k, _ := pair[0].(string)
+		val, _ := pair[1].(string)
+		stats = append(stats, StatKV{Key: k, Value: val})
+	}
+	ch.Stats = stats
 }

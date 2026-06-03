@@ -73,37 +73,27 @@ func ReadBundle(filePath string) (Bundle, error) {
 	}
 	defer r.Close()
 
-	var b Bundle
+	b := Bundle{}
+	fileReaders := map[string]func(*zip.File) error{
+		"manifest.json":    func(f *zip.File) error { return readJSON(f, &b.Manifest) },
+		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts) },
+		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
+		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, &b) },
+	}
+
 	foundManifest := false
 
 	for _, f := range r.File {
-		switch f.Name {
-		case "manifest.json":
-			if err := readJSON(f, &b.Manifest); err != nil {
-				return Bundle{}, fmt.Errorf("read manifest: %w", err)
+		if reader, ok := fileReaders[f.Name]; ok {
+			if err := reader(f); err != nil {
+				return Bundle{}, fmt.Errorf("read %s: %w", f.Name, err)
 			}
-			foundManifest = true
-		case "prompts.json":
-			if err := readJSON(f, &b.Prompts); err != nil {
-				return Bundle{}, fmt.Errorf("read prompts: %w", err)
+			if f.Name == "manifest.json" {
+				foundManifest = true
 			}
-		case "lorebook.json":
-			if err := readJSON(f, &b.Lorebook); err != nil {
-				return Bundle{}, fmt.Errorf("read lorebook: %w", err)
-			}
-		case "crawl_cache.json":
-			var cc crawler.CrawlResult
-			if err := readJSON(f, &cc); err != nil {
-				return Bundle{}, fmt.Errorf("read crawl cache: %w", err)
-			}
-			b.CrawlCache = &cc
-		default:
-			if isCharacterFile(f.Name) {
-				var ch compose.Character
-				if err := readJSON(f, &ch); err != nil {
-					return Bundle{}, fmt.Errorf("read character %s: %w", f.Name, err)
-				}
-				b.Characters = append(b.Characters, ch)
+		} else if isCharacterFile(f.Name) {
+			if err := readCharacterFile(f, &b); err != nil {
+				return Bundle{}, fmt.Errorf("read character %s: %w", f.Name, err)
 			}
 		}
 	}
@@ -113,6 +103,24 @@ func ReadBundle(filePath string) (Bundle, error) {
 	}
 
 	return b, nil
+}
+
+func readCrawlCache(f *zip.File, b *Bundle) error {
+	var cc crawler.CrawlResult
+	if err := readJSON(f, &cc); err != nil {
+		return err
+	}
+	b.CrawlCache = &cc
+	return nil
+}
+
+func readCharacterFile(f *zip.File, b *Bundle) error {
+	var ch compose.Character
+	if err := readJSON(f, &ch); err != nil {
+		return err
+	}
+	b.Characters = append(b.Characters, ch)
+	return nil
 }
 
 func writeJSON(zw *zip.Writer, name string, v any) error {

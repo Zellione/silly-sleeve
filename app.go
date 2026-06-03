@@ -290,7 +290,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 }
 
 // GenerateField sends a per-field prompt to the LLM for a single character field.
-func (a *App) GenerateField(fieldID string, customPrompt string) compose.Character {
+func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 	a.mu.Lock()
 	crawl := a.cachedCrawl
 	existing := compose.Character{}

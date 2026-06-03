@@ -77,7 +77,7 @@ describe('screens/index', () => {
     });
 
     it('saves project when save button clicked', async () => {
-      mockPickSaveBundle.mockResolvedValue('/tmp/test-project');
+      mockPickSaveBundle.mockResolvedValue('/mock/test-project');
       mockSaveProjectBundle.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
@@ -89,12 +89,12 @@ describe('screens/index', () => {
         expect(mockPickSaveBundle).toHaveBeenCalled();
       });
       await waitFor(() => {
-        expect(mockSaveProjectBundle).toHaveBeenCalledWith('/tmp/test-project');
+        expect(mockSaveProjectBundle).toHaveBeenCalledWith('/mock/test-project');
       });
     });
 
     it('shows toast on successful save', async () => {
-      mockPickSaveBundle.mockResolvedValue('/tmp/test');
+      mockPickSaveBundle.mockResolvedValue('/mock/test');
       mockSaveProjectBundle.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
@@ -135,7 +135,7 @@ describe('screens/index', () => {
     });
 
     it('opens project when open button clicked', async () => {
-      mockPickOpenBundle.mockResolvedValue('/tmp/test.slv');
+      mockPickOpenBundle.mockResolvedValue('/mock/test.slv');
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -149,7 +149,7 @@ describe('screens/index', () => {
     });
 
     it('shows toast on successful open', async () => {
-      mockPickOpenBundle.mockResolvedValue('/tmp/test.slv');
+      mockPickOpenBundle.mockResolvedValue('/mock/test.slv');
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);
       await waitFor(() => {
@@ -162,7 +162,7 @@ describe('screens/index', () => {
     });
 
     it('shows error toast on open failure', async () => {
-      mockPickOpenBundle.mockResolvedValue('/tmp/test.slv');
+      mockPickOpenBundle.mockResolvedValue('/mock/test.slv');
       mockOpenProjectBundle.mockRejectedValue(new Error('not found'));
       const user = userEvent.setup();
       renderWithToast(<DashboardScreen />);

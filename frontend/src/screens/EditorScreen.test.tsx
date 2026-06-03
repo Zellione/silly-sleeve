@@ -336,7 +336,7 @@ describe('EditorScreen', () => {
   });
 
   it('calls SaveProjectBundle on save project click', async () => {
-    mockPickSaveBundle.mockResolvedValue('/tmp/test.slv');
+    mockPickSaveBundle.mockResolvedValue('/mock/test.slv');
     mockSaveProjectBundle.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderWithProviders(<EditorScreen />);

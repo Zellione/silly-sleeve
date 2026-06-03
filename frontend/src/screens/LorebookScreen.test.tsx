@@ -182,8 +182,8 @@ describe('LorebookScreen', () => {
   });
 
   it('calls export on export button click', async () => {
-    mockPickExportFolder.mockResolvedValue('/tmp/export');
-    mockExportLorebook.mockResolvedValue('/tmp/export/world_info.json');
+    mockPickExportFolder.mockResolvedValue('/mock/export/path');
+    mockExportLorebook.mockResolvedValue('/mock/export/path/world_info.json');
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);
     await waitFor(() => {
@@ -192,7 +192,7 @@ describe('LorebookScreen', () => {
     await user.click(screen.getByText('Export world_info.json'));
     await waitFor(() => {
       expect(mockPickExportFolder).toHaveBeenCalled();
-      expect(mockExportLorebook).toHaveBeenCalledWith('/tmp/export');
+      expect(mockExportLorebook).toHaveBeenCalledWith('/mock/export/path');
     });
   });
 

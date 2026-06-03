@@ -553,7 +553,7 @@ func TestTruncate_Long(t *testing.T) {
 	assert.Equal(t, "hello...", truncate("hello world", 5))
 }
 
-/* ── applyField / applyStringField / applyTagsField tests ── */
+/* ── applyField / applyStringField / applyStringSliceField tests ── */
 
 func TestApplyField_StringFields(t *testing.T) {
 	ch := Character{}
@@ -655,21 +655,21 @@ func TestApplyStringField_UnknownField(t *testing.T) {
 	applyStringField(&ch, "unknown", "value")
 }
 
-func TestApplyTagsField_NotArray(t *testing.T) {
+func TestApplyStringSliceField_NotArray(t *testing.T) {
 	ch := Character{Tags: []string{"keep"}}
-	applyTagsField(&ch, "not an array")
+	applyStringSliceField(&ch, "tags", "not an array")
 	assert.Equal(t, []string{"keep"}, ch.Tags)
 }
 
-func TestApplyTagsField_MixedTypes(t *testing.T) {
+func TestApplyStringSliceField_MixedTypes(t *testing.T) {
 	ch := Character{}
-	applyTagsField(&ch, []any{"valid", 42, "also"})
+	applyStringSliceField(&ch, "tags", []any{"valid", 42, "also"})
 	assert.Equal(t, []string{"valid", "also"}, ch.Tags)
 }
 
-func TestApplyQuotesField_Success(t *testing.T) {
+func TestApplyStringSliceField_Quotes(t *testing.T) {
 	ch := Character{}
-	applyQuotesField(&ch, []any{"q1", "q2"})
+	applyStringSliceField(&ch, "quotes", []any{"q1", "q2"})
 	assert.Equal(t, []string{"q1", "q2"}, ch.Quotes)
 }
 

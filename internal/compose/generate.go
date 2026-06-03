@@ -322,10 +322,8 @@ func applyField(ch *Character, fieldID string, value any) {
 	}
 
 	switch fieldID {
-	case "tags":
-		applyTagsField(ch, value)
-	case "quotes":
-		applyQuotesField(ch, value)
+	case "tags", "quotes":
+		applyStringSliceField(ch, fieldID, value)
 	case "stats":
 		applyStatsField(ch, value)
 	default:
@@ -356,32 +354,23 @@ func applyStringField(ch *Character, fieldID string, value any) {
 	}
 }
 
-func applyTagsField(ch *Character, value any) {
+func applyStringSliceField(ch *Character, fieldID string, value any) {
 	arr, ok := value.([]any)
 	if !ok || len(arr) == 0 {
 		return
 	}
-	tags := make([]string, 0, len(arr))
+	slice := make([]string, 0, len(arr))
 	for _, v := range arr {
 		if s, ok := v.(string); ok {
-			tags = append(tags, s)
+			slice = append(slice, s)
 		}
 	}
-	ch.Tags = tags
-}
-
-func applyQuotesField(ch *Character, value any) {
-	arr, ok := value.([]any)
-	if !ok || len(arr) == 0 {
-		return
+	switch fieldID {
+	case "tags":
+		ch.Tags = slice
+	case "quotes":
+		ch.Quotes = slice
 	}
-	quotes := make([]string, 0, len(arr))
-	for _, v := range arr {
-		if s, ok := v.(string); ok {
-			quotes = append(quotes, s)
-		}
-	}
-	ch.Quotes = quotes
 }
 
 func applyStatsField(ch *Character, value any) {

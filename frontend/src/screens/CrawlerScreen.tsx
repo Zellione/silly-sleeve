@@ -4,6 +4,7 @@ import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { CrawlPage, GetCachedCrawl } from '../../wailsjs/go/main/App';
 import { crawler } from '../../wailsjs/go/models';
+import { SectionContent } from '../components/SectionContent';
 
 const RECENT_WIKIS = [
   'baldursgate.fandom.com', 'witcher.fandom.com',
@@ -12,8 +13,6 @@ const RECENT_WIKIS = [
 ];
 
 type Phase = 'idle' | 'fetching' | 'crawled';
-
-const SECTION_TAGS: Record<number, string> = { 1: 'lede', 2: 'section', 3: 'subsection' };
 
 const CrawlerScreen: React.FC = () => {
   const [url, setUrl] = useState('https://baldursgate.fandom.com/wiki/Elara_Wynd');
@@ -186,17 +185,7 @@ const CrawlerScreen: React.FC = () => {
                        })}
                      </dl>
                    )}
-                   {result.sections && result.sections.map((s, i) => (
-                     <React.Fragment key={i}>
-                       {s.heading && <h4>{s.heading}</h4>}
-                       {s.body && s.body.split('\n\n').map((para, j) => (
-                         <p key={j}>
-                           {j === 0 && SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
-                           {para}
-                         </p>
-                       ))}
-                     </React.Fragment>
-                   ))}
+                    {result.sections && <SectionContent sections={result.sections} />}
                 </>
               ) : (
                 <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>

@@ -13,6 +13,7 @@ import {
   GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
+import { SectionContent } from '../components/SectionContent';
 import { compose, crawler } from '../../wailsjs/go/models';
 
 interface FieldSpec {
@@ -96,8 +97,6 @@ function fieldStateFromChar(ch: compose.Character, field: FieldSpec): FieldState
   }
   return { value: val, locked: false, dirty: false, showPrompt: false, prompt: '', rolling: false, history: 1 };
 }
-
-const SECTION_TAGS: Record<number, string> = { 1: 'lede', 2: 'section', 3: 'subsection' };
 
 const TagsField: React.FC<{
   value: string[]; onChange: (v: string[]) => void; locked: boolean;
@@ -610,17 +609,7 @@ const EditorScreen: React.FC = () => {
             <div className="b scroll">
               {crawl ? (
                 <>
-                  {crawl.sections && crawl.sections.map((s, i) => (
-                    <React.Fragment key={i}>
-                      {s.heading && <h4>{s.heading}</h4>}
-                      {s.body && s.body.split('\n\n').map((para, j) => (
-                        <p key={j}>
-                          {j === 0 && SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
-                          {para}
-                        </p>
-                      ))}
-                    </React.Fragment>
-                  ))}
+                  {crawl.sections && <SectionContent sections={crawl.sections} />}
                   {crawl.infobox && crawl.infobox.length > 0 && (
                     <dl className="infobox" style={{ marginTop: 16 }}>
                       {crawl.infobox.map((entry, i) => (

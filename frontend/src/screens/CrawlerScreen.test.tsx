@@ -219,9 +219,8 @@ describe('CrawlerScreen', () => {
     await user.click(screen.getByText('Crawl page'));
 
     await waitFor(() => {
-      expect(screen.getByText(/200 OK/)).toBeInTheDocument();
       expect(screen.getByText(/412 ms/)).toBeInTheDocument();
-      expect(screen.getByText(/3,131 tokens/)).toBeInTheDocument();
+      expect(screen.getByText(/~3,131 tokens/)).toBeInTheDocument();
     });
   });
 

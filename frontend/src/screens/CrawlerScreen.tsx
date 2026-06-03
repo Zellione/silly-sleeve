@@ -186,6 +186,12 @@ const CrawlerScreen: React.FC = () => {
                      </dl>
                    )}
                     {result.sections && <SectionContent sections={result.sections} />}
+                    {result && (!result.sections || result.sections.length === 0) && (
+                      <div className="col" style={{alignItems:'center', padding:'30px 16px', gap:8, textAlign:'center'}}>
+                        <span style={{color:'var(--ink-2)', fontSize:13}}>No content extracted from this page.</span>
+                        <span style={{color:'var(--ink-3)', fontSize:11}}>The wiki page may not exist, be empty, or contain no parseable content.</span>
+                      </div>
+                    )}
                 </>
               ) : (
                 <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>
@@ -195,7 +201,7 @@ const CrawlerScreen: React.FC = () => {
             </div>
             <div className="foot">
               <span className="meta">
-                <span>Status · {result ? '200 OK' : '…'}</span>
+                  <span>Status · {result ? (result.statusCode || 'ERR') : '…'}</span>
                 <span>Latency · {result ? result.latencyMs + ' ms' : '…'}</span>
                 <span>Cache · {result ? 'warm' : 'cold'}</span>
               </span>

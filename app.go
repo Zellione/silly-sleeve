@@ -108,6 +108,7 @@ func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
 func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlResult {
 	result := crawler.FetchPage(pageURL)
 	if result.Error != nil {
+		fmt.Println("[app] CrawlPage fetch error:", result.Error)
 		return crawler.CrawlResult{
 			URL:        pageURL,
 			Domain:     result.Domain,
@@ -127,6 +128,8 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 		StatusCode: 200,
 		LatencyMs:  result.LatencyMs,
 	}
+	fmt.Printf("[app] CrawlPage done: title=%q sections=%d infobox=%d words=%d rawHTML=%d\n",
+		cr.Title, len(cr.Sections), len(cr.Infobox), cr.WordCount, len(cr.RawHTML))
 	a.mu.Lock()
 	a.cachedCrawl = &cr
 	a.mu.Unlock()

@@ -24,11 +24,13 @@ func FetchPage(pageURL string) FetchResult {
 
 	u, err := url.Parse(pageURL)
 	if err != nil {
+		fmt.Println("[crawler] URL parse error:", err)
 		return FetchResult{LatencyMs: time.Since(start).Milliseconds(), Error: err}
 	}
 
 	domain, title, err := parseMediaWikiURLFromURL(u)
 	if err != nil {
+		fmt.Println("[crawler] parseMediaWikiURL error:", err)
 		return FetchResult{LatencyMs: time.Since(start).Milliseconds(), Error: err}
 	}
 
@@ -38,13 +40,16 @@ func FetchPage(pageURL string) FetchResult {
 	}
 
 	client := &http.Client{Timeout: 15 * time.Second}
+	fmt.Println("[crawler] GET", apiURL)
 	resp, err := client.Get(apiURL)
 	latency := time.Since(start).Milliseconds()
 	if err != nil {
+		fmt.Println("[crawler] HTTP error:", err)
 		return FetchResult{Domain: domain, LatencyMs: latency, Error: err}
 	}
 	defer resp.Body.Close()
 
+	fmt.Printf("[crawler] HTTP %d (%.0f ms)\n", resp.StatusCode, float64(latency))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return FetchResult{
 			Domain:    domain,
@@ -62,16 +67,20 @@ func FetchPage(pageURL string) FetchResult {
 		} `json:"parse"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		fmt.Println("[crawler] JSON decode error:", err)
 		return FetchResult{Domain: domain, LatencyMs: latency, Error: fmt.Errorf("parse response: %w", err)}
 	}
 
 	if body.Parse.Title == "" && body.Parse.Text.Content == "" {
+		fmt.Println("[crawler] empty parse result (both title and content are empty)")
 		return FetchResult{
 			Domain:    domain,
 			LatencyMs: latency,
 			Error:     fmt.Errorf("empty parse result"),
 		}
 	}
+
+	fmt.Printf("[crawler] parsed title=%q contentLen=%d\n", body.Parse.Title, len(body.Parse.Text.Content))
 
 	return FetchResult{
 		Title:     body.Parse.Title,

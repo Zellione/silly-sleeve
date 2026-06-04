@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import { useAutoSave } from '../components/useAutoSave';
@@ -165,7 +165,8 @@ const FieldCard: React.FC<{
   onChange: (v: any) => void;
   onPatch: (p: Partial<FieldState>) => void;
   onReroll: () => void;
-}> = ({ field, idx, st, tokenCount, onChange, onPatch, onReroll }) => {
+  onBlur: () => void;
+}> = ({ field, idx, st, tokenCount, onChange, onPatch, onReroll, onBlur }) => {
   if (!st) return null;
   const displayCount = wordCountLabel(st.value, field.type);
 
@@ -226,12 +227,14 @@ const FieldCard: React.FC<{
         <>
           {field.type === 'line' && (
             <input className="field" value={st.value} disabled={st.locked}
-              onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }} />
+              onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
+              onBlur={onBlur} />
           )}
 
           {field.type === 'text' && (
             <textarea className="field" value={st.value} disabled={st.locked}
               onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
+              onBlur={onBlur}
               style={{ minHeight: field.id === 'backstory' || field.id === 'appearance' ? 140 : 100 }} />
           )}
 
@@ -316,27 +319,45 @@ const CharacterStrip: React.FC<{
   </div>
 );
 
-const EditorScreen: React.FC = () => {
+interface EditorScreenProps {
+  projectPath: string;
+  onProjectPathChange: (path: string) => void;
+}
+
+const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathChange }) => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeChar, setActiveChar] = useState<compose.Character | null>(null);
   const [crawl, setCrawl] = useState<crawler.CrawlResult | null>(null);
   const [fields, setFields] = useState<Record<string, FieldState>>({});
   const [tokenCache, setTokenCache] = useState<Record<string, number>>({});
-  const [projectPath, setProjectPath] = useState('');
   const { toast } = useToast();
+
+  const flushActiveCharRef = useRef<() => Promise<compose.Character | null>>(
+    () => Promise.resolve(null),
+  );
+
+  const warnedNoPathRef = useRef(false);
 
   const doSaveBundle = useCallback(async (path: string) => {
     try {
+      await flushActiveCharRef.current();
       await SaveProjectBundle(path);
-    } catch {
-      // silently skip auto-save failures
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Auto-save failed:', msg);
     }
   }, []);
 
-  const { handleChange: autoSaveChange } = useAutoSave({
+  const { handleChange: autoSaveChange, handleBlur: autoSaveBlur, autoSaveMode, autoSaveInterval } = useAutoSave({
     projectPath,
     onSave: doSaveBundle,
   });
+
+  useEffect(() => {
+    if (autoSaveMode === 'off' || projectPath || warnedNoPathRef.current) return;
+    warnedNoPathRef.current = true;
+    toast({ kind: 'warn', title: 'Auto-save ready', body: 'Save or open a project first to enable auto-save.' });
+  }, [autoSaveMode, projectPath, toast]);
 
   const refreshCharacters = useCallback(async () => {
     const chars = await GetCharacters();
@@ -377,6 +398,22 @@ const EditorScreen: React.FC = () => {
       return next;
     });
   }, [activeChar]);
+
+  const flushActiveCharacter = useCallback(async (): Promise<compose.Character | null> => {
+    if (!activeChar) return null;
+    const updated = charsFromFieldState(activeChar, fields);
+    await UpdateCharacter(updated);
+    await refreshCharacters();
+    setActiveChar(updated);
+    for (const f of FIELDS) {
+      setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], dirty: false } }));
+    }
+    return updated;
+  }, [activeChar, fields, refreshCharacters]);
+
+  useEffect(() => {
+    flushActiveCharRef.current = flushActiveCharacter;
+  }, [flushActiveCharacter]);
 
   useEffect(() => {
     const updateTokens = async () => {
@@ -452,32 +489,29 @@ const EditorScreen: React.FC = () => {
   const handleSave = useCallback(async () => {
     if (!activeChar) return;
     try {
-      const updated = charsFromFieldState(activeChar, fields);
-      await UpdateCharacter(updated);
-      await refreshCharacters();
-      setActiveChar(updated);
-      for (const f of FIELDS) {
-        setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], dirty: false } }));
+      const updated = await flushActiveCharacter();
+      if (updated) {
+        toast({ kind: 'ok', title: 'Saved', body: `"${updated.name}" · ${dirtyCount} fields written.` });
       }
-      toast({ kind: 'ok', title: 'Saved', body: `"${updated.name}" · ${dirtyCount} fields written.` });
     } catch (e: any) {
       toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not save character.' });
     }
-  }, [activeChar, fields, dirtyCount, toast, refreshCharacters]);
+  }, [activeChar, dirtyCount, toast, flushActiveCharacter]);
 
   const handleSaveProject = useCallback(async () => {
     try {
       const filePath = await PickSaveBundle();
       if (!filePath) return;
+      await flushActiveCharRef.current();
       await SaveProjectBundle(filePath);
-      setProjectPath(filePath);
+      onProjectPathChange(filePath);
       toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
     } catch (e: any) {
       if (e?.message) {
         toast({ kind: 'bad', title: 'Save project failed', body: e.message });
       }
     }
-  }, [toast]);
+  }, [toast, onProjectPathChange]);
 
   const setFieldValue = useCallback((id: string, value: any) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], value } }));
@@ -646,11 +680,20 @@ const EditorScreen: React.FC = () => {
                 onChange={v => setFieldValue(f.id, v)}
                 onPatch={p => patchField(f.id, p)}
                 onReroll={() => handleFieldReroll(f.id)}
+                onBlur={autoSaveBlur}
               />
             ))}
             <div className="row" style={{ justifyContent: 'space-between', padding: '12px 4px', color: 'var(--ink-3)' }}>
               <span className="uplabel">{dirtyCount} fields modified · {totalTokens} tokens estimated</span>
-              <span className="uplabel"><kbd>⌘</kbd> <kbd>S</kbd> save</span>
+              <span className="uplabel">
+                {autoSaveMode !== 'off' && (
+                  <span style={{ color: projectPath ? 'var(--acc)' : 'var(--ink-3)', marginRight: 12 }}>
+                    Auto-save: {autoSaveMode === 'timed' ? `${autoSaveMode} (${(autoSaveInterval || 30) + 's'})` : autoSaveMode}
+                    {!projectPath && ' — save project first'}
+                  </span>
+                )}
+                <kbd>&#8984;</kbd> <kbd>S</kbd> save
+              </span>
             </div>
           </div>
         </div>

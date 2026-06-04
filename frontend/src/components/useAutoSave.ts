@@ -1,6 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { GetSettings } from '../../wailsjs/go/main/App';
-import { settings } from '../../wailsjs/go/models';
 
 interface UseAutoSaveOptions {
   projectPath: string;
@@ -9,11 +8,11 @@ interface UseAutoSaveOptions {
 }
 
 export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSaveOptions) {
-  const settingsRef = useRef<settings.Settings | null>(null);
+  const [autoSaveMode, setAutoSaveMode] = useState<string>('off');
+  const [autoSaveInterval, setAutoSaveInterval] = useState(30);
   const timerRef = useRef<ReturnType<typeof setInterval> | ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
   const pathRef = useRef(projectPath);
-  const initedRef = useRef(false);
 
   useEffect(() => {
     onSaveRef.current = onSave;
@@ -25,45 +24,55 @@ export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSave
 
   useEffect(() => {
     GetSettings().then(s => {
-      settingsRef.current = s;
+      setAutoSaveMode(s?.autoSaveMode || 'off');
+      setAutoSaveInterval(s?.autoSaveInterval || 30);
     }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!enabled || initedRef.current) return;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!enabled || autoSaveMode !== 'timed') return;
 
-    const s = settingsRef.current;
-    if (s?.autoSaveMode !== 'timed') return;
-
-    const interval = (s.autoSaveInterval || 30) * 1000;
+    const interval = autoSaveInterval * 1000;
     timerRef.current = setInterval(() => {
       const p = pathRef.current;
-      if (p) onSaveRef.current(p);
+      if (p) {
+        onSaveRef.current(p);
+      } else {
+        console.warn('Auto-save (timed): skipped — no project path set. Save or open a project first.');
+      }
     }, interval);
-
-    initedRef.current = true;
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [enabled]);
+  }, [enabled, autoSaveMode, autoSaveInterval]);
 
   const handleChange = useCallback(() => {
-    const s = settingsRef.current;
-    if (s?.autoSaveMode !== 'onChange') return;
+    if (autoSaveMode !== 'onChange') return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       const p = pathRef.current;
-      if (p) onSaveRef.current(p);
+      if (p) {
+        onSaveRef.current(p);
+      } else {
+        console.warn('Auto-save (onChange): skipped — no project path set. Save or open a project first.');
+      }
     }, 2000);
-  }, []);
+  }, [autoSaveMode]);
 
   const handleBlur = useCallback(() => {
-    const s = settingsRef.current;
-    if (s?.autoSaveMode !== 'onBlur') return;
+    if (autoSaveMode !== 'onBlur') return;
     const p = pathRef.current;
-    if (p) onSaveRef.current(p);
-  }, []);
+    if (p) {
+      onSaveRef.current(p);
+    } else {
+      console.warn('Auto-save (onBlur): skipped — no project path set. Save or open a project first.');
+    }
+  }, [autoSaveMode]);
 
-  return { handleChange, handleBlur };
+  return { handleChange, handleBlur, autoSaveMode, autoSaveInterval };
 }

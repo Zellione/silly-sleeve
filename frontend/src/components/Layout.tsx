@@ -119,7 +119,8 @@ export const StatusBar: React.FC<{
   routeLabel: string;
   llmStatus?: 'ok' | 'warn' | 'bad' | 'idle';
   llmName?: string;
-}> = ({ routeLabel, llmStatus = 'idle', llmName }) => (
+  autoSaveMode?: string;
+}> = ({ routeLabel, llmStatus = 'idle', llmName, autoSaveMode }) => (
   <div className="ss-status">
     <span className="item">
       <span className={`dot ${llmStatus}`} />
@@ -128,6 +129,14 @@ export const StatusBar: React.FC<{
     <span className="sep" />
     <span>{routeLabel}</span>
     <span className="grow" />
+    {autoSaveMode && autoSaveMode !== 'off' && (
+      <>
+        <span className="item" style={{ color: 'var(--acc)' }}>
+          Auto-save: {autoSaveMode}
+        </span>
+        <span className="sep" />
+      </>
+    )}
     <span>Silly Sleeve v0.1.0</span>
   </div>
 );

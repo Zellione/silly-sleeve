@@ -17,10 +17,15 @@ import { settings } from '../wailsjs/go/models';
 function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
   const [settingsData, setSettingsData] = useState<settings.Settings | null>(null);
+  const [projectPath, setProjectPath] = useState('');
 
   useEffect(() => {
     GetSettings().then(s => setSettingsData(s)).catch(() => setSettingsData(settings.Settings.createFrom({ endpoints: [] })));
   }, []);
+
+  useEffect(() => {
+    GetSettings().then(s => setSettingsData(s)).catch(() => {});
+  }, [route]);
 
   const routeLabels: Record<Route, string> = {
     dashboard: 'PROJECTS',
@@ -40,9 +45,9 @@ function AppShell() {
 
   const renderScreen = () => {
     switch (route) {
-      case 'dashboard': return <DashboardScreen />;
+      case 'dashboard': return <DashboardScreen onProjectOpened={setProjectPath} />;
       case 'crawler': return <CrawlerScreen />;
-      case 'editor': return <EditorScreen />;
+      case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       case 'lorebook': return <LorebookScreen />;
       case 'projectImage': return <ProjectImageScreen />;
       case 'image': return <PortraitScreen />;
@@ -62,7 +67,7 @@ function AppShell() {
           {renderScreen()}
         </main>
       </div>
-      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} />
+      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} autoSaveMode={settingsData?.autoSaveMode} />
 
       {/* Floating theme toggle for now */}
       <div style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 50 }}>

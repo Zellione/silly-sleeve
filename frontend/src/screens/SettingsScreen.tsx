@@ -15,6 +15,7 @@ const SECTIONS = [
   { id: 'llm', label: 'LLM endpoints' },
   { id: 'comfy', label: 'ComfyUI' },
   { id: 'prompts', label: 'Prompts' },
+  { id: 'auto-save', label: 'Auto-save' },
   { id: 'crawler', label: 'Wiki crawler' },
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'about', label: 'About' },
@@ -354,16 +355,26 @@ const PromptTemplateEditor: React.FC = () => {
 
   const handleResetField = async () => {
     if (!(await confirm('Reset to default? This cannot be undone.'))) return;
+    if (!templates) return;
     try {
       const defaults = await GetDefaultPromptTemplates();
+      const next = prompts.TemplateSet.createFrom({
+        systemPrompt: templates.systemPrompt,
+        fieldPrompts: { ...templates.fieldPrompts },
+      });
       if (activeField === 'bulk') {
+        next.systemPrompt = defaults.systemPrompt;
         setDraft(defaults.systemPrompt);
       } else {
+        next.fieldPrompts[activeField] = defaults.fieldPrompts[activeField] || '';
         setDraft(defaults.fieldPrompts?.[activeField] || '');
       }
-      setDirty(true);
-    } catch {
-      toast({ kind: 'bad', title: 'Reset failed', body: 'Could not load defaults.' });
+      await SavePromptTemplates(next);
+      setTemplates(next);
+      setDirty(false);
+      toast({ kind: 'ok', title: 'Reset to default', body: activeField === 'bulk' ? 'Bulk system prompt reset to default and saved.' : `${FIELD_LABELS[activeField] || activeField} template reset to default and saved.` });
+    } catch (e: any) {
+      toast({ kind: 'bad', title: 'Reset failed', body: e?.message || 'Could not reset to defaults.' });
     }
   };
 
@@ -574,6 +585,36 @@ const SettingsScreen: React.FC = () => {
     setIsNew(true);
   };
 
+  const handleAutoSaveMode = (mode: string) => {
+    if (!settingsState) return;
+    const next = settings.Settings.createFrom({
+      ...settingsState,
+      autoSaveMode: mode,
+      autoSaveInterval: settingsState.autoSaveInterval || 30,
+    });
+    SaveSettings(next).then(() => {
+      setSettingsState(next);
+      toast({ kind: 'ok', title: 'Auto-save updated', body: `Mode set to "${mode}".` });
+    }).catch((e: any) => {
+      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not update auto-save.' });
+    });
+  };
+
+  const handleAutoSaveInterval = (interval: number) => {
+    if (!settingsState) return;
+    const next = settings.Settings.createFrom({
+      ...settingsState,
+      autoSaveMode: 'timed',
+      autoSaveInterval: interval,
+    });
+    SaveSettings(next).then(() => {
+      setSettingsState(next);
+      toast({ kind: 'ok', title: 'Auto-save updated', body: `Interval set to ${interval}s.` });
+    }).catch((e: any) => {
+      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not update auto-save.' });
+    });
+  };
+
   if (!settingsState) {
     return (
       <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -751,7 +792,46 @@ const SettingsScreen: React.FC = () => {
               <PromptTemplateEditor />
             )}
 
-            {(sect !== 'llm' && sect !== 'prompts') && (
+            {sect === 'auto-save' && (
+              <div className="settings-section">
+                <h3>Auto-save</h3>
+                <p className="desc">
+                  Automatically save your project bundle as you work. Only active after your first manual &ldquo;Save project&rdquo;.
+                </p>
+                <div className="settings-form">
+                  <div className="form-row">
+                    <label>Mode</label>
+                    <select
+                      className="field"
+                      value={settingsState.autoSaveMode || 'off'}
+                      onChange={e => handleAutoSaveMode(e.target.value)}
+                    >
+                      <option value="off">Off</option>
+                      <option value="onChange">On change</option>
+                      <option value="onBlur">On blur</option>
+                      <option value="timed">Timed</option>
+                    </select>
+                  </div>
+                  {((settingsState.autoSaveMode || 'off') === 'timed') && (
+                    <div className="form-row">
+                      <label>
+                        Interval <small>seconds (min 5)</small>
+                      </label>
+                      <input
+                        className="field"
+                        type="number"
+                        min={5}
+                        value={settingsState.autoSaveInterval || 30}
+                        onChange={e => handleAutoSaveInterval(Math.max(5, Number(e.target.value) || 30))}
+                        style={{ width: 120, fontFamily: 'var(--f-mono)' }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(sect !== 'llm' && sect !== 'prompts' && sect !== 'auto-save') && (
               <div className="settings-section">
                 <h3>{SECTIONS.find(s => s.id === sect)?.label}</h3>
                 <p className="desc">Coming in a later phase.</p>

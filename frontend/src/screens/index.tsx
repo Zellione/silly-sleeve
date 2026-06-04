@@ -18,7 +18,7 @@ const Placeholder: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
-const DashboardScreen: React.FC = () => {
+const DashboardScreen: React.FC<{ onProjectOpened?: (path: string) => void }> = ({ onProjectOpened }) => {
   const { toast } = useToast();
 
   const handleSaveProject = useCallback(async () => {
@@ -39,13 +39,14 @@ const DashboardScreen: React.FC = () => {
       const filePath = await PickOpenBundle();
       if (!filePath) return;
       const manifest = await OpenProjectBundle(filePath);
+      onProjectOpened?.(filePath);
       toast({ kind: 'ok', title: 'Project opened', body: `Loaded "${manifest.name}".` });
     } catch (e: any) {
       if (e?.message && e.message !== 'Cancelled') {
         toast({ kind: 'bad', title: 'Open failed', body: e.message });
       }
     }
-  }, [toast]);
+  }, [toast, onProjectOpened]);
 
   return (
     <>

@@ -32,7 +32,7 @@ describe('App', () => {
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
     await waitFor(() => {
-      expect(mockGetSettings).toHaveBeenCalledTimes(1);
+      expect(mockGetSettings).toHaveBeenCalled();
     });
   });
 

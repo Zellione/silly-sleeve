@@ -591,6 +591,7 @@ describe('SettingsScreen', () => {
         fieldPrompts: { name: 'factory name template', tags: '', appearance: '', personality: '', backstory: '', abilities: '', relationships: '', quotes: '', stats: '', epithet: '' },
       });
       mockGetDefaultPromptTemplates.mockResolvedValue(factoryDefault);
+      mockSavePromptTemplates.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderWithProviders(<SettingsScreen />);
 
@@ -611,6 +612,100 @@ describe('SettingsScreen', () => {
         expect(textarea.value).toBe('factory system prompt');
       });
       expect(mockGetDefaultPromptTemplates).toHaveBeenCalled();
+      expect(mockSavePromptTemplates).toHaveBeenCalledTimes(1);
+      const saved = mockSavePromptTemplates.mock.calls[0][0] as prompts.TemplateSet;
+      expect(saved.systemPrompt).toBe('factory system prompt');
+      expect(saved.fieldPrompts.name).toBe('name template content');
+      expect(saved.fieldPrompts.epithet).toBe('epithet template content');
+      expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('auto-save', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({
+        endpoints: [],
+        autoSaveMode: 'off',
+        autoSaveInterval: 30,
+      }));
+      mockSaveSettings.mockResolvedValue(undefined);
+    });
+
+    it('renders auto-save nav item', async () => {
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Auto-save')).toBeInTheDocument();
+      });
+    });
+
+    it('shows mode dropdown with current value', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Auto-save'));
+
+      await waitFor(() => {
+        const select = screen.getByRole('combobox') as HTMLSelectElement;
+        expect(select.value).toBe('off');
+      });
+    });
+
+    it('calls SaveSettings on mode change', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Auto-save'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByRole('combobox'), 'onChange');
+
+      await waitFor(() => {
+        expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+      });
+      const saved = mockSaveSettings.mock.calls[0][0] as settings.Settings;
+      expect(saved.autoSaveMode).toBe('onChange');
+    });
+
+    it('shows interval input only when timed mode', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({
+        endpoints: [],
+        autoSaveMode: 'off',
+        autoSaveInterval: 30,
+      }));
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Auto-save'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+
+      await user.selectOptions(screen.getByRole('combobox'), 'timed');
+
+      await waitFor(() => {
+        const interval = screen.getByRole('spinbutton') as HTMLInputElement;
+        expect(interval.value).toBe('30');
+      });
     });
   });
 

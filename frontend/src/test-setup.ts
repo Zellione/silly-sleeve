@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 
+window.confirm = () => true;
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query: string) => ({

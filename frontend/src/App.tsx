@@ -5,6 +5,7 @@ import {
   type Route,
 } from './components/Layout';
 import { ToastProvider } from './components/ToastProvider';
+import { ConfirmProvider } from './components/ConfirmDialog';
 import {
   DashboardScreen, CrawlerScreen, EditorScreen, LorebookScreen,
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
@@ -74,7 +75,9 @@ function AppShell() {
 function App() {
   return (
     <ToastProvider>
-      <AppShell />
+      <ConfirmProvider>
+        <AppShell />
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

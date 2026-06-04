@@ -30,6 +30,8 @@ export function GetCachedCrawl():Promise<crawler.CrawlResult>;
 
 export function GetCharacters():Promise<Array<compose.Character>>;
 
+export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;
+
 export function GetLorebook():Promise<Array<lorebook.Entry>>;
 
 export function GetPromptTemplates():Promise<prompts.TemplateSet>;

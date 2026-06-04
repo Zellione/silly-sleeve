@@ -90,6 +90,11 @@ func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
 	})
 }
 
+// GetDefaultPromptTemplates returns the built-in factory default templates.
+func (a *App) GetDefaultPromptTemplates() prompts.TemplateSet {
+	return prompts.Defaults()
+}
+
 // GetPromptTemplates returns the current prompt templates from settings.
 func (a *App) GetPromptTemplates() prompts.TemplateSet {
 	if len(a.settings.PromptTemplates.FieldPrompts) == 0 {

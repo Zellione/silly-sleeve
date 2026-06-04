@@ -43,7 +43,13 @@ export function GetCachedCrawl() {
 }
 
 export function GetCharacters() {
+
   return window['go']['main']['App']['GetCharacters']();
+}
+
+export function GetDefaultPromptTemplates() {
+
+  return window['go']['main']['App']['GetDefaultPromptTemplates']();
 }
 
 export function GetLorebook() {

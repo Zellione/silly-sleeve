@@ -5,7 +5,8 @@ import {
   LinkIcon, KeyIcon, EyeIcon,
 } from '../icons';
 import { useToast } from '../components/ToastProvider';
-import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, SavePromptTemplates } from '../../wailsjs/go/main/App';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '../../wailsjs/go/main/App';
 import { settings, prompts } from '../../wailsjs/go/models';
 
 /* ─── Section nav ───────────────────────────────────────── */
@@ -302,6 +303,7 @@ const PromptTemplateEditor: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [dirty, setDirty] = useState(false);
   const { toast } = useToast();
+  const { confirm } = useConfirmDialog();
 
   useEffect(() => {
     GetPromptTemplates().then(t => {
@@ -312,8 +314,8 @@ const PromptTemplateEditor: React.FC = () => {
     });
   }, [toast]);
 
-  const handleFieldSelect = (fieldId: string) => {
-    if (dirty && !confirm('You have unsaved changes. Discard them?')) return;
+  const handleFieldSelect = async (fieldId: string) => {
+    if (dirty && !(await confirm('You have unsaved changes. Discard them?'))) return;
     setActiveField(fieldId);
     if (!templates) return;
     if (fieldId === 'bulk') {
@@ -350,18 +352,19 @@ const PromptTemplateEditor: React.FC = () => {
     }
   };
 
-  const handleResetField = () => {
-    if (!confirm('Reset to default? This cannot be undone.')) return;
-    GetPromptTemplates().then(t => {
+  const handleResetField = async () => {
+    if (!(await confirm('Reset to default? This cannot be undone.'))) return;
+    try {
+      const defaults = await GetDefaultPromptTemplates();
       if (activeField === 'bulk') {
-        setDraft(t.systemPrompt);
+        setDraft(defaults.systemPrompt);
       } else {
-        setDraft(t.fieldPrompts?.[activeField] || '');
+        setDraft(defaults.fieldPrompts?.[activeField] || '');
       }
       setDirty(true);
-    }).catch(() => {
+    } catch {
       toast({ kind: 'bad', title: 'Reset failed', body: 'Could not load defaults.' });
-    });
+    }
   };
 
   const insertVariable = (v: string) => {

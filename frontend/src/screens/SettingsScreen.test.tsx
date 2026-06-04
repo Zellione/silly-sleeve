@@ -9,6 +9,7 @@ const mockGetSettings = vi.fn();
 const mockSaveSettings = vi.fn();
 const mockTestLLMEndpoint = vi.fn();
 const mockGetPromptTemplates = vi.fn();
+const mockGetDefaultPromptTemplates = vi.fn();
 const mockSavePromptTemplates = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
@@ -16,6 +17,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   SaveSettings: (...args: any[]) => mockSaveSettings(...args),
   TestLLMEndpoint: (...args: any[]) => mockTestLLMEndpoint(...args),
   GetPromptTemplates: () => mockGetPromptTemplates(),
+  GetDefaultPromptTemplates: () => mockGetDefaultPromptTemplates(),
   SavePromptTemplates: (...args: any[]) => mockSavePromptTemplates(...args),
 }));
 
@@ -576,10 +578,39 @@ describe('SettingsScreen', () => {
 
       await user.click(screen.getByText('Prompts'));
 
-      // Should still render the section title (from default state or shimmer)
       await waitFor(() => {
         expect(screen.getByText('Prompt templates')).toBeInTheDocument();
       });
+    });
+
+    it('resets template to factory default', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      mockGetPromptTemplates.mockResolvedValue(defaultPT);
+      const factoryDefault = prompts.TemplateSet.createFrom({
+        systemPrompt: 'factory system prompt',
+        fieldPrompts: { name: 'factory name template', tags: '', appearance: '', personality: '', backstory: '', abilities: '', relationships: '', quotes: '', stats: '', epithet: '' },
+      });
+      mockGetDefaultPromptTemplates.mockResolvedValue(factoryDefault);
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Prompts'));
+
+      await waitFor(() => {
+        expect(screen.getByText('system prompt default')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Reset to default'));
+
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('factory system prompt');
+      });
+      expect(mockGetDefaultPromptTemplates).toHaveBeenCalled();
     });
   });
 

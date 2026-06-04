@@ -688,6 +688,16 @@ func mustMarshal(t *testing.T, v any) string {
 
 /* ── Prompt templates ────────────────────────────────── */
 
+func TestGetDefaultPromptTemplates_ReturnsDefaults(t *testing.T) {
+	app := NewApp()
+	tmpl := app.GetDefaultPromptTemplates()
+	assert.NotEmpty(t, tmpl.SystemPrompt)
+	assert.Len(t, tmpl.FieldPrompts, len(prompts.FieldIDs()))
+	for _, id := range prompts.FieldIDs() {
+		assert.NotEmpty(t, tmpl.FieldPrompts[id], "field %s should have a default prompt", id)
+	}
+}
+
 func TestGetPromptTemplates_ReturnsDefaultsWhenEmpty(t *testing.T) {
 	app := NewApp()
 	tmpl := app.GetPromptTemplates()

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 interface ConfirmState {
   message: string;
@@ -16,7 +16,7 @@ export const useConfirmDialog = (): ConfirmContextValue => {
   const ctx = useContext(ConfirmContext);
   if (ctx) return ctx;
   return {
-    confirm: (message: string) => Promise.resolve(window.confirm(message)),
+    confirm: (message: string) => Promise.resolve(globalThis.confirm(message)),
   };
 };
 
@@ -39,12 +39,26 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPending(null);
   }, [pending]);
 
+  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleCancel();
+    }
+  }, [handleCancel]);
+
+  const confirmValue = useMemo(() => ({ confirm }), [confirm]);
+
   return (
-    <ConfirmContext.Provider value={{ confirm }}>
+    <ConfirmContext.Provider value={confirmValue}>
       {children}
       {pending && (
-        <div className="ss-confirm-backdrop" onClick={handleCancel}>
-          <div className="ss-confirm-card" onClick={e => e.stopPropagation()}>
+        <div
+          className="ss-confirm-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={handleBackdropClick}
+          onKeyDown={e => { if (e.key === 'Escape') handleCancel(); }}
+        >
+          <div className="ss-confirm-card">
             <p>{pending.message}</p>
             <div className="ss-confirm-actions">
               <button className="btn ghost sm" onClick={handleCancel}>Cancel</button>

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-window.confirm = () => true;
+globalThis.confirm = () => true;
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

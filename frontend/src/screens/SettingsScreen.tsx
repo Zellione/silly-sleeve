@@ -800,8 +800,9 @@ const SettingsScreen: React.FC = () => {
                 </p>
                 <div className="settings-form">
                   <div className="form-row">
-                    <label>Mode</label>
+                    <label htmlFor="auto-save-mode">Mode</label>
                     <select
+                      id="auto-save-mode"
                       className="field"
                       value={settingsState.autoSaveMode || 'off'}
                       onChange={e => handleAutoSaveMode(e.target.value)}
@@ -814,10 +815,11 @@ const SettingsScreen: React.FC = () => {
                   </div>
                   {((settingsState.autoSaveMode || 'off') === 'timed') && (
                     <div className="form-row">
-                      <label>
+                      <label htmlFor="auto-save-interval">
                         Interval <small>seconds (min 5)</small>
                       </label>
                       <input
+                        id="auto-save-interval"
                         className="field"
                         type="number"
                         min={5}

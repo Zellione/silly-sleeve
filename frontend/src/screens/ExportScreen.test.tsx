@@ -27,8 +27,8 @@ describe('ExportScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCharacters.mockResolvedValue(mockCharacters);
-    mockExportCharacter.mockResolvedValue('/tmp/export/alice.json');
-    mockPickExportFolder.mockResolvedValue('/tmp/export');
+    mockExportCharacter.mockResolvedValue('/mock/export/alice.json');
+    mockPickExportFolder.mockResolvedValue('/mock/export');
   });
 
   it('renders the page head with step 7', async () => {

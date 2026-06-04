@@ -13,7 +13,10 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/bundle"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/project"
+	"silly-sleeve/internal/prompts"
 	"silly-sleeve/internal/settings"
 )
 
@@ -511,7 +514,7 @@ func TestGenerateCharacterBulk_LLMErrorReturnsExisting(t *testing.T) {
 	assert.Equal(t, "Original", ch.Name)
 }
 
-func TestSaveProjectTo(t *testing.T) {
+func TestSaveProjectBundle(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
@@ -523,21 +526,21 @@ func TestSaveProjectTo(t *testing.T) {
 	app.activeCharID = 1
 	app.cachedCrawl = &crawler.CrawlResult{URL: "https://test.wiki/Alice", Title: "Alice_Wiki"}
 
-	projectDir := tmpDir + "/alice-project"
-	err := app.SaveProjectTo(projectDir)
+	filePath := tmpDir + "/alice-project.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	assert.Equal(t, projectDir, app.projectDir)
+	assert.Equal(t, filePath, app.projectDir)
 
-	m, chars, err := project.LoadProject(projectDir)
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Alice_Wiki", m.Name)
-	assert.Equal(t, 1, m.ActiveCharID)
-	assert.Equal(t, "https://test.wiki/Alice", m.SourceURL)
-	assert.Len(t, chars, 2)
+	assert.Equal(t, "Alice_Wiki", b.Manifest.Name)
+	assert.Equal(t, 1, b.Manifest.ActiveCharID)
+	assert.Equal(t, "https://test.wiki/Alice", b.Manifest.SourceURL)
+	assert.Len(t, b.Characters, 2)
 }
 
-func TestSaveProjectTo_NoCrawlTitle(t *testing.T) {
+func TestSaveProjectBundle_NoCrawlTitle(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
@@ -546,60 +549,63 @@ func TestSaveProjectTo_NoCrawlTitle(t *testing.T) {
 		{ID: 1, Name: "Untitled"},
 	}
 
-	err := app.SaveProjectTo(tmpDir + "/project")
+	filePath := tmpDir + "/project.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	m, _, err := project.LoadProject(tmpDir + "/project")
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Untitled Project", m.Name)
+	assert.Equal(t, "Untitled Project", b.Manifest.Name)
 }
 
-func TestSaveProjectTo_NoCharacters(t *testing.T) {
+func TestSaveProjectBundle_NoCharacters(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 	app.characters = nil
 
-	err := app.SaveProjectTo(tmpDir + "/empty")
+	filePath := tmpDir + "/empty.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, tmpDir+"/empty", app.projectDir)
+	assert.Equal(t, filePath, app.projectDir)
 }
 
-func TestOpenProject_LoadsCharacters(t *testing.T) {
+func TestOpenProjectBundle_LoadsCharacters(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 	app.characters[0].Name = "Elara"
 
-	err := app.SaveProjectTo(tmpDir + "/load-test")
+	filePath := tmpDir + "/load-test.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	m, chars, err := project.LoadProject(tmpDir + "/load-test")
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Elara", m.Name)
-	assert.Len(t, chars, 1)
-	assert.Equal(t, "Elara", chars[0].Name)
+	assert.Equal(t, "Elara", b.Manifest.Name)
+	assert.Len(t, b.Characters, 1)
+	assert.Equal(t, "Elara", b.Characters[0].Name)
 }
 
-func TestOpenProject_EmptyCharactersDirDefaults(t *testing.T) {
+func TestOpenProjectBundle_EmptyCharactersDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
 	app.startup(context.Background())
 	app.characters = []compose.Character{}
 
-	err := app.SaveProjectTo(tmpDir + "/empty-char")
+	filePath := tmpDir + "/empty-char.slv"
+	err := app.SaveProjectBundle(filePath)
 	require.NoError(t, err)
 
-	m, chars, err := project.LoadProject(tmpDir + "/empty-char")
+	b, err := bundle.ReadBundle(filePath)
 	require.NoError(t, err)
-	assert.Equal(t, "Untitled Project", m.Name)
-	assert.Len(t, chars, 0)
+	assert.Equal(t, "Untitled Project", b.Manifest.Name)
+	assert.Len(t, b.Characters, 0)
 
-	// Simulate OpenProject's fallback for empty characters
-	chars = []compose.Character{compose.NewCharacter(1)}
+	chars := []compose.Character{compose.NewCharacter(1)}
 	assert.Len(t, chars, 1)
 	assert.Equal(t, 1, chars[0].ID)
 }
@@ -678,4 +684,330 @@ func mustMarshal(t *testing.T, v any) string {
 	b, err := json.Marshal(v)
 	require.NoError(t, err)
 	return string(b)
+}
+
+/* ── Prompt templates ────────────────────────────────── */
+
+func TestGetDefaultPromptTemplates_ReturnsDefaults(t *testing.T) {
+	app := NewApp()
+	tmpl := app.GetDefaultPromptTemplates()
+	assert.NotEmpty(t, tmpl.SystemPrompt)
+	assert.Len(t, tmpl.FieldPrompts, len(prompts.FieldIDs()))
+	for _, id := range prompts.FieldIDs() {
+		assert.NotEmpty(t, tmpl.FieldPrompts[id], "field %s should have a default prompt", id)
+	}
+}
+
+func TestGetPromptTemplates_ReturnsDefaultsWhenEmpty(t *testing.T) {
+	app := NewApp()
+	tmpl := app.GetPromptTemplates()
+	assert.NotEmpty(t, tmpl.SystemPrompt)
+	assert.Len(t, tmpl.FieldPrompts, len(prompts.FieldIDs()))
+}
+
+func TestGetPromptTemplates_ReturnsCustom(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	custom := prompts.Defaults()
+	custom.SystemPrompt = "Custom system"
+	app.settings.PromptTemplates = custom
+
+	tmpl := app.GetPromptTemplates()
+	assert.Equal(t, "Custom system", tmpl.SystemPrompt)
+}
+
+func TestSavePromptTemplates_Persists(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.ctx = context.Background()
+	app.settings = settings.Settings{Endpoints: []settings.LLMEndpoint{}}
+
+	tmpl := prompts.Defaults()
+	tmpl.SystemPrompt = "Saved system"
+	err := app.SavePromptTemplates(tmpl)
+	require.NoError(t, err)
+
+	assert.Equal(t, "Saved system", app.settings.PromptTemplates.SystemPrompt)
+
+	loaded, err := settings.Load()
+	require.NoError(t, err)
+	assert.Equal(t, "Saved system", loaded.PromptTemplates.SystemPrompt)
+}
+
+/* ── GenerateField (app.go wrapper) ──────────────────── */
+
+func TestGenerateField_NoCrawl(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.characters[0].Name = "KeepMe"
+
+	ch := app.GenerateField("appearance", "")
+	assert.Equal(t, "KeepMe", ch.Name)
+}
+
+func TestGenerateField_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": `{"appearance": "Tall and lean."}`}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID: 1, Name: "test", URL: srv.URL, Model: "m", IsDefault: true,
+		}},
+	}
+	app.cachedCrawl = &crawler.CrawlResult{Title: "Elara", URL: "https://wiki.test/Elara"}
+
+	ch := app.GenerateField("appearance", "")
+	assert.Equal(t, "Tall and lean.", ch.Appearance)
+	assert.True(t, ch.Dirty)
+}
+
+func TestGenerateField_LLMErrorReturnsExisting(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID: 1, Name: "err", URL: srv.URL, Model: "m", IsDefault: true,
+		}},
+	}
+	app.cachedCrawl = &crawler.CrawlResult{Title: "Test"}
+	app.characters[0].Name = "Original"
+
+	ch := app.GenerateField("appearance", "")
+	assert.Equal(t, "Original", ch.Name)
+}
+
+/* ── Lorebook operations ─────────────────────────────── */
+
+func TestGetLorebook_Empty(t *testing.T) {
+	app := NewApp()
+	entries := app.GetLorebook()
+	assert.Len(t, entries, 0)
+}
+
+func TestGetLorebook_WithEntries(t *testing.T) {
+	app := NewApp()
+	app.lorebookEntries = []lorebook.Entry{
+		{UID: 1, Comment: "Test", Content: "content"},
+	}
+	entries := app.GetLorebook()
+	assert.Len(t, entries, 1)
+	assert.Equal(t, "Test", entries[0].Comment)
+}
+
+func TestSaveLorebook_Replaces(t *testing.T) {
+	app := NewApp()
+	app.lorebookEntries = []lorebook.Entry{{UID: 1, Comment: "old"}}
+
+	newEntries := []lorebook.Entry{
+		{UID: 2, Comment: "new1"},
+		{UID: 3, Comment: "new2"},
+	}
+	app.SaveLorebook(newEntries)
+	assert.Len(t, app.lorebookEntries, 2)
+	assert.Equal(t, "new1", app.lorebookEntries[0].Comment)
+}
+
+func TestExportLorebook(t *testing.T) {
+	tmpDir := t.TempDir()
+	app := NewApp()
+	app.lorebookEntries = []lorebook.Entry{
+		{UID: 0, Comment: "Faction", Key: []string{"Harpers"}, Content: "secret network", Order: 100},
+	}
+
+	filePath, err := app.ExportLorebook(tmpDir)
+	require.NoError(t, err)
+	assert.Equal(t, tmpDir+"/world_info.json", filePath)
+
+	data, err := os.ReadFile(filePath)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "Faction")
+	assert.Contains(t, string(data), "Harpers")
+}
+
+func TestExportLorebook_WriteError(t *testing.T) {
+	tmpDir := t.TempDir()
+	blockFile := tmpDir + "/world_info.json"
+	require.NoError(t, os.Mkdir(blockFile, 0o555))
+	t.Cleanup(func() { os.RemoveAll(blockFile) })
+
+	app := NewApp()
+	app.lorebookEntries = []lorebook.Entry{
+		{UID: 0, Comment: "Test"},
+	}
+
+	_, err := app.ExportLorebook(tmpDir)
+	assert.Error(t, err)
+}
+
+/* ── OpenProjectBundle extended ──────────────────────── */
+
+func TestOpenProjectBundle_WithLorebook(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	filePath := tmpDir + "/lore-bundle.slv"
+	err := bundle.WriteBundle(filePath, bundle.Bundle{
+		Manifest: project.ProjectManifest{Name: "LoreTest", ActiveCharID: 1},
+		Characters: []compose.Character{
+			{ID: 1, Name: "Elara"},
+		},
+		Prompts: prompts.Defaults(),
+		Lorebook: []lorebook.Entry{
+			{UID: 1, Comment: "Entry1"},
+			{UID: 2, Comment: "Entry2"},
+		},
+	})
+	require.NoError(t, err)
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	m, err := app.OpenProjectBundle(filePath)
+	require.NoError(t, err)
+	assert.Equal(t, "LoreTest", m.Name)
+
+	assert.Len(t, app.lorebookEntries, 2)
+	assert.Equal(t, "Entry1", app.lorebookEntries[0].Comment)
+}
+
+func TestOpenProjectBundle_WithPrompts(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	customPrompts := prompts.Defaults()
+	customPrompts.SystemPrompt = "Bundled system prompt"
+
+	filePath := tmpDir + "/prompt-bundle.slv"
+	err := bundle.WriteBundle(filePath, bundle.Bundle{
+		Manifest:   project.ProjectManifest{Name: "PromptTest", ActiveCharID: 1},
+		Characters: []compose.Character{{ID: 1, Name: "Test"}},
+		Prompts:    customPrompts,
+	})
+	require.NoError(t, err)
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	_, err = app.OpenProjectBundle(filePath)
+	require.NoError(t, err)
+	assert.Equal(t, "Bundled system prompt", app.settings.PromptTemplates.SystemPrompt)
+}
+
+func TestOpenProjectBundle_NoFileSelected(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	_, err := app.OpenProjectBundle("")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no file selected")
+}
+
+func TestOpenProjectBundle_RestoresCrawlFromBundle(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	filePath := tmpDir + "/crawl-bundle.slv"
+	err := bundle.WriteBundle(filePath, bundle.Bundle{
+		Manifest: project.ProjectManifest{
+			Name:       "CrawlTest",
+			ActiveCharID: 1,
+			SourceURL:  "https://wiki.test/Elara",
+			CrawlTitle: "Elara_Wiki",
+		},
+		Characters: []compose.Character{{ID: 1, Name: "Elara"}},
+		Prompts:    prompts.Defaults(),
+		CrawlCache: &crawler.CrawlResult{
+			Title: "Elara_Wiki",
+			URL:   "https://wiki.test/Elara",
+		},
+	})
+	require.NoError(t, err)
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	_, err = app.OpenProjectBundle(filePath)
+	require.NoError(t, err)
+
+	cached := app.GetCachedCrawl()
+	require.NotNil(t, cached)
+	assert.Equal(t, "Elara_Wiki", cached.Title)
+}
+
+func TestOpenProjectBundle_RestoresCrawlFromDisk(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	require.NoError(t, crawler.SaveCache(crawler.CrawlResult{
+		Title: "DiskCrawl",
+		URL:   "https://wiki.test/DiskCrawl",
+	}))
+
+	filePath := tmpDir + "/disk-bundle.slv"
+	err := bundle.WriteBundle(filePath, bundle.Bundle{
+		Manifest: project.ProjectManifest{
+			Name:        "DiskTest",
+			ActiveCharID: 1,
+			CrawlTitle:  "DiskCrawl",
+		},
+		Characters: []compose.Character{{ID: 1, Name: "Test"}},
+		Prompts:    prompts.Defaults(),
+		CrawlCache: nil,
+	})
+	require.NoError(t, err)
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	_, err = app.OpenProjectBundle(filePath)
+	require.NoError(t, err)
+
+	cached := app.GetCachedCrawl()
+	require.NotNil(t, cached)
+	assert.Equal(t, "DiskCrawl", cached.Title)
+}
+
+func TestOpenProjectBundle_EmptyCharactersFromBundle(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	filePath := tmpDir + "/empty-chars.slv"
+	err := bundle.WriteBundle(filePath, bundle.Bundle{
+		Manifest:   project.ProjectManifest{Name: "EmptyChars", ActiveCharID: 1},
+		Characters: []compose.Character{},
+		Prompts:    prompts.Defaults(),
+	})
+	require.NoError(t, err)
+
+	app := NewApp()
+	app.startup(context.Background())
+
+	_, err = app.OpenProjectBundle(filePath)
+	require.NoError(t, err)
+
+	chars := app.GetCharacters()
+	assert.Len(t, chars, 1)
+	assert.Equal(t, 1, chars[0].ID)
 }

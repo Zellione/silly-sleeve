@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"silly-sleeve/internal/prompts"
 )
 
 // LLMEndpoint is a future-proof endpoint definition.
@@ -23,7 +25,10 @@ type LLMEndpoint struct {
 
 // Settings is the top-level persisted config.
 type Settings struct {
-	Endpoints []LLMEndpoint `json:"endpoints"`
+	Endpoints       []LLMEndpoint        `json:"endpoints"`
+	PromptTemplates prompts.TemplateSet  `json:"promptTemplates,omitempty"`
+	AutoSaveMode    string               `json:"autoSaveMode,omitempty"`
+	AutoSaveInterval int                 `json:"autoSaveInterval,omitempty"`
 }
 
 func configPath() (string, error) {
@@ -54,6 +59,9 @@ func Load() (Settings, error) {
 	var s Settings
 	if err := json.Unmarshal(data, &s); err != nil {
 		return Settings{}, fmt.Errorf("parse settings: %w", err)
+	}
+	if len(s.PromptTemplates.FieldPrompts) == 0 {
+		s.PromptTemplates = prompts.Defaults()
 	}
 	return s, nil
 }

@@ -7,7 +7,7 @@ import { useToast } from '../components/ToastProvider';
 import {
   SaveIcon, FolderIcon, ArrowIcon,
 } from '../icons';
-import { PickSaveFolder, SaveProjectTo, OpenProject } from '../../wailsjs/go/main/App';
+import { PickSaveBundle, SaveProjectBundle, PickOpenBundle, OpenProjectBundle } from '../../wailsjs/go/main/App';
 
 const Placeholder: React.FC<{ title: string }> = ({ title }) => (
   <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -18,15 +18,15 @@ const Placeholder: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
-const DashboardScreen: React.FC = () => {
+const DashboardScreen: React.FC<{ onProjectOpened?: (path: string) => void }> = ({ onProjectOpened }) => {
   const { toast } = useToast();
 
   const handleSaveProject = useCallback(async () => {
     try {
-      const folder = await PickSaveFolder();
-      if (!folder) return;
-      await SaveProjectTo(folder);
-      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${folder}.` });
+      const filePath = await PickSaveBundle();
+      if (!filePath) return;
+      await SaveProjectBundle(filePath);
+      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
     } catch (e: any) {
       if (e?.message) {
         toast({ kind: 'bad', title: 'Save failed', body: e.message });
@@ -36,14 +36,17 @@ const DashboardScreen: React.FC = () => {
 
   const handleOpenProject = useCallback(async () => {
     try {
-      const manifest = await OpenProject();
-      toast({ kind: 'ok', title: 'Project opened', body: `Loaded "${manifest.name}" with ${manifest.activeCharId ? 'characters' : 'no characters'}.` });
+      const filePath = await PickOpenBundle();
+      if (!filePath) return;
+      const manifest = await OpenProjectBundle(filePath);
+      onProjectOpened?.(filePath);
+      toast({ kind: 'ok', title: 'Project opened', body: `Loaded "${manifest.name}".` });
     } catch (e: any) {
-      if (e?.message) {
+      if (e?.message && e.message !== 'Cancelled') {
         toast({ kind: 'bad', title: 'Open failed', body: e.message });
       }
     }
-  }, [toast]);
+  }, [toast, onProjectOpened]);
 
   return (
     <>
@@ -76,7 +79,7 @@ const DashboardScreen: React.FC = () => {
 export { DashboardScreen };
 export { CrawlerScreen };
 export { default as EditorScreen } from './EditorScreen';
-export const LorebookScreen: React.FC = () => <Placeholder title="Author lorebook" />;
+export { default as LorebookScreen } from './LorebookScreen';
 export const ProjectImageScreen: React.FC = () => <Placeholder title="Project image" />;
 export const PortraitScreen: React.FC = () => <Placeholder title="Portrait" />;
 export const PreviewScreen: React.FC = () => <Placeholder title="Preview character card" />;

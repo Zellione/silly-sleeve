@@ -188,6 +188,63 @@ export namespace llm {
 
 }
 
+export namespace lorebook {
+	
+	export class Entry {
+	    uid: number;
+	    comment: string;
+	    key: string[];
+	    keysecondary: string[];
+	    content: string;
+	    constant: boolean;
+	    selective: boolean;
+	    selectiveLogic: number;
+	    addMemo: boolean;
+	    order: number;
+	    position: number;
+	    disable: boolean;
+	    probability: number;
+	    useProbability: boolean;
+	    depth: number;
+	    sticky: number;
+	    vectorized: boolean;
+	    ignoreBudget: boolean;
+	    excludeRecursion: boolean;
+	    preventRecursion: boolean;
+	    characters: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Entry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.uid = source["uid"];
+	        this.comment = source["comment"];
+	        this.key = source["key"];
+	        this.keysecondary = source["keysecondary"];
+	        this.content = source["content"];
+	        this.constant = source["constant"];
+	        this.selective = source["selective"];
+	        this.selectiveLogic = source["selectiveLogic"];
+	        this.addMemo = source["addMemo"];
+	        this.order = source["order"];
+	        this.position = source["position"];
+	        this.disable = source["disable"];
+	        this.probability = source["probability"];
+	        this.useProbability = source["useProbability"];
+	        this.depth = source["depth"];
+	        this.sticky = source["sticky"];
+	        this.vectorized = source["vectorized"];
+	        this.ignoreBudget = source["ignoreBudget"];
+	        this.excludeRecursion = source["excludeRecursion"];
+	        this.preventRecursion = source["preventRecursion"];
+	        this.characters = source["characters"];
+	    }
+	}
+
+}
+
 export namespace project {
 	
 	export class ProjectManifest {
@@ -237,6 +294,25 @@ export namespace project {
 
 }
 
+export namespace prompts {
+	
+	export class TemplateSet {
+	    systemPrompt: string;
+	    fieldPrompts: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.systemPrompt = source["systemPrompt"];
+	        this.fieldPrompts = source["fieldPrompts"];
+	    }
+	}
+
+}
+
 export namespace settings {
 	
 	export class LLMEndpoint {
@@ -271,6 +347,9 @@ export namespace settings {
 	}
 	export class Settings {
 	    endpoints: LLMEndpoint[];
+	    promptTemplates?: prompts.TemplateSet;
+	    autoSaveMode?: string;
+	    autoSaveInterval?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -279,6 +358,9 @@ export namespace settings {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.endpoints = this.convertValues(source["endpoints"], LLMEndpoint);
+	        this.promptTemplates = this.convertValues(source["promptTemplates"], prompts.TemplateSet);
+	        this.autoSaveMode = source["autoSaveMode"];
+	        this.autoSaveInterval = source["autoSaveInterval"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

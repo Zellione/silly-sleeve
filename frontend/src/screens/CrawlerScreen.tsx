@@ -4,6 +4,7 @@ import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { CrawlPage, GetCachedCrawl } from '../../wailsjs/go/main/App';
 import { crawler } from '../../wailsjs/go/models';
+import { SectionContent } from '../components/SectionContent';
 
 const RECENT_WIKIS = [
   'baldursgate.fandom.com', 'witcher.fandom.com',
@@ -12,8 +13,6 @@ const RECENT_WIKIS = [
 ];
 
 type Phase = 'idle' | 'fetching' | 'crawled';
-
-const SECTION_TAGS: Record<number, string> = { 1: 'lede', 2: 'section', 3: 'subsection' };
 
 const CrawlerScreen: React.FC = () => {
   const [url, setUrl] = useState('https://baldursgate.fandom.com/wiki/Elara_Wynd');
@@ -186,17 +185,13 @@ const CrawlerScreen: React.FC = () => {
                        })}
                      </dl>
                    )}
-                   {result.sections && result.sections.map((s, i) => (
-                     <React.Fragment key={i}>
-                       {s.heading && <h4>{s.heading}</h4>}
-                       {s.body && s.body.split('\n\n').map((para, j) => (
-                         <p key={j}>
-                           {j === 0 && SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
-                           {para}
-                         </p>
-                       ))}
-                     </React.Fragment>
-                   ))}
+                    {result.sections && <SectionContent sections={result.sections} />}
+                    {result && (!result.sections || result.sections.length === 0) && (
+                      <div className="col" style={{alignItems:'center', padding:'30px 16px', gap:8, textAlign:'center'}}>
+                        <span style={{color:'var(--ink-2)', fontSize:13}}>No content extracted from this page.</span>
+                        <span style={{color:'var(--ink-3)', fontSize:11}}>The wiki page may not exist, be empty, or contain no parseable content.</span>
+                      </div>
+                    )}
                 </>
               ) : (
                 <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>
@@ -206,7 +201,7 @@ const CrawlerScreen: React.FC = () => {
             </div>
             <div className="foot">
               <span className="meta">
-                <span>Status · {result ? '200 OK' : '…'}</span>
+                  <span>Status · {result ? (result.statusCode || 'ERR') : '…'}</span>
                 <span>Latency · {result ? result.latencyMs + ' ms' : '…'}</span>
                 <span>Cache · {result ? 'warm' : 'cold'}</span>
               </span>

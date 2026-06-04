@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
+import { useAutoSave } from '../components/useAutoSave';
 import {
   LockIcon, CopyIcon, RerollIcon, SparksIcon,
   SaveIcon, ArrowIcon, PlusIcon, XIcon, DownIcon,
@@ -8,9 +9,11 @@ import {
 } from '../icons';
 import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
-  SetActiveCharacter, GetCachedCrawl, CountTokens, GenerateCharacterBulk,
-  PickSaveFolder, SaveProjectTo,
+  SetActiveCharacter, GetCachedCrawl, CountTokens,
+  GenerateField, GenerateCharacterBulk,
+  PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
+import { SectionContent } from '../components/SectionContent';
 import { compose, crawler } from '../../wailsjs/go/models';
 
 interface FieldSpec {
@@ -95,8 +98,6 @@ function fieldStateFromChar(ch: compose.Character, field: FieldSpec): FieldState
   return { value: val, locked: false, dirty: false, showPrompt: false, prompt: '', rolling: false, history: 1 };
 }
 
-const SECTION_TAGS: Record<number, string> = { 1: 'lede', 2: 'section', 3: 'subsection' };
-
 const TagsField: React.FC<{
   value: string[]; onChange: (v: string[]) => void; locked: boolean;
 }> = ({ value, onChange, locked }) => {
@@ -163,14 +164,15 @@ const FieldCard: React.FC<{
   tokenCount: number;
   onChange: (v: any) => void;
   onPatch: (p: Partial<FieldState>) => void;
-}> = ({ field, idx, st, tokenCount, onChange, onPatch }) => {
+  onReroll: () => void;
+  onBlur: () => void;
+}> = ({ field, idx, st, tokenCount, onChange, onPatch, onReroll, onBlur }) => {
   if (!st) return null;
   const displayCount = wordCountLabel(st.value, field.type);
 
   const startReroll = () => {
     if (st.locked) return;
-    onPatch({ rolling: true });
-    setTimeout(() => onPatch({ rolling: false, history: st.history + 1, showPrompt: false, prompt: '' }), 1100);
+    onReroll();
   };
 
   return (
@@ -225,12 +227,14 @@ const FieldCard: React.FC<{
         <>
           {field.type === 'line' && (
             <input className="field" value={st.value} disabled={st.locked}
-              onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }} />
+              onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
+              onBlur={onBlur} />
           )}
 
           {field.type === 'text' && (
             <textarea className="field" value={st.value} disabled={st.locked}
               onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
+              onBlur={onBlur}
               style={{ minHeight: field.id === 'backstory' || field.id === 'appearance' ? 140 : 100 }} />
           )}
 
@@ -315,13 +319,45 @@ const CharacterStrip: React.FC<{
   </div>
 );
 
-const EditorScreen: React.FC = () => {
+interface EditorScreenProps {
+  projectPath: string;
+  onProjectPathChange: (path: string) => void;
+}
+
+const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathChange }) => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeChar, setActiveChar] = useState<compose.Character | null>(null);
   const [crawl, setCrawl] = useState<crawler.CrawlResult | null>(null);
   const [fields, setFields] = useState<Record<string, FieldState>>({});
   const [tokenCache, setTokenCache] = useState<Record<string, number>>({});
   const { toast } = useToast();
+
+  const flushActiveCharRef = useRef<() => Promise<compose.Character | null>>(
+    () => Promise.resolve(null),
+  );
+
+  const warnedNoPathRef = useRef(false);
+
+  const doSaveBundle = useCallback(async (path: string) => {
+    try {
+      await flushActiveCharRef.current();
+      await SaveProjectBundle(path);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Auto-save failed:', msg);
+    }
+  }, []);
+
+  const { handleChange: autoSaveChange, handleBlur: autoSaveBlur, autoSaveMode, autoSaveInterval } = useAutoSave({
+    projectPath,
+    onSave: doSaveBundle,
+  });
+
+  useEffect(() => {
+    if (autoSaveMode === 'off' || projectPath || warnedNoPathRef.current) return;
+    warnedNoPathRef.current = true;
+    toast({ kind: 'warn', title: 'Auto-save ready', body: 'Save or open a project first to enable auto-save.' });
+  }, [autoSaveMode, projectPath, toast]);
 
   const refreshCharacters = useCallback(async () => {
     const chars = await GetCharacters();
@@ -343,13 +379,41 @@ const EditorScreen: React.FC = () => {
 
   useEffect(() => {
     if (!activeChar) return;
-    const next: Record<string, FieldState> = {};
-    for (const f of FIELDS) {
-      next[f.id] = fieldStateFromChar(activeChar, f);
-    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFields(next);
+    setFields(prev => {
+      const next: Record<string, FieldState> = {};
+      for (const f of FIELDS) {
+        const isLocked = prev[f.id]?.locked ?? false;
+        const charVal = fieldStateFromChar(activeChar, f);
+        next[f.id] = {
+          value: isLocked ? (prev[f.id]?.value ?? charVal.value) : charVal.value,
+          locked: isLocked,
+          dirty: isLocked ? (prev[f.id]?.dirty ?? false) : false,
+          showPrompt: isLocked ? (prev[f.id]?.showPrompt ?? false) : false,
+          prompt: isLocked ? (prev[f.id]?.prompt ?? '') : '',
+          rolling: false,
+          history: prev[f.id]?.history ?? 1,
+        };
+      }
+      return next;
+    });
   }, [activeChar]);
+
+  const flushActiveCharacter = useCallback(async (): Promise<compose.Character | null> => {
+    if (!activeChar) return null;
+    const updated = charsFromFieldState(activeChar, fields);
+    await UpdateCharacter(updated);
+    await refreshCharacters();
+    setActiveChar(updated);
+    for (const f of FIELDS) {
+      setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], dirty: false } }));
+    }
+    return updated;
+  }, [activeChar, fields, refreshCharacters]);
+
+  useEffect(() => {
+    flushActiveCharRef.current = flushActiveCharacter;
+  }, [flushActiveCharacter]);
 
   useEffect(() => {
     const updateTokens = async () => {
@@ -425,35 +489,34 @@ const EditorScreen: React.FC = () => {
   const handleSave = useCallback(async () => {
     if (!activeChar) return;
     try {
-      const updated = charsFromFieldState(activeChar, fields);
-      await UpdateCharacter(updated);
-      await refreshCharacters();
-      setActiveChar(updated);
-      for (const f of FIELDS) {
-        setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], dirty: false } }));
+      const updated = await flushActiveCharacter();
+      if (updated) {
+        toast({ kind: 'ok', title: 'Saved', body: `"${updated.name}" · ${dirtyCount} fields written.` });
       }
-      toast({ kind: 'ok', title: 'Saved', body: `"${updated.name}" · ${dirtyCount} fields written.` });
     } catch (e: any) {
       toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not save character.' });
     }
-  }, [activeChar, fields, dirtyCount, toast, refreshCharacters]);
+  }, [activeChar, dirtyCount, toast, flushActiveCharacter]);
 
   const handleSaveProject = useCallback(async () => {
     try {
-      const folder = await PickSaveFolder();
-      if (!folder) return;
-      await SaveProjectTo(folder);
-      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${folder}.` });
+      const filePath = await PickSaveBundle();
+      if (!filePath) return;
+      await flushActiveCharRef.current();
+      await SaveProjectBundle(filePath);
+      onProjectPathChange(filePath);
+      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
     } catch (e: any) {
       if (e?.message) {
         toast({ kind: 'bad', title: 'Save project failed', body: e.message });
       }
     }
-  }, [toast]);
+  }, [toast, onProjectPathChange]);
 
   const setFieldValue = useCallback((id: string, value: any) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], value } }));
-  }, []);
+    autoSaveChange();
+  }, [autoSaveChange]);
 
   const patchField = useCallback((id: string, patch: Partial<FieldState>) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -475,6 +538,10 @@ const EditorScreen: React.FC = () => {
       setActiveChar(ch);
 
       for (const f of FIELDS) {
+        if (fields[f.id]?.locked) {
+          patchField(f.id, { rolling: false });
+          continue;
+        }
         const val = fieldStateFromChar(ch, FIELDS.find(x => x.id === f.id)!);
         setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], value: val.value, dirty: false, rolling: false, history: prev[f.id]?.history ? prev[f.id].history + 1 : 2 } }));
       }
@@ -486,6 +553,39 @@ const EditorScreen: React.FC = () => {
       toast({ kind: 'bad', title: 'Compose failed', body: e?.message || 'Could not reach the LLM endpoint.' });
     }
   }, [activeChar, fields, patchField, toast, refreshCharacters]);
+
+  const handleFieldReroll = useCallback(async (fieldID: string) => {
+    const st = fields[fieldID];
+    if (!st || !activeChar) return;
+    const customPrompt = st.prompt || '';
+
+    patchField(fieldID, { rolling: true });
+
+    try {
+      const ch = await GenerateField(fieldID, customPrompt);
+      await refreshCharacters();
+      setActiveChar(ch);
+      const spec = FIELDS.find(x => x.id === fieldID);
+      if (spec) {
+        const val = fieldStateFromChar(ch, spec);
+        patchField(fieldID, {
+          value: val.value,
+          rolling: false,
+          dirty: false,
+          history: (st.history || 1) + 1,
+          showPrompt: false,
+          prompt: '',
+        });
+      } else {
+        patchField(fieldID, { rolling: false });
+      }
+      const label = spec?.label || fieldID;
+      toast({ kind: 'ok', title: `${label} rerolled`, body: 'Field updated from LLM.' });
+    } catch (e: any) {
+      patchField(fieldID, { rolling: false });
+      toast({ kind: 'bad', title: 'Reroll failed', body: e?.message || 'Could not reach the LLM endpoint.' });
+    }
+  }, [fields, activeChar, patchField, toast, refreshCharacters]);
 
   const isComposing = FIELDS.some(f => fields[f.id]?.rolling);
 
@@ -543,17 +643,7 @@ const EditorScreen: React.FC = () => {
             <div className="b scroll">
               {crawl ? (
                 <>
-                  {crawl.sections && crawl.sections.map((s, i) => (
-                    <React.Fragment key={i}>
-                      {s.heading && <h4>{s.heading}</h4>}
-                      {s.body && s.body.split('\n\n').map((para, j) => (
-                        <p key={j}>
-                          {j === 0 && SECTION_TAGS[s.level] && <span className="section-tag">{SECTION_TAGS[s.level]}</span>}
-                          {para}
-                        </p>
-                      ))}
-                    </React.Fragment>
-                  ))}
+                  {crawl.sections && <SectionContent sections={crawl.sections} />}
                   {crawl.infobox && crawl.infobox.length > 0 && (
                     <dl className="infobox" style={{ marginTop: 16 }}>
                       {crawl.infobox.map((entry, i) => (
@@ -589,11 +679,21 @@ const EditorScreen: React.FC = () => {
                 tokenCount={tokenCache[f.id] ?? 0}
                 onChange={v => setFieldValue(f.id, v)}
                 onPatch={p => patchField(f.id, p)}
+                onReroll={() => handleFieldReroll(f.id)}
+                onBlur={autoSaveBlur}
               />
             ))}
             <div className="row" style={{ justifyContent: 'space-between', padding: '12px 4px', color: 'var(--ink-3)' }}>
               <span className="uplabel">{dirtyCount} fields modified · {totalTokens} tokens estimated</span>
-              <span className="uplabel"><kbd>⌘</kbd> <kbd>S</kbd> save</span>
+              <span className="uplabel">
+                {autoSaveMode !== 'off' && (
+                  <span style={{ color: projectPath ? 'var(--acc)' : 'var(--ink-3)', marginRight: 12 }}>
+                    Auto-save: {autoSaveMode === 'timed' ? `${autoSaveMode} (${(autoSaveInterval || 30) + 's'})` : autoSaveMode}
+                    {!projectPath && ' — save project first'}
+                  </span>
+                )}
+                <kbd>&#8984;</kbd> <kbd>S</kbd> save
+              </span>
             </div>
           </div>
         </div>

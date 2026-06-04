@@ -22,8 +22,16 @@ export function ExportCharacter(arg1, arg2) {
   return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
 }
 
+export function ExportLorebook(arg1) {
+  return window['go']['main']['App']['ExportLorebook'](arg1);
+}
+
 export function GenerateCharacterBulk(arg1) {
   return window['go']['main']['App']['GenerateCharacterBulk'](arg1);
+}
+
+export function GenerateField(arg1, arg2) {
+  return window['go']['main']['App']['GenerateField'](arg1, arg2);
 }
 
 export function GetActiveCharacter() {
@@ -38,6 +46,18 @@ export function GetCharacters() {
   return window['go']['main']['App']['GetCharacters']();
 }
 
+export function GetDefaultPromptTemplates() {
+  return window['go']['main']['App']['GetDefaultPromptTemplates']();
+}
+
+export function GetLorebook() {
+  return window['go']['main']['App']['GetLorebook']();
+}
+
+export function GetPromptTemplates() {
+  return window['go']['main']['App']['GetPromptTemplates']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -46,20 +66,32 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
-export function OpenProject() {
-  return window['go']['main']['App']['OpenProject']();
+export function OpenProjectBundle(arg1) {
+  return window['go']['main']['App']['OpenProjectBundle'](arg1);
 }
 
 export function PickExportFolder() {
   return window['go']['main']['App']['PickExportFolder']();
 }
 
-export function PickSaveFolder() {
-  return window['go']['main']['App']['PickSaveFolder']();
+export function PickOpenBundle() {
+  return window['go']['main']['App']['PickOpenBundle']();
 }
 
-export function SaveProjectTo(arg1) {
-  return window['go']['main']['App']['SaveProjectTo'](arg1);
+export function PickSaveBundle() {
+  return window['go']['main']['App']['PickSaveBundle']();
+}
+
+export function SaveLorebook(arg1) {
+  return window['go']['main']['App']['SaveLorebook'](arg1);
+}
+
+export function SaveProjectBundle(arg1) {
+  return window['go']['main']['App']['SaveProjectBundle'](arg1);
+}
+
+export function SavePromptTemplates(arg1) {
+  return window['go']['main']['App']['SavePromptTemplates'](arg1);
 }
 
 export function SaveSettings(arg1) {

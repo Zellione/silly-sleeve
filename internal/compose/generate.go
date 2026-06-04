@@ -7,6 +7,7 @@ import (
 
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/prompts"
 )
 
 type generateResponse struct {
@@ -142,4 +143,250 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// GenerateField sends a per-field prompt to the LLM and returns the
+// character with that field updated. customPrompt is appended to the
+// field-specific instruction. templates provides the system prompt.
+func GenerateField(
+	fieldID string,
+	result crawler.CrawlResult,
+	ep llm.LLMEndpoint,
+	customPrompt string,
+	existing Character,
+	templates prompts.TemplateSet,
+) (Character, error) {
+	fieldTemplate := templates.FieldPrompts[fieldID]
+	if fieldTemplate == "" {
+		return existing, fmt.Errorf("no template for field %s", fieldID)
+	}
+
+	vars := prompts.BuildVars(result.Title, result.URL, buildCrawlContent(result))
+	userPrompt := prompts.Substitute(fieldTemplate, vars)
+
+	if customPrompt != "" {
+		userPrompt += "\n\nAdditional instructions: " + customPrompt
+	}
+
+	sysPrompt := templates.SystemPrompt
+	if sysPrompt == "" {
+		sysPrompt = systemPrompt
+	}
+
+	content, err := llm.Complete(ep, sysPrompt, userPrompt)
+	if err != nil {
+		return existing, fmt.Errorf("llm complete: %w", err)
+	}
+
+	val, err := resolveFieldValue(fieldID, cleanResponse(content))
+	if err != nil {
+		return existing, err
+	}
+
+	ch := existing
+	applyField(&ch, fieldID, val)
+	ch.Dirty = true
+
+	return ch, nil
+}
+
+// resolveFieldValue parses the LLM response for a single field and extracts
+// the field value. It handles JSON objects, raw text fallback, case-insensitive
+// key lookups, and delegates text-field scenarios to resolveTextFieldValue.
+func resolveFieldValue(fieldID, content string) (any, error) {
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(content), &raw); err != nil {
+		if isTextField(fieldID) {
+			return stripJSONQuotes(content), nil
+		}
+		return nil, fmt.Errorf("parse field response: %w (raw: %s)", err, truncate(content, 200))
+	}
+
+	val := raw[fieldID]
+	if val == nil {
+		val = findCaseInsensitive(raw, fieldID)
+	}
+
+	if isTextField(fieldID) {
+		return resolveTextFieldValue(content, val)
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+	return val, nil
+}
+
+// resolveTextFieldValue handles text-field-specific resolution: empty-value
+// fallback, array-to-string conversion, and nil checks.
+func resolveTextFieldValue(content string, val any) (any, error) {
+	if val == nil || isEmptyString(val) || isEmptyArray(val) {
+		if content != "" {
+			return content, nil
+		}
+		return nil, nil
+	}
+	if arr, ok := val.([]any); ok {
+		b, err := json.Marshal(arr)
+		if err == nil {
+			return string(b), nil
+		}
+	}
+	return val, nil
+}
+
+// stripJSONQuotes removes surrounding double-quotes if content is a valid
+// JSON string literal (e.g. `"hello"` → `hello`).
+func stripJSONQuotes(s string) string {
+	if len(s) < 2 || s[0] != '"' {
+		return s
+	}
+	var str string
+	if err := json.Unmarshal([]byte(s), &str); err != nil {
+		return s
+	}
+	return str
+}
+
+// buildCrawlContent renders the crawl result as a flat string for template substitution.
+func buildCrawlContent(result crawler.CrawlResult) string {
+	var sb strings.Builder
+	sb.WriteString("Wiki page title: ")
+	sb.WriteString(result.Title)
+	sb.WriteString("\n\n")
+
+	if len(result.Infobox) > 0 {
+		sb.WriteString("Infobox:\n")
+		for _, entry := range result.Infobox {
+			if entry.Key != "" {
+				sb.WriteString("- ")
+				sb.WriteString(entry.Key)
+				sb.WriteString(": ")
+				sb.WriteString(entry.Value)
+				sb.WriteString("\n")
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("Content:\n")
+	for _, section := range result.Sections {
+		if section.Heading != "" {
+			sb.WriteString("\n## ")
+			sb.WriteString(section.Heading)
+			sb.WriteString("\n")
+		}
+		if section.Body != "" {
+			sb.WriteString(section.Body)
+			sb.WriteString("\n\n")
+		}
+	}
+
+	return sb.String()
+}
+
+// isTextField returns true for fields that are freeform text (not arrays or scalars).
+func isTextField(fieldID string) bool {
+	return fieldID == "appearance" || fieldID == "personality" ||
+		fieldID == "backstory" || fieldID == "abilities" || fieldID == "relationships"
+}
+
+// isEmptyString returns true if the value is a JSON string that is empty.
+func isEmptyString(v any) bool {
+	s, ok := v.(string)
+	return ok && s == ""
+}
+
+// isEmptyArray returns true if the value is a JSON array with no elements.
+func isEmptyArray(v any) bool {
+	arr, ok := v.([]any)
+	return ok && len(arr) == 0
+}
+
+// findCaseInsensitive looks for a key in the map ignoring case differences.
+// Some LLMs return capitalized keys like "Relationships" instead of "relationships".
+func findCaseInsensitive(raw map[string]any, key string) any {
+	lower := strings.ToLower(key)
+	for k, v := range raw {
+		if strings.ToLower(k) == lower {
+			return v
+		}
+	}
+	return nil
+}
+
+// applyField sets a single field on the character from the LLM response value.
+func applyField(ch *Character, fieldID string, value any) {
+	if value == nil {
+		return
+	}
+
+	switch fieldID {
+	case "tags", "quotes":
+		applyStringSliceField(ch, fieldID, value)
+	case "stats":
+		applyStatsField(ch, value)
+	default:
+		applyStringField(ch, fieldID, value)
+	}
+}
+
+func applyStringField(ch *Character, fieldID string, value any) {
+	s, ok := value.(string)
+	if !ok || s == "" && fieldID != "epithet" {
+		return
+	}
+	switch fieldID {
+	case "name":
+		ch.Name = s
+	case "epithet":
+		ch.Epithet = s
+	case "appearance":
+		ch.Appearance = s
+	case "personality":
+		ch.Personality = s
+	case "backstory":
+		ch.Backstory = s
+	case "abilities":
+		ch.Abilities = s
+	case "relationships":
+		ch.Relationships = s
+	}
+}
+
+func applyStringSliceField(ch *Character, fieldID string, value any) {
+	arr, ok := value.([]any)
+	if !ok || len(arr) == 0 {
+		return
+	}
+	slice := make([]string, 0, len(arr))
+	for _, v := range arr {
+		if s, ok := v.(string); ok {
+			slice = append(slice, s)
+		}
+	}
+	switch fieldID {
+	case "tags":
+		ch.Tags = slice
+	case "quotes":
+		ch.Quotes = slice
+	}
+}
+
+func applyStatsField(ch *Character, value any) {
+	arr, ok := value.([]any)
+	if !ok || len(arr) == 0 {
+		return
+	}
+	stats := make([]StatKV, 0, len(arr))
+	for _, v := range arr {
+		pair, ok := v.([]any)
+		if !ok || len(pair) < 2 {
+			continue
+		}
+		k, _ := pair[0].(string)
+		val, _ := pair[1].(string)
+		stats = append(stats, StatKV{Key: k, Value: val})
+	}
+	ch.Stats = stats
 }

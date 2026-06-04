@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -15,18 +14,22 @@ import (
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/project"
+	"silly-sleeve/internal/prompts"
+	"silly-sleeve/internal/bundle"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/settings"
 )
 
 // App struct
 type App struct {
-	ctx          context.Context
-	settings     settings.Settings
-	mu           sync.Mutex
-	cachedCrawl  *crawler.CrawlResult
-	characters   []compose.Character
-	activeCharID int
-	projectDir   string
+	ctx             context.Context
+	settings        settings.Settings
+	mu              sync.Mutex
+	cachedCrawl     *crawler.CrawlResult
+	characters      []compose.Character
+	activeCharID    int
+	projectDir      string
+	lorebookEntries []lorebook.Entry
 }
 
 // NewApp creates a new App application struct
@@ -87,10 +90,30 @@ func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
 	})
 }
 
+// GetDefaultPromptTemplates returns the built-in factory default templates.
+func (a *App) GetDefaultPromptTemplates() prompts.TemplateSet {
+	return prompts.Defaults()
+}
+
+// GetPromptTemplates returns the current prompt templates from settings.
+func (a *App) GetPromptTemplates() prompts.TemplateSet {
+	if len(a.settings.PromptTemplates.FieldPrompts) == 0 {
+		return prompts.Defaults()
+	}
+	return a.settings.PromptTemplates
+}
+
+// SavePromptTemplates persists prompt templates to settings.
+func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
+	a.settings.PromptTemplates = t
+	return settings.Save(a.settings)
+}
+
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.
 func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlResult {
 	result := crawler.FetchPage(pageURL)
 	if result.Error != nil {
+		fmt.Println("[app] CrawlPage fetch error:", result.Error)
 		return crawler.CrawlResult{
 			URL:        pageURL,
 			Domain:     result.Domain,
@@ -110,6 +133,8 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 		StatusCode: 200,
 		LatencyMs:  result.LatencyMs,
 	}
+	fmt.Printf("[app] CrawlPage done: title=%q sections=%d infobox=%d words=%d rawHTML=%d\n",
+		cr.Title, len(cr.Sections), len(cr.Infobox), cr.WordCount, len(cr.RawHTML))
 	a.mu.Lock()
 	a.cachedCrawl = &cr
 	a.mu.Unlock()
@@ -272,6 +297,58 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	return ch
 }
 
+// GenerateField sends a per-field prompt to the LLM for a single character field.
+func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
+	a.mu.Lock()
+	crawl := a.cachedCrawl
+	existing := compose.Character{}
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			existing = c
+			break
+		}
+	}
+	def := a.defaultEndpoint()
+	templates := a.settings.PromptTemplates
+	if len(templates.FieldPrompts) == 0 {
+		templates = prompts.Defaults()
+	}
+	a.mu.Unlock()
+
+	if crawl == nil {
+		return existing
+	}
+
+	ep := llm.LLMEndpoint{
+		ID:           def.ID,
+		Name:         def.Name,
+		URL:          def.URL,
+		Model:        def.Model,
+		Key:          def.Key,
+		ContextSize:  def.ContextSize,
+		Temperature:  def.Temperature,
+		SystemPrompt: def.SystemPrompt,
+	}
+
+	ch, err := compose.GenerateField(fieldID, *crawl, ep, customPrompt, existing, templates)
+	if err != nil {
+		fmt.Println("generate field error:", err)
+		return existing
+	}
+
+	a.mu.Lock()
+	for i, c := range a.characters {
+		if c.ID == a.activeCharID {
+			ch.ID = c.ID
+			a.characters[i] = ch
+			break
+		}
+	}
+	a.mu.Unlock()
+
+	return ch
+}
+
 func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	for _, ep := range a.settings.Endpoints {
 		if ep.IsDefault {
@@ -284,40 +361,41 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	return settings.LLMEndpoint{}
 }
 
-// PickSaveFolder opens a native save dialog for creating a project folder.
-// Uses SaveFileDialog so the action button says "Save". The chosen filename
-// becomes the project folder name.
-func (a *App) PickSaveFolder() (string, error) {
+// PickSaveBundle opens a native save dialog for creating a .slv project bundle.
+func (a *App) PickSaveBundle() (string, error) {
 	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Save project",
-		DefaultFilename: "silly-sleeve-project",
+		Title:           "Save project bundle",
+		DefaultFilename: "silly-sleeve-project.slv",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
+		},
 	})
 	if err != nil {
 		return "", err
 	}
-	if filePath == "" {
-		return "", nil
-	}
-	// Use the chosen filename (stripped of any extension) as the folder name.
-	base := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
-	if base == "" {
-		base = "silly-sleeve-project"
-	}
-	return filepath.Join(filepath.Dir(filePath), base), nil
+	return filePath, nil
 }
 
-// SaveProjectTo writes the current project state to a folder.
-func (a *App) SaveProjectTo(folderPath string) error {
+// SaveProjectBundle writes the current project state as a .slv bundle.
+func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
 	chars := make([]compose.Character, len(a.characters))
 	copy(chars, a.characters)
 	activeID := a.activeCharID
 	sourceURL := ""
 	crawlTitle := ""
+	var cachedCrawl *crawler.CrawlResult
 	if a.cachedCrawl != nil {
 		sourceURL = a.cachedCrawl.URL
 		crawlTitle = a.cachedCrawl.Title
+		cachedCrawl = a.cachedCrawl
 	}
+	templates := a.settings.PromptTemplates
+	if len(templates.FieldPrompts) == 0 {
+		templates = prompts.Defaults()
+	}
+	entries := make([]lorebook.Entry, len(a.lorebookEntries))
+	copy(entries, a.lorebookEntries)
 	a.mu.Unlock()
 
 	projectName := "Untitled Project"
@@ -335,57 +413,75 @@ func (a *App) SaveProjectTo(folderPath string) error {
 		CrawlTitle:   crawlTitle,
 	}
 
-	base := folderPath
-	if !strings.HasSuffix(folderPath, "/"+slugify(projectName)) {
-		base = folderPath
+	b := bundle.Bundle{
+		Manifest:   m,
+		Characters:  chars,
+		Lorebook:   entries,
+		Prompts:    templates,
+		CrawlCache: cachedCrawl,
 	}
 
-	if err := project.SaveProject(base, m, chars); err != nil {
+	if err := bundle.WriteBundle(filePath, b); err != nil {
 		return err
 	}
 
 	a.mu.Lock()
-	a.projectDir = base
+	a.projectDir = filePath
 	a.mu.Unlock()
 	return nil
 }
 
-// OpenProject opens a native folder picker and loads a project from disk.
-func (a *App) OpenProject() (project.ProjectManifest, error) {
-	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Open project folder",
+// PickOpenBundle opens a native file picker for loading a .slv project bundle.
+func (a *App) PickOpenBundle() (string, error) {
+	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Open project bundle",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
+		},
 	})
 	if err != nil {
-		return project.ProjectManifest{}, err
+		return "", err
 	}
-	if dir == "" {
-		return project.ProjectManifest{}, fmt.Errorf("no folder selected")
+	return filePath, nil
+}
+
+// OpenProjectBundle loads a project from a .slv bundle file.
+func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error) {
+	if filePath == "" {
+		return project.ProjectManifest{}, fmt.Errorf("no file selected")
 	}
 
-	m, chars, err := project.LoadProject(dir)
+	b, err := bundle.ReadBundle(filePath)
 	if err != nil {
 		return project.ProjectManifest{}, err
 	}
 
 	a.mu.Lock()
-	a.characters = chars
-	a.activeCharID = m.ActiveCharID
-	a.projectDir = dir
+	a.characters = b.Characters
+	a.activeCharID = b.Manifest.ActiveCharID
+	a.projectDir = filePath
+	a.lorebookEntries = b.Lorebook
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}
 		a.activeCharID = 1
 	}
 
-	if m.CrawlTitle != "" {
+	if b.CrawlCache != nil {
+		a.cachedCrawl = b.CrawlCache
+	} else if b.Manifest.CrawlTitle != "" {
 		c, err := crawler.LoadCache()
-		if err == nil && c != nil && c.Title == m.CrawlTitle {
+		if err == nil && c != nil && c.Title == b.Manifest.CrawlTitle {
 			a.cachedCrawl = c
 		}
 	}
+
+	if len(b.Prompts.FieldPrompts) > 0 {
+		a.settings.PromptTemplates = b.Prompts
+	}
 	a.mu.Unlock()
 
-	return m, nil
+	return b.Manifest, nil
 }
 
 // PickExportFolder opens a native folder picker for exporting characters.
@@ -421,6 +517,34 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 	filePath, writeErr := saveCharacterAsST(*found, folderPath)
 	if writeErr != nil {
 		return "", writeErr
+	}
+	return filePath, nil
+}
+
+// GetLorebook returns all lorebook entries.
+func (a *App) GetLorebook() []lorebook.Entry {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.lorebookEntries
+}
+
+// SaveLorebook replaces all lorebook entries.
+func (a *App) SaveLorebook(entries []lorebook.Entry) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.lorebookEntries = entries
+}
+
+// ExportLorebook writes lorebook entries to a world_info.json file.
+func (a *App) ExportLorebook(folderPath string) (string, error) {
+	a.mu.Lock()
+	entries := make([]lorebook.Entry, len(a.lorebookEntries))
+	copy(entries, a.lorebookEntries)
+	a.mu.Unlock()
+
+	filePath := folderPath + "/world_info.json"
+	if err := lorebook.ExportWorldInfo(entries, filePath); err != nil {
+		return "", err
 	}
 	return filePath, nil
 }

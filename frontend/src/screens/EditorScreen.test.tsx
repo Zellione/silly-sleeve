@@ -38,9 +38,11 @@ const mockDeleteCharacter = vi.fn();
 const mockSetActiveCharacter = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockCountTokens = vi.fn();
+const mockGenerateField = vi.fn();
 const mockGenerateCharacterBulk = vi.fn();
-const mockPickSaveFolder = vi.fn();
-const mockSaveProjectTo = vi.fn();
+const mockPickSaveBundle = vi.fn();
+const mockSaveProjectBundle = vi.fn();
+const mockGetSettings = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -50,13 +52,18 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   SetActiveCharacter: (id: any) => mockSetActiveCharacter(id),
   GetCachedCrawl: () => mockGetCachedCrawl(),
   CountTokens: (t: any) => mockCountTokens(t),
+  GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
   GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
-  PickSaveFolder: () => mockPickSaveFolder(),
-  SaveProjectTo: (p: any) => mockSaveProjectTo(p),
+  PickSaveBundle: () => mockPickSaveBundle(),
+  SaveProjectBundle: (p: any) => mockSaveProjectBundle(p),
+  GetSettings: () => mockGetSettings(),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
+
+const renderEditor = () =>
+  renderWithProviders(<EditorScreen projectPath="" onProjectPathChange={vi.fn()} />);
 
 describe('EditorScreen', () => {
   beforeEach(() => {
@@ -67,11 +74,13 @@ describe('EditorScreen', () => {
     mockUpdateCharacter.mockResolvedValue(undefined);
     mockDeleteCharacter.mockResolvedValue(undefined);
     mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGenerateField.mockResolvedValue(mockCharacter);
     mockGenerateCharacterBulk.mockResolvedValue(mockCharacter);
+    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'off' });
   });
 
   it('renders the PageHead with step 2 and character name', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const elaraElements = screen.getAllByText('Elara');
       expect(elaraElements.length).toBeGreaterThanOrEqual(1);
@@ -79,7 +88,7 @@ describe('EditorScreen', () => {
   });
 
   it('renders all 10 field labels', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('Name')).toBeInTheDocument();
       expect(screen.getByText('Title / epithet')).toBeInTheDocument();
@@ -95,7 +104,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows required/optional badges', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const required = screen.getAllByText('required');
       const optional = screen.getAllByText('optional');
@@ -105,7 +114,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows character strip with character tabs', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('Characters · 1')).toBeInTheDocument();
       expect(screen.getAllByText('Elara').length).toBeGreaterThanOrEqual(1);
@@ -119,7 +128,7 @@ describe('EditorScreen', () => {
     mockGetCharacters.mockResolvedValueOnce([mockCharacter]).mockResolvedValueOnce([mockCharacter, newChar]);
 
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Add character')).toBeInTheDocument();
@@ -133,7 +142,7 @@ describe('EditorScreen', () => {
   });
 
   it('updates name field on input change', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       const inputs = screen.getAllByRole('textbox');
@@ -142,7 +151,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows save and re-roll buttons in header', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeInTheDocument();
       expect(screen.getByText('Re-roll all')).toBeInTheDocument();
@@ -150,14 +159,14 @@ describe('EditorScreen', () => {
   });
 
   it('shows delete button in header', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('Delete')).toBeInTheDocument();
     });
   });
 
   it('delete button is disabled with one character', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const deleteBtn = screen.getByText('Delete').closest('button')!;
       expect(deleteBtn).toBeDisabled();
@@ -165,14 +174,14 @@ describe('EditorScreen', () => {
   });
 
   it('shows source panel with crawl title', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText(/elara_wynd/)).toBeInTheDocument();
     });
   });
 
   it('renders tags as chips', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('half-elf')).toBeInTheDocument();
       expect(screen.getByText('bard')).toBeInTheDocument();
@@ -180,7 +189,7 @@ describe('EditorScreen', () => {
   });
 
   it('renders stat rows', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const statKeys = screen.getAllByDisplayValue('STR');
       const statVals = screen.getAllByDisplayValue('10');
@@ -190,7 +199,7 @@ describe('EditorScreen', () => {
   });
 
   it('renders quote textareas', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByDisplayValue('Hello there.')).toBeInTheDocument();
       expect(screen.getByDisplayValue('A song is a contract.')).toBeInTheDocument();
@@ -198,7 +207,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows lock toggle button', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const lockButtons = screen.getAllByTitle("Lock — won't re-roll with Compose All");
       expect(lockButtons.length).toBe(10);
@@ -207,7 +216,7 @@ describe('EditorScreen', () => {
 
   it('calls save on save click', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeInTheDocument();
@@ -221,7 +230,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows re-roll all button as enabled', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const rerollBtn = screen.getByText('Re-roll all').closest('button')!;
       expect(rerollBtn).not.toBeDisabled();
@@ -229,14 +238,14 @@ describe('EditorScreen', () => {
   });
 
   it('shows character ephemeral name in title', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getAllByText('Elara').length).toBeGreaterThanOrEqual(1);
     });
   });
 
   it('shows footer with field summary', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText(/save/)).toBeInTheDocument();
     });
@@ -244,7 +253,7 @@ describe('EditorScreen', () => {
 
   it('shows source panel fallback when no crawl', async () => {
     mockGetCachedCrawl.mockResolvedValue(null);
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText(/No source crawled/)).toBeInTheDocument();
     });
@@ -252,7 +261,7 @@ describe('EditorScreen', () => {
 
   it('toggles lock on lock button click', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getAllByTitle("Lock — won't re-roll with Compose All").length).toBe(10);
@@ -270,7 +279,7 @@ describe('EditorScreen', () => {
   it('handles save error gracefully', async () => {
     mockUpdateCharacter.mockRejectedValue(new Error('save error'));
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Save')).toBeInTheDocument();
@@ -286,7 +295,7 @@ describe('EditorScreen', () => {
   it('handles add character error gracefully', async () => {
     mockAddCharacter.mockRejectedValue(new Error('add error'));
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Add character')).toBeInTheDocument();
@@ -300,14 +309,14 @@ describe('EditorScreen', () => {
   });
 
   it('displays character epithet in character strip', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('The Lark')).toBeInTheDocument();
     });
   });
 
   it('shows re-crawl button as disabled placeholder', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const recrawlBtn = screen.getByText('Re-crawl').closest('button')!;
       expect(recrawlBtn).toBeDisabled();
@@ -315,7 +324,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows continue button as disabled', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       const continueBtn = screen.getByText('Continue to Lorebook').closest('button')!;
       expect(continueBtn).toBeDisabled();
@@ -323,17 +332,17 @@ describe('EditorScreen', () => {
   });
 
   it('shows Save project button', async () => {
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
     await waitFor(() => {
       expect(screen.getByText('Save project')).toBeInTheDocument();
     });
   });
 
-  it('calls SaveProjectTo on save project click', async () => {
-    mockPickSaveFolder.mockResolvedValue('/tmp/test-project');
-    mockSaveProjectTo.mockResolvedValue(undefined);
+  it('calls SaveProjectBundle on save project click', async () => {
+    mockPickSaveBundle.mockResolvedValue('/mock/test.slv');
+    mockSaveProjectBundle.mockResolvedValue(undefined);
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Save project')).toBeInTheDocument();
@@ -342,14 +351,14 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Save project'));
 
     await waitFor(() => {
-      expect(mockPickSaveFolder).toHaveBeenCalled();
+      expect(mockPickSaveBundle).toHaveBeenCalled();
     });
   });
 
   it('handles save project error gracefully', async () => {
-    mockPickSaveFolder.mockRejectedValue(new Error('permission denied'));
+    mockPickSaveBundle.mockRejectedValue(new Error('permission denied'));
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Save project')).toBeInTheDocument();
@@ -364,7 +373,7 @@ describe('EditorScreen', () => {
 
   it('triggers compose on re-roll all click', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Re-roll all')).toBeInTheDocument();
@@ -380,7 +389,7 @@ describe('EditorScreen', () => {
   it('shows compose error toast on failure', async () => {
     mockGenerateCharacterBulk.mockRejectedValue(new Error('compose error'));
     const user = userEvent.setup();
-    renderWithProviders(<EditorScreen />);
+    renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Re-roll all')).toBeInTheDocument();
@@ -391,5 +400,87 @@ describe('EditorScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Compose failed')).toBeInTheDocument();
     });
+  });
+
+  it('calls GenerateField for per-field reroll', async () => {
+    mockGenerateField.mockResolvedValue({
+      id: 1, name: 'Test', epithet: '', tags: [], appearance: 'new look',
+      personality: 'friendly', backstory: '', abilities: '', relationships: '',
+      quotes: [], stats: [], dirty: false,
+    });
+    const user = userEvent.setup();
+    renderEditor();
+
+    await waitFor(() => {
+      expect(screen.getByText('Re-roll all')).toBeInTheDocument();
+    });
+
+    const rerollBtns = screen.getAllByTitle('Re-roll this field');
+    if (rerollBtns.length > 0) {
+      await user.click(rerollBtns[0]);
+    }
+
+    await waitFor(() => {
+      expect(mockGenerateField).toHaveBeenCalled();
+    });
+  });
+
+  it('flushes dirty fields before saving project', async () => {
+    const callOrder: string[] = [];
+    mockUpdateCharacter.mockImplementation(async () => {
+      callOrder.push('update');
+    });
+    mockSaveProjectBundle.mockImplementation(async () => {
+      callOrder.push('bundle');
+    });
+    mockPickSaveBundle.mockResolvedValue('/mock/test.slv');
+    const user = userEvent.setup();
+    renderEditor();
+
+    await waitFor(() => {
+      expect(screen.getByText('Save project')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByDisplayValue('Elara');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Modified Name');
+
+    await user.click(screen.getByText('Save project'));
+
+    await waitFor(() => {
+      expect(mockUpdateCharacter).toHaveBeenCalled();
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/mock/test.slv');
+    });
+
+    expect(callOrder).toEqual(['update', 'bundle']);
+    const updated = mockUpdateCharacter.mock.calls[0][0] as compose.Character;
+    expect(updated.name).toBe('Modified Name');
+  });
+
+  it('flushes character before saving via Save button', async () => {
+    const callOrder: string[] = [];
+    mockUpdateCharacter.mockImplementation(async () => {
+      callOrder.push('update');
+    });
+    const user = userEvent.setup();
+    renderEditor();
+
+    await waitFor(() => {
+      expect(screen.getByText('Save')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByDisplayValue('Elara');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Modified Name');
+
+    await user.click(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockUpdateCharacter).toHaveBeenCalled();
+    });
+
+    const updated = mockUpdateCharacter.mock.calls[0][0] as compose.Character;
+    expect(updated.name).toBe('Modified Name');
+    expect(callOrder).toContain('update');
   });
 });

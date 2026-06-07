@@ -2,12 +2,12 @@ import React, { useState, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
-  SparksIcon, UploadIcon, CheckIcon, XIcon, ArrowIcon,
-  SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
-  ImageIcon,
+  SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
+import ImageCanvasPanel from '../components/ImageCanvasPanel';
+import ImageGalleryPanel from '../components/ImageGalleryPanel';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m_karras' },
@@ -82,7 +82,8 @@ const ProjectImageScreen: React.FC = () => {
     toast({ kind: 'ok', title: 'Project image set', body: 'Cover art saved and will appear in exports.' });
   };
 
-  const stepLabel = `step ${Math.round(progress / 100 * steps)} / ${steps}`;
+  const canvasTitle = 'Project cover';
+  const showDonePlaceholder = hasImage;
 
   return (
     <>
@@ -101,7 +102,7 @@ const ProjectImageScreen: React.FC = () => {
 
       <div className="ss-page-body scroll">
         {mode === 'generate' ? (
-          <div className="proj-img-grid" data-screen="project-image" title="Project cover art generation layout"> {/* NOSONAR */}
+          <div className="proj-img-grid">
             <GenerationParamsPanel
               aria-label="Project image generation parameters"
               workflows={PROJECT_IMG_WORKFLOWS}
@@ -133,68 +134,46 @@ const ProjectImageScreen: React.FC = () => {
               </div>
             </GenerationParamsPanel>
 
-            <div className="img-col">
-              <div className="img-col-head">
-                <b>{generating ? 'Sampling…' : 'Project cover'}</b>
-                <span className="img-col-sub">{workflow.size} · seed {seed}</span>
-              </div>
-              <div className="img-canvas" style={{ aspectRatio: '16/9' }}>
-                {!generating && variants.length === 0 && !hasImage && (
-                  <div className="img-placeholder">
-                    <ImageIcon size={32} style={{ opacity: 0.4 }} />
-                    <div style={{ marginTop: 10 }}>project cover</div>
-                    <div style={{ fontSize: 10.5, opacity: 0.6, marginTop: 4 }}>press generate</div>
-                  </div>
-                )}
-                {!generating && hasImage && (
-                  <div className="img-placeholder proj-cover-shot">
-                    <div className="proj-cover-name">Project Name</div>
-                    <div className="proj-cover-sub">cover art · {workflow.size}</div>
-                  </div>
-                )}
-                {generating && (
-                  <div className="img-generating">
-                    <div className="img-progress-disc" />
-                    <div style={{ marginTop: 14, font: '500 11px/1 var(--f-mono)', color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-                      {stepLabel}
-                    </div>
-                    <div style={{ marginTop: 6, width: 160 }} className="bar"><i style={{ width: progress + '%' }} /></div>
-                  </div>
-                )}
-              </div>
-              <div className="img-col-foot">
-                <span className="uplabel">
-                  Positive prompt
-                  <button className="img-auto-fill" onClick={() => toast({ kind: 'info', title: 'Auto-fill', body: 'Prompt will auto-fill from lorebook context when generation is queued.' })}>
-                    <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from lorebook
-                  </button>
-                </span>
-                <textarea className="field" value={prompt} onChange={e => setPrompt(e.target.value)}
-                  style={{ minHeight: 78, fontFamily: 'var(--f-mono)', fontSize: 11.5 }} />
-                <span className="uplabel">Negative prompt</span>
-                <textarea className="field" value={negPrompt} onChange={e => setNegPrompt(e.target.value)}
-                  style={{ minHeight: 48, fontFamily: 'var(--f-mono)', fontSize: 11.5 }} />
-                <div className="row" style={{ gap: 8, marginTop: 4 }}>
-                  <button className="btn primary" onClick={generating ? handleStop : generateVariants} style={{ flex: 1, justifyContent: 'center' }}>
-                    {generating ? (
-                      <><XIcon size={12} /> Stop ({Math.round(progress)}%)</>
-                    ) : (
-                      <><ArrowIcon size={12} /> Queue generation</>
-                    )}
-                  </button>
-                  <button className="btn ghost icon" title="Save preset"><SaveIcon size={14} /></button>
+            <ImageCanvasPanel
+              canvasTitle={canvasTitle}
+              workflowSize={workflow.size}
+              seed={seed}
+              aspectRatio="16/9"
+              generating={generating}
+              progress={progress}
+              steps={steps}
+              showDonePlaceholder={showDonePlaceholder}
+              idlePlaceholder={
+                <div className="img-placeholder">
+                  <ImageIcon size={32} style={{ opacity: 0.4 }} />
+                  <div style={{ marginTop: 10 }}>project cover</div>
+                  <div style={{ fontSize: 10.5, opacity: 0.6, marginTop: 4 }}>press generate</div>
                 </div>
-              </div>
-            </div>
-
-            <div className="img-col">
-              <div className="img-col-head">
-                <b>Versions · {variants.length}</b>
-                <button className="btn ghost sm" onClick={() => { setVariants([]); setHasImage(false); }}>
-                  <TrashIcon size={11} />
+              }
+              donePlaceholder={
+                <div className="img-placeholder proj-cover-shot">
+                  <div className="proj-cover-name">Project Name</div>
+                  <div className="proj-cover-sub">cover art · {workflow.size}</div>
+                </div>
+              }
+              autoFillButton={
+                <button className="img-auto-fill" onClick={() => toast({ kind: 'info', title: 'Auto-fill', body: 'Prompt will auto-fill from lorebook context when generation is queued.' })}>
+                  <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from lorebook
                 </button>
-              </div>
-              <div className="img-col-body scroll">
+              }
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              negPrompt={negPrompt}
+              onNegPromptChange={setNegPrompt}
+              onToggleGenerate={generating ? handleStop : generateVariants}
+              onSavePreset={() => {}}
+            />
+
+            <ImageGalleryPanel
+              headLabel="Versions"
+              variantCount={variants.length}
+              onClear={() => { setVariants([]); setHasImage(false); }}
+              galleryContent={
                 <div className="proj-img-versions">
                   {variants.map((variantSeed, i) => (
                     <button key={variantSeed} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
@@ -208,33 +187,21 @@ const ProjectImageScreen: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                {variants.length > 0 && (
-                  <>
-                    <div className="img-divline" />
-                    <span className="uplabel">Selected · v{selectedVariant + 1}</span>
-                    <div className="img-kv">
-                      <label>Seed</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{seed + selectedVariant}</span>
-                      <label>Steps</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{steps}</span>
-                      <label>Workflow</label><span className="mono" style={{ fontSize: 10, color: 'var(--ink-2)' }}>{workflow.name}</span>
-                      <label>Size</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{workflow.size}</span>
-                    </div>
-                    <div className="img-divline" />
-                    <button className="btn ghost sm" style={{ justifyContent: 'center', width: '100%' }}>
-                      <RerollIcon size={11} /> Re-roll variants
-                    </button>
-                    <button className="btn ghost sm" style={{ justifyContent: 'center', width: '100%' }}>
-                      <DownloadIcon size={11} /> Save PNG only
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="img-col-foot">
-                <button className="btn primary" style={{ flex: 1, justifyContent: 'center' }}
-                  onClick={handleUseAsProjectImage} disabled={variants.length === 0}>
-                  <CheckIcon size={13} /> Use as project image
-                </button>
-              </div>
-            </div>
+              }
+              showMetadata={variants.length > 0}
+              selectedLabel={`Selected · v${selectedVariant + 1}`}
+              metadataItems={[
+                { label: 'Seed', value: String(seed + selectedVariant) },
+                { label: 'Steps', value: String(steps) },
+                { label: 'Workflow', value: workflow.name },
+                { label: 'Size', value: workflow.size },
+              ]}
+              rerollLabel="Re-roll variants"
+              downloadLabel="Save PNG only"
+              useImageLabel="Use as project image"
+              onUseImage={handleUseAsProjectImage}
+              useImageDisabled={variants.length === 0}
+            />
           </div>
         ) : (
           <ImageUploadPanel

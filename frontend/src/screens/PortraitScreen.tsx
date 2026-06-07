@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
-  SparksIcon, UploadIcon, CheckIcon, XIcon, ArrowIcon,
-  SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
-  ImageIcon,
+  SparksIcon, UploadIcon, ImageIcon,
 } from '../icons';
 import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
@@ -12,6 +10,8 @@ import {
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
+import ImageCanvasPanel from '../components/ImageCanvasPanel';
+import ImageGalleryPanel from '../components/ImageGalleryPanel';
 
 const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m_karras' },
@@ -70,7 +70,7 @@ const PortraitScreen: React.FC = () => {
     /* v8 ignore start */
     setGenerating(true);
     setProgress(0);
-    const variants: number[] = [];
+    const newVariants: number[] = [];
     const seeds = [seed, seed + 1, seed + 2, seed + 3];
 
     let currentVariant = 0;
@@ -90,8 +90,8 @@ const PortraitScreen: React.FC = () => {
       ));
 
       if (variantProgress >= (currentVariant + 1) / 4 * 100) {
-        variants.push(seeds[currentVariant]);
-        setVariants([...variants]);
+        newVariants.push(seeds[currentVariant]);
+        setVariants([...newVariants]);
         currentVariant++;
       }
 
@@ -114,7 +114,8 @@ const PortraitScreen: React.FC = () => {
     toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' });
   };
 
-  const stepLabel = `step ${Math.round(progress / 100 * steps)} / ${steps}`;
+  const canvasTitle = 'Preview';
+  const showDonePlaceholder = variants.length > 0;
 
   return (
     <>
@@ -143,7 +144,7 @@ const PortraitScreen: React.FC = () => {
 
       <div className="ss-page-body scroll">
         {mode === 'generate' ? (
-          <div className="img-grid" data-screen="portrait" title="Character portrait generation layout"> {/* NOSONAR */}
+          <div className="img-grid">
             <GenerationParamsPanel
               aria-label="Portrait generation parameters"
               workflows={PORTRAIT_WORKFLOWS}
@@ -177,71 +178,50 @@ const PortraitScreen: React.FC = () => {
               </div>
             </GenerationParamsPanel>
 
-            <div className="img-col">
-              <div className="img-col-head">
-                <b>{generating ? 'Sampling…' : 'Preview'}</b>
-                <span className="img-col-sub">{workflow.size} · seed {seed}</span>
-              </div>
-              <div className="img-canvas">
-                {!generating && variants.length === 0 && (
-                  <div className="img-placeholder">
-                    <ImageIcon size={28} style={{ opacity: 0.4 }} />
-                    <div style={{ marginTop: 8 }}>portrait · {workflow.size}</div>
-                    <div style={{ fontSize: 9.5, opacity: 0.6, marginTop: 2 }}>press generate</div>
-                  </div>
-                )}
-                {!generating && variants.length > 0 && (
-                  <div className="img-placeholder" style={{ background: 'var(--panel-2)' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <ImageIcon size={28} style={{ opacity: 0.4 }} />
-                      <div style={{ marginTop: 8, fontSize: 12 }}>variant #{selectedVariant + 1}</div>
-                      <div className="mono" style={{ fontSize: 10, marginTop: 4, color: 'var(--ink-3)' }}>
-                        seed {seed + selectedVariant} · {workflow.size}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {generating && (
-                  <div className="img-generating">
-                    <div className="img-progress-disc" />
-                    <div style={{ marginTop: 14, font: '500 11px/1 var(--f-mono)', color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-                      {stepLabel}
-                    </div>
-                    <div style={{ marginTop: 6, width: 160 }} className="bar"><i style={{ width: progress + '%' }} /></div>
-                  </div>
-                )}
-              </div>
-              <div className="img-col-foot">
-                <span className="uplabel">
-                  Positive prompt
-                  <button className="img-auto-fill" onClick={handleAutoFill}>
-                    <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
-                  </button>
-                </span>
-                <textarea className="field" value={prompt} onChange={e => setPrompt(e.target.value)}
-                  style={{ minHeight: 78, fontFamily: 'var(--f-mono)', fontSize: 11.5 }} />
-                <span className="uplabel">Negative prompt</span>
-                <textarea className="field" value={negPrompt} onChange={e => setNegPrompt(e.target.value)}
-                  style={{ minHeight: 48, fontFamily: 'var(--f-mono)', fontSize: 11.5 }} />
-                <div className="row" style={{ gap: 8, marginTop: 4 }}>
-                  <button className="btn primary" onClick={generating ? handleStop : generateVariants} style={{ flex: 1, justifyContent: 'center' }}>
-                    {generating ? (
-                      <><XIcon size={12} /> Stop ({Math.round(progress)}%)</>
-                    ) : (
-                      <><ArrowIcon size={12} /> Queue generation</>
-                    )}
-                  </button>
-                  <button className="btn ghost icon" title="Save preset"><SaveIcon size={14} /></button>
+            <ImageCanvasPanel
+              canvasTitle={canvasTitle}
+              workflowSize={workflow.size}
+              seed={seed}
+              generating={generating}
+              progress={progress}
+              steps={steps}
+              showDonePlaceholder={showDonePlaceholder}
+              idlePlaceholder={
+                <div className="img-placeholder">
+                  <ImageIcon size={28} style={{ opacity: 0.4 }} />
+                  <div style={{ marginTop: 8 }}>portrait · {workflow.size}</div>
+                  <div style={{ fontSize: 9.5, opacity: 0.6, marginTop: 2 }}>press generate</div>
                 </div>
-              </div>
-            </div>
+              }
+              donePlaceholder={
+                <div className="img-placeholder" style={{ background: 'var(--panel-2)' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <ImageIcon size={28} style={{ opacity: 0.4 }} />
+                    <div style={{ marginTop: 8, fontSize: 12 }}>variant #{selectedVariant + 1}</div>
+                    <div className="mono" style={{ fontSize: 10, marginTop: 4, color: 'var(--ink-3)' }}>
+                      seed {seed + selectedVariant} · {workflow.size}
+                    </div>
+                  </div>
+                </div>
+              }
+              autoFillButton={
+                <button className="img-auto-fill" onClick={handleAutoFill}>
+                  <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
+                </button>
+              }
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              negPrompt={negPrompt}
+              onNegPromptChange={setNegPrompt}
+              onToggleGenerate={generating ? handleStop : generateVariants}
+              onSavePreset={() => {}}
+            />
 
-            <div className="img-col">
-              <div className="img-col-head">
-                <b>Generated · {variants.length}</b>
-                <button className="btn ghost sm" onClick={() => setVariants([])}><TrashIcon size={11} /></button>
-              </div>
-              <div className="img-col-body scroll">
+            <ImageGalleryPanel
+              headLabel="Generated"
+              variantCount={variants.length}
+              onClear={() => setVariants([])}
+              galleryContent={
                 <div className="img-gallery">
                   {variants.map((variantSeed, i) => (
                     <div key={variantSeed} role="button" tabIndex={0}
@@ -253,33 +233,21 @@ const PortraitScreen: React.FC = () => {
                     </div>
                   ))}
                 </div>
-                {variants.length > 0 && (
-                  <>
-                    <div className="img-divline" />
-                    <span className="uplabel">Selected · #{selectedVariant + 1}</span>
-                    <div className="img-kv">
-                      <label>Seed</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{seed + selectedVariant}</span>
-                      <label>Steps</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{steps}</span>
-                      <label>CFG</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{cfg}</span>
-                      <label>Size</label><span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{workflow.size}</span>
-                    </div>
-                    <div className="img-divline" />
-                    <button className="btn ghost sm" style={{ justifyContent: 'center', width: '100%' }}>
-                      <RerollIcon size={11} /> Re-roll with these params
-                    </button>
-                    <button className="btn ghost sm" style={{ justifyContent: 'center', width: '100%' }}>
-                      <DownloadIcon size={11} /> Save PNG only
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="img-col-foot">
-                <button className="btn primary" style={{ flex: 1, justifyContent: 'center' }}
-                  onClick={handleUseAsPortrait} disabled={variants.length === 0}>
-                  <CheckIcon size={13} /> Use as portrait
-                </button>
-              </div>
-            </div>
+              }
+              showMetadata={variants.length > 0}
+              selectedLabel={`Selected · #${selectedVariant + 1}`}
+              metadataItems={[
+                { label: 'Seed', value: String(seed + selectedVariant) },
+                { label: 'Steps', value: String(steps) },
+                { label: 'CFG', value: String(cfg) },
+                { label: 'Size', value: workflow.size },
+              ]}
+              rerollLabel="Re-roll with these params"
+              downloadLabel="Save PNG only"
+              useImageLabel="Use as portrait"
+              onUseImage={handleUseAsPortrait}
+              useImageDisabled={variants.length === 0}
+            />
           </div>
         ) : (
           <ImageUploadPanel

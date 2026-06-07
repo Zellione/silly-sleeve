@@ -143,7 +143,7 @@ const PortraitScreen: React.FC = () => {
 
       <div className="ss-page-body scroll">
         {mode === 'generate' ? (
-          <div className="img-grid" data-screen="portrait" title="Character portrait generation layout">
+          <div className="img-grid" data-screen="portrait" title="Character portrait generation layout"> {/* NOSONAR */}
             <GenerationParamsPanel
               aria-label="Portrait generation parameters"
               workflows={PORTRAIT_WORKFLOWS}

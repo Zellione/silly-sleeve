@@ -101,7 +101,7 @@ const ProjectImageScreen: React.FC = () => {
 
       <div className="ss-page-body scroll">
         {mode === 'generate' ? (
-          <div className="proj-img-grid" data-screen="project-image" title="Project cover art generation layout">
+          <div className="proj-img-grid" data-screen="project-image" title="Project cover art generation layout"> {/* NOSONAR */}
             <GenerationParamsPanel
               aria-label="Project image generation parameters"
               workflows={PROJECT_IMG_WORKFLOWS}

@@ -145,6 +145,7 @@ const PortraitScreen: React.FC = () => {
         {mode === 'generate' ? (
           <div className="img-grid" data-screen="portrait" title="Character portrait generation layout">
             <GenerationParamsPanel
+              aria-label="Portrait generation parameters"
               workflows={PORTRAIT_WORKFLOWS}
               selectedWorkflow={workflow}
               onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}

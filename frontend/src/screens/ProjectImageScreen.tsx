@@ -103,6 +103,7 @@ const ProjectImageScreen: React.FC = () => {
         {mode === 'generate' ? (
           <div className="proj-img-grid" data-screen="project-image" title="Project cover art generation layout">
             <GenerationParamsPanel
+              aria-label="Project image generation parameters"
               workflows={PROJECT_IMG_WORKFLOWS}
               selectedWorkflow={workflow}
               onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}

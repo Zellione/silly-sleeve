@@ -424,3 +424,85 @@ func TestReadBundle_UnknownFileIgnored(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Test", b.Manifest.Name)
 }
+
+func TestWriteReadRoundtrip_WithImages(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "withimages.slv")
+
+	portrait1 := []byte{0x89, 0x50, 0x4E, 0x47, 0x01} // partial PNG header
+	portrait2 := []byte("mock-image-data")
+	projectImg := []byte{0x89, 0x50, 0x4E, 0x47, 0x02}
+
+	original := Bundle{
+		Manifest: project.ProjectManifest{
+			Name:         "Test Project",
+			ActiveCharID: 1,
+			ProjectImage: projectImg,
+		},
+		Characters: []compose.Character{
+			{ID: 1, Name: "Elara", Portrait: portrait1},
+			{ID: 2, Name: "Kethric", Portrait: portrait2},
+			{ID: 3, Name: "NoPortrait"},
+		},
+		Prompts: prompts.Defaults(),
+	}
+
+	err := WriteBundle(filePath, original)
+	require.NoError(t, err)
+
+	loaded, err := ReadBundle(filePath)
+	require.NoError(t, err)
+
+	assert.Equal(t, projectImg, loaded.Manifest.ProjectImage)
+	assert.Equal(t, portrait1, loaded.Characters[0].Portrait)
+	assert.Equal(t, portrait2, loaded.Characters[1].Portrait)
+	assert.Nil(t, loaded.Characters[2].Portrait)
+}
+
+func TestWriteReadRoundtrip_NoImages(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "noimages.slv")
+
+	original := Bundle{
+		Manifest: project.ProjectManifest{
+			Name: "No Images",
+		},
+		Characters: []compose.Character{
+			{ID: 1, Name: "Test"},
+		},
+		Prompts: prompts.Defaults(),
+	}
+
+	err := WriteBundle(filePath, original)
+	require.NoError(t, err)
+
+	loaded, err := ReadBundle(filePath)
+	require.NoError(t, err)
+
+	assert.Nil(t, loaded.Manifest.ProjectImage)
+	assert.Nil(t, loaded.Characters[0].Portrait)
+}
+
+func TestIsPortraitFile(t *testing.T) {
+	assert.True(t, isPortraitFile("images/portrait_1.png"))
+	assert.True(t, isPortraitFile("images/portrait_99.png"))
+	assert.False(t, isPortraitFile("images/project.png"))
+	assert.False(t, isPortraitFile("images/portrait_1.json"))
+	assert.False(t, isPortraitFile("characters/1.json"))
+}
+
+func TestPortraitIDFromName(t *testing.T) {
+	id, err := portraitIDFromName("images/portrait_1.png")
+	require.NoError(t, err)
+	assert.Equal(t, 1, id)
+
+	id, err = portraitIDFromName("images/portrait_42.png")
+	require.NoError(t, err)
+	assert.Equal(t, 42, id)
+
+	_, err = portraitIDFromName("images/portrait_.png")
+	assert.Error(t, err)
+
+	_, err = portraitIDFromName("images/project.png")
+	assert.Error(t, err)
+}

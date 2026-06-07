@@ -25,6 +25,7 @@ type ProjectManifest struct {
 	ActiveCharID int       `json:"activeCharId"`
 	SourceURL    string    `json:"sourceUrl"`
 	CrawlTitle   string    `json:"crawlTitle"`
+	ProjectImage []byte    `json:"projectImage"`
 }
 
 const manifestFile = "manifest.json"

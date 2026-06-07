@@ -38,6 +38,10 @@ export function GetPromptTemplates():Promise<prompts.TemplateSet>;
 
 export function GetSettings():Promise<settings.Settings>;
 
+export function GetPortrait(arg1:number):Promise<string>;
+
+export function GetProjectImage():Promise<string>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
@@ -50,7 +54,11 @@ export function PickSaveBundle():Promise<string>;
 
 export function SaveLorebook(arg1:Array<lorebook.Entry>):Promise<void>;
 
+export function SavePortrait(arg1:number,arg2:string):Promise<void>;
+
 export function SaveProjectBundle(arg1:string):Promise<void>;
+
+export function SaveProjectImage(arg1:string):Promise<void>;
 
 export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 

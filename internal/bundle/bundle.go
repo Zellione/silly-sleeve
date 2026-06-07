@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
@@ -36,17 +39,41 @@ func WriteBundle(filePath string, b Bundle) error {
 	zw := zip.NewWriter(f)
 	defer zw.Close()
 
-	if err := writeJSON(zw, manifestFile, b.Manifest); err != nil {
+	manifest := b.Manifest
+	projectImage := manifest.ProjectImage
+	manifest.ProjectImage = nil
+
+	if err := writeJSON(zw, manifestFile, manifest); err != nil {
 		return err
 	}
 
+	if len(projectImage) > 0 {
+		if err := writeBytes(zw, "images/project.png", projectImage); err != nil {
+			return fmt.Errorf("write project image: %w", err)
+		}
+	}
+
 	for i, ch := range b.Characters {
-		name := fmt.Sprintf("characters/%d.json", ch.ID)
-		if ch.ID == 0 {
+		portrait := ch.Portrait
+		sanitized := sanitizeCharacter(ch)
+		sanitized.Portrait = nil
+
+		name := fmt.Sprintf("characters/%d.json", sanitized.ID)
+		if sanitized.ID == 0 {
 			name = fmt.Sprintf("characters/%d.json", i+1)
 		}
-		if err := writeJSON(zw, name, sanitizeCharacter(ch)); err != nil {
-			return fmt.Errorf("write character %d: %w", ch.ID, err)
+		if err := writeJSON(zw, name, sanitized); err != nil {
+			return fmt.Errorf("write character %d: %w", sanitized.ID, err)
+		}
+
+		if len(portrait) > 0 {
+			imgName := fmt.Sprintf("images/portrait_%d.png", sanitized.ID)
+			if sanitized.ID == 0 {
+				imgName = fmt.Sprintf("images/portrait_%d.png", i+1)
+			}
+			if err := writeBytes(zw, imgName, portrait); err != nil {
+				return fmt.Errorf("write portrait %d: %w", sanitized.ID, err)
+			}
 		}
 	}
 
@@ -77,7 +104,7 @@ func ReadBundle(filePath string) (Bundle, error) {
 
 	b := Bundle{}
 	fileReaders := map[string]func(*zip.File) error{
-		manifestFile:    func(f *zip.File) error { return readJSON(f, &b.Manifest) },
+		manifestFile:       func(f *zip.File) error { return readJSON(f, &b.Manifest) },
 		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts) },
 		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
 		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, &b) },
@@ -102,6 +129,31 @@ func ReadBundle(filePath string) (Bundle, error) {
 
 	if !foundManifest {
 		return Bundle{}, fmt.Errorf("no manifest.json in bundle")
+	}
+
+	for _, f := range r.File {
+		if f.Name == "images/project.png" {
+			data, err := readBytes(f)
+			if err != nil {
+				return Bundle{}, fmt.Errorf("read project image: %w", err)
+			}
+			b.Manifest.ProjectImage = data
+		} else if isPortraitFile(f.Name) {
+			id, err := portraitIDFromName(f.Name)
+			if err != nil {
+				continue
+			}
+			data, err := readBytes(f)
+			if err != nil {
+				return Bundle{}, fmt.Errorf("read portrait %d: %w", id, err)
+			}
+			for i := range b.Characters {
+				if b.Characters[i].ID == id {
+					b.Characters[i].Portrait = data
+					break
+				}
+			}
+		}
 	}
 
 	return b, nil
@@ -138,6 +190,15 @@ func writeJSON(zw *zip.Writer, name string, v any) error {
 	return err
 }
 
+func writeBytes(zw *zip.Writer, name string, data []byte) error {
+	w, err := zw.Create(name)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", name, err)
+	}
+	_, err = w.Write(data)
+	return err
+}
+
 func readJSON(f *zip.File, v any) error {
 	rc, err := f.Open()
 	if err != nil {
@@ -151,9 +212,30 @@ func readJSON(f *zip.File, v any) error {
 	return json.Unmarshal(b, v)
 }
 
+func readBytes(f *zip.File) ([]byte, error) {
+	rc, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	return io.ReadAll(rc)
+}
+
 func isCharacterFile(name string) bool {
 	prefix := "characters/"
 	return len(name) > len(prefix) && name[:len(prefix)] == prefix && len(name) > 5 && name[len(name)-5:] == ".json"
+}
+
+func isPortraitFile(name string) bool {
+	prefix := "images/portrait_"
+	return len(name) > len(prefix) && name[:len(prefix)] == prefix && strings.HasSuffix(name, ".png")
+}
+
+func portraitIDFromName(name string) (int, error) {
+	base := filepath.Base(name)
+	stripped := strings.TrimPrefix(base, "portrait_")
+	stripped = strings.TrimSuffix(stripped, ".png")
+	return strconv.Atoi(stripped)
 }
 
 func sanitizeCharacter(ch compose.Character) compose.Character {

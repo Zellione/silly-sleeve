@@ -30,6 +30,7 @@ type App struct {
 	activeCharID    int
 	projectDir      string
 	lorebookEntries []lorebook.Entry
+	projectImage    []byte
 }
 
 // NewApp creates a new App application struct
@@ -396,6 +397,8 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	}
 	entries := make([]lorebook.Entry, len(a.lorebookEntries))
 	copy(entries, a.lorebookEntries)
+	projImg := make([]byte, len(a.projectImage))
+	copy(projImg, a.projectImage)
 	a.mu.Unlock()
 
 	projectName := "Untitled Project"
@@ -411,6 +414,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		ActiveCharID: activeID,
 		SourceURL:    sourceURL,
 		CrawlTitle:   crawlTitle,
+		ProjectImage: projImg,
 	}
 
 	b := bundle.Bundle{
@@ -461,6 +465,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.activeCharID = b.Manifest.ActiveCharID
 	a.projectDir = filePath
 	a.lorebookEntries = b.Lorebook
+	a.projectImage = b.Manifest.ProjectImage
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}
@@ -547,6 +552,45 @@ func (a *App) ExportLorebook(folderPath string) (string, error) {
 		return "", err
 	}
 	return filePath, nil
+}
+
+// GetPortrait returns the portrait bytes for a character.
+func (a *App) GetPortrait(charID int) []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, c := range a.characters {
+		if c.ID == charID {
+			return c.Portrait
+		}
+	}
+	return nil
+}
+
+// SavePortrait stores portrait bytes for a character.
+func (a *App) SavePortrait(charID int, data []byte) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for i, c := range a.characters {
+		if c.ID == charID {
+			a.characters[i].Portrait = data
+			return nil
+		}
+	}
+	return fmt.Errorf("character %d not found", charID)
+}
+
+// GetProjectImage returns the project-level cover image.
+func (a *App) GetProjectImage() []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.projectImage
+}
+
+// SaveProjectImage stores the project-level cover image.
+func (a *App) SaveProjectImage(data []byte) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.projectImage = data
 }
 
 func slugify(s string) string {

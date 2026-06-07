@@ -24,9 +24,9 @@ const PortraitScreen: React.FC = () => {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate');
   const [workflow, setWorkflow] = useState(PORTRAIT_WORKFLOWS[0]);
   const [steps, setSteps] = useState(28);
-  const [cfg, setCfg] = useState(7.0);
+  const [cfg, setCfg] = useState(7);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 4e9));
-  const [denoise, setDenoise] = useState(1.0);
+  const [denoise, setDenoise] = useState(1);
   const [sampler, setSampler] = useState('dpmpp_2m_karras');
   const [scheduler, setScheduler] = useState('karras');
   const [generating, setGenerating] = useState(false);
@@ -74,7 +74,8 @@ const PortraitScreen: React.FC = () => {
     let currentVariant = 0;
     generationRef.current = setInterval(() => {
       if (currentVariant >= 4) {
-        clearInterval(generationRef.current!);
+        const ref = generationRef.current;
+        if (ref !== null) clearInterval(ref);
         generationRef.current = null;
         setGenerating(false);
         setProgress(100);
@@ -137,7 +138,6 @@ const PortraitScreen: React.FC = () => {
       <PageHead step={5} subtitle="Make or import a face"
         title={<>Conjure a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>portrait</em></>}
         actions={
-          <>
             <div style={{ width: 240 }} className="img-tabs">
               <button data-on={mode === 'generate' ? '1' : '0'} onClick={() => setMode('generate')}>
                 <SparksIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Generate
@@ -146,7 +146,6 @@ const PortraitScreen: React.FC = () => {
                 <UploadIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Upload
               </button>
             </div>
-          </>
         } />
 
       <div className="character-strip">
@@ -298,7 +297,7 @@ const PortraitScreen: React.FC = () => {
               <div className="img-col-body scroll">
                 <div className="img-gallery">
                   {variants.map((variantSeed, i) => (
-                    <div key={i} className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
+                    <div key={variantSeed} className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
                       onClick={() => setSelectedVariant(i)}>
                       <span className="img-thumb-label">{(variantSeed).toString().slice(-6)}</span>
                     </div>
@@ -343,18 +342,18 @@ const PortraitScreen: React.FC = () => {
               onClick={handleDropClick}
             >
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-              {!uploadFile ? (
+              {uploadFile ? (
+                <div className="img-upload-preview">
+                  <span>{uploadFile.dims}</span>
+                </div>
+              ) : (
                 <div className="col" style={{ alignItems: 'center', textAlign: 'center', gap: 12 }}>
                   <UploadIcon size={32} style={{ color: 'var(--ink-3)' }} />
                   <div className="serif-i" style={{ fontSize: 28 }}>Drop a portrait here</div>
                   <div className="helpr">PNG, JPG, WEBP · up to 8 MB<br />Recommended 832 × 1216 for SillyTavern v2 cards</div>
                   <button className="btn ghost"><FolderIcon size={14} /> Browse files</button>
                 </div>
-              ) : /* v8 ignore start */ (
-                <div className="img-upload-preview">
-                  <span>{uploadFile.dims}</span>
-                </div>
-              /* v8 ignore stop */ )}
+              )}
             </div>
             <div className="col" style={{ gap: 14 }}>
               <div className="card" style={{ padding: 16 }}>

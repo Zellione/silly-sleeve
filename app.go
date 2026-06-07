@@ -155,7 +155,7 @@ func (a *App) DeleteComfyWorkflow(id string) error {
 }
 
 // TestComfyUIEndpoint verifies connectivity to a ComfyUI instance.
-func (a *App) TestComfyUIEndpoint(url string, token string) llm.TestResult {
+func (a *App) TestComfyUIEndpoint(url, token string) llm.TestResult {
 	var t *string
 	if token != "" {
 		t = &token

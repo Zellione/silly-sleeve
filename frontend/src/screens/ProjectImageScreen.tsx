@@ -17,7 +17,7 @@ const ProjectImageScreen: React.FC = () => {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate');
   const [workflow, setWorkflow] = useState(PROJECT_IMG_WORKFLOWS[0]);
   const [steps, setSteps] = useState(26);
-  const [cfg, setCfg] = useState(7.0);
+  const [cfg, setCfg] = useState(7);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 4e9));
   const [sampler, setSampler] = useState('dpmpp_2m_karras');
   const [generating, setGenerating] = useState(false);
@@ -41,7 +41,8 @@ const ProjectImageScreen: React.FC = () => {
     let currentVariant = 0;
     generationRef.current = setInterval(() => {
       if (currentVariant >= 3) {
-        clearInterval(generationRef.current!);
+        const ref = generationRef.current;
+        if (ref !== null) clearInterval(ref);
         generationRef.current = null;
         setGenerating(false);
         setProgress(100);
@@ -101,7 +102,6 @@ const ProjectImageScreen: React.FC = () => {
       <PageHead step={4} subtitle="Cover art for the whole project"
         title={<>Project <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>image</em></>}
         actions={
-          <>
             <div style={{ width: 240 }} className="img-tabs">
               <button data-on={mode === 'generate' ? '1' : '0'} onClick={() => setMode('generate')}>
                 <SparksIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Generate
@@ -110,7 +110,6 @@ const ProjectImageScreen: React.FC = () => {
                 <UploadIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Upload
               </button>
             </div>
-          </>
         } />
 
       <div className="ss-page-body scroll">
@@ -245,7 +244,7 @@ const ProjectImageScreen: React.FC = () => {
               <div className="img-col-body scroll">
                 <div className="proj-img-versions">
                   {variants.map((variantSeed, i) => (
-                    <button key={i} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
+                    <button key={variantSeed} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
                       onClick={() => setSelectedVariant(i)}>
                       <div className="proj-version-thumb" />
                       <div className="proj-version-meta">

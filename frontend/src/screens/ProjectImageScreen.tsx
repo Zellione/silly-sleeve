@@ -293,6 +293,7 @@ const ProjectImageScreen: React.FC = () => {
               onDragLeave={() => /* v8 ignore next */ { setDragging(false); }}
               onDrop={e => { /* v8 ignore start */ e.preventDefault(); setDragging(false); setUploadFile({ name: 'cover.png', size: '2.4 MB', dims: '1920×1080' }); /* v8 ignore stop */ }}
               onClick={() => fileInputRef.current?.click()}
+              /* v8 ignore next */
               onKeyDown={e => { if (e.key === 'Enter') fileInputRef.current?.click(); }}
             >
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />

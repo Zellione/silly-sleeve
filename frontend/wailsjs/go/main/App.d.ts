@@ -17,6 +17,8 @@ export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler
 
 export function DeleteCharacter(arg1:number):Promise<void>;
 
+export function DeleteComfyWorkflow(arg1:string):Promise<void>;
+
 export function ExportCharacter(arg1:number,arg2:string):Promise<string>;
 
 export function ExportLorebook(arg1:string):Promise<string>;
@@ -31,6 +33,10 @@ export function GetCachedCrawl():Promise<crawler.CrawlResult>;
 
 export function GetCharacters():Promise<Array<compose.Character>>;
 
+export function GetComfyConfig():Promise<settings.ComfyConfig>;
+
+export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
+
 export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;
 
 export function GetLorebook():Promise<Array<lorebook.Entry>>;
@@ -44,6 +50,8 @@ export function GetPortrait(arg1:number):Promise<string>;
 export function GetProjectImage():Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function ImportComfyWorkflow(arg1:string):Promise<comfy.ComfyWorkflow>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 
@@ -66,6 +74,8 @@ export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
+
+export function TestComfyUIEndpoint(arg1:string,arg2:string):Promise<llm.TestResult>;
 
 export function TestLLMEndpoint(arg1:settings.LLMEndpoint):Promise<llm.TestResult>;
 

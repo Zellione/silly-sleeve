@@ -52,10 +52,9 @@ type NodeOutput struct {
 
 // Workflow is the top-level structure of a ComfyUI workflow JSON.
 type Workflow struct {
-	Version     float64          `json:"last_node_id"`
-	LastNodeID  int              `json:"last_node_id"`
-	Nodes       map[int]Node
-	Raw         json.RawMessage
+	LastNodeID int            `json:"last_node_id"`
+	Nodes      map[int]Node
+	Raw        json.RawMessage
 }
 
 // QueuedRequest is the body sent to POST /prompt.

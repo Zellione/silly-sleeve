@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"silly-sleeve/internal/compose"
+	"silly-sleeve/internal/comfy"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/project"
@@ -89,6 +90,86 @@ func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
 		Temperature:  ep.Temperature,
 		SystemPrompt: ep.SystemPrompt,
 	})
+}
+
+// GetComfyConfig returns the ComfyUI connection settings.
+func (a *App) GetComfyConfig() settings.ComfyConfig {
+	return a.settings.Comfy
+}
+
+// ImportComfyWorkflow reads a workflow JSON file, parses it, and stores it in settings.
+func (a *App) ImportComfyWorkflow(filePath string) (comfy.ComfyWorkflow, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return comfy.ComfyWorkflow{}, fmt.Errorf("read workflow file: %w", err)
+	}
+
+	wf, err := comfy.ParseWorkflow(data)
+	if err != nil {
+		return comfy.ComfyWorkflow{}, fmt.Errorf("parse workflow: %w", err)
+	}
+
+	params := wf.ExtractParams(0)
+
+	baseName := filePath
+	if idx := strings.LastIndexByte(baseName, '/'); idx >= 0 {
+		baseName = baseName[idx+1:]
+	}
+	if idx := strings.LastIndexByte(baseName, '.'); idx >= 0 {
+		baseName = baseName[:idx]
+	}
+
+	cw := comfy.ComfyWorkflow{
+		ID:       fmt.Sprintf("wf-%d", len(a.settings.Comfy.Workflows)+1),
+		Name:     baseName,
+		JSONData: data,
+		Params:   params,
+	}
+
+	a.settings.Comfy.Workflows = append(a.settings.Comfy.Workflows, cw)
+	if err := settings.Save(a.settings); err != nil {
+		return comfy.ComfyWorkflow{}, fmt.Errorf("save settings: %w", err)
+	}
+
+	return cw, nil
+}
+
+// GetComfyWorkflows returns all saved ComfyUI workflows.
+func (a *App) GetComfyWorkflows() []comfy.ComfyWorkflow {
+	return a.settings.Comfy.Workflows
+}
+
+// DeleteComfyWorkflow removes a workflow by ID.
+func (a *App) DeleteComfyWorkflow(id string) error {
+	filtered := make([]comfy.ComfyWorkflow, 0, len(a.settings.Comfy.Workflows))
+	for _, wf := range a.settings.Comfy.Workflows {
+		if wf.ID != id {
+			filtered = append(filtered, wf)
+		}
+	}
+	a.settings.Comfy.Workflows = filtered
+	if a.settings.Comfy.DefaultWorkflow == id {
+		a.settings.Comfy.DefaultWorkflow = ""
+	}
+	return settings.Save(a.settings)
+}
+
+// TestComfyUIEndpoint verifies connectivity to a ComfyUI instance.
+func (a *App) TestComfyUIEndpoint(url string, token string) llm.TestResult {
+	var t *string
+	if token != "" {
+		t = &token
+	}
+	client := comfy.NewClient(url, t)
+	if err := client.TestConnection(); err != nil {
+		return llm.TestResult{
+			Ok:    false,
+			Error: err.Error(),
+		}
+	}
+		return llm.TestResult{
+		Ok:        true,
+	}
 }
 
 // GetDefaultPromptTemplates returns the built-in factory default templates.

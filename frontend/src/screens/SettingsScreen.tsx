@@ -7,7 +7,7 @@ import {
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '../../wailsjs/go/main/App';
-import { settings, prompts } from '../../wailsjs/go/models';
+import { settings, prompts, comfy } from '../../wailsjs/go/models';
 
 /* ─── Section nav ───────────────────────────────────────── */
 
@@ -354,11 +354,11 @@ const ComfyUISettings: React.FC<{
       const parsed = JSON.parse(text);
       const baseName = file.name.replace(/\.json$/i, '');
       const id = `wf-${Date.now()}`;
-      const wf = settings.ComfyWorkflow.createFrom({
+      const wf = comfy.ComfyWorkflow.createFrom({
         id,
         name: baseName,
         jsonData: parsed,
-        params: settings.WorkflowParams.createFrom({}),
+        params: comfy.WorkflowParams.createFrom({}),
       });
       const next = settings.Settings.createFrom({
         ...settingsState,

@@ -286,12 +286,14 @@ const ProjectImageScreen: React.FC = () => {
         ) : (
           <div className="img-upload-grid">
             <div
+              role="button" tabIndex={0}
               className={`img-dropzone${dragging ? ' dragging' : ''}`}
               style={{ aspectRatio: '16/9' }}
               onDragOver={e => { e.preventDefault(); /* v8 ignore next */ setDragging(true); }}
               onDragLeave={() => /* v8 ignore next */ { setDragging(false); }}
               onDrop={e => { /* v8 ignore start */ e.preventDefault(); setDragging(false); setUploadFile({ name: 'cover.png', size: '2.4 MB', dims: '1920×1080' }); /* v8 ignore stop */ }}
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={e => { if (e.key === 'Enter') fileInputRef.current?.click(); }}
             >
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
               {!uploadFile ? (

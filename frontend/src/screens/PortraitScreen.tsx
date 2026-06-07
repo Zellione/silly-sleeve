@@ -297,8 +297,10 @@ const PortraitScreen: React.FC = () => {
               <div className="img-col-body scroll">
                 <div className="img-gallery">
                   {variants.map((variantSeed, i) => (
-                    <div key={variantSeed} className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
-                      onClick={() => setSelectedVariant(i)}>
+                    <div key={variantSeed} role="button" tabIndex={0}
+                      className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
+                      onClick={() => setSelectedVariant(i)}
+                      onKeyDown={e => { if (e.key === 'Enter') setSelectedVariant(i); }}>
                       <span className="img-thumb-label">{(variantSeed).toString().slice(-6)}</span>
                     </div>
                   ))}
@@ -334,12 +336,14 @@ const PortraitScreen: React.FC = () => {
         ) : (
           <div className="img-upload-grid">
             <div
+              role="button" tabIndex={0}
               className={`img-dropzone${dragging ? ' dragging' : ''}`}
               style={{ aspectRatio: '4/5' }}
               onDragOver={e => { e.preventDefault(); /* v8 ignore next */ setDragging(true); }}
               onDragLeave={() => /* v8 ignore next */ { setDragging(false); }}
               onDrop={e => { /* v8 ignore start */ e.preventDefault(); setDragging(false); setUploadFile({ name: 'portrait.png', size: '1.2 MB', dims: '832×1216' }); /* v8 ignore stop */ }}
               onClick={handleDropClick}
+              onKeyDown={e => { if (e.key === 'Enter') handleDropClick(); }}
             >
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
               {uploadFile ? (

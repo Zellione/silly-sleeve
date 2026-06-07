@@ -14,7 +14,7 @@ func TestClient_SystemStats(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/system_stats", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"system":{"os":"linux","python_version":"3.10","comfyui_version":"abc123"},"devices":[{"name":"GPU","type":"cuda","vram_total":8000000000}]}`))
+		_, _ = w.Write([]byte(`{"system":{"os":"linux","python_version":"3.10","comfyui_version":"abc123"},"devices":[{"name":"GPU","type":"cuda","vram_total":8000000000}]}`))
 	}))
 	defer srv.Close()
 
@@ -43,7 +43,7 @@ func TestClient_QueuePrompt(t *testing.T) {
 		assert.Equal(t, "/prompt", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"prompt_id":"test-123","number":1}`))
+		_, _ = w.Write([]byte(`{"prompt_id":"test-123","number":1}`))
 	}))
 	defer srv.Close()
 
@@ -57,7 +57,7 @@ func TestClient_QueuePrompt(t *testing.T) {
 func TestClient_QueuePrompt_Error(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"bad workflow"}`))
+		_, _ = w.Write([]byte(`{"error":"bad workflow"}`))
 	}))
 	defer srv.Close()
 
@@ -69,7 +69,7 @@ func TestClient_QueuePrompt_Error(t *testing.T) {
 func TestClient_History(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"prompt-123":{"outputs":{"1":{"images":[{"filename":"img.png","subfolder":"","type":"output"}]}}}}`))
+		_, _ = w.Write([]byte(`{"prompt-123":{"outputs":{"1":{"images":[{"filename":"img.png","subfolder":"","type":"output"}]}}}}`))
 	}))
 	defer srv.Close()
 
@@ -84,7 +84,7 @@ func TestClient_History(t *testing.T) {
 func TestClient_History_NotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{}`))
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 
@@ -97,7 +97,7 @@ func TestClient_GetImage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/view", r.URL.Path)
 		assert.Equal(t, "img.png", r.URL.Query().Get("filename"))
-		w.Write([]byte("mock-image-bytes"))
+		_, _ = w.Write([]byte("mock-image-bytes"))
 	}))
 	defer srv.Close()
 
@@ -110,7 +110,7 @@ func TestClient_GetImage(t *testing.T) {
 func TestClient_TestConnection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"system":{"os":"linux"}}`))
+		_, _ = w.Write([]byte(`{"system":{"os":"linux"}}`))
 	}))
 	defer srv.Close()
 
@@ -129,7 +129,7 @@ func TestClient_AuthHeaders(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer test-token-123", r.Header.Get("Authorization"))
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"system":{"os":"linux"}}`))
+		_, _ = w.Write([]byte(`{"system":{"os":"linux"}}`))
 	}))
 	defer srv.Close()
 

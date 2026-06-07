@@ -3,10 +3,11 @@ import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, XIcon, ArrowIcon,
-  DiceIcon, SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
+  SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
   ImageIcon,
 } from '../icons';
 import ImageUploadPanel from '../components/ImageUploadPanel';
+import GenerationParamsPanel from '../components/GenerationParamsPanel';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m_karras' },
@@ -100,71 +101,36 @@ const ProjectImageScreen: React.FC = () => {
 
       <div className="ss-page-body scroll">
         {mode === 'generate' ? (
-          <div className="proj-img-grid">
-            <div className="img-col">
-              <div className="img-col-head"><b>Workflow</b></div>
-              <div className="img-col-body scroll">
-                <div className="workflow-pill">
-                  <div className="ic" style={{ fontFamily: 'var(--f-mono)', fontSize: 11 }}>.json</div>
-                  <div>
-                    <b>{workflow.name}.json</b>
-                    <span>{workflow.model} · {workflow.size}</span>
-                  </div>
-                </div>
-                <select className="field" value={workflow.id} onChange={e => {
-                  const w = PROJECT_IMG_WORKFLOWS.find(x => x.id === e.target.value);
-                  if (w) { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }
-                }} style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>
-                  {PROJECT_IMG_WORKFLOWS.map(w => <option key={w.id} value={w.id}>{w.name} — {w.size}</option>)}
-                </select>
-
-                <div className="img-divline" />
-                <span className="uplabel">Sampler params</span>
-                <div className="img-kv">
-                  <label>Steps</label>
-                  <input type="number" min={1} max={150} value={steps} onChange={e => setSteps(+e.target.value)} />
-                  <label>CFG scale</label>
-                  <input type="number" step={0.1} min={0} max={30} value={cfg} onChange={e => setCfg(+e.target.value)} />
-                  <label>Sampler</label>
-                  <select value={sampler} onChange={e => setSampler(e.target.value)} style={{ width: 'auto' }}>
-                    <option>dpmpp_2m_karras</option><option>euler_a</option><option>euler</option>
-                  </select>
-                  <label>Aspect</label>
-                  <select style={{ width: 'auto' }} defaultValue="banner">
-                    <option value="banner">Banner · 16:9</option>
-                    <option value="cover">Cover · 3:2</option>
-                    <option value="square">Square · 1:1</option>
-                  </select>
-                </div>
-
-                <div className="img-divline" />
-                <span className="uplabel">Seed</span>
-                <div className="row" style={{ gap: 6 }}>
-                  <input className="field" value={seed} onChange={e => setSeed(+e.target.value || 0)}
-                    style={{ flex: 1, fontSize: 12, fontFamily: 'var(--f-mono)' }} />
-                  <button className="btn ghost icon" title="Randomize" onClick={() => setSeed(Math.floor(Math.random() * 4e9))}>
-                    <DiceIcon size={14} />
-                  </button>
-                </div>
-
-                <div className="img-divline" />
-                <span className="uplabel">Use project context</span>
-                <div className="col" style={{ gap: 6 }}>
-                  <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--acc)' }} />
-                    Mood from lorebook entries
-                  </label>
-                  <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--acc)' }} />
-                    Setting from &ldquo;World&rdquo; entry
-                  </label>
-                  <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" style={{ accentColor: 'var(--acc)' }} />
-                    Cameo characters in scene
-                  </label>
-                </div>
+          <div className="proj-img-grid" data-screen="project-image" title="Project cover art generation layout">
+            <GenerationParamsPanel
+              workflows={PROJECT_IMG_WORKFLOWS}
+              selectedWorkflow={workflow}
+              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}
+              steps={steps} onStepsChange={setSteps}
+              cfg={cfg} onCfgChange={setCfg}
+              denoise={1} onDenoiseChange={() => {}}
+              sampler={sampler} onSamplerChange={setSampler}
+              scheduler="normal" onSchedulerChange={() => {}}
+              seed={seed} onSeedChange={setSeed}
+              showDenoise={false}
+              showAspectSelector
+            >
+              <span className="uplabel">Use project context</span>
+              <div className="col" style={{ gap: 6 }}>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--acc)' }} />
+                  Mood from lorebook entries
+                </label>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--acc)' }} />
+                  Setting from &ldquo;World&rdquo; entry
+                </label>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" style={{ accentColor: 'var(--acc)' }} />
+                  Cameo characters in scene
+                </label>
               </div>
-            </div>
+            </GenerationParamsPanel>
 
             <div className="img-col">
               <div className="img-col-head">

@@ -1,0 +1,126 @@
+import React from 'react';
+import { DiceIcon } from '../icons';
+
+export interface WorkflowOption {
+  id: string;
+  name: string;
+  model: string;
+  size: string;
+  steps: number;
+  sampler: string;
+}
+
+interface GenerationParamsPanelProps {
+  workflows: WorkflowOption[];
+  selectedWorkflow: WorkflowOption;
+  onWorkflowChange: (w: WorkflowOption) => void;
+  steps: number;
+  onStepsChange: (n: number) => void;
+  cfg: number;
+  onCfgChange: (n: number) => void;
+  denoise: number;
+  onDenoiseChange: (n: number) => void;
+  sampler: string;
+  onSamplerChange: (s: string) => void;
+  scheduler: string;
+  onSchedulerChange: (s: string) => void;
+  seed: number;
+  onSeedChange: (s: number) => void;
+  showDenoise?: boolean;
+  showAspectSelector?: boolean;
+  children?: React.ReactNode;
+}
+
+const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
+  workflows,
+  selectedWorkflow,
+  onWorkflowChange,
+  steps,
+  onStepsChange,
+  cfg,
+  onCfgChange,
+  denoise,
+  onDenoiseChange,
+  sampler,
+  onSamplerChange,
+  scheduler,
+  onSchedulerChange,
+  seed,
+  onSeedChange,
+  showDenoise = true,
+  showAspectSelector = false,
+  children,
+}) => {
+  return (
+    <div className="img-col">
+      <div className="img-col-head"><b>Workflow</b></div>
+      <div className="img-col-body scroll">
+        <div className="workflow-pill">
+          <div className="ic" style={{ fontFamily: 'var(--f-mono)', fontSize: 11 }}>.json</div>
+          <div>
+            <b>{selectedWorkflow.name}.json</b>
+            <span>{selectedWorkflow.model} · {selectedWorkflow.size}</span>
+          </div>
+        </div>
+        <select className="field" value={selectedWorkflow.id} onChange={e => {
+          const w = workflows.find(x => x.id === e.target.value);
+          if (w) onWorkflowChange(w);
+        }} style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>
+          {workflows.map(w => <option key={w.id} value={w.id}>{w.name} — {w.size}</option>)}
+        </select>
+
+        <div className="img-divline" />
+        <span className="uplabel">Sampler params</span>
+        <div className="img-kv">
+          <label>Steps</label>
+          <input type="number" min={1} max={150} value={steps} onChange={e => onStepsChange(+e.target.value)} />
+          <label>CFG scale</label>
+          <input type="number" step={0.1} min={0} max={30} value={cfg} onChange={e => onCfgChange(+e.target.value)} />
+          {showDenoise && (
+            <>
+              <label>Denoise</label>
+              <input type="number" step={0.05} min={0} max={1} value={denoise} onChange={e => onDenoiseChange(+e.target.value)} />
+            </>
+          )}
+          <label>Sampler</label>
+          <select value={sampler} onChange={e => onSamplerChange(e.target.value)} style={{ width: 'auto' }}>
+            <option>dpmpp_2m_karras</option><option>euler_a</option><option>euler</option><option>dpmpp_3m_sde</option>
+          </select>
+          <label>Scheduler</label>
+          <select value={scheduler} onChange={e => onSchedulerChange(e.target.value)} style={{ width: 'auto' }}>
+            <option>karras</option><option>normal</option><option>exponential</option><option>simple</option>
+          </select>
+          {showAspectSelector && (
+            <>
+              <label>Aspect</label>
+              <select style={{ width: 'auto' }} defaultValue="banner">
+                <option value="banner">Banner · 16:9</option>
+                <option value="cover">Cover · 3:2</option>
+                <option value="square">Square · 1:1</option>
+              </select>
+            </>
+          )}
+        </div>
+
+        <div className="img-divline" />
+        <span className="uplabel">Seed</span>
+        <div className="row" style={{ gap: 6 }}>
+          <input className="field" value={seed} onChange={e => onSeedChange(+e.target.value || 0)}
+            style={{ flex: 1, fontSize: 12, fontFamily: 'var(--f-mono)' }} />
+          <button className="btn ghost icon" title="Randomize" onClick={() => onSeedChange(Math.floor(Math.random() * 4e9))}>
+            <DiceIcon size={14} />
+          </button>
+        </div>
+
+        {children && (
+          <>
+            <div className="img-divline" />
+            {children}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default GenerationParamsPanel;

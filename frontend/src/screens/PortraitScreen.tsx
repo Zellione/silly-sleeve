@@ -3,7 +3,7 @@ import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, XIcon, ArrowIcon,
-  DiceIcon, SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
+  SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
   ImageIcon,
 } from '../icons';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../wailsjs/go/main/App';
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
+import GenerationParamsPanel from '../components/GenerationParamsPanel';
 
 const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m_karras' },
@@ -142,75 +143,38 @@ const PortraitScreen: React.FC = () => {
 
       <div className="ss-page-body scroll">
         {mode === 'generate' ? (
-          <div className="img-grid">
-            <div className="img-col">
-              <div className="img-col-head"><b>Workflow</b></div>
-              <div className="img-col-body scroll">
-                <div className="workflow-pill">
-                  <div className="ic" style={{ fontFamily: 'var(--f-mono)', fontSize: 11 }}>.json</div>
-                  <div>
-                    <b>{workflow.name}.json</b>
-                    <span>{workflow.model} · {workflow.size}</span>
-                  </div>
-                </div>
-                <select className="field" value={workflow.id} onChange={e => {
-                  const w = PORTRAIT_WORKFLOWS.find(x => x.id === e.target.value);
-                  if (w) { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }
-                }} style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>
-                  {PORTRAIT_WORKFLOWS.map(w => <option key={w.id} value={w.id}>{w.name} — {w.size}</option>)}
+          <div className="img-grid" data-screen="portrait" title="Character portrait generation layout">
+            <GenerationParamsPanel
+              workflows={PORTRAIT_WORKFLOWS}
+              selectedWorkflow={workflow}
+              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}
+              steps={steps} onStepsChange={setSteps}
+              cfg={cfg} onCfgChange={setCfg}
+              denoise={denoise} onDenoiseChange={setDenoise}
+              sampler={sampler} onSamplerChange={setSampler}
+              scheduler={scheduler} onSchedulerChange={setScheduler}
+              seed={seed} onSeedChange={setSeed}
+            >
+              <span className="uplabel">Models</span>
+              <div className="img-kv">
+                <label>Checkpoint</label>
+                <select style={{ width: 'auto' }} defaultValue="sdxl">
+                  <option value="sdxl">sd_xl_base_1.0</option>
+                  <option>juggernautXL_v9</option>
+                  <option>ponyDiffusion_v6</option>
                 </select>
-
-                <div className="img-divline" />
-                <span className="uplabel">Sampler params</span>
-                <div className="img-kv">
-                  <label>Steps</label>
-                  <input type="number" min={1} max={150} value={steps} onChange={e => setSteps(+e.target.value)} />
-                  <label>CFG scale</label>
-                  <input type="number" step={0.1} min={0} max={30} value={cfg} onChange={e => setCfg(+e.target.value)} />
-                  <label>Denoise</label>
-                  <input type="number" step={0.05} min={0} max={1} value={denoise} onChange={e => setDenoise(+e.target.value)} />
-                  <label>Sampler</label>
-                  <select value={sampler} onChange={e => setSampler(e.target.value)} style={{ width: 'auto' }}>
-                    <option>dpmpp_2m_karras</option><option>euler_a</option><option>euler</option><option>dpmpp_3m_sde</option>
-                  </select>
-                  <label>Scheduler</label>
-                  <select value={scheduler} onChange={e => setScheduler(e.target.value)} style={{ width: 'auto' }}>
-                    <option>karras</option><option>normal</option><option>exponential</option><option>simple</option>
-                  </select>
-                </div>
-
-                <div className="img-divline" />
-                <span className="uplabel">Seed</span>
-                <div className="row" style={{ gap: 6 }}>
-                  <input className="field" value={seed} onChange={e => setSeed(+e.target.value || 0)}
-                    style={{ flex: 1, fontSize: 12, fontFamily: 'var(--f-mono)' }} />
-                  <button className="btn ghost icon" title="Randomize" onClick={() => setSeed(Math.floor(Math.random() * 4e9))}>
-                    <DiceIcon size={14} />
-                  </button>
-                </div>
-
-                <div className="img-divline" />
-                <span className="uplabel">Models</span>
-                <div className="img-kv">
-                  <label>Checkpoint</label>
-                  <select style={{ width: 'auto' }} defaultValue="sdxl">
-                    <option value="sdxl">sd_xl_base_1.0</option>
-                    <option>juggernautXL_v9</option>
-                    <option>ponyDiffusion_v6</option>
-                  </select>
-                  <label>VAE</label>
-                  <select style={{ width: 'auto' }}>
-                    <option>sdxl_vae_fp16_fix</option>
-                    <option>baked</option>
-                  </select>
-                  <label>LoRA</label>
-                  <select style={{ width: 'auto' }}>
-                    <option>— none —</option>
-                    <option>oil_painting_v3 · 0.8</option>
-                  </select>
-                </div>
+                <label>VAE</label>
+                <select style={{ width: 'auto' }}>
+                  <option>sdxl_vae_fp16_fix</option>
+                  <option>baked</option>
+                </select>
+                <label>LoRA</label>
+                <select style={{ width: 'auto' }}>
+                  <option>— none —</option>
+                  <option>oil_painting_v3 · 0.8</option>
+                </select>
               </div>
-            </div>
+            </GenerationParamsPanel>
 
             <div className="img-col">
               <div className="img-col-head">

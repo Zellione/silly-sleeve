@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-02
+> Last updated: 2026-06-07
 
 ## Overview
 
@@ -82,13 +82,22 @@ Goal: Per-field AI assistance, lorebook basics, and project bundles.
 
 Goal: Full SillyTavern drop-in experience with portraits and PNG embedding.
 
-- [ ] **5.1** ComfyUI settings: server URL, auth, output folder, workflow import
-- [ ] **5.2** WebSocket listener for generation progress
-- [ ] **5.3** Portrait screen: generate (auto-fill from appearance) + upload, 4-variant gallery
-- [ ] **5.4** Project image screen: generate cover art + upload dropzone
-- [ ] **5.5** PNG export v2: embed portrait + JSON in `tEXt` chunk
-- [ ] **5.6** PNG export v3 (CCv3): with embedded lorebook and asset library
-- [ ] **5.7** Export hub: bulk format picker, destination folder, embedding options, progress queue
+### Milestone A — Images & ComfyUI
+
+- [~] **5a.1** Data model: add Portrait to Character, ProjectImage to Manifest, ComfyConfig + ComfyWorkflow to Settings, image persistence in bundle
+- [ ] **5a.2** ComfyUI settings UI: server URL, auth, output folder, workflow import/parse/delete, default workflow
+- [ ] **5a.3** ComfyUI Go client & workflow parser: `internal/comfy/` package (models, parser, HTTP client, WebSocket listener)
+- [ ] **5a.4** Portrait screen — generate mode: workflow picker, sampler params, prompt auto-fill from appearance, 4-variant gallery via ComfyUI
+- [ ] **5a.5** Portrait screen — upload mode: drag-drop zone, file metadata, crop/resize, URL paste
+- [ ] **5a.6** Project image screen: generate cover art (16:9), 3-variant comparator, upload mode
+- [ ] **5a.7** Bundle image persistence, Wails Events for progress, tests, quality gate
+
+### Milestone B — Production Export
+
+- [ ] **5b.1** PNG CCv3 export engine: `internal/export/png.go` with custom tEXt chunk injection (chara + ccv3)
+- [ ] **5b.2** Export hub screen: character grid picker, lorebook entry list, format picker, embedding options, destination tree preview
+- [ ] **5b.3** Export queue & bulk logic: sequential export with Wails Events progress per character
+- [ ] **5b.4** Tests, quality gate, enable PNG export buttons
 
 ---
 
@@ -193,3 +202,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - Updated packages: `internal/settings/`, `internal/compose/generate.go`
 - Frontend: prompt template editor, per-field reroll wiring, lorebook editor, auto-save hook
 - Go tests: 231 in 10 packages; Frontend tests: ~330 (including lorebook + auto-save tests)
+
+### 2026-06-07
+
+- Started Phase 3A — Images & ComfyUI (`milestone/5a-images-comfy`).

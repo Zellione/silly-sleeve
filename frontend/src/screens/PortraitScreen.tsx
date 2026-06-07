@@ -4,12 +4,13 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, XIcon, ArrowIcon,
   DiceIcon, SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
-  FolderIcon, ImageIcon,
+  ImageIcon,
 } from '../icons';
 import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
 } from '../../wailsjs/go/main/App';
 import { compose } from '../../wailsjs/go/models';
+import ImageUploadPanel from '../components/ImageUploadPanel';
 
 const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m_karras' },
@@ -105,25 +106,6 @@ const PortraitScreen: React.FC = () => {
       generationRef.current = null;
     }
     setGenerating(false);
-    /* v8 ignore stop */
-  };
-
-  // Upload mode state
-  const [dragging, setDragging] = useState(false);
-  const [uploadFile, setUploadFile] = useState<{ name: string; size: string; dims: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleDropClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    /* v8 ignore start */
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    setUploadFile({ name: file.name, size: `${sizeMB} MB`, dims: '? × ?' });
-    if (fileInputRef.current) fileInputRef.current.value = '';
     /* v8 ignore stop */
   };
 
@@ -335,70 +317,15 @@ const PortraitScreen: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="img-upload-grid">
-            <div
-              role="button" tabIndex={0}
-              className={`img-dropzone${dragging ? ' dragging' : ''}`}
-              style={{ aspectRatio: '4/5' }}
-              onDragOver={e => { e.preventDefault(); /* v8 ignore next */ setDragging(true); }}
-              onDragLeave={() => /* v8 ignore next */ { setDragging(false); }}
-              onDrop={e => { /* v8 ignore start */ e.preventDefault(); setDragging(false); setUploadFile({ name: 'portrait.png', size: '1.2 MB', dims: '832×1216' }); /* v8 ignore stop */ }}
-              onClick={handleDropClick}
-              /* v8 ignore next */
-              onKeyDown={e => { if (e.key === 'Enter') handleDropClick(); }}
-            >
-              <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-              {uploadFile ? (
-                <div className="img-upload-preview">
-                  <span>{uploadFile.dims}</span>
-                </div>
-              ) : (
-                <div className="col" style={{ alignItems: 'center', textAlign: 'center', gap: 12 }}>
-                  <UploadIcon size={32} style={{ color: 'var(--ink-3)' }} />
-                  <div className="serif-i" style={{ fontSize: 28 }}>Drop a portrait here</div>
-                  <div className="helpr">PNG, JPG, WEBP · up to 8 MB<br />Recommended 832 × 1216 for SillyTavern v2 cards</div>
-                  <button className="btn ghost"><FolderIcon size={14} /> Browse files</button>
-                </div>
-              )}
-            </div>
-            <div className="col" style={{ gap: 14 }}>
-              <div className="card" style={{ padding: 16 }}>
-                <span className="uplabel">Selected file</span>
-                {uploadFile ? /* v8 ignore start */ (
-                  <div className="col" style={{ gap: 8, marginTop: 8 }}>
-                    <div className="row" style={{ gap: 10 }}>
-                      <ImageIcon size={20} />
-                      <div className="col" style={{ gap: 2 }}>
-                        <b style={{ fontSize: 13 }}>{uploadFile.name}</b>
-                        <span className="helpr">{uploadFile.dims} · {uploadFile.size}</span>
-                      </div>
-                    </div>
-                    <div className="img-divline" />
-                    <div className="img-kv">
-                      <label>Crop</label>
-                      <select style={{ width: 'auto' }}><option>Center 3:4</option><option>Top 3:4</option><option>None</option></select>
-                      <label>Resize</label>
-                      <select style={{ width: 'auto' }}><option>Fit to 832×1216</option><option>Original</option></select>
-                    </div>
-                    <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }} onClick={handleUseAsPortrait}>
-                      <CheckIcon size={13} /> Use as portrait
-                    </button>
-                    <button className="btn ghost sm" onClick={() => setUploadFile(null)}>Choose a different file</button>
-                  </div>
-                /* v8 ignore stop */ ) : (
-                  <div className="helpr" style={{ marginTop: 6 }}>None — drop or browse on the left.</div>
-                )}
-              </div>
-              <div className="card" style={{ padding: 16 }}>
-                <span className="uplabel">Or paste a URL</span>
-                <div className="row" style={{ gap: 6, marginTop: 8 }}>
-                  <input className="field" placeholder="https://…" />
-                  <button className="btn ghost"><DownloadIcon size={13} /></button>
-                </div>
-                <p className="helpr" style={{ marginTop: 8 }}>We'll fetch the image and store a local copy in your project.</p>
-              </div>
-            </div>
-          </div>
+          <ImageUploadPanel
+            aspectRatio="4/5"
+            dropText="Drop a portrait here"
+            recommendedSize="PNG, JPG, WEBP · up to 8 MB"
+            maxSize="Recommended 832 × 1216 for SillyTavern v2 cards"
+            defaultCrop="Center 3:4"
+            defaultResize="Fit to 832×1216"
+            onUseImage={handleUseAsPortrait}
+          />
         )}
       </div>
     </>

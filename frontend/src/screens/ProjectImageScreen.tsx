@@ -4,8 +4,9 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, XIcon, ArrowIcon,
   DiceIcon, SaveIcon, TrashIcon, DownloadIcon, RerollIcon,
-  FolderIcon, ImageIcon,
+  ImageIcon,
 } from '../icons';
+import ImageUploadPanel from '../components/ImageUploadPanel';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m_karras' },
@@ -81,21 +82,6 @@ const ProjectImageScreen: React.FC = () => {
   };
 
   const stepLabel = `step ${Math.round(progress / 100 * steps)} / ${steps}`;
-
-  // Upload mode
-  const [dragging, setDragging] = useState(false);
-  const [uploadFile, setUploadFile] = useState<{ name: string; size: string; dims: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    /* v8 ignore start */
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    setUploadFile({ name: file.name, size: `${sizeMB} MB`, dims: '? × ?' });
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    /* v8 ignore stop */
-  };
 
   return (
     <>
@@ -284,70 +270,15 @@ const ProjectImageScreen: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="img-upload-grid">
-            <div
-              role="button" tabIndex={0}
-              className={`img-dropzone${dragging ? ' dragging' : ''}`}
-              style={{ aspectRatio: '16/9' }}
-              onDragOver={e => { e.preventDefault(); /* v8 ignore next */ setDragging(true); }}
-              onDragLeave={() => /* v8 ignore next */ { setDragging(false); }}
-              onDrop={e => { /* v8 ignore start */ e.preventDefault(); setDragging(false); setUploadFile({ name: 'cover.png', size: '2.4 MB', dims: '1920×1080' }); /* v8 ignore stop */ }}
-              onClick={() => fileInputRef.current?.click()}
-              /* v8 ignore next */
-              onKeyDown={e => { if (e.key === 'Enter') fileInputRef.current?.click(); }}
-            >
-              <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-              {!uploadFile ? (
-                <div className="col" style={{ alignItems: 'center', textAlign: 'center', gap: 12 }}>
-                  <UploadIcon size={32} style={{ color: 'var(--ink-3)' }} />
-                  <div className="serif-i" style={{ fontSize: 28 }}>Drop a cover image here</div>
-                  <div className="helpr">PNG, JPG, WEBP · up to 16 MB<br />Recommended 1920 × 1080 (16:9) or 1024 × 1024 (square)</div>
-                  <button className="btn ghost"><FolderIcon size={14} /> Browse files</button>
-                </div>
-              ) : (
-                <div className="img-upload-preview" style={{ aspectRatio: '16/9' }}>
-                  <span>{uploadFile.dims}</span>
-                </div>
-              )}
-            </div>
-            <div className="col" style={{ gap: 14 }}>
-              <div className="card" style={{ padding: 16 }}>
-                <span className="uplabel">Selected file</span>
-                {uploadFile ? (
-                  <div className="col" style={{ gap: 8, marginTop: 8 }}>
-                    <div className="row" style={{ gap: 10 }}>
-                      <ImageIcon size={20} />
-                      <div className="col" style={{ gap: 2 }}>
-                        <b style={{ fontSize: 13 }}>{uploadFile.name}</b>
-                        <span className="helpr">{uploadFile.dims} · {uploadFile.size}</span>
-                      </div>
-                    </div>
-                    <div className="img-divline" />
-                    <div className="img-kv">
-                      <label>Crop</label>
-                      <select style={{ width: 'auto' }}><option>Center 16:9</option><option>Top 16:9</option><option>None</option></select>
-                      <label>Resize</label>
-                      <select style={{ width: 'auto' }}><option>Fit to 1920×1080</option><option>Original</option></select>
-                    </div>
-                    <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }} onClick={handleUseAsProjectImage}>
-                      <CheckIcon size={13} /> Use as project image
-                    </button>
-                    <button className="btn ghost sm" onClick={() => setUploadFile(null)}>Choose a different file</button>
-                  </div>
-                ) : (
-                  <div className="helpr" style={{ marginTop: 6 }}>None — drop or browse on the left.</div>
-                )}
-              </div>
-              <div className="card" style={{ padding: 16 }}>
-                <span className="uplabel">Or paste a URL</span>
-                <div className="row" style={{ gap: 6, marginTop: 8 }}>
-                  <input className="field" placeholder="https://…" />
-                  <button className="btn ghost"><DownloadIcon size={13} /></button>
-                </div>
-                <p className="helpr" style={{ marginTop: 8 }}>We'll fetch the image and store a local copy in your project.</p>
-              </div>
-            </div>
-          </div>
+          <ImageUploadPanel
+            aspectRatio="16/9"
+            dropText="Drop a cover image here"
+            recommendedSize="PNG, JPG, WEBP · up to 16 MB"
+            maxSize="Recommended 1920 × 1080 (16:9) or 1024 × 1024 (square)"
+            defaultCrop="Center 16:9"
+            defaultResize="Fit to 1920×1080"
+            onUseImage={handleUseAsProjectImage}
+          />
         )}
       </div>
     </>

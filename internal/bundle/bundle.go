@@ -43,17 +43,45 @@ func WriteBundle(filePath string, b Bundle) error {
 	projectImage := manifest.ProjectImage
 	manifest.ProjectImage = nil
 
-	if err := writeJSON(zw, manifestFile, manifest); err != nil {
+	if err := writeManifestEntry(zw, manifest); err != nil {
 		return err
 	}
-
-	if len(projectImage) > 0 {
-		if err := writeBytes(zw, "images/project.png", projectImage); err != nil {
-			return fmt.Errorf("write project image: %w", err)
+	if err := writeProjectImageEntry(zw, projectImage); err != nil {
+		return err
+	}
+	if err := writeCharacterEntries(zw, b.Characters); err != nil {
+		return err
+	}
+	if err := writeJSON(zw, "prompts.json", b.Prompts); err != nil {
+		return err
+	}
+	if err := writeJSON(zw, "lorebook.json", b.Lorebook); err != nil {
+		return err
+	}
+	if b.CrawlCache != nil {
+		if err := writeJSON(zw, "crawl_cache.json", b.CrawlCache); err != nil {
+			return err
 		}
 	}
 
-	for i, ch := range b.Characters {
+	return nil
+}
+
+func writeManifestEntry(zw *zip.Writer, manifest project.ProjectManifest) error {
+	return writeJSON(zw, manifestFile, manifest)
+}
+
+func writeProjectImageEntry(zw *zip.Writer, data []byte) error {
+	if len(data) > 0 {
+		if err := writeBytes(zw, "images/project.png", data); err != nil {
+			return fmt.Errorf("write project image: %w", err)
+		}
+	}
+	return nil
+}
+
+func writeCharacterEntries(zw *zip.Writer, characters []compose.Character) error {
+	for i, ch := range characters {
 		portrait := ch.Portrait
 		sanitized := sanitizeCharacter(ch)
 		sanitized.Portrait = nil
@@ -76,21 +104,6 @@ func WriteBundle(filePath string, b Bundle) error {
 			}
 		}
 	}
-
-	if err := writeJSON(zw, "prompts.json", b.Prompts); err != nil {
-		return err
-	}
-
-	if err := writeJSON(zw, "lorebook.json", b.Lorebook); err != nil {
-		return err
-	}
-
-	if b.CrawlCache != nil {
-		if err := writeJSON(zw, "crawl_cache.json", b.CrawlCache); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -103,39 +116,54 @@ func ReadBundle(filePath string) (Bundle, error) {
 	defer r.Close()
 
 	b := Bundle{}
+	foundManifest, err := readManifestAndBundleMetadata(r, &b)
+	if err != nil {
+		return Bundle{}, err
+	}
+	if !foundManifest {
+		return Bundle{}, fmt.Errorf("no manifest.json in bundle")
+	}
+
+	if err := readImageFilesFromBundle(r, &b); err != nil {
+		return Bundle{}, err
+	}
+
+	return b, nil
+}
+
+func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 	fileReaders := map[string]func(*zip.File) error{
 		manifestFile:       func(f *zip.File) error { return readJSON(f, &b.Manifest) },
 		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts) },
 		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
-		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, &b) },
+		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, b) },
 	}
 
 	foundManifest := false
-
 	for _, f := range r.File {
 		if reader, ok := fileReaders[f.Name]; ok {
 			if err := reader(f); err != nil {
-				return Bundle{}, fmt.Errorf("read %s: %w", f.Name, err)
+				return false, fmt.Errorf("read %s: %w", f.Name, err)
 			}
 			if f.Name == manifestFile {
 				foundManifest = true
 			}
 		} else if isCharacterFile(f.Name) {
-			if err := readCharacterFile(f, &b); err != nil {
-				return Bundle{}, fmt.Errorf("read character %s: %w", f.Name, err)
+			if err := readCharacterFile(f, b); err != nil {
+				return false, fmt.Errorf("read character %s: %w", f.Name, err)
 			}
 		}
 	}
 
-	if !foundManifest {
-		return Bundle{}, fmt.Errorf("no manifest.json in bundle")
-	}
+	return foundManifest, nil
+}
 
+func readImageFilesFromBundle(r *zip.ReadCloser, b *Bundle) error {
 	for _, f := range r.File {
 		if f.Name == "images/project.png" {
 			data, err := readBytes(f)
 			if err != nil {
-				return Bundle{}, fmt.Errorf("read project image: %w", err)
+				return fmt.Errorf("read project image: %w", err)
 			}
 			b.Manifest.ProjectImage = data
 		} else if isPortraitFile(f.Name) {
@@ -145,18 +173,21 @@ func ReadBundle(filePath string) (Bundle, error) {
 			}
 			data, err := readBytes(f)
 			if err != nil {
-				return Bundle{}, fmt.Errorf("read portrait %d: %w", id, err)
+				return fmt.Errorf("read portrait %d: %w", id, err)
 			}
-			for i := range b.Characters {
-				if b.Characters[i].ID == id {
-					b.Characters[i].Portrait = data
-					break
-				}
-			}
+			assignPortraitToCharacter(b.Characters, id, data)
 		}
 	}
+	return nil
+}
 
-	return b, nil
+func assignPortraitToCharacter(characters []compose.Character, id int, data []byte) {
+	for i := range characters {
+		if characters[i].ID == id {
+			characters[i].Portrait = data
+			break
+		}
+	}
 }
 
 func readCrawlCache(f *zip.File, b *Bundle) error {

@@ -98,16 +98,25 @@ type SystemStats struct {
 	} `json:"devices"`
 }
 
+// StatusExecInfo holds queue status details from ComfyUI WebSocket.
+type StatusExecInfo struct {
+	QueueRemaining int `json:"queue_remaining"`
+}
+
 // WSStatusMsg is received from ComfyUI WebSocket for status updates.
 type WSStatusMsg struct {
-	Type   string `json:"type"`
-	Data   struct {
-		Status struct {
-			ExecInfo struct {
-				QueueRemaining int `json:"queue_remaining"`
-			} `json:"exec_info"`
-		} `json:"status"`
-	} `json:"data"`
+	Type string       `json:"type"`
+	Data WSStatusData `json:"data"`
+}
+
+// WSStatusData contains the nested status payload.
+type WSStatusData struct {
+	Status WSStatusInfo `json:"status"`
+}
+
+// WSStatusInfo wraps the execution info.
+type WSStatusInfo struct {
+	ExecInfo StatusExecInfo `json:"exec_info"`
 }
 
 // WSProgressMsg reports per-node progress during generation.
@@ -128,19 +137,21 @@ type WSExecutingMsg struct {
 	} `json:"data"`
 }
 
+// ExecutedOutputData holds the output images from a completed node.
+type ExecutedOutputData struct {
+	Images []CompletedImage `json:"images"`
+}
+
 // ExecutedMsg holds the output images from a completed node.
 type ExecutedMsg struct {
-	Type  string `json:"type"`
-	Data  struct {
-		Node   string `json:"node"`
-		Output struct {
-			Images []struct {
-				Filename  string `json:"filename"`
-				Subfolder string `json:"subfolder"`
-				Type      string `json:"type"`
-			} `json:"images"`
-		} `json:"output"`
-	} `json:"data"`
+	Type string         `json:"type"`
+	Data ExecutedMsgData `json:"data"`
+}
+
+// ExecutedMsgData wraps the node and output data.
+type ExecutedMsgData struct {
+	Node   string             `json:"node"`
+	Output ExecutedOutputData `json:"output"`
 }
 
 // ProgressEvent is emitted to the frontend as a Wails event.

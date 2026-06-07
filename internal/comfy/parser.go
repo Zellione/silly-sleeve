@@ -113,116 +113,176 @@ func parseInput(raw json.RawMessage) NodeInput {
 
 // ExtractParams traverses a parsed workflow to extract generation parameters.
 func (w *Workflow) ExtractParams(seed int) WorkflowParams {
-	params := WorkflowParams{}
-
-	if seed <= 0 {
-		const maxInt = 1 << 31
-		seed = int(rand.Int63n(int64(maxInt))) + 1 //nolint:gosec
-	}
-	params.Seed = seed
+	params := WorkflowParams{Seed: initSeedParam(seed)}
 
 	ksID := w.findKSampler()
 	if ksID == 0 {
-		params.Steps = 20
-		params.CFG = 7.0
-		params.Denoise = 1.0
-		params.Sampler = "euler"
-		params.Scheduler = "normal"
+		applyDefaultParams(&params)
 		return params
 	}
 
-	ks := w.Nodes[ksID]
+	extractFromKSamplerParam(w.Nodes[ksID], w, &params)
+	pw, ph, ckpt := extractDimensionsAndCheckpointParam(w)
+	params.Width, params.Height, params.Checkpoint = pw, ph, ckpt
+	applyDefaultParams(&params)
 
+	return params
+}
+
+func initSeedParam(seed int) int {
+	if seed > 0 {
+		return seed
+	}
+	const maxInt = 1 << 31
+	return int(rand.Int63n(int64(maxInt))) + 1 //nolint:gosec
+}
+
+func applyDefaultParams(p *WorkflowParams) {
+	if p.Steps <= 0 {
+		p.Steps = 20
+	}
+	if p.CFG <= 0 {
+		p.CFG = 7.0
+	}
+	if p.Denoise <= 0 {
+		p.Denoise = 1.0
+	}
+	if p.Sampler == "" {
+		p.Sampler = "euler"
+	}
+	if p.Scheduler == "" {
+		p.Scheduler = "normal"
+	}
+}
+
+func extractFromKSamplerParam(ks Node, w *Workflow, p *WorkflowParams) {
 	for _, in := range ks.Inputs {
 		switch in.Name {
 		case "seed":
-			if in.Connected {
-				params.Seed = seed
-			} else if s, ok := toInt(in.Value); ok && s > 0 {
-				params.Seed = s
-			}
+			p.Seed = extractSeedParam(in, p.Seed)
 		case "steps":
-			if s, ok := toInt(in.Value); ok && s > 0 {
-				params.Steps = s
+			if s, ok := extractStepsParam(in); ok {
+				p.Steps = s
 			}
 		case "cfg":
-			if f, ok := toFloat(in.Value); ok && f > 0 {
-				params.CFG = f
+			if f, ok := extractCFGParam(in); ok {
+				p.CFG = f
 			}
 		case "sampler_name":
-			if s, ok := in.Value.(string); ok {
-				params.Sampler = s
-			}
+			p.Sampler = extractSamplerNameParam(in)
 		case "scheduler":
-			if s, ok := in.Value.(string); ok {
-				params.Scheduler = s
-			}
+			p.Scheduler = extractSchedulerParam(in)
 		case "denoise":
-			if f, ok := toFloat(in.Value); ok && f > 0 {
-				params.Denoise = f
+			if f, ok := extractDenoiseParam(in); ok {
+				p.Denoise = f
 			}
 		case "positive":
-			if in.Connected {
-				params.Prompt = w.findText(in.SourceID)
-			}
+			p.Prompt = extractPositivePromptParam(in, w)
 		case "negative":
-			if in.Connected {
-				params.NegativePrompt = w.findText(in.SourceID)
-			}
+			p.NegativePrompt = extractNegativePromptParam(in, w)
 		}
 	}
+}
 
-	if params.Steps <= 0 {
-		params.Steps = 20
+func extractSeedParam(in NodeInput, fallback int) int {
+	if in.Connected {
+		return fallback
 	}
-	if params.CFG <= 0 {
-		params.CFG = 7.0
+	if s, ok := toInt(in.Value); ok && s > 0 {
+		return s
 	}
-	if params.Denoise <= 0 {
-		params.Denoise = 1.0
-	}
-	if params.Sampler == "" {
-		params.Sampler = "euler"
-	}
-	if params.Scheduler == "" {
-		params.Scheduler = "normal"
-	}
+	return fallback
+}
 
+func extractStepsParam(in NodeInput) (int, bool) {
+	s, ok := toInt(in.Value)
+	return s, ok && s > 0
+}
+
+func extractCFGParam(in NodeInput) (float64, bool) {
+	f, ok := toFloat(in.Value)
+	return f, ok && f > 0
+}
+
+func extractSamplerNameParam(in NodeInput) string {
+	if s, ok := in.Value.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func extractSchedulerParam(in NodeInput) string {
+	if s, ok := in.Value.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func extractDenoiseParam(in NodeInput) (float64, bool) {
+	f, ok := toFloat(in.Value)
+	return f, ok && f > 0
+}
+
+func extractPositivePromptParam(in NodeInput, w *Workflow) string {
+	if in.Connected {
+		return w.findText(in.SourceID)
+	}
+	return ""
+}
+
+func extractNegativePromptParam(in NodeInput, w *Workflow) string {
+	if in.Connected {
+		return w.findText(in.SourceID)
+	}
+	return ""
+}
+
+func extractDimensionsAndCheckpointParam(w *Workflow) (int, int, string) {
+	var width, height int
+	var checkpoint string
 	for _, node := range w.Nodes {
 		switch node.ClassType {
 		case "EmptyLatentImage":
-			w := 0
-			h := 0
-			for _, in := range node.Inputs {
-				if in.Name == "width" {
-					if v, ok := toInt(in.Value); ok {
-						w = v
-					}
-				}
-				if in.Name == "height" {
-					if v, ok := toInt(in.Value); ok {
-						h = v
-					}
-				}
-			}
+			w, h := extractLatentDimensionsParam(node)
 			if w > 0 {
-				params.Width = w
+				width = w
 			}
 			if h > 0 {
-				params.Height = h
+				height = h
 			}
 		case "CheckpointLoaderSimple", "CheckpointLoader":
-			for _, in := range node.Inputs {
-				if in.Name == "ckpt_name" {
-					if s, ok := in.Value.(string); ok {
-						params.Checkpoint = s
-					}
-				}
+			checkpoint = extractCheckpointParam(node)
+		}
+	}
+	return width, height, checkpoint
+}
+
+func extractLatentDimensionsParam(node Node) (int, int) {
+	var w, h int
+	for _, in := range node.Inputs {
+		if in.Name == "width" {
+			if v, ok := toInt(in.Value); ok {
+				w = v
+			}
+		}
+		if in.Name == "height" {
+			if v, ok := toInt(in.Value); ok {
+				h = v
 			}
 		}
 	}
+	return w, h
+}
 
-	return params
+func extractCheckpointParam(node Node) string {
+	for _, in := range node.Inputs {
+		if in.Name == "ckpt_name" {
+			if s, ok := in.Value.(string); ok {
+				return s
+			}
+		}
+	}
+	return ""
 }
 
 func (w *Workflow) findKSampler() int {

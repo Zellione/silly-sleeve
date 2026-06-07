@@ -116,63 +116,71 @@ func (l *WSListener) handleMessage(data []byte) {
 
 	switch base.Type {
 	case "progress":
-		var msg WSProgressMsg
-		if err := json.Unmarshal(data, &msg); err != nil {
-			return
-		}
-		l.handler.OnProgress(ProgressEvent{
-			Progress: msg.Data.Value,
-			Max:      msg.Data.Max,
-		})
+		l.handleProgressMessage(data)
 	case "executing":
-		var msg WSExecutingMsg
-		if err := json.Unmarshal(data, &msg); err != nil {
-			return
-		}
-		node := ""
-		if msg.Data.Node != nil {
-			node = *msg.Data.Node
-		}
-		if node == "" && msg.Data.PromptID != "" {
-			l.handler.OnProgress(ProgressEvent{
-				PromptID: msg.Data.PromptID,
-				Progress: 0,
-				Max:      1,
-			})
-		}
+		l.handleExecutingMessage(data)
 	case "executed":
-		var msg ExecutedMsg
-		if err := json.Unmarshal(data, &msg); err != nil {
-			return
-		}
-		var images []CompletedImage
-		for _, img := range msg.Data.Output.Images {
-			images = append(images, CompletedImage{
-				Filename:  img.Filename,
-				Subfolder: img.Subfolder,
-				Type:      img.Type,
-			})
-		}
-		if len(images) > 0 {
-			l.handler.OnCompleted(CompletedEvent{
-				Images: images,
-			})
-		}
+		l.handleExecutedMessage(data)
+	case "execution_error":
+		l.handleExecutionErrorMessage(data)
 	case "status":
 		// queue status update — informational only
-	case "execution_error":
-		var msg struct {
-			Data struct {
-				PromptID string `json:"prompt_id"`
-				Error    string `json:"exception_message"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(data, &msg); err == nil {
-			l.handler.OnError(ErrorEvent{
-				PromptID: msg.Data.PromptID,
-				Error:    msg.Data.Error,
-			})
-		}
+	}
+}
+
+func (l *WSListener) handleProgressMessage(data []byte) {
+	var msg WSProgressMsg
+	if err := json.Unmarshal(data, &msg); err != nil {
+		return
+	}
+	l.handler.OnProgress(ProgressEvent{
+		Progress: msg.Data.Value,
+		Max:      msg.Data.Max,
+	})
+}
+
+func (l *WSListener) handleExecutingMessage(data []byte) {
+	var msg WSExecutingMsg
+	if err := json.Unmarshal(data, &msg); err != nil {
+		return
+	}
+	node := ""
+	if msg.Data.Node != nil {
+		node = *msg.Data.Node
+	}
+	if node == "" && msg.Data.PromptID != "" {
+		l.handler.OnProgress(ProgressEvent{
+			PromptID: msg.Data.PromptID,
+			Progress: 0,
+			Max:      1,
+		})
+	}
+}
+
+func (l *WSListener) handleExecutedMessage(data []byte) {
+	var msg ExecutedMsg
+	if err := json.Unmarshal(data, &msg); err != nil {
+		return
+	}
+	if len(msg.Data.Output.Images) > 0 {
+		l.handler.OnCompleted(CompletedEvent{
+			Images: msg.Data.Output.Images,
+		})
+	}
+}
+
+func (l *WSListener) handleExecutionErrorMessage(data []byte) {
+	var msg struct {
+		Data struct {
+			PromptID string `json:"prompt_id"`
+			Error    string `json:"exception_message"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(data, &msg); err == nil {
+		l.handler.OnError(ErrorEvent{
+			PromptID: msg.Data.PromptID,
+			Error:    msg.Data.Error,
+		})
 	}
 }
 

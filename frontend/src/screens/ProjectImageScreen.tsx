@@ -121,15 +121,15 @@ const ProjectImageScreen: React.FC = () => {
               <div className="col" style={{ gap: 6 }}>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
                   <input type="checkbox" defaultChecked style={{ accentColor: 'var(--acc)' }} />
-                  Mood from lorebook entries
+                  <span>Mood from lorebook entries</span>
                 </label>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
                   <input type="checkbox" defaultChecked style={{ accentColor: 'var(--acc)' }} />
-                  Setting from &ldquo;World&rdquo; entry
+                  <span>Setting from &ldquo;World&rdquo; entry</span>
                 </label>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
                   <input type="checkbox" style={{ accentColor: 'var(--acc)' }} />
-                  Cameo characters in scene
+                  <span>Cameo characters in scene</span>
                 </label>
               </div>
             </GenerationParamsPanel>

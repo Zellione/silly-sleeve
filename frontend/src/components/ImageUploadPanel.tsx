@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import { UploadIcon, ImageIcon, CheckIcon, FolderIcon, DownloadIcon } from '../icons';
 
 export interface UploadFileInfo {
@@ -29,6 +29,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
   const [dragging, setDragging] = useState(false);
   const [uploadFile, setUploadFile] = useState<UploadFileInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const uid = useId();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     /* v8 ignore start */
@@ -42,8 +43,8 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
 
   return (
     <div className="img-upload-grid">
-      <div
-        role="button" tabIndex={0}
+      <button
+        type="button"
         className={`img-dropzone${dragging ? ' dragging' : ''}`}
         style={{ aspectRatio }}
         onDragOver={e => { e.preventDefault(); /* v8 ignore next */ setDragging(true); }}
@@ -66,7 +67,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
             <button className="btn ghost"><FolderIcon size={14} /> Browse files</button>
           </div>
         )}
-      </div>
+      </button>
       <div className="col" style={{ gap: 14 }}>
         <div className="card" style={{ padding: 16 }}>
           <span className="uplabel">Selected file</span>
@@ -81,10 +82,10 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
               </div>
               <div className="img-divline" />
               <div className="img-kv">
-                <label>Crop</label>
-                <select style={{ width: 'auto' }}><option>{defaultCrop}</option><option>None</option></select>
-                <label>Resize</label>
-                <select style={{ width: 'auto' }}><option>{defaultResize}</option><option>Original</option></select>
+                <label htmlFor={`${uid}-crop`}>Crop</label>
+                <select id={`${uid}-crop`} style={{ width: 'auto' }}><option>{defaultCrop}</option><option>None</option></select>
+                <label htmlFor={`${uid}-resize`}>Resize</label>
+                <select id={`${uid}-resize`} style={{ width: 'auto' }}><option>{defaultResize}</option><option>Original</option></select>
               </div>
               <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }} onClick={onUseImage}>
                 <CheckIcon size={13} /> Use image

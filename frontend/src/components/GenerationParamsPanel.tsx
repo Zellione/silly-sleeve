@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { DiceIcon } from '../icons';
 
 export interface WorkflowOption {
@@ -51,6 +51,7 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
   showAspectSelector = false,
   children,
 }) => {
+  const uid = useId();
   return (
     <div className="img-col">
       <div className="img-col-head"><b>Workflow</b></div>
@@ -72,28 +73,28 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
         <div className="img-divline" />
         <span className="uplabel">Sampler params</span>
         <div className="img-kv">
-          <label>Steps</label>
-          <input type="number" min={1} max={150} value={steps} onChange={e => onStepsChange(+e.target.value)} />
-          <label>CFG scale</label>
-          <input type="number" step={0.1} min={0} max={30} value={cfg} onChange={e => onCfgChange(+e.target.value)} />
+          <label htmlFor={`${uid}-steps`}>Steps</label>
+          <input id={`${uid}-steps`} type="number" min={1} max={150} value={steps} onChange={e => onStepsChange(+e.target.value)} />
+          <label htmlFor={`${uid}-cfg`}>CFG scale</label>
+          <input id={`${uid}-cfg`} type="number" step={0.1} min={0} max={30} value={cfg} onChange={e => onCfgChange(+e.target.value)} />
           {showDenoise && (
             <>
-              <label>Denoise</label>
-              <input type="number" step={0.05} min={0} max={1} value={denoise} onChange={e => onDenoiseChange(+e.target.value)} />
+              <label htmlFor={`${uid}-denoise`}>Denoise</label>
+              <input id={`${uid}-denoise`} type="number" step={0.05} min={0} max={1} value={denoise} onChange={e => onDenoiseChange(+e.target.value)} />
             </>
           )}
-          <label>Sampler</label>
-          <select value={sampler} onChange={e => onSamplerChange(e.target.value)} style={{ width: 'auto' }}>
+          <label htmlFor={`${uid}-sampler`}>Sampler</label>
+          <select id={`${uid}-sampler`} value={sampler} onChange={e => onSamplerChange(e.target.value)} style={{ width: 'auto' }}>
             <option>dpmpp_2m_karras</option><option>euler_a</option><option>euler</option><option>dpmpp_3m_sde</option>
           </select>
-          <label>Scheduler</label>
-          <select value={scheduler} onChange={e => onSchedulerChange(e.target.value)} style={{ width: 'auto' }}>
+          <label htmlFor={`${uid}-scheduler`}>Scheduler</label>
+          <select id={`${uid}-scheduler`} value={scheduler} onChange={e => onSchedulerChange(e.target.value)} style={{ width: 'auto' }}>
             <option>karras</option><option>normal</option><option>exponential</option><option>simple</option>
           </select>
           {showAspectSelector && (
             <>
-              <label>Aspect</label>
-              <select style={{ width: 'auto' }} defaultValue="banner">
+              <label htmlFor={`${uid}-aspect`}>Aspect</label>
+              <select id={`${uid}-aspect`} style={{ width: 'auto' }} defaultValue="banner">
                 <option value="banner">Banner · 16:9</option>
                 <option value="cover">Cover · 3:2</option>
                 <option value="square">Square · 1:1</option>

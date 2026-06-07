@@ -401,13 +401,14 @@ const ComfyUISettings: React.FC<{
       <div className="settings-form">
         {/* Server URL */}
         <div className="ep-row">
-          <label>
-            Server URL
+          <label htmlFor="settings-server-url">
+            <span>Server URL</span>
             <small>Typically <code>http://127.0.0.1:8188</code>. Must include protocol and port.</small>
           </label>
           <div className="ep-url">
             <span className="ic"><LinkIcon size={12} /></span>
             <input
+              id="settings-server-url"
               value={draftURL}
               onChange={e => setDraftURL(e.target.value)}
               placeholder="http://127.0.0.1:8188"
@@ -424,8 +425,8 @@ const ComfyUISettings: React.FC<{
 
         {/* Auth */}
         <div className="ep-row">
-          <label>
-            Authentication
+          <label htmlFor="settings-auth-token">
+            <span>Authentication</span>
             <small>Toggle on if your ComfyUI instance requires an API token.</small>
           </label>
           <div className="ep-auth-block">
@@ -448,6 +449,7 @@ const ComfyUISettings: React.FC<{
               <div className="ep-key-input">
                 <KeyIcon size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
                 <input
+                  id="settings-auth-token"
                   type={showToken ? 'text' : 'password'}
                   value={draftToken}
                   onChange={e => setDraftToken(e.target.value)}
@@ -471,12 +473,13 @@ const ComfyUISettings: React.FC<{
 
         {/* Output folder */}
         <div className="ep-row">
-          <label>
-            Output folder
+          <label htmlFor="settings-output-folder">
+            <span>Output folder</span>
             <small>Where ComfyUI saves generated images. Used to locate completed renders.</small>
           </label>
           <div className="row" style={{ gap: 6 }}>
             <input
+              id="settings-output-folder"
               className="ep-input"
               value={draftOutput}
               onChange={e => setDraftOutput(e.target.value)}
@@ -494,11 +497,12 @@ const ComfyUISettings: React.FC<{
 
         {/* Workflows */}
         <div className="ep-row">
-          <label>
-            Saved workflows
+          <label htmlFor="settings-workflow-file">
+            <span>Saved workflows</span>
             <small>Import ComfyUI workflow .json files. Parameters are auto-extracted when you queue a generation.</small>
           </label>
           <input
+            id="settings-workflow-file"
             ref={fileInputRef}
             type="file"
             accept=".json"

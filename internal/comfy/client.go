@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const httpErrorFormat = "HTTP %d: %s"
+
 // Client communicates with a ComfyUI instance via its REST API.
 type Client struct {
 	BaseURL string
@@ -105,7 +107,7 @@ func (c *Client) doGet(path string, dest any) error {
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf(httpErrorFormat, resp.StatusCode, string(body))
 	}
 	if dest != nil {
 		return json.NewDecoder(resp.Body).Decode(dest)
@@ -132,7 +134,7 @@ func (c *Client) doPost(path string, body any, dest any) error {
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+		return fmt.Errorf(httpErrorFormat, resp.StatusCode, string(respBody))
 	}
 	if dest != nil {
 		return json.NewDecoder(resp.Body).Decode(dest)
@@ -154,7 +156,7 @@ func (c *Client) doGetBytes(path string) ([]byte, error) {
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf(httpErrorFormat, resp.StatusCode, string(body))
 	}
 	return io.ReadAll(resp.Body)
 }

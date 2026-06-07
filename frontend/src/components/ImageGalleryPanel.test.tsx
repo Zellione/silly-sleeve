@@ -48,8 +48,8 @@ describe('ImageGalleryPanel', () => {
     const onClear = vi.fn();
     render(<ImageGalleryPanel {...baseProps} onClear={onClear} />);
     const clearBtn = screen.getByText('Generated · 2').parentElement?.querySelector('button');
-    expect(clearBtn).toBeTruthy();
-    await user.click(clearBtn!);
+    expect(clearBtn).toBeInstanceOf(HTMLButtonElement);
+    await user.click(clearBtn as HTMLButtonElement);
     expect(onClear).toHaveBeenCalled();
   });
 

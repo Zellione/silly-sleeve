@@ -159,19 +159,19 @@ const PortraitScreen: React.FC = () => {
             >
               <span className="uplabel">Models</span>
               <div className="img-kv">
-                <label>Checkpoint</label>
-                <select style={{ width: 'auto' }} defaultValue="sdxl">
+                <label htmlFor="portrait-checkpoint">Checkpoint</label>
+                <select id="portrait-checkpoint" style={{ width: 'auto' }} defaultValue="sdxl">
                   <option value="sdxl">sd_xl_base_1.0</option>
                   <option>juggernautXL_v9</option>
                   <option>ponyDiffusion_v6</option>
                 </select>
-                <label>VAE</label>
-                <select style={{ width: 'auto' }}>
+                <label htmlFor="portrait-vae">VAE</label>
+                <select id="portrait-vae" style={{ width: 'auto' }}>
                   <option>sdxl_vae_fp16_fix</option>
                   <option>baked</option>
                 </select>
-                <label>LoRA</label>
-                <select style={{ width: 'auto' }}>
+                <label htmlFor="portrait-lora">LoRA</label>
+                <select id="portrait-lora" style={{ width: 'auto' }}>
                   <option>— none —</option>
                   <option>oil_painting_v3 · 0.8</option>
                 </select>
@@ -224,13 +224,11 @@ const PortraitScreen: React.FC = () => {
               galleryContent={
                 <div className="img-gallery">
                   {variants.map((variantSeed, i) => (
-                    <div key={variantSeed} role="button" tabIndex={0}
+                    <button key={variantSeed} type="button"
                       className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
-                      onClick={() => setSelectedVariant(i)}
-                      /* v8 ignore next */
-                      onKeyDown={e => { if (e.key === 'Enter') setSelectedVariant(i); }}>
+                      onClick={() => setSelectedVariant(i)}>
                       <span className="img-thumb-label">{(variantSeed).toString().slice(-6)}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               }

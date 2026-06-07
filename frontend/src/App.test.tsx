@@ -11,6 +11,13 @@ vi.mock('../wailsjs/go/main/App', () => ({
   SaveSettings: vi.fn(),
   TestLLMEndpoint: vi.fn(),
   GetCachedCrawl: vi.fn().mockResolvedValue(null),
+  GetCharacters: vi.fn().mockResolvedValue([]),
+  GetLorebook: vi.fn().mockResolvedValue([]),
+  GetActiveCharacter: vi.fn().mockResolvedValue({ id: 1, name: 'Test' }),
+  AddCharacter: vi.fn(),
+  DeleteCharacter: vi.fn(),
+  SetActiveCharacter: vi.fn(),
+  UpdateCharacter: vi.fn(),
 }));
 
 vi.mock('./style.css', () => ({}));
@@ -108,6 +115,118 @@ describe('App', () => {
     await user.click(screen.getByText('Crawl'));
     await waitFor(() => {
       expect(screen.getByText('Source URL')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to project image screen', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Project image'));
+    await waitFor(() => {
+      expect(screen.getByText('Cover art for the whole project')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to Settings on sidebar click', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Settings'));
+    await waitFor(() => {
+      expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to preview on sidebar click', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Preview'));
+    await waitFor(() => {
+      expect(screen.getByText('Coming soon')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to portrait screen', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Portrait'));
+    await waitFor(() => {
+      expect(screen.getByText('Make or import a face')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to export screen', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Export'));
+    await waitFor(() => {
+      expect(screen.getByText('Ship the project')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to export screen', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Export'));
+    await waitFor(() => {
+      expect(screen.getByText('Ship the project')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to compose screen', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Compose'));
+    await waitFor(() => {
+      expect(screen.getByText(/Compose/)).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to compose screen', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Your projects')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Compose'));
+    await waitFor(() => {
+      expect(screen.getByText(/Compose/)).toBeInTheDocument();
     });
   });
 

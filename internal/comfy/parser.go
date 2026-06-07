@@ -195,32 +195,40 @@ func extractSeedParam(in NodeInput, fallback int) int {
 }
 
 func extractStepsParam(in NodeInput) (int, bool) {
+	return extractIntParam(in)
+}
+
+func extractCFGParam(in NodeInput) (float64, bool) {
+	return extractFloatParam(in)
+}
+
+func extractDenoiseParam(in NodeInput) (float64, bool) {
+	return extractFloatParam(in)
+}
+
+func extractIntParam(in NodeInput) (int, bool) {
 	s, ok := toInt(in.Value)
 	return s, ok && s > 0
 }
 
-func extractCFGParam(in NodeInput) (float64, bool) {
+func extractFloatParam(in NodeInput) (float64, bool) {
 	f, ok := toFloat(in.Value)
 	return f, ok && f > 0
 }
 
 func extractSamplerNameParam(in NodeInput) string {
-	if s, ok := in.Value.(string); ok {
-		return s
-	}
-	return ""
+	return extractStringParam(in)
 }
 
 func extractSchedulerParam(in NodeInput) string {
+	return extractStringParam(in)
+}
+
+func extractStringParam(in NodeInput) string {
 	if s, ok := in.Value.(string); ok {
 		return s
 	}
 	return ""
-}
-
-func extractDenoiseParam(in NodeInput) (float64, bool) {
-	f, ok := toFloat(in.Value)
-	return f, ok && f > 0
 }
 
 func extractPositivePromptParam(in NodeInput, w *Workflow) string {

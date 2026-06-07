@@ -232,13 +232,14 @@ func extractStringParam(in NodeInput) string {
 }
 
 func extractPositivePromptParam(in NodeInput, w *Workflow) string {
-	if in.Connected {
-		return w.findText(in.SourceID)
-	}
-	return ""
+	return extractTextPromptParam(in, w)
 }
 
 func extractNegativePromptParam(in NodeInput, w *Workflow) string {
+	return extractTextPromptParam(in, w)
+}
+
+func extractTextPromptParam(in NodeInput, w *Workflow) string {
 	if in.Connected {
 		return w.findText(in.SourceID)
 	}

@@ -43,3 +43,11 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
   EventsEmit: (_eventName: string, ..._data: any) => { },
   LogPrint: (_message: string) => { },
 };
+
+(HTMLDialogElement.prototype as any).showModal = function () {
+  this.open = true;
+};
+(HTMLDialogElement.prototype as any).close = function () {
+  this.open = false;
+  this.dispatchEvent(new Event('close'));
+};

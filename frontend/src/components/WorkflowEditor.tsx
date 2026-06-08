@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
 import { XIcon } from '../icons';
 
@@ -49,6 +49,16 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
 
   const [jsonText, setJsonText] = useState(initialTemplate);
   const [saving, setSaving] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    const handleClose = () => onClose();
+    dialog.addEventListener('close', handleClose);
+    return () => dialog.removeEventListener('close', handleClose);
+  }, [onClose]);
 
   const placeholders = useMemo(() => {
     const names = new Set<string>();
@@ -87,67 +97,68 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
     }
   }, [jsonText, workflow.id, onClose]);
 
+  const handleCancel = useCallback(() => {
+    dialogRef.current?.close();
+  }, []);
+
   return (
-    <div className="modal-backdrop" onClick={onClose} role="presentation" /* v8 ignore next */ onKeyDown={e => { if (e.key === 'Escape') onClose(); }}>
-      <div className="modal-panel workflow-editor-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 960, maxHeight: '80vh' }}
-        role="dialog" aria-modal="true" /* v8 ignore next */ onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }}>
-        <div className="modal-head">
-          <b>Edit Workflow: {workflow.name}.json</b>
-          <button className="btn ghost icon" onClick={onClose}><XIcon size={14} /></button>
-        </div>
-        <div className="workflow-editor-body">
-          <div className="workflow-editor-left">
-            <div className="workflow-editor-toolbar">
-              <button className="btn ghost sm" onClick={handleFormat}>Format JSON</button>
-            </div>
-            <textarea
-              className="field workflow-editor-textarea"
-              value={jsonText}
-              onChange={e => setJsonText(e.target.value)}
-              spellCheck={false}
-              style={{ fontFamily: 'var(--f-mono)', fontSize: 11.5, lineHeight: 1.5, minHeight: 400, resize: 'vertical' }}
-            />
+    <dialog ref={dialogRef} className="modal-panel workflow-editor-modal" style={{ maxWidth: 960, maxHeight: '80vh' }}>
+      <div className="modal-head">
+        <b>Edit Workflow: {workflow.name}.json</b>
+        <button className="btn ghost icon" onClick={handleCancel}><XIcon size={14} /></button>
+      </div>
+      <div className="workflow-editor-body">
+        <div className="workflow-editor-left">
+          <div className="workflow-editor-toolbar">
+            <button className="btn ghost sm" onClick={handleFormat}>Format JSON</button>
           </div>
-          <div className="workflow-editor-right">
-            <span className="uplabel">Placeholders ({placeholders.length})</span>
-            <div className="workflow-placeholder-list">
-              {placeholders.map(name => (
-                <button key={name} className="btn ghost sm workflow-placeholder-chip"
-                  onClick={() => handleInsertPlaceholder(name)}
-                  title={KNOWN_PLACEHOLDERS[name] || `Custom placeholder: ${name}`}>
-                  <span className="mono" style={{ fontSize: 10 }}>{`{{${name}}}`}</span>
-                  <span className="helpr" style={{ fontSize: 9.5, flex: 1 }}>
-                    {KNOWN_PLACEHOLDERS[name] || 'Custom placeholder'}
-                  </span>
-                  <span style={{ fontSize: 10, color: 'var(--acc)' }}>Insert</span>
-                </button>
-              ))}
-            </div>
-            <div className="img-divline" />
-            <span className="uplabel">Available placeholders</span>
-            <div className="workflow-placeholder-list">
-              {Object.keys(KNOWN_PLACEHOLDERS).filter(name => !placeholders.includes(name)).map(name => (
-                <button key={name} className="btn ghost sm workflow-placeholder-chip"
-                  onClick={() => handleInsertPlaceholder(name)}
-                  title={KNOWN_PLACEHOLDERS[name]}>
-                  <span className="mono" style={{ fontSize: 10, opacity: 0.5 }}>{`{{${name}}}`}</span>
-                  <span className="helpr" style={{ fontSize: 9.5, opacity: 0.5, flex: 1 }}>
-                    {KNOWN_PLACEHOLDERS[name]}
-                  </span>
-                  <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>Insert</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <textarea
+            className="field workflow-editor-textarea"
+            value={jsonText}
+            onChange={e => setJsonText(e.target.value)}
+            spellCheck={false}
+            style={{ fontFamily: 'var(--f-mono)', fontSize: 11.5, lineHeight: 1.5, minHeight: 400, resize: 'vertical' }}
+          />
         </div>
-        <div className="modal-actions">
-          <button className="btn ghost sm" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save template'}
-          </button>
+        <div className="workflow-editor-right">
+          <span className="uplabel">Placeholders ({placeholders.length})</span>
+          <div className="workflow-placeholder-list">
+            {placeholders.map(name => (
+              <button key={name} className="btn ghost sm workflow-placeholder-chip"
+                onClick={() => handleInsertPlaceholder(name)}
+                title={KNOWN_PLACEHOLDERS[name] || `Custom placeholder: ${name}`}>
+                <span className="mono" style={{ fontSize: 10 }}>{`{{${name}}}`}</span>
+                <span className="helpr" style={{ fontSize: 9.5, flex: 1 }}>
+                  {KNOWN_PLACEHOLDERS[name] || 'Custom placeholder'}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--acc)' }}>Insert</span>
+              </button>
+            ))}
+          </div>
+          <div className="img-divline" />
+          <span className="uplabel">Available placeholders</span>
+          <div className="workflow-placeholder-list">
+            {Object.keys(KNOWN_PLACEHOLDERS).filter(name => !placeholders.includes(name)).map(name => (
+              <button key={name} className="btn ghost sm workflow-placeholder-chip"
+                onClick={() => handleInsertPlaceholder(name)}
+                title={KNOWN_PLACEHOLDERS[name]}>
+                <span className="mono" style={{ fontSize: 10, opacity: 0.5 }}>{`{{${name}}}`}</span>
+                <span className="helpr" style={{ fontSize: 9.5, opacity: 0.5, flex: 1 }}>
+                  {KNOWN_PLACEHOLDERS[name]}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>Insert</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      <div className="modal-actions">
+        <button className="btn ghost sm" onClick={handleCancel}>Cancel</button>
+        <button className="btn primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save template'}
+        </button>
+      </div>
+    </dialog>
   );
 };
 

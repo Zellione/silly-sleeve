@@ -28,7 +28,6 @@ describe('WorkflowEditor', () => {
   it('renders detected placeholders in the side panel', () => {
     render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} />);
     expect(screen.getByText(/Placeholders/)).toBeInTheDocument();
-    // Detect placeholders from template JSON
     expect(screen.getByText('{{seed}}')).toBeInTheDocument();
     expect(screen.getByText('{{steps}}')).toBeInTheDocument();
     expect(screen.getByText('{{cfg}}')).toBeInTheDocument();
@@ -39,17 +38,6 @@ describe('WorkflowEditor', () => {
   it('renders available placeholders section', () => {
     render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} />);
     expect(screen.getByText('Available placeholders')).toBeInTheDocument();
-  });
-
-  it('closes on backdrop click', async () => {
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(<WorkflowEditor workflow={workflow} onClose={onClose} />);
-    const backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) {
-      await user.click(backdrop);
-    }
-    expect(onClose).toHaveBeenCalled();
   });
 
   it('closes on X button click', async () => {

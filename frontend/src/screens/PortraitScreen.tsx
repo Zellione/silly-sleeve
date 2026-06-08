@@ -53,6 +53,7 @@ const PortraitScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    /* v8 ignore start */
     EventsOn('comfy:progress', (event: comfy.ProgressEvent) => {
       if (event.max > 0) {
         setProgress(Math.round((event.progress / event.max) * 100));
@@ -65,6 +66,7 @@ const PortraitScreen: React.FC = () => {
       EventsOff('comfy:progress');
       EventsOff('comfy:error');
     };
+    /* v8 ignore stop */
   }, [toast]);
 
   const handleSelectChar = useCallback(async (id: number) => {

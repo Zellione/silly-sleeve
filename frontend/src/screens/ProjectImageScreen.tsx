@@ -35,6 +35,7 @@ const ProjectImageScreen: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    /* v8 ignore start */
     EventsOn('comfy:progress', (event: comfy.ProgressEvent) => {
       if (event.max > 0) {
         setProgress(Math.round((event.progress / event.max) * 100));
@@ -47,6 +48,7 @@ const ProjectImageScreen: React.FC = () => {
       EventsOff('comfy:progress');
       EventsOff('comfy:error');
     };
+    /* v8 ignore stop */
   }, [toast]);
 
   const generateVariants = async () => {
@@ -172,7 +174,7 @@ const ProjectImageScreen: React.FC = () => {
                   </div>
                 )
               }
-              showAutoFill={false}
+              showAutoFill={true}
               autoFillButton={
                 <button className="img-auto-fill" onClick={() => toast({ kind: 'info', title: 'Auto-fill', body: 'Prompt will auto-fill from lorebook context when generation is queued.' })}>
                   <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from lorebook

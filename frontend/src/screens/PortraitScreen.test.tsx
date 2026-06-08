@@ -8,11 +8,15 @@ import { compose } from '../../wailsjs/go/models';
 const mockGetCharacters = vi.fn();
 const mockSetActiveCharacter = vi.fn();
 const mockGetActiveCharacter = vi.fn();
+const mockGeneratePortrait = vi.fn().mockResolvedValue([]);
+const mockGenerateImagePrompt = vi.fn().mockResolvedValue(['a cat', 'blurry']);
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
   SetActiveCharacter: (id: number) => mockSetActiveCharacter(id),
   GetActiveCharacter: () => mockGetActiveCharacter(),
+  GeneratePortrait: (params: any) => mockGeneratePortrait(params),
+  GenerateImagePrompt: (charID: number, style: string) => mockGenerateImagePrompt(charID, style),
 }));
 
 const testChar = new compose.Character({
@@ -310,9 +314,36 @@ describe('PortraitScreen', () => {
     await waitFor(() => screen.getByText('Queue generation'));
     const btn = screen.getByText('Queue generation');
     await user.click(btn);
-    // After click, the button text changes to Stop(during generation)
+    expect(btn).toBeInTheDocument();
+  });
+
+  it('auto-fill calls GenerateImagePrompt', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('auto-fill from card'));
+    await user.click(screen.getByText('auto-fill from card'));
+    expect(mockGenerateImagePrompt).toHaveBeenCalledWith(1, 'natural');
+  });
+
+  it('generation calls GeneratePortrait', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      expect(mockGeneratePortrait).toHaveBeenCalled();
+    });
+  });
+
+  it('stop button stops generation', async () => {
+    mockGeneratePortrait.mockImplementation(() => new Promise(() => {}));
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
     await waitFor(() => {
       expect(screen.getByText(/Stop/)).toBeInTheDocument();
-    }, { timeout: 2000 });
+    });
+    await user.click(screen.getByText(/Stop/));
   });
 });

@@ -29,3 +29,17 @@ const localStorageMock = (() => {
 })();
 
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
+(window as any).runtime = {
+  EventsOnMultiple: (_eventName: string, _callback: (...data: any) => void, _maxCallbacks: number) => {
+    return () => {};
+  },
+  EventsOn: (_eventName: string, _callback: (...data: any) => void) => {
+    return () => {};
+  },
+  EventsOnce: (_eventName: string, _callback: (...data: any) => void) => { },
+  EventsOff: (_eventName: string) => { },
+  EventsOffAll: () => { },
+  EventsEmit: (_eventName: string, ..._data: any) => { },
+  LogPrint: (_message: string) => { },
+};

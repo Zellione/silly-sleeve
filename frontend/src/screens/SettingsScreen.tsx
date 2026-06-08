@@ -8,6 +8,7 @@ import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
+import WorkflowEditor from '../components/WorkflowEditor';
 
 /* ─── Section nav ───────────────────────────────────────── */
 
@@ -293,6 +294,7 @@ const ComfyUISettings: React.FC<{
   const [showToken, setShowToken] = useState(false);
   const [authOn, setAuthOn] = useState(settingsState.comfy?.authToken !== undefined && settingsState.comfy?.authToken !== null);
   const [testing, setTesting] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<comfy.ComfyWorkflow | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
 
@@ -526,6 +528,7 @@ const ComfyUISettings: React.FC<{
                       <span className="pill" style={{ color: 'var(--acc)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>default</span>
                     )}
                     <div className="row" style={{ gap: 4 }}>
+                      <button className="btn ghost sm" onClick={() => setEditingWorkflow(wf)}>Edit</button>
                       {settingsState.comfy?.defaultWorkflow !== wf.id && (
                         <button className="btn ghost sm" onClick={() => handleSetDefault(wf.id)}>Set default</button>
                       )}
@@ -547,6 +550,9 @@ const ComfyUISettings: React.FC<{
           </div>
         </div>
       </div>
+      {editingWorkflow && (
+        <WorkflowEditor workflow={editingWorkflow} onClose={() => setEditingWorkflow(null)} />
+      )}
     </div>
   );
 };

@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ProjectImageScreen from './ProjectImageScreen';
 import { ToastProvider } from '../components/ToastProvider';
+
+const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
+
+vi.mock('../../wailsjs/go/main/App', () => ({
+  GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
+}));
 
 const renderWithProviders = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
@@ -273,5 +279,27 @@ describe('ProjectImageScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Queue generation')).toBeInTheDocument();
     });
+  });
+
+  it('generation calls GenerateProjectImage', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      expect(mockGenerateProjectImage).toHaveBeenCalled();
+    });
+  });
+
+  it('stop button appears during generation', async () => {
+    mockGenerateProjectImage.mockImplementation(() => new Promise(() => {}));
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      expect(screen.getByText(/Stop/)).toBeInTheDocument();
+    });
+    await user.click(screen.getByText(/Stop/));
   });
 });

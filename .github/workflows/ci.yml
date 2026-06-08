@@ -9,15 +9,14 @@ on:
 jobs:
   lint-go:
     runs-on: ubuntu-latest
-    env:
-      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v4
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+          check-latest: true
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
@@ -39,15 +38,14 @@ jobs:
   test-go:
     needs: lint-go
     runs-on: ubuntu-latest
-    env:
-      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v4
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+          check-latest: true
       - run: go test ./... -race -coverprofile=coverage.out -covermode=atomic
       - name: Check Go coverage >= 80%
         run: |
@@ -94,13 +92,12 @@ jobs:
   build:
     needs: [test-go, test-frontend]
     runs-on: ubuntu-latest
-    env:
-      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
+          check-latest: true
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

@@ -62,8 +62,28 @@ export function GetCharacters() {
   return window['go']['main']['App']['GetCharacters']();
 }
 
+export function GetComfyCheckpoints() {
+  return window['go']['main']['App']['GetComfyCheckpoints']();
+}
+
 export function GetComfyConfig() {
   return window['go']['main']['App']['GetComfyConfig']();
+}
+
+export function GetComfyLoRAs() {
+  return window['go']['main']['App']['GetComfyLoRAs']();
+}
+
+export function GetComfySamplers() {
+  return window['go']['main']['App']['GetComfySamplers']();
+}
+
+export function GetComfySchedulers() {
+  return window['go']['main']['App']['GetComfySchedulers']();
+}
+
+export function GetComfyVAEs() {
+  return window['go']['main']['App']['GetComfyVAEs']();
 }
 
 export function GetComfyWorkflowByName(arg1) {

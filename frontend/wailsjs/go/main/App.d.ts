@@ -40,7 +40,17 @@ export function GetCachedCrawl():Promise<crawler.CrawlResult>;
 
 export function GetCharacters():Promise<Array<compose.Character>>;
 
+export function GetComfyCheckpoints():Promise<Array<string>>;
+
 export function GetComfyConfig():Promise<settings.ComfyConfig>;
+
+export function GetComfyLoRAs():Promise<Array<string>>;
+
+export function GetComfySamplers():Promise<Array<string>>;
+
+export function GetComfySchedulers():Promise<Array<string>>;
+
+export function GetComfyVAEs():Promise<Array<string>>;
 
 export function GetComfyWorkflowByName(arg1:string):Promise<comfy.ComfyWorkflow>;
 

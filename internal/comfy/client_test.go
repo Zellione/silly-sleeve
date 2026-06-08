@@ -142,3 +142,84 @@ func TestClient_AuthHeaders(t *testing.T) {
 	_, err := client.SystemStats()
 	require.NoError(t, err)
 }
+
+func TestExtractInputValues(t *testing.T) {
+	t.Run("valid list", func(t *testing.T) {
+		raw := json.RawMessage(`[["euler","dpmpp_2m","dpmpp_3m_sde"],{"default":"euler"}]`)
+		vals, err := ExtractInputValues(raw)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"euler", "dpmpp_2m", "dpmpp_3m_sde"}, vals)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		raw := json.RawMessage(`[[],{"default":""}]`)
+		vals, err := ExtractInputValues(raw)
+		require.NoError(t, err)
+		assert.Empty(t, vals)
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		raw := json.RawMessage(`not-json`)
+		_, err := ExtractInputValues(raw)
+		assert.Error(t, err)
+	})
+}
+
+func TestClient_GetObjectInfo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/object_info/KSampler", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"KSampler":{"input":{"required":{"sampler_name":[["euler","dpmpp_2m"],{"default":"euler"}]}}}}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient(srv.URL, nil)
+	info, err := client.GetObjectInfo("KSampler")
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	node, ok := (*info)["KSampler"]
+	require.True(t, ok)
+	raw, exists := node.Input.Required["sampler_name"]
+	require.True(t, exists)
+	vals, err := ExtractInputValues(raw)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"euler", "dpmpp_2m"}, vals)
+}
+
+func TestClient_GetNodeInputList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/object_info/CheckpointLoaderSimple", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"CheckpointLoaderSimple":{"input":{"required":{"ckpt_name":[["sd_xl_base_1.0.safetensors","juggernautXL_v9.safetensors"],{"default":"sd_xl_base_1.0.safetensors"}]}}}}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient(srv.URL, nil)
+	vals, err := client.GetNodeInputList("CheckpointLoaderSimple", "ckpt_name")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"sd_xl_base_1.0.safetensors", "juggernautXL_v9.safetensors"}, vals)
+}
+
+func TestClient_GetNodeInputList_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"UnknownNode":{"input":{"required":{}}}}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient(srv.URL, nil)
+	_, err := client.GetNodeInputList("UnknownNode", "some_input")
+	assert.Error(t, err)
+}
+
+func TestClient_GetNodeInputList_MissingInput(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"CheckpointLoaderSimple":{"input":{"required":{"ckpt_name":[]}}}}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient(srv.URL, nil)
+	_, err := client.GetNodeInputList("CheckpointLoaderSimple", "missing_input")
+	assert.Error(t, err)
+}

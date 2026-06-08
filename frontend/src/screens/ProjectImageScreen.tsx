@@ -4,7 +4,7 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage } from '../../wailsjs/go/main/App';
+import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers } from '../../wailsjs/go/main/App';
 import { comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
@@ -32,7 +32,14 @@ const ProjectImageScreen: React.FC = () => {
   const [hasImage, setHasImage] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
+  const [samplers, setSamplers] = useState<string[]>([]);
+  const [schedulers, setSchedulers] = useState<string[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    GetComfySamplers().then(setSamplers).catch(() => {});
+    GetComfySchedulers().then(setSchedulers).catch(() => {});
+  }, []);
 
   useEffect(() => {
     /* v8 ignore start */
@@ -128,6 +135,8 @@ const ProjectImageScreen: React.FC = () => {
               seed={seed} onSeedChange={setSeed}
               showDenoise={false}
               showAspectSelector
+              samplerList={samplers}
+              schedulerList={schedulers}
             >
               <span className="uplabel">Use project context</span>
               <div className="col" style={{ gap: 6 }}>

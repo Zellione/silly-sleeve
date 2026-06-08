@@ -18,6 +18,14 @@ vi.mock('../wailsjs/go/main/App', () => ({
   DeleteCharacter: vi.fn(),
   SetActiveCharacter: vi.fn(),
   UpdateCharacter: vi.fn(),
+  GetComfySamplers: vi.fn().mockResolvedValue([]),
+  GetComfySchedulers: vi.fn().mockResolvedValue([]),
+  GetComfyCheckpoints: vi.fn().mockResolvedValue([]),
+  GetComfyVAEs: vi.fn().mockResolvedValue([]),
+  GetComfyLoRAs: vi.fn().mockResolvedValue([]),
+  GenerateImagePrompt: vi.fn().mockResolvedValue(''),
+  GeneratePortrait: vi.fn().mockResolvedValue([]),
+  GenerateProjectImage: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('./style.css', () => ({}));

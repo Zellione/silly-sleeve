@@ -193,6 +193,36 @@ type GenerationParams struct {
 	Checkpoint       string          `json:"checkpoint"`
 }
 
+// ObjectInfoResponse maps node type names to their definitions.
+type ObjectInfoResponse map[string]ObjectInfoNode
+
+// ObjectInfoNode describes a single ComfyUI node type.
+type ObjectInfoNode struct {
+	Input ObjectInfoInput `json:"input"`
+}
+
+// ObjectInfoInput holds required and optional input definitions.
+type ObjectInfoInput struct {
+	Required map[string]json.RawMessage `json:"required"`
+}
+
+// ExtractInputValues parses a ComfyUI object_info input value list.
+// Each input has the form [["val1","val2",...], {"default":"val1"}].
+func ExtractInputValues(raw json.RawMessage) ([]string, error) {
+	var parts []json.RawMessage
+	if err := json.Unmarshal(raw, &parts); err != nil {
+		return nil, err
+	}
+	if len(parts) == 0 {
+		return nil, nil
+	}
+	var values []string
+	if err := json.Unmarshal(parts[0], &values); err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
 // ErrorEvent is emitted when a generation fails.
 type ErrorEvent struct {
 	PromptID string `json:"promptId"`

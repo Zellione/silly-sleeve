@@ -8,6 +8,8 @@ const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
+  GetComfySamplers: () => Promise.resolve(['euler', 'dpmpp_2m']),
+  GetComfySchedulers: () => Promise.resolve(['karras', 'normal']),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>

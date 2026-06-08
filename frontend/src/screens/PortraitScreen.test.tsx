@@ -10,6 +10,11 @@ const mockSetActiveCharacter = vi.fn();
 const mockGetActiveCharacter = vi.fn();
 const mockGeneratePortrait = vi.fn().mockResolvedValue([]);
 const mockGenerateImagePrompt = vi.fn().mockResolvedValue(['a cat', 'blurry']);
+const mockGetComfySamplers = vi.fn().mockResolvedValue(['euler', 'dpmpp_2m']);
+const mockGetComfySchedulers = vi.fn().mockResolvedValue(['karras', 'normal']);
+const mockGetComfyCheckpoints = vi.fn().mockResolvedValue(['sd_xl_base_1.0.safetensors']);
+const mockGetComfyVAEs = vi.fn().mockResolvedValue(['sdxl_vae.safetensors']);
+const mockGetComfyLoRAs = vi.fn().mockResolvedValue([]);
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -17,6 +22,11 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetActiveCharacter: () => mockGetActiveCharacter(),
   GeneratePortrait: (params: any) => mockGeneratePortrait(params),
   GenerateImagePrompt: (charID: number, style: string) => mockGenerateImagePrompt(charID, style),
+  GetComfySamplers: () => mockGetComfySamplers(),
+  GetComfySchedulers: () => mockGetComfySchedulers(),
+  GetComfyCheckpoints: () => mockGetComfyCheckpoints(),
+  GetComfyVAEs: () => mockGetComfyVAEs(),
+  GetComfyLoRAs: () => mockGetComfyLoRAs(),
 }));
 
 const testChar = new compose.Character({

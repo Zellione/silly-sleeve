@@ -7,6 +7,8 @@ import {
 import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
+  GetComfySamplers, GetComfySchedulers,
+  GetComfyCheckpoints, GetComfyVAEs, GetComfyLoRAs,
 } from '../../wailsjs/go/main/App';
 import { compose, comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
@@ -40,6 +42,11 @@ const PortraitScreen: React.FC = () => {
   const [variantImages, setVariantImages] = useState<string[]>([]);
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
+  const [samplers, setSamplers] = useState<string[]>([]);
+  const [schedulers, setSchedulers] = useState<string[]>([]);
+  const [checkpoints, setCheckpoints] = useState<string[]>([]);
+  const [vaes, setVaes] = useState<string[]>([]);
+  const [loras, setLoras] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,6 +57,14 @@ const PortraitScreen: React.FC = () => {
         setActiveChar(chars[0]);
       }
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    GetComfySamplers().then(setSamplers).catch(() => {});
+    GetComfySchedulers().then(setSchedulers).catch(() => {});
+    GetComfyCheckpoints().then(setCheckpoints).catch(() => {});
+    GetComfyVAEs().then(setVaes).catch(() => {});
+    GetComfyLoRAs().then(setLoras).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -174,24 +189,28 @@ const PortraitScreen: React.FC = () => {
               sampler={sampler} onSamplerChange={setSampler}
               scheduler={scheduler} onSchedulerChange={setScheduler}
               seed={seed} onSeedChange={setSeed}
+              samplerList={samplers}
+              schedulerList={schedulers}
             >
               <span className="uplabel">Models</span>
               <div className="img-kv">
                 <label htmlFor="portrait-checkpoint">Checkpoint</label>
-                <select id="portrait-checkpoint" style={{ width: 'auto' }} defaultValue="sdxl">
-                  <option value="sdxl">sd_xl_base_1.0</option>
-                  <option>juggernautXL_v9</option>
-                  <option>ponyDiffusion_v6</option>
+                <select id="portrait-checkpoint" style={{ width: 'auto' }}>
+                  {(checkpoints.length > 0 ? checkpoints : ['sd_xl_base_1.0', 'juggernautXL_v9', 'ponyDiffusion_v6']).map(c => (
+                    <option key={c}>{c.replace(/\.safetensors$/, '')}</option>
+                  ))}
                 </select>
                 <label htmlFor="portrait-vae">VAE</label>
                 <select id="portrait-vae" style={{ width: 'auto' }}>
-                  <option>sdxl_vae_fp16_fix</option>
-                  <option>baked</option>
+                  {['— none —'].concat(vaes.length > 0 ? vaes : ['sdxl_vae_fp16_fix', 'baked']).map(v => (
+                    <option key={v}>{v.replace(/\.safetensors$/, '')}</option>
+                  ))}
                 </select>
                 <label htmlFor="portrait-lora">LoRA</label>
                 <select id="portrait-lora" style={{ width: 'auto' }}>
-                  <option>— none —</option>
-                  <option>oil_painting_v3 · 0.8</option>
+                  {['— none —'].concat(loras.length > 0 ? loras : ['oil_painting_v3']).map(l => (
+                    <option key={l}>{l.replace(/\.safetensors$/, '')}</option>
+                  ))}
                 </select>
               </div>
             </GenerationParamsPanel>
@@ -234,8 +253,8 @@ const PortraitScreen: React.FC = () => {
                   <button className="img-auto-fill" onClick={handleAutoFill}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
-                  <select className="img-style-toggle" value={promptStyle} onChange={e => setPromptStyle(e.target.value as 'natural' | 'danbooru')}
-                    style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--acc-line)', background: 'var(--acc-soft)', color: 'var(--acc)', fontFamily: 'var(--f-mono)' }}>
+                  <select className="img-select" value={promptStyle} onChange={e => setPromptStyle(e.target.value as 'natural' | 'danbooru')}
+                    style={{ fontSize: 10, fontFamily: 'var(--f-mono)' }}>
                     <option value="natural">Natural</option>
                     <option value="danbooru">Danbooru</option>
                   </select>

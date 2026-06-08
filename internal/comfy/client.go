@@ -85,6 +85,33 @@ func (c *Client) TestConnection() error {
 	return err
 }
 
+// GetObjectInfo fetches node type definitions from ComfyUI.
+func (c *Client) GetObjectInfo(nodeType string) (*ObjectInfoResponse, error) {
+	var info ObjectInfoResponse
+	if err := c.doGet("/object_info/"+nodeType, &info); err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+// GetNodeInputList returns the list of possible values for a specific node input.
+func (c *Client) GetNodeInputList(nodeType, inputName string) ([]string, error) {
+	info, err := c.GetObjectInfo(nodeType)
+	if err != nil {
+		return nil, err
+	}
+	var nodeInfo ObjectInfoNode
+	var ok bool
+	if nodeInfo, ok = (*info)[nodeType]; !ok {
+		return nil, fmt.Errorf("node type %q not found in object_info", nodeType)
+	}
+	raw, exists := nodeInfo.Input.Required[inputName]
+	if !exists {
+		return nil, fmt.Errorf("input %q not found in node %q", inputName, nodeType)
+	}
+	return ExtractInputValues(raw)
+}
+
 func (c *Client) fullURL(path string) string {
 	base := c.BaseURL
 	if len(base) > 0 && base[len(base)-1] == '/' {

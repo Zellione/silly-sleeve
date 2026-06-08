@@ -28,6 +28,8 @@ interface GenerationParamsPanelProps {
   onSeedChange: (s: number) => void;
   showDenoise?: boolean;
   showAspectSelector?: boolean;
+  samplerList?: string[];
+  schedulerList?: string[];
   children?: React.ReactNode;
 }
 
@@ -49,6 +51,8 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
   onSeedChange,
   showDenoise = true,
   showAspectSelector = false,
+  samplerList,
+  schedulerList,
   children,
 }) => {
   const uid = useId();
@@ -85,11 +89,15 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
           )}
           <label htmlFor={`${uid}-sampler`}>Sampler</label>
           <select id={`${uid}-sampler`} value={sampler} onChange={e => onSamplerChange(e.target.value)} style={{ width: 'auto' }}>
-            <option>dpmpp_2m_karras</option><option>euler_a</option><option>euler</option><option>dpmpp_3m_sde</option>
+            {(samplerList && samplerList.length > 0 ? samplerList : ['dpmpp_2m_karras', 'euler_a', 'euler', 'dpmpp_3m_sde']).map(s => (
+              <option key={s}>{s}</option>
+            ))}
           </select>
           <label htmlFor={`${uid}-scheduler`}>Scheduler</label>
           <select id={`${uid}-scheduler`} value={scheduler} onChange={e => onSchedulerChange(e.target.value)} style={{ width: 'auto' }}>
-            <option>karras</option><option>normal</option><option>exponential</option><option>simple</option>
+            {(schedulerList && schedulerList.length > 0 ? schedulerList : ['karras', 'normal', 'exponential', 'simple']).map(s => (
+              <option key={s}>{s}</option>
+            ))}
           </select>
           {showAspectSelector && (
             <>

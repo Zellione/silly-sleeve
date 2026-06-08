@@ -1637,6 +1637,17 @@ kbd {
 .img-kv select { appearance: none; }
 .img-kv input:focus, .img-kv select:focus { outline: none; border-color: var(--acc); }
 
+.img-select {
+  appearance: none;
+  padding: 5px 8px;
+  font: 12px/1 var(--f-mono);
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--ink);
+}
+.img-select:focus { outline: none; border-color: var(--acc); }
+
 .img-divline {
   width: 100%; height: 1px;
   background: var(--hair);

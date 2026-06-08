@@ -279,6 +279,63 @@ func (a *App) SaveComfyWorkflowTemplate(id string, template json.RawMessage) err
 	return fmt.Errorf("workflow %q not found", id)
 }
 
+func (a *App) comfyClient() (*comfy.Client, error) {
+	url := a.settings.Comfy.URL
+	if url == "" {
+		return nil, fmt.Errorf("ComfyUI URL not configured")
+	}
+	var t *string
+	if a.settings.Comfy.AuthToken != nil {
+		t = a.settings.Comfy.AuthToken
+	}
+	return comfy.NewClient(url, t), nil
+}
+
+// GetComfySamplers returns available sampler names from ComfyUI.
+func (a *App) GetComfySamplers() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("KSampler", "sampler_name")
+}
+
+// GetComfySchedulers returns available scheduler names from ComfyUI.
+func (a *App) GetComfySchedulers() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("KSampler", "scheduler")
+}
+
+// GetComfyCheckpoints returns available checkpoint model names from ComfyUI.
+func (a *App) GetComfyCheckpoints() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("CheckpointLoaderSimple", "ckpt_name")
+}
+
+// GetComfyVAEs returns available VAE model names from ComfyUI.
+func (a *App) GetComfyVAEs() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("VAELoader", "vae_name")
+}
+
+// GetComfyLoRAs returns available LoRA model names from ComfyUI.
+func (a *App) GetComfyLoRAs() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("LoraLoader", "lora_name")
+}
+
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.
 func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlResult {
 	result := crawler.FetchPage(pageURL)

@@ -36,12 +36,12 @@ const ProjectImageScreen: React.FC = () => {
 
   useEffect(() => {
     /* v8 ignore start */
-    EventsOn('comfy:progress', (event: comfy.ProgressEvent) => {
+    EventsOn('comfy:progress', (event: { progress: number; max: number }) => {
       if (event.max > 0) {
         setProgress(Math.round((event.progress / event.max) * 100));
       }
     });
-    EventsOn('comfy:error', (event: comfy.ErrorEvent) => {
+    EventsOn('comfy:error', (event: { error: string }) => {
       toast({ kind: 'bad', title: 'Generation error', body: event.error });
     });
     return () => {

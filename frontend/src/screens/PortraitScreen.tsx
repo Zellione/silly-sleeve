@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
@@ -6,8 +6,10 @@ import {
 } from '../icons';
 import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
+  GeneratePortrait, GenerateImagePrompt,
 } from '../../wailsjs/go/main/App';
-import { compose } from '../../wailsjs/go/models';
+import { compose, comfy } from '../../wailsjs/go/models';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
@@ -31,13 +33,13 @@ const PortraitScreen: React.FC = () => {
   const [denoise, setDenoise] = useState(1);
   const [sampler, setSampler] = useState('dpmpp_2m_karras');
   const [scheduler, setScheduler] = useState('karras');
+  const [promptStyle, setPromptStyle] = useState<'natural' | 'danbooru'>('natural');
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState(0);
-  const [variants, setVariants] = useState<number[]>([]);
+  const [variantImages, setVariantImages] = useState<string[]>([]);
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
-  const generationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,6 +52,21 @@ const PortraitScreen: React.FC = () => {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    EventsOn('comfy:progress', (event: comfy.ProgressEvent) => {
+      if (event.max > 0) {
+        setProgress(Math.round((event.progress / event.max) * 100));
+      }
+    });
+    EventsOn('comfy:error', (event: comfy.ErrorEvent) => {
+      toast({ kind: 'bad', title: 'Generation error', body: event.error });
+    });
+    return () => {
+      EventsOff('comfy:progress');
+      EventsOff('comfy:error');
+    };
+  }, [toast]);
+
   const handleSelectChar = useCallback(async (id: number) => {
     setActiveCharId(id);
     await SetActiveCharacter(id);
@@ -57,57 +74,55 @@ const PortraitScreen: React.FC = () => {
     setActiveChar(ch);
   }, []);
 
-  const handleAutoFill = () => {
+  const handleAutoFill = async () => {
     if (!activeChar) return;
-    const appearance = activeChar.appearance;
-    if (appearance.trim()) {
-      setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
+    try {
+      const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
+      setPrompt(positive);
+      setNegPrompt(negative);
+    } catch {
+      const appearance = activeChar.appearance;
+      if (appearance.trim()) {
+        setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
+      }
     }
   };
 
-  const generateVariants = () => {
+  const generateVariants = async () => {
     if (generating) return;
-    /* v8 ignore start */
     setGenerating(true);
     setProgress(0);
-    const newVariants: number[] = [];
-    const seeds = [seed, seed + 1, seed + 2, seed + 3];
+    setVariantImages([]);
 
-    let currentVariant = 0;
-    generationRef.current = setInterval(() => {
-      if (currentVariant >= 4) {
-        const ref = generationRef.current;
-        if (ref !== null) clearInterval(ref);
-        generationRef.current = null;
-        setGenerating(false);
-        setProgress(100);
-        toast({ kind: 'ok', title: 'Generation complete', body: '4 portrait variants ready.' });
-        return;
-      }
+    try {
+      const params = new comfy.GenerationParams({
+        workflowTemplate: null,
+        seed,
+        steps,
+        cfg,
+        sampler,
+        scheduler,
+        denoise,
+        positivePrompt: prompt,
+        negativePrompt: negPrompt,
+        width: 0,
+        height: 0,
+        checkpoint: '',
+      });
 
-      const variantProgress = Math.min(100, Math.max(0,
-        ((currentVariant / 4) * 100) + (Math.random() * 25)
-      ));
-
-      if (variantProgress >= (currentVariant + 1) / 4 * 100) {
-        newVariants.push(seeds[currentVariant]);
-        setVariants([...newVariants]);
-        currentVariant++;
-      }
-
-      setProgress(variantProgress);
-    }, 180);
-    /* v8 ignore stop */
+      const images = await GeneratePortrait(params);
+      setVariantImages(images.map(img => arrayBufferToDataURL(img.data)));
+      setProgress(100);
+      toast({ kind: 'ok', title: 'Generation complete', body: `${images.length} portrait variants ready.` });
+    } catch (err) {
+      toast({ kind: 'bad', title: 'Generation failed', body: String(err) });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleStop = () => {
-    /* v8 ignore start */
-    if (generationRef.current) {
-      clearInterval(generationRef.current);
-      generationRef.current = null;
-    }
     setGenerating(false);
-    /* v8 ignore stop */
   };
 
   const handleUseAsPortrait = () => {
@@ -115,7 +130,7 @@ const PortraitScreen: React.FC = () => {
   };
 
   const canvasTitle = 'Preview';
-  const showDonePlaceholder = variants.length > 0;
+  const showDonePlaceholder = variantImages.length > 0;
 
   return (
     <>
@@ -194,20 +209,34 @@ const PortraitScreen: React.FC = () => {
                 </div>
               }
               donePlaceholder={
-                <div className="img-placeholder" style={{ background: 'var(--panel-2)' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <ImageIcon size={28} style={{ opacity: 0.4 }} />
-                    <div style={{ marginTop: 8, fontSize: 12 }}>variant #{selectedVariant + 1}</div>
-                    <div className="mono" style={{ fontSize: 10, marginTop: 4, color: 'var(--ink-3)' }}>
-                      seed {seed + selectedVariant} · {workflow.size}
+                variantImages.length > 0 && variantImages[selectedVariant] ? (
+                  <div className="img-placeholder" style={{ background: 'var(--panel-2)', overflow: 'hidden' }}>
+                    <img src={variantImages[selectedVariant]} alt={`variant ${selectedVariant + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                ) : (
+                  <div className="img-placeholder" style={{ background: 'var(--panel-2)' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <ImageIcon size={28} style={{ opacity: 0.4 }} />
+                      <div style={{ marginTop: 8, fontSize: 12 }}>variant #{selectedVariant + 1}</div>
+                      <div className="mono" style={{ fontSize: 10, marginTop: 4, color: 'var(--ink-3)' }}>
+                        seed {seed + selectedVariant} · {workflow.size}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )
               }
               autoFillButton={
-                <button className="img-auto-fill" onClick={handleAutoFill}>
-                  <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
-                </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button className="img-auto-fill" onClick={handleAutoFill}>
+                    <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
+                  </button>
+                  <select className="img-style-toggle" value={promptStyle} onChange={e => setPromptStyle(e.target.value as 'natural' | 'danbooru')}
+                    style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--acc-line)', background: 'var(--acc-soft)', color: 'var(--acc)', fontFamily: 'var(--f-mono)' }}>
+                    <option value="natural">Natural</option>
+                    <option value="danbooru">Danbooru</option>
+                  </select>
+                </div>
               }
               prompt={prompt}
               onPromptChange={setPrompt}
@@ -219,20 +248,20 @@ const PortraitScreen: React.FC = () => {
 
             <ImageGalleryPanel
               headLabel="Generated"
-              variantCount={variants.length}
-              onClear={() => setVariants([])}
+              variantCount={variantImages.length}
+              onClear={() => { setVariantImages([]); }}
               galleryContent={
                 <div className="img-gallery">
-                  {variants.map((variantSeed, i) => (
-                    <button key={variantSeed} type="button"
+                  {variantImages.map((imgUrl, i) => (
+                    <button key={i} type="button"
                       className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
                       onClick={() => setSelectedVariant(i)}>
-                      <span className="img-thumb-label">{(variantSeed).toString().slice(-6)}</span>
+                      <img src={imgUrl} alt={`variant ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </button>
                   ))}
                 </div>
               }
-              showMetadata={variants.length > 0}
+              showMetadata={variantImages.length > 0}
               selectedLabel={`Selected · #${selectedVariant + 1}`}
               metadataItems={[
                 { label: 'Seed', value: String(seed + selectedVariant) },
@@ -244,7 +273,7 @@ const PortraitScreen: React.FC = () => {
               downloadLabel="Save PNG only"
               useImageLabel="Use as portrait"
               onUseImage={handleUseAsPortrait}
-              useImageDisabled={variants.length === 0}
+              useImageDisabled={variantImages.length === 0}
             />
           </div>
         ) : (
@@ -262,5 +291,14 @@ const PortraitScreen: React.FC = () => {
     </>
   );
 };
+
+function arrayBufferToDataURL(buffer: number[] | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return 'data:image/png;base64,' + btoa(binary);
+}
 
 export default PortraitScreen;

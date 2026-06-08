@@ -27,6 +27,12 @@ export function GenerateCharacterBulk(arg1:Array<string>):Promise<compose.Charac
 
 export function GenerateField(arg1:string,arg2:string):Promise<compose.Character>;
 
+export function GenerateImagePrompt(arg1:number,arg2:string):Promise<[string,string]>;
+
+export function GeneratePortrait(arg1:comfy.GenerationParams):Promise<Array<comfy.CompletedImage>>;
+
+export function GenerateProjectImage(arg1:comfy.GenerationParams):Promise<Array<comfy.CompletedImage>>;
+
 export function GetActiveCharacter():Promise<compose.Character>;
 
 export function GetCachedCrawl():Promise<crawler.CrawlResult>;
@@ -36,6 +42,8 @@ export function GetCharacters():Promise<Array<compose.Character>>;
 export function GetComfyConfig():Promise<settings.ComfyConfig>;
 
 export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
+
+export function GetComfyWorkflowByName(arg1:string):Promise<comfy.ComfyWorkflow>;
 
 export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;
 
@@ -70,6 +78,8 @@ export function SaveProjectBundle(arg1:string):Promise<void>;
 export function SaveProjectImage(arg1:Array<number>):Promise<void>;
 
 export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
+
+export function SaveComfyWorkflowTemplate(arg1:string,arg2:Array<number>):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 

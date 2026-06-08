@@ -36,6 +36,7 @@ export namespace comfy {
 	    id: string;
 	    name: string;
 	    jsonData: number[];
+	    template: number[];
 	    params: WorkflowParams;
 	
 	    static createFrom(source: any = {}) {
@@ -47,6 +48,7 @@ export namespace comfy {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.jsonData = source["jsonData"];
+	        this.template = source["template"];
 	        this.params = this.convertValues(source["params"], WorkflowParams);
 	    }
 	
@@ -68,6 +70,130 @@ export namespace comfy {
 		    return a;
 		}
 	}
+
+	export class CompletedImage {
+	    filename: string;
+	    subfolder: string;
+	    type: string;
+	    data: number[];
+
+	    static createFrom(source: any = {}) {
+	        return new CompletedImage(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filename = source["filename"];
+	        this.subfolder = source["subfolder"];
+	        this.type = source["type"];
+	        this.data = source["data"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+	export class GenerationParams {
+	    workflowTemplate: number[];
+	    seed: number;
+	    steps: number;
+	    cfg: number;
+	    sampler: string;
+	    scheduler: string;
+	    positivePrompt: string;
+	    negativePrompt: string;
+	    width: number;
+	    height: number;
+	    checkpoint: string;
+
+	    static createFrom(source: any = {}) {
+	        return new GenerationParams(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workflowTemplate = source["workflowTemplate"];
+	        this.seed = source["seed"];
+	        this.steps = source["steps"];
+	        this.cfg = source["cfg"];
+	        this.sampler = source["sampler"];
+	        this.scheduler = source["scheduler"];
+	        this.positivePrompt = source["positivePrompt"];
+	        this.negativePrompt = source["negativePrompt"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.checkpoint = source["checkpoint"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+  }
+
+  export class ProgressEvent {
+      promptId: string;
+      progress: number;
+      max: number;
+      node: string;
+      queueRemaining: number;
+
+      static createFrom(source: any = {}) {
+          return new ProgressEvent(source);
+      }
+
+      constructor(source: any = {}) {
+          if ('string' === typeof source) source = JSON.parse(source);
+          this.promptId = source["promptId"];
+          this.progress = source["progress"];
+          this.max = source["max"];
+          this.node = source["node"];
+          this.queueRemaining = source["queueRemaining"];
+      }
+  }
+
+  export class ErrorEvent {
+      promptId: string;
+      error: string;
+
+      static createFrom(source: any = {}) {
+          return new ErrorEvent(source);
+      }
+
+      constructor(source: any = {}) {
+          if ('string' === typeof source) source = JSON.parse(source);
+          this.promptId = source["promptId"];
+          this.error = source["error"];
+      }
+  }
 
 }
 

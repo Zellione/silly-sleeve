@@ -38,6 +38,18 @@ export function GenerateField(arg1, arg2) {
   return window['go']['main']['App']['GenerateField'](arg1, arg2);
 }
 
+export function GenerateImagePrompt(arg1, arg2) {
+  return window['go']['main']['App']['GenerateImagePrompt'](arg1, arg2);
+}
+
+export function GeneratePortrait(arg1) {
+  return window['go']['main']['App']['GeneratePortrait'](arg1);
+}
+
+export function GenerateProjectImage(arg1) {
+  return window['go']['main']['App']['GenerateProjectImage'](arg1);
+}
+
 export function GetActiveCharacter() {
   return window['go']['main']['App']['GetActiveCharacter']();
 }
@@ -56,6 +68,10 @@ export function GetComfyConfig() {
 
 export function GetComfyWorkflows() {
   return window['go']['main']['App']['GetComfyWorkflows']();
+}
+
+export function GetComfyWorkflowByName(arg1) {
+  return window['go']['main']['App']['GetComfyWorkflowByName'](arg1);
 }
 
 export function GetDefaultPromptTemplates() {
@@ -124,6 +140,10 @@ export function SaveProjectImage(arg1) {
 
 export function SavePromptTemplates(arg1) {
   return window['go']['main']['App']['SavePromptTemplates'](arg1);
+}
+
+export function SaveComfyWorkflowTemplate(arg1, arg2) {
+  return window['go']['main']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
 }
 
 export function SaveSettings(arg1) {

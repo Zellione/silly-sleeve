@@ -22,6 +22,7 @@ type ComfyWorkflow struct {
 	ID       string          `json:"id"`
 	Name     string          `json:"name"`
 	JSONData json.RawMessage `json:"jsonData"`
+	Template json.RawMessage `json:"template"`
 	Params   WorkflowParams  `json:"params"`
 }
 
@@ -174,6 +175,22 @@ type CompletedImage struct {
 	Filename  string `json:"filename"`
 	Subfolder string `json:"subfolder"`
 	Type      string `json:"type"`
+	Data      []byte `json:"data"`
+}
+
+// GenerationParams holds all parameters for a generation job.
+type GenerationParams struct {
+	WorkflowTemplate json.RawMessage `json:"workflowTemplate"`
+	Seed             int             `json:"seed"`
+	Steps            int             `json:"steps"`
+	CFG              float64         `json:"cfg"`
+	Sampler          string          `json:"sampler"`
+	Scheduler        string          `json:"scheduler"`
+	PositivePrompt   string          `json:"positivePrompt"`
+	NegativePrompt   string          `json:"negativePrompt"`
+	Width            int             `json:"width"`
+	Height           int             `json:"height"`
+	Checkpoint       string          `json:"checkpoint"`
 }
 
 // ErrorEvent is emitted when a generation fails.

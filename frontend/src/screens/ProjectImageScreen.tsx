@@ -1,9 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
+import { GenerateProjectImage } from '../../wailsjs/go/main/App';
+import { comfy } from '../../wailsjs/go/models';
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
@@ -25,57 +28,63 @@ const ProjectImageScreen: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState(0);
-  const [variants, setVariants] = useState<number[]>([]);
+  const [variantImages, setVariantImages] = useState<string[]>([]);
   const [hasImage, setHasImage] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
-  const generationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
 
-  const generateVariants = () => {
+  useEffect(() => {
+    EventsOn('comfy:progress', (event: comfy.ProgressEvent) => {
+      if (event.max > 0) {
+        setProgress(Math.round((event.progress / event.max) * 100));
+      }
+    });
+    EventsOn('comfy:error', (event: comfy.ErrorEvent) => {
+      toast({ kind: 'bad', title: 'Generation error', body: event.error });
+    });
+    return () => {
+      EventsOff('comfy:progress');
+      EventsOff('comfy:error');
+    };
+  }, [toast]);
+
+  const generateVariants = async () => {
     if (generating) return;
-    /* v8 ignore start */
     setGenerating(true);
     setProgress(0);
-    const newVariants: number[] = [];
-    const seeds = [seed, seed + 1, seed + 2];
+    setVariantImages([]);
 
-    let currentVariant = 0;
-    generationRef.current = setInterval(() => {
-      if (currentVariant >= 3) {
-        const ref = generationRef.current;
-        if (ref !== null) clearInterval(ref);
-        generationRef.current = null;
-        setGenerating(false);
-        setProgress(100);
-        setHasImage(true);
-        toast({ kind: 'ok', title: 'Generation complete', body: '3 cover variants ready.' });
-        return;
-      }
+    try {
+      const params = new comfy.GenerationParams({
+        workflowTemplate: null,
+        seed,
+        steps,
+        cfg,
+        sampler,
+        scheduler: 'normal',
+        denoise: 1,
+        positivePrompt: prompt,
+        negativePrompt: negPrompt,
+        width: 0,
+        height: 0,
+        checkpoint: '',
+      });
 
-      const variantProgress = Math.min(100, Math.max(0,
-        ((currentVariant / 3) * 100) + (Math.random() * 30)
-      ));
-
-      if (variantProgress >= (currentVariant + 1) / 3 * 100) {
-        newVariants.push(seeds[currentVariant]);
-        setVariants([...newVariants]);
-        currentVariant++;
-      }
-
-      setProgress(variantProgress);
-    }, 180);
-    /* v8 ignore stop */
+      const images = await GenerateProjectImage(params);
+      setVariantImages(images.map(img => arrayBufferToDataURL(img.data)));
+      setHasImage(true);
+      setProgress(100);
+      toast({ kind: 'ok', title: 'Generation complete', body: '3 cover variants ready.' });
+    } catch (err) {
+      toast({ kind: 'bad', title: 'Generation failed', body: String(err) });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleStop = () => {
-    /* v8 ignore start */
-    if (generationRef.current) {
-      clearInterval(generationRef.current);
-      generationRef.current = null;
-    }
     setGenerating(false);
-    /* v8 ignore stop */
   };
 
   const handleUseAsProjectImage = () => {
@@ -151,11 +160,19 @@ const ProjectImageScreen: React.FC = () => {
                 </div>
               }
               donePlaceholder={
-                <div className="img-placeholder proj-cover-shot">
-                  <div className="proj-cover-name">Project Name</div>
-                  <div className="proj-cover-sub">cover art · {workflow.size}</div>
-                </div>
+                variantImages.length > 0 && variantImages[selectedVariant] ? (
+                  <div className="img-placeholder proj-cover-shot" style={{ overflow: 'hidden' }}>
+                    <img src={variantImages[selectedVariant]} alt={`cover variant ${selectedVariant + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div className="img-placeholder proj-cover-shot">
+                    <div className="proj-cover-name">Project Name</div>
+                    <div className="proj-cover-sub">cover art · {workflow.size}</div>
+                  </div>
+                )
               }
+              showAutoFill={false}
               autoFillButton={
                 <button className="img-auto-fill" onClick={() => toast({ kind: 'info', title: 'Auto-fill', body: 'Prompt will auto-fill from lorebook context when generation is queued.' })}>
                   <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from lorebook
@@ -171,24 +188,26 @@ const ProjectImageScreen: React.FC = () => {
 
             <ImageGalleryPanel
               headLabel="Versions"
-              variantCount={variants.length}
-              onClear={() => { setVariants([]); setHasImage(false); }}
+              variantCount={variantImages.length}
+              onClear={() => { setVariantImages([]); setHasImage(false); }}
               galleryContent={
                 <div className="proj-img-versions">
-                  {variants.map((variantSeed, i) => (
-                    <button key={variantSeed} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
+                  {variantImages.map((imgUrl, i) => (
+                    <button key={i} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
                       onClick={() => setSelectedVariant(i)}>
-                      <div className="proj-version-thumb" />
+                      <div className="proj-version-thumb" style={{ overflow: 'hidden' }}>
+                        <img src={imgUrl} alt={`variant ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
                       <div className="proj-version-meta">
                         <b>v{i + 1}</b>
-                        <span>{(variantSeed).toString().slice(-7)} · cfg {(cfg + i * 0.5).toFixed(1)}</span>
+                        <span>{(seed + i).toString().slice(-7)} · cfg {(cfg + i * 0.5).toFixed(1)}</span>
                       </div>
                       {selectedVariant === i && <CheckIcon size={13} style={{ color: 'var(--acc)' }} />}
                     </button>
                   ))}
                 </div>
               }
-              showMetadata={variants.length > 0}
+              showMetadata={variantImages.length > 0}
               selectedLabel={`Selected · v${selectedVariant + 1}`}
               metadataItems={[
                 { label: 'Seed', value: String(seed + selectedVariant) },
@@ -200,7 +219,7 @@ const ProjectImageScreen: React.FC = () => {
               downloadLabel="Save PNG only"
               useImageLabel="Use as project image"
               onUseImage={handleUseAsProjectImage}
-              useImageDisabled={variants.length === 0}
+              useImageDisabled={variantImages.length === 0}
             />
           </div>
         ) : (
@@ -218,5 +237,14 @@ const ProjectImageScreen: React.FC = () => {
     </>
   );
 };
+
+function arrayBufferToDataURL(buffer: number[] | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return 'data:image/png;base64,' + btoa(binary);
+}
 
 export default ProjectImageScreen;

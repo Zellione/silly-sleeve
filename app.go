@@ -191,6 +191,94 @@ func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
 	return settings.Save(a.settings)
 }
 
+// GeneratePortrait starts 4 ComfyUI generation jobs with seed offsets and returns the images.
+func (a *App) GeneratePortrait(params comfy.GenerationParams) ([]comfy.CompletedImage, error) {
+	return a.generateVariants(params, 4)
+}
+
+// GenerateProjectImage starts 3 ComfyUI generation jobs with seed offsets and returns the images.
+func (a *App) GenerateProjectImage(params comfy.GenerationParams) ([]comfy.CompletedImage, error) {
+	return a.generateVariants(params, 3)
+}
+
+func (a *App) generateVariants(params comfy.GenerationParams, count int) ([]comfy.CompletedImage, error) {
+	var t *string
+	if a.settings.Comfy.AuthToken != nil {
+		t = a.settings.Comfy.AuthToken
+	}
+
+	var allImages []comfy.CompletedImage
+	for i := 0; i < count; i++ {
+		variantParams := params
+		variantParams.Seed = params.Seed + i
+
+		g := comfy.NewGenerator(a.ctx, a.settings.Comfy.URL, t)
+		if err := g.Run(variantParams, nil); err != nil {
+			return nil, fmt.Errorf("variant %d: %w", i+1, err)
+		}
+		allImages = append(allImages, g.Images()...)
+	}
+	return allImages, nil
+}
+
+// GenerateImagePrompt uses the default LLM endpoint to generate image generation prompts.
+// style: "natural" or "danbooru".
+func (a *App) GenerateImagePrompt(charID int, style string) (string, string, error) {
+	a.mu.Lock()
+	var target compose.Character
+	for _, c := range a.characters {
+		if c.ID == charID {
+			target = c
+			break
+		}
+	}
+	def := a.defaultEndpoint()
+	a.mu.Unlock()
+
+	if def.URL == "" {
+		return "", "", fmt.Errorf("no default LLM endpoint configured")
+	}
+
+	ep := llm.LLMEndpoint{
+		ID:           def.ID,
+		Name:         def.Name,
+		URL:          def.URL,
+		Model:        def.Model,
+		Key:          def.Key,
+		ContextSize:  def.ContextSize,
+		Temperature:  def.Temperature,
+	}
+
+	result, err := llm.Complete(ep, buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
+	if err != nil {
+		return "", "", fmt.Errorf("generate image prompt: %w", err)
+	}
+
+	positive, negative := parseImagePromptResult(result)
+	return positive, negative, nil
+}
+
+// GetComfyWorkflowByName returns a saved workflow by name, or the first workflow if name is empty.
+func (a *App) GetComfyWorkflowByName(name string) (comfy.ComfyWorkflow, error) {
+	for _, wf := range a.settings.Comfy.Workflows {
+		if wf.Name == name || name == "" {
+			return wf, nil
+		}
+	}
+	return comfy.ComfyWorkflow{}, fmt.Errorf("workflow %q not found", name)
+}
+
+// SaveComfyWorkflowTemplate stores an edited workflow template.
+func (a *App) SaveComfyWorkflowTemplate(id string, template json.RawMessage) error {
+	for i, wf := range a.settings.Comfy.Workflows {
+		if wf.ID == id {
+			a.settings.Comfy.Workflows[i].Template = template
+			return settings.Save(a.settings)
+		}
+	}
+	return fmt.Errorf("workflow %q not found", id)
+}
+
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.
 func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlResult {
 	result := crawler.FetchPage(pageURL)

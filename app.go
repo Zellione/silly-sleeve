@@ -265,7 +265,7 @@ func (a *App) GetComfyWorkflowByName(name string) (comfy.ComfyWorkflow, error) {
 			return wf, nil
 		}
 	}
-	return comfy.ComfyWorkflow{}, fmt.Errorf("workflow %q not found", name)
+	return comfy.ComfyWorkflow{}, workflowNotFound(name)
 }
 
 // GetComfyWorkflowTemplate returns the workflow template JSON for a given workflow ID.
@@ -284,7 +284,7 @@ func (a *App) GetComfyWorkflowTemplate(id string) ([]byte, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("workflow %q not found", id)
+	return nil, workflowNotFound(id)
 }
 
 // SaveComfyWorkflowTemplate stores an edited workflow template.
@@ -295,7 +295,7 @@ func (a *App) SaveComfyWorkflowTemplate(id string, template json.RawMessage) err
 			return settings.Save(a.settings)
 		}
 	}
-	return fmt.Errorf("workflow %q not found", id)
+	return workflowNotFound(id)
 }
 
 func (a *App) comfyClient() (*comfy.Client, error) {
@@ -849,6 +849,10 @@ func (a *App) SaveProjectImage(data []byte) {
 
 func charNotFound(id int) error {
 	return fmt.Errorf("character %d not found", id)
+}
+
+func workflowNotFound(id string) error {
+	return fmt.Errorf("workflow %q not found", id)
 }
 
 func slugify(s string) string {

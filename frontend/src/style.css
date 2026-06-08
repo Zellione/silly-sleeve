@@ -521,7 +521,7 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   color: var(--ink);
 }
 .ep-test-btn {
-  appearance: none; border: 0;
+  appearance: none; border: 1px solid var(--hair-strong);
   margin: 5px 5px 5px 0;
   padding: 0 14px;
   border-radius: 3px;

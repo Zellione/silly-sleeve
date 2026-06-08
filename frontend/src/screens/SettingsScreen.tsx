@@ -319,7 +319,7 @@ const ComfyUISettings: React.FC<{
   const handleSaveURL = () => saveComfyConfig({ url: draftURL });
   const handleSaveToken = () => {
     const token = authOn ? draftToken : undefined;
-    saveComfyConfig({ authToken: token as any });
+    saveComfyConfig({ authToken: token });
   };
   const handleSaveOutput = () => saveComfyConfig({ outputFolder: draftOutput });
 

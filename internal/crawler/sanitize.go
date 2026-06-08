@@ -7,6 +7,11 @@ import (
 	"golang.org/x/net/html"
 )
 
+const (
+	nbSpace  = "\u00a0"
+	infoboxClass = "portable-infobox"
+)
+
 var skipClasses = map[string]bool{
 	"navbox":                 true,
 	"navbox-styles":          true,
@@ -17,7 +22,7 @@ var skipClasses = map[string]bool{
 	"mw-reflink-text":        true,
 	"mw-cite-backlink":       true,
 	"visualClear":            true,
-	"portable-infobox":       true,
+	infoboxClass:             true,
 	"toccolours":             true,
 	"mw-collapsible":         true,
 	"mw-collapsed":           true,
@@ -63,7 +68,7 @@ func shouldSkip(node *html.Node) bool {
 	if skipTags[node.Data] {
 		return true
 	}
-	if node.Data == "aside" && hasClass(node, "portable-infobox") {
+	if node.Data == "aside" && hasClass(node, infoboxClass) {
 		return true
 	}
 	if node.Data == "table" || node.Data == "div" || node.Data == "span" {
@@ -148,7 +153,7 @@ func getParagraphText(node *html.Node) string {
 			return
 		}
 		if n.Type == html.TextNode {
-			text := strings.ReplaceAll(n.Data, "\u00a0", " ")
+			text := strings.ReplaceAll(n.Data, nbSpace, " ")
 			text = strings.ReplaceAll(text, "\t", " ")
 			text = strings.ReplaceAll(text, "\r", " ")
 			text = strings.ReplaceAll(text, "\n", " ")
@@ -179,20 +184,12 @@ func getParagraphText(node *html.Node) string {
 
 func cleanParagraph(s string) string {
 	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "\u00a0", " ")
+	s = strings.ReplaceAll(s, nbSpace, " ")
 	var out []rune
 	inSpace := false
 	for _, r := range s {
 		switch {
-		case r == '\t' || r == '\r':
-			if !inSpace {
-				out = append(out, ' ')
-				inSpace = true
-			}
-		case r == '\n':
-			out = append(out, '\n')
-			inSpace = false
-		case r == ' ':
+		case r == '\t' || r == '\r' || r == ' ':
 			if !inSpace {
 				out = append(out, ' ')
 				inSpace = true
@@ -295,7 +292,7 @@ func ExtractInfobox(rawHTML string) []InfoboxEntry {
 				entries = extractTableInfobox(n)
 				return
 			}
-			if n.Data == "aside" && hasClass(n, "portable-infobox") {
+			if n.Data == "aside" && hasClass(n, infoboxClass) {
 				entries = extractPortableInfobox(n)
 				return
 			}
@@ -388,7 +385,7 @@ func getPortableInfoboxValue(node *html.Node) string {
 
 func cleanInfoboxText(s string) string {
 	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "\u00a0", " ")
+	s = strings.ReplaceAll(s, nbSpace, " ")
 	var result []rune
 	prevWasNewline := false
 	for _, r := range s {
@@ -520,7 +517,7 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 
 func cleanText(s string) string {
 	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "\u00a0", " ")
+	s = strings.ReplaceAll(s, nbSpace, " ")
 	var result []rune
 	for _, r := range s {
 		if r == '\n' || r == '\r' || r == '\t' {

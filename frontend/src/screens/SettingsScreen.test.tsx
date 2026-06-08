@@ -232,10 +232,10 @@ describe('SettingsScreen', () => {
     });
 
     const authSwitch = screen.getByRole('switch');
-    expect(authSwitch.getAttribute('data-on')).toBe('0');
+    expect(authSwitch.dataset.on).toBe('0');
 
     await user.click(authSwitch);
-    expect(authSwitch.getAttribute('data-on')).toBe('1');
+    expect(authSwitch.dataset.on).toBe('1');
   });
 
   it('tests endpoint from flyout', async () => {

@@ -439,7 +439,7 @@ func (a *App) UpdateCharacter(ch compose.Character) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("character %d not found", ch.ID)
+	return charNotFound(ch.ID)
 }
 
 // DeleteCharacter removes a character by ID.
@@ -462,7 +462,7 @@ func (a *App) DeleteCharacter(id int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("character %d not found", id)
+	return charNotFound(id)
 }
 
 // GetActiveCharacter returns the currently active character.
@@ -769,7 +769,7 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 		}
 	}
 	if found == nil {
-		return "", fmt.Errorf("character %d not found", charID)
+		return "", charNotFound(charID)
 	}
 
 	// export will be written by the export package
@@ -830,7 +830,7 @@ func (a *App) SavePortrait(charID int, data []byte) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("character %d not found", charID)
+	return charNotFound(charID)
 }
 
 // GetProjectImage returns the project-level cover image.
@@ -845,6 +845,10 @@ func (a *App) SaveProjectImage(data []byte) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.projectImage = data
+}
+
+func charNotFound(id int) error {
+	return fmt.Errorf("character %d not found", id)
 }
 
 func slugify(s string) string {

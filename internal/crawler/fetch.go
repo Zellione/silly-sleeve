@@ -18,6 +18,15 @@ type FetchResult struct {
 	Error     error
 }
 
+type mediaWikiParseResponse struct {
+	Parse struct {
+		Title string `json:"title"`
+		Text  struct {
+			Content string `json:"*"`
+		} `json:"text"`
+	} `json:"parse"`
+}
+
 // FetchPage fetches a wiki page via the MediaWiki action=parse API.
 func FetchPage(pageURL string) FetchResult {
 	start := time.Now()
@@ -58,14 +67,7 @@ func FetchPage(pageURL string) FetchResult {
 		}
 	}
 
-	var body struct {
-		Parse struct {
-			Title string `json:"title"`
-			Text  struct {
-				Content string `json:"*"`
-			} `json:"text"`
-		} `json:"parse"`
-	}
+	var body mediaWikiParseResponse
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		fmt.Println("[crawler] JSON decode error:", err)
 		return FetchResult{Domain: domain, LatencyMs: latency, Error: fmt.Errorf("parse response: %w", err)}

@@ -79,12 +79,10 @@ const ExportScreen: React.FC = () => {
       <PageHead step={7} subtitle="Ship the project"
         title={<>Export <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>character cards</em></>}
         actions={
-          <>
             <button className="btn primary" onClick={handleExport}
               disabled={exporting || pickedChars.length === 0 || !destination}>
               {exporting ? 'Exporting…' : <><DownloadIcon size={14} /> Export {pickedChars.length} character{pickedChars.length !== 1 ? 's' : ''}</>}
             </button>
-          </>
         } />
 
       <div className="ss-page-body scroll">

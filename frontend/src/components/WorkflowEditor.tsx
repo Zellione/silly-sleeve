@@ -103,6 +103,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
       role="dialog"
       aria-modal="true"
       aria-label={`Edit Workflow: ${displayName}`}
+      tabIndex={-1}
       onClick={handleBackdropClick}
       onKeyDown={handleBackdropKey}
     >

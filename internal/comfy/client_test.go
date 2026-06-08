@@ -120,7 +120,11 @@ func TestClient_TestConnection(t *testing.T) {
 }
 
 func TestClient_TestConnection_Fail(t *testing.T) {
-	client := NewClient("http://127.0.0.1:19999", nil)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	srv.Close()
+
+	client := NewClient(srv.URL, nil)
 	err := client.TestConnection()
 	assert.Error(t, err)
 }

@@ -35,8 +35,7 @@ export namespace comfy {
 	export class ComfyWorkflow {
 	    id: string;
 	    name: string;
-	    // Go type: json.RawMessage
-	    jsonData: any;
+	    jsonData: number[];
 	    params: WorkflowParams;
 	
 	    static createFrom(source: any = {}) {
@@ -101,7 +100,7 @@ export namespace compose {
 	    quotes: string[];
 	    stats: StatKV[];
 	    dirty: boolean;
-	    portrait: string;
+	    portrait: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Character(source);
@@ -333,7 +332,7 @@ export namespace project {
 	    activeCharId: number;
 	    sourceUrl: string;
 	    crawlTitle: string;
-	    projectImage: string;
+	    projectImage: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ProjectManifest(source);

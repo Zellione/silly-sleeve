@@ -18,6 +18,10 @@ export function DeleteCharacter(arg1) {
   return window['go']['main']['App']['DeleteCharacter'](arg1);
 }
 
+export function DeleteComfyWorkflow(arg1) {
+  return window['go']['main']['App']['DeleteComfyWorkflow'](arg1);
+}
+
 export function ExportCharacter(arg1, arg2) {
   return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
 }
@@ -46,12 +50,28 @@ export function GetCharacters() {
   return window['go']['main']['App']['GetCharacters']();
 }
 
+export function GetComfyConfig() {
+  return window['go']['main']['App']['GetComfyConfig']();
+}
+
+export function GetComfyWorkflows() {
+  return window['go']['main']['App']['GetComfyWorkflows']();
+}
+
 export function GetDefaultPromptTemplates() {
   return window['go']['main']['App']['GetDefaultPromptTemplates']();
 }
 
 export function GetLorebook() {
   return window['go']['main']['App']['GetLorebook']();
+}
+
+export function GetPortrait(arg1) {
+  return window['go']['main']['App']['GetPortrait'](arg1);
+}
+
+export function GetProjectImage() {
+  return window['go']['main']['App']['GetProjectImage']();
 }
 
 export function GetPromptTemplates() {
@@ -64,6 +84,10 @@ export function GetSettings() {
 
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function ImportComfyWorkflow(arg1) {
+  return window['go']['main']['App']['ImportComfyWorkflow'](arg1);
 }
 
 export function OpenProjectBundle(arg1) {
@@ -86,8 +110,16 @@ export function SaveLorebook(arg1) {
   return window['go']['main']['App']['SaveLorebook'](arg1);
 }
 
+export function SavePortrait(arg1, arg2) {
+  return window['go']['main']['App']['SavePortrait'](arg1, arg2);
+}
+
 export function SaveProjectBundle(arg1) {
   return window['go']['main']['App']['SaveProjectBundle'](arg1);
+}
+
+export function SaveProjectImage(arg1) {
+  return window['go']['main']['App']['SaveProjectImage'](arg1);
 }
 
 export function SavePromptTemplates(arg1) {
@@ -100,6 +132,10 @@ export function SaveSettings(arg1) {
 
 export function SetActiveCharacter(arg1) {
   return window['go']['main']['App']['SetActiveCharacter'](arg1);
+}
+
+export function TestComfyUIEndpoint(arg1, arg2) {
+  return window['go']['main']['App']['TestComfyUIEndpoint'](arg1, arg2);
 }
 
 export function TestLLMEndpoint(arg1) {

@@ -44,7 +44,7 @@ describe('WorkflowEditor', () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
     render(<WorkflowEditor workflow={workflow} onClose={onClose} />);
-    const closeBtn = screen.getByRole('button', { name: '' });
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
     await user.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
   });
@@ -66,5 +66,13 @@ describe('WorkflowEditor', () => {
     const wf = { ...workflow, template: null };
     render(<WorkflowEditor workflow={wf} onClose={vi.fn()} />);
     expect(screen.getByText(/test_workflow/)).toBeInTheDocument();
+  });
+
+  it('closes on Escape key', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={workflow} onClose={onClose} />);
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalled();
   });
 });

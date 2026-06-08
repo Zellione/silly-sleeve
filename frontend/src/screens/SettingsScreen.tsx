@@ -353,13 +353,15 @@ const ComfyUISettings: React.FC<{
     if (!file) return;
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text);
+      JSON.parse(text);
       const baseName = file.name.replace(/\.json$/i, '');
       const id = `wf-${Date.now()}`;
+      const encoder = new TextEncoder();
+      const jsonData = Array.from(encoder.encode(text));
       const wf = comfy.ComfyWorkflow.createFrom({
         id,
         name: baseName,
-        jsonData: parsed,
+        jsonData,
         params: comfy.WorkflowParams.createFrom({}),
       });
       const next = settings.Settings.createFrom({

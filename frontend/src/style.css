@@ -1462,6 +1462,79 @@ kbd {
 @keyframes ss-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ss-scale-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 
+/* ─── Workflow editor modal ─────────────────────────────── */
+
+.workflow-editor-backdrop {
+  position: fixed; inset: 0; z-index: 210;
+  display: flex; align-items: center; justify-content: center;
+  background: oklch(0.18 0.01 60 / 0.6);
+  backdrop-filter: blur(4px);
+  animation: ss-fade-in .15s ease;
+}
+
+.workflow-editor-card {
+  max-width: 960px; width: calc(100% - 48px); max-height: 80vh;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  animation: ss-scale-in .15s ease;
+}
+
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--hair);
+  gap: 12px;
+}
+
+.modal-head b {
+  font: 600 13.5px/1 var(--f-sans);
+  color: var(--ink);
+}
+
+.workflow-editor-body {
+  display: flex; flex: 1; overflow: hidden; min-height: 0;
+}
+
+.workflow-editor-left {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  padding: 16px;
+}
+
+.workflow-editor-right {
+  width: 300px; flex-shrink: 0;
+  border-left: 1px solid var(--hair);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+
+.workflow-editor-toolbar {
+  display: flex; gap: 8px; margin-bottom: 8px;
+}
+
+.workflow-editor-textarea {
+  flex: 1;
+}
+
+.workflow-placeholder-list {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.workflow-placeholder-chip {
+  width: 100%; justify-content: flex-start; text-align: left;
+}
+
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--hair);
+}
+
 /* ─── Image generation screens ──────────────────────────── */
 .img-tabs {
   display: flex; gap: 2px;

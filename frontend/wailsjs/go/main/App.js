@@ -66,12 +66,12 @@ export function GetComfyConfig() {
   return window['go']['main']['App']['GetComfyConfig']();
 }
 
-export function GetComfyWorkflows() {
-  return window['go']['main']['App']['GetComfyWorkflows']();
-}
-
 export function GetComfyWorkflowByName(arg1) {
   return window['go']['main']['App']['GetComfyWorkflowByName'](arg1);
+}
+
+export function GetComfyWorkflows() {
+  return window['go']['main']['App']['GetComfyWorkflows']();
 }
 
 export function GetDefaultPromptTemplates() {
@@ -122,6 +122,10 @@ export function PickSaveBundle() {
   return window['go']['main']['App']['PickSaveBundle']();
 }
 
+export function SaveComfyWorkflowTemplate(arg1, arg2) {
+  return window['go']['main']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
+}
+
 export function SaveLorebook(arg1) {
   return window['go']['main']['App']['SaveLorebook'](arg1);
 }
@@ -140,10 +144,6 @@ export function SaveProjectImage(arg1) {
 
 export function SavePromptTemplates(arg1) {
   return window['go']['main']['App']['SavePromptTemplates'](arg1);
-}
-
-export function SaveComfyWorkflowTemplate(arg1, arg2) {
-  return window['go']['main']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
 }
 
 export function SaveSettings(arg1) {

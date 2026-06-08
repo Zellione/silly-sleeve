@@ -221,3 +221,5 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - Shared components extracted to eliminate SonarCloud duplications: `ImageCanvasPanel`, `ImageGalleryPanel`, `ImageUploadPanel`, `GenerationParamsPanel`
 - SonarCloud quality gate: all 5 conditions OK
 - PR #6 opened at https://github.com/Zellione/silly-sleeve/pull/6
+- Real ComfyUI generation wired: placeholder system (`ReplacePlaceholders`, `ExtractPlaceholders`), `Generator` orchestrator with per-variant WSListener, Wails events bridge (`comfy:progress`/`comfy:completed`/`comfy:error`), LLM prompt generation (natural/Danbooru styles), WorkflowEditor modal for JSON template editing with placeholder detection
+- Frontend: 17 test files, 475 tests, 80.03% line coverage

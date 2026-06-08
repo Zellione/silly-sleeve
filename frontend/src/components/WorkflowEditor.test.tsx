@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
 import WorkflowEditor from './WorkflowEditor';
 
 vi.mock('../../wailsjs/go/main/App', () => ({
@@ -100,5 +101,25 @@ describe('WorkflowEditor', () => {
     await user.click(insertBtns[0]);
     const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
     expect(textarea.value).toContain('{{');
+  });
+
+  it('calls onSaved with bytes on successful save', async () => {
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    vi.mocked(SaveComfyWorkflowTemplate).mockResolvedValue(undefined);
+    render(<WorkflowEditor workflow={workflow} onClose={onClose} onSaved={onSaved} />);
+    await user.click(screen.getByText('Save template'));
+    expect(onSaved).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls onSaveError on save failure', async () => {
+    const onSaveError = vi.fn();
+    const user = userEvent.setup();
+    vi.mocked(SaveComfyWorkflowTemplate).mockRejectedValue(new Error('disk full'));
+    render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} onSaveError={onSaveError} />);
+    await user.click(screen.getByText('Save template'));
+    expect(onSaveError).toHaveBeenCalledWith('disk full');
   });
 });

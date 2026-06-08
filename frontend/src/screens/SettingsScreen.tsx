@@ -553,7 +553,26 @@ const ComfyUISettings: React.FC<{
         </div>
       </div>
       {editingWorkflow && (
-        <WorkflowEditor workflow={editingWorkflow} onClose={() => setEditingWorkflow(null)} />
+        <WorkflowEditor
+          workflow={editingWorkflow}
+          onClose={() => setEditingWorkflow(null)}
+          onSaved={(bytes) => {
+            if (!editingWorkflow) return;
+            const updatedWorkflows = workflows.map(wf =>
+              wf.id === editingWorkflow.id
+                ? comfy.ComfyWorkflow.createFrom({ ...wf, template: bytes })
+                : wf
+            );
+            persist(settings.Settings.createFrom({
+              ...settingsState,
+              comfy: settings.ComfyConfig.createFrom({
+                ...(settingsState.comfy || settings.ComfyConfig.createFrom({})),
+                workflows: updatedWorkflows,
+              }),
+            }));
+          }}
+          onSaveError={(msg) => toast({ kind: 'bad', title: 'Save failed', body: msg })}
+        />
       )}
     </div>
   );

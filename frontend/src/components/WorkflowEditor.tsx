@@ -10,6 +10,8 @@ interface WorkflowEditorProps {
     template: number[] | null;
   };
   onClose: () => void;
+  onSaved?: (bytes: number[]) => void;
+  onSaveError?: (msg: string) => void;
 }
 
 const PLACEHOLDER_RE_SRC = /\{\{(\w+)\}\}/g;
@@ -41,7 +43,7 @@ function bytesToTemplateString(bytes: number[] | null | undefined): string {
   }
 }
 
-const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) => {
+const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSaved, onSaveError }) => {
   const initialTemplate = useMemo(
     () => bytesToTemplateString(workflow.template) || bytesToTemplateString(workflow.jsonData),
     [workflow.template, workflow.jsonData],
@@ -94,13 +96,14 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
       const encoder = new TextEncoder();
       const bytes = Array.from(encoder.encode(jsonText));
       await SaveComfyWorkflowTemplate(workflow.id, bytes);
+      onSaved?.(bytes);
       onClose();
-    } catch {
-      // error silently
+    } catch (e: any) {
+      onSaveError?.(e?.message || 'Could not save workflow template.');
     } finally {
       setSaving(false);
     }
-  }, [jsonText, workflow.id, onClose]);
+  }, [jsonText, workflow.id, onClose, onSaved, onSaveError]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();

@@ -60,26 +60,31 @@ func parseImagePromptResult(result string) (string, string) {
 	}
 
 	if positive == "" {
-		var sb strings.Builder
-		for _, line := range lines {
-			t := strings.TrimSpace(line)
-			if t == "" {
-				continue
-			}
-			if strings.HasPrefix(strings.ToUpper(t), "NEGATIVE") {
-				break
-			}
-			if sb.Len() > 0 {
-				sb.WriteString("\n")
-			}
-			sb.WriteString(t)
-		}
-		positive = sb.String()
+		positive = fallbackPositiveFromLines(lines)
 	}
-
 	if negative == "" {
-		negative = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, blurry, deformed"
+		negative = defaultNegativePrompt
 	}
 
 	return positive, negative
+}
+
+const defaultNegativePrompt = "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, blurry, deformed"
+
+func fallbackPositiveFromLines(lines []string) string {
+	var sb strings.Builder
+	for _, line := range lines {
+		t := strings.TrimSpace(line)
+		if t == "" {
+			continue
+		}
+		if strings.HasPrefix(strings.ToUpper(t), "NEGATIVE") {
+			break
+		}
+		if sb.Len() > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(t)
+	}
+	return sb.String()
 }

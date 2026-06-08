@@ -57,7 +57,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
     while ((match = re.exec(jsonText)) !== null) {
       names.add(match[1]);
     }
-    return Array.from(names).sort();
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [jsonText]);
 
   const handleInsertPlaceholder = useCallback((name: string) => {

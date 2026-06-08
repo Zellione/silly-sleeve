@@ -4,7 +4,7 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers, GetComfyWorkflows } from '../../wailsjs/go/main/App';
+import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers, GetComfyWorkflows, GetComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
 import { comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
@@ -35,6 +35,7 @@ const ProjectImageScreen: React.FC = () => {
   const [samplers, setSamplers] = useState<string[]>([]);
   const [schedulers, setSchedulers] = useState<string[]>([]);
   const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
+  const [workflowTemplate, setWorkflowTemplate] = useState<number[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -56,6 +57,10 @@ const ProjectImageScreen: React.FC = () => {
       })));
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    GetComfyWorkflowTemplate(workflow.id).then(setWorkflowTemplate).catch(() => {});
+  }, [workflow.id]);
 
   const allWorkflows = [...PROJECT_IMG_WORKFLOWS, ...uploadedWorkflows];
 
@@ -82,9 +87,11 @@ const ProjectImageScreen: React.FC = () => {
     setProgress(0);
     setVariantImages([]);
 
+    const [w, h] = workflow.size.split('×').map(Number);
+
     try {
       const params = new comfy.GenerationParams({
-        workflowTemplate: null,
+        workflowTemplate: workflowTemplate || undefined,
         seed,
         steps,
         cfg,
@@ -93,8 +100,8 @@ const ProjectImageScreen: React.FC = () => {
         denoise: 1,
         positivePrompt: prompt,
         negativePrompt: negPrompt,
-        width: 0,
-        height: 0,
+        width: w || 0,
+        height: h || 0,
         checkpoint: '',
       });
 

@@ -268,6 +268,25 @@ func (a *App) GetComfyWorkflowByName(name string) (comfy.ComfyWorkflow, error) {
 	return comfy.ComfyWorkflow{}, fmt.Errorf("workflow %q not found", name)
 }
 
+// GetComfyWorkflowTemplate returns the workflow template JSON for a given workflow ID.
+// Returns the built-in template for known preset IDs, or the stored template/data for saved workflows.
+func (a *App) GetComfyWorkflowTemplate(id string) ([]byte, error) {
+	if tmpl, ok := comfy.GetBuiltInTemplate(id); ok {
+		return tmpl, nil
+	}
+
+	for _, wf := range a.settings.Comfy.Workflows {
+		if wf.ID == id {
+			if len(wf.Template) > 0 {
+				return wf.Template, nil
+			}
+			return wf.JSONData, nil
+		}
+	}
+
+	return nil, fmt.Errorf("workflow %q not found", id)
+}
+
 // SaveComfyWorkflowTemplate stores an edited workflow template.
 func (a *App) SaveComfyWorkflowTemplate(id string, template json.RawMessage) error {
 	for i, wf := range a.settings.Comfy.Workflows {

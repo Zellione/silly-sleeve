@@ -46,6 +46,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GeneratePortrait: vi.fn().mockResolvedValue([]),
   GenerateProjectImage: vi.fn().mockResolvedValue([]),
   GetComfyWorkflows: vi.fn().mockResolvedValue([]),
+  GetComfyWorkflowTemplate: vi.fn().mockResolvedValue([]),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>

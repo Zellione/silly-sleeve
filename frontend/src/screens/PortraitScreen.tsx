@@ -9,7 +9,7 @@ import {
   GeneratePortrait, GenerateImagePrompt,
   GetComfySamplers, GetComfySchedulers,
   GetComfyCheckpoints, GetComfyVAEs, GetComfyLoRAs,
-  GetComfyWorkflows,
+  GetComfyWorkflows, GetComfyWorkflowTemplate,
 } from '../../wailsjs/go/main/App';
 import { compose, comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
@@ -49,6 +49,7 @@ const PortraitScreen: React.FC = () => {
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
   const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
+  const [workflowTemplate, setWorkflowTemplate] = useState<number[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,6 +84,10 @@ const PortraitScreen: React.FC = () => {
       })));
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    GetComfyWorkflowTemplate(workflow.id).then(setWorkflowTemplate).catch(() => {});
+  }, [workflow.id]);
 
   const allWorkflows = [...PORTRAIT_WORKFLOWS, ...uploadedWorkflows];
 
@@ -130,9 +135,11 @@ const PortraitScreen: React.FC = () => {
     setProgress(0);
     setVariantImages([]);
 
+    const [w, h] = workflow.size.split('×').map(Number);
+
     try {
       const params = new comfy.GenerationParams({
-        workflowTemplate: null,
+        workflowTemplate: workflowTemplate || undefined,
         seed,
         steps,
         cfg,
@@ -141,8 +148,8 @@ const PortraitScreen: React.FC = () => {
         denoise,
         positivePrompt: prompt,
         negativePrompt: negPrompt,
-        width: 0,
-        height: 0,
+        width: w || 0,
+        height: h || 0,
         checkpoint: '',
       });
 

@@ -54,6 +54,8 @@ export function GetComfyVAEs():Promise<Array<string>>;
 
 export function GetComfyWorkflowByName(arg1:string):Promise<comfy.ComfyWorkflow>;
 
+export function GetComfyWorkflowTemplate(arg1:string):Promise<Array<number>>;
+
 export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
 
 export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;

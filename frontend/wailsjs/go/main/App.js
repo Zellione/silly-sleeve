@@ -90,6 +90,10 @@ export function GetComfyWorkflowByName(arg1) {
   return window['go']['main']['App']['GetComfyWorkflowByName'](arg1);
 }
 
+export function GetComfyWorkflowTemplate(arg1) {
+  return window['go']['main']['App']['GetComfyWorkflowTemplate'](arg1);
+}
+
 export function GetComfyWorkflows() {
   return window['go']['main']['App']['GetComfyWorkflows']();
 }

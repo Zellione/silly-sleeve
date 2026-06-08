@@ -11,6 +11,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetComfySamplers: () => Promise.resolve(['euler', 'dpmpp_2m']),
   GetComfySchedulers: () => Promise.resolve(['karras', 'normal']),
   GetComfyWorkflows: () => Promise.resolve([]),
+  GetComfyWorkflowTemplate: () => Promise.resolve([]),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>

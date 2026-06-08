@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WorkflowEditor from './WorkflowEditor';
 
@@ -68,11 +68,28 @@ describe('WorkflowEditor', () => {
     expect(screen.getByText(/test_workflow/)).toBeInTheDocument();
   });
 
-  it('closes on Escape key', async () => {
+  it('closes on Escape key', () => {
+    const onClose = vi.fn();
+    render(<WorkflowEditor workflow={workflow} onClose={onClose} />);
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('closes on backdrop click', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
     render(<WorkflowEditor workflow={workflow} onClose={onClose} />);
-    await user.keyboard('{Escape}');
+    const backdrop = screen.getByRole('dialog');
+    await user.click(backdrop);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('updates textarea on user input', async () => {
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} />);
+    const textarea = screen.getByRole('textbox');
+    const orig = (textarea as HTMLTextAreaElement).value;
+    await user.type(textarea, 'z');
+    expect((textarea as HTMLTextAreaElement).value).not.toBe(orig);
   });
 });

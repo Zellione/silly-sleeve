@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
 import { XIcon } from '../icons';
 
@@ -50,14 +50,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
   const [jsonText, setJsonText] = useState(initialTemplate);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
   const placeholders = useMemo(() => {
     const names = new Set<string>();
     const re = new RegExp(PLACEHOLDER_RE_SRC);
@@ -99,6 +91,10 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
+  const handleBackdropKey = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
+
   const displayName = workflow.name.replace(/\.json$/i, '');
 
   return (
@@ -108,6 +104,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
       aria-modal="true"
       aria-label={`Edit Workflow: ${displayName}`}
       onClick={handleBackdropClick}
+      onKeyDown={handleBackdropKey}
     >
       <div className="workflow-editor-card">
         <div className="modal-head">

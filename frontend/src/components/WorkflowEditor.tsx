@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
 import { XIcon } from '../icons';
 
@@ -18,17 +18,17 @@ const KNOWN_PLACEHOLDERS: Record<string, string> = {
   seed: 'Generation seed (integer)',
   steps: 'Sampling steps',
   cfg: 'CFG scale',
-  sampler: 'Sampler name (e.g. euler, dpmpp_2m_karras)',
-  scheduler: 'Scheduler (e.g. karras, normal)',
+  sampler: 'Sampler name',
+  scheduler: 'Scheduler name',
   positive_prompt: 'Positive prompt text',
   negative_prompt: 'Negative prompt text',
   width: 'Image width',
   height: 'Image height',
-  model: 'Checkpoint / model name',
-  checkpoint: 'Checkpoint / model name',
+  model: 'Checkpoint/model name',
+  checkpoint: 'Checkpoint/model name',
   ckpt_name: 'Checkpoint filename',
   denoise: 'Denoising strength',
-  batch_size: 'Number of images per batch',
+  batch_size: 'Images per batch',
 };
 
 function bytesToTemplateString(bytes: number[] | null | undefined): string {
@@ -49,6 +49,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
 
   const [jsonText, setJsonText] = useState(initialTemplate);
   const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const placeholders = useMemo(() => {
     const names = new Set<string>();
@@ -61,8 +62,22 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
   }, [jsonText]);
 
   const handleInsertPlaceholder = useCallback((name: string) => {
-    setJsonText(prev => prev + `{{${name}}}`);
-  }, []);
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const before = jsonText.slice(0, start);
+    const after = jsonText.slice(end);
+    const replacement = `{{${name}}}`;
+    setJsonText(`${before}${replacement}${after}`);
+    /* v8 ignore start */
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + replacement.length;
+      el.setSelectionRange(pos, pos);
+    });
+    /* v8 ignore stop */
+  }, [jsonText]);
 
   const handleFormat = useCallback(() => {
     try {
@@ -118,6 +133,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
               <button className="btn ghost sm" onClick={handleFormat}>Format JSON</button>
             </div>
             <textarea
+              ref={textareaRef}
               className="field workflow-editor-textarea"
               value={jsonText}
               onChange={e => setJsonText(e.target.value)}

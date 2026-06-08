@@ -525,15 +525,16 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   margin: 5px 5px 5px 0;
   padding: 0 14px;
   border-radius: 3px;
-  background: var(--ink); color: var(--bg);
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--hair-strong);
   font: 500 11px/1 var(--f-sans);
   cursor: pointer;
   display: inline-flex; align-items: center; gap: 5px;
   height: 30px;
 }
-.ep-test-btn:hover { opacity: 0.88; }
-.ep-test-btn[data-state="ok"]   { background: var(--ok); color: #fff; }
-.ep-test-btn[data-state="fail"] { background: var(--bad); color: #fff; }
+.ep-test-btn:hover { background: var(--hair); opacity: 1; }
+.ep-test-btn[data-state="ok"]   { background: var(--ok); color: #fff; border-color: var(--ok); }
+.ep-test-btn[data-state="fail"] { background: var(--bad); color: #fff; border-color: var(--bad); }
 .ep-test-btn[data-state="testing"] { opacity: 0.6; cursor: progress; }
 
 .ep-auth-block {
@@ -1505,7 +1506,7 @@ kbd {
 }
 
 .workflow-editor-right {
-  width: 300px; flex-shrink: 0;
+  width: 360px; flex-shrink: 0;
   border-left: 1px solid var(--hair);
   padding: 16px;
   overflow-y: auto;
@@ -1526,7 +1527,10 @@ kbd {
 }
 
 .workflow-placeholder-chip {
-  width: 100%; justify-content: flex-start; text-align: left;
+  width: 100%; justify-content: flex-start; text-align: left; min-width: 0;
+}
+.workflow-placeholder-chip .helpr {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 
 .modal-actions {
@@ -1631,6 +1635,7 @@ kbd {
   background: var(--panel-2);
   color: var(--ink);
 }
+.img-kv select { appearance: none; }
 .img-kv input:focus, .img-kv select:focus { outline: none; border-color: var(--acc); }
 
 .img-divline {

@@ -92,4 +92,13 @@ describe('WorkflowEditor', () => {
     await user.type(textarea, 'z');
     expect((textarea as HTMLTextAreaElement).value).not.toBe(orig);
   });
+
+  it('inserts placeholder at cursor position', async () => {
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} />);
+    const insertBtns = screen.getAllByText('Insert');
+    await user.click(insertBtns[0]);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    expect(textarea.value).toContain('{{');
+  });
 });

@@ -95,6 +95,7 @@ export namespace comfy {
 	    cfg: number;
 	    sampler: string;
 	    scheduler: string;
+	    denoise: number;
 	    positivePrompt: string;
 	    negativePrompt: string;
 	    width: number;
@@ -113,6 +114,7 @@ export namespace comfy {
 	        this.cfg = source["cfg"];
 	        this.sampler = source["sampler"];
 	        this.scheduler = source["scheduler"];
+	        this.denoise = source["denoise"];
 	        this.positivePrompt = source["positivePrompt"];
 	        this.negativePrompt = source["negativePrompt"];
 	        this.width = source["width"];

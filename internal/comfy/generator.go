@@ -76,6 +76,7 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 	defer g.listener.Close()
 
 	clientID, _ := replacedMap["client_id"].(string)
+	fmt.Printf("[generator] queueing prompt clientID=%s promptLen=%d\n", clientID, len(promptRaw))
 	resp, err := g.client.QueuePrompt(clientID, promptRaw)
 	if err != nil {
 		return fmt.Errorf("queue prompt: %w", err)

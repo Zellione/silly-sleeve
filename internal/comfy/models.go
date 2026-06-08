@@ -186,6 +186,7 @@ type GenerationParams struct {
 	CFG              float64         `json:"cfg"`
 	Sampler          string          `json:"sampler"`
 	Scheduler        string          `json:"scheduler"`
+	Denoise          float64         `json:"denoise"`
 	PositivePrompt   string          `json:"positivePrompt"`
 	NegativePrompt   string          `json:"negativePrompt"`
 	Width            int             `json:"width"`

@@ -17,6 +17,7 @@ func BuildPlaceholderValues(p GenerationParams) map[string]any {
 		"cfg":              p.CFG,
 		"sampler":          p.Sampler,
 		"scheduler":        p.Scheduler,
+		"denoise":          p.Denoise,
 		"width":            float64(p.Width),
 		"height":           float64(p.Height),
 		"positive_prompt":  p.PositivePrompt,

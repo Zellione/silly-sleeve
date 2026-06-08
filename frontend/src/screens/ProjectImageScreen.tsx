@@ -83,6 +83,10 @@ const ProjectImageScreen: React.FC = () => {
 
   const generateVariants = async () => {
     if (generating) return;
+    if (!workflowTemplate) {
+      toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
+      return;
+    }
     setGenerating(true);
     setProgress(0);
     setVariantImages([]);
@@ -91,7 +95,7 @@ const ProjectImageScreen: React.FC = () => {
 
     try {
       const params = new comfy.GenerationParams({
-        workflowTemplate: workflowTemplate || undefined,
+        workflowTemplate,
         seed,
         steps,
         cfg,
@@ -102,7 +106,7 @@ const ProjectImageScreen: React.FC = () => {
         negativePrompt: negPrompt,
         width: w || 0,
         height: h || 0,
-        checkpoint: '',
+        checkpoint: 'sd_xl_base_1.0',
       });
 
       const images = await GenerateProjectImage(params);

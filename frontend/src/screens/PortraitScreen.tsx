@@ -46,6 +46,7 @@ const PortraitScreen: React.FC = () => {
   const [samplers, setSamplers] = useState<string[]>([]);
   const [schedulers, setSchedulers] = useState<string[]>([]);
   const [checkpoints, setCheckpoints] = useState<string[]>([]);
+  const [checkpoint, setCheckpoint] = useState('sd_xl_base_1.0');
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
   const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
@@ -131,6 +132,10 @@ const PortraitScreen: React.FC = () => {
 
   const generateVariants = async () => {
     if (generating) return;
+    if (!workflowTemplate) {
+      toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
+      return;
+    }
     setGenerating(true);
     setProgress(0);
     setVariantImages([]);
@@ -139,7 +144,7 @@ const PortraitScreen: React.FC = () => {
 
     try {
       const params = new comfy.GenerationParams({
-        workflowTemplate: workflowTemplate || undefined,
+        workflowTemplate,
         seed,
         steps,
         cfg,
@@ -150,7 +155,7 @@ const PortraitScreen: React.FC = () => {
         negativePrompt: negPrompt,
         width: w || 0,
         height: h || 0,
-        checkpoint: '',
+        checkpoint,
       });
 
       const images = await GeneratePortrait(params);
@@ -221,9 +226,10 @@ const PortraitScreen: React.FC = () => {
               <span className="uplabel">Models</span>
               <div className="img-kv">
                 <label htmlFor="portrait-checkpoint">Checkpoint</label>
-                <select id="portrait-checkpoint" style={{ width: 'auto' }}>
+                <select id="portrait-checkpoint" style={{ width: 'auto' }} value={checkpoint}
+                  onChange={e => { setCheckpoint(e.target.value); e.target.blur(); }}>
                   {(checkpoints.length > 0 ? checkpoints : ['sd_xl_base_1.0', 'juggernautXL_v9', 'ponyDiffusion_v6']).map(c => (
-                    <option key={c}>{c.replace(/\.safetensors$/, '')}</option>
+                    <option key={c} value={c.replace(/\.safetensors$/, '')}>{c.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
                 <label htmlFor="portrait-vae">VAE</label>

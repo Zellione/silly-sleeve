@@ -256,7 +256,7 @@ const PortraitScreen: React.FC = () => {
               galleryContent={
                 <div className="img-gallery">
                   {variantImages.map((imgUrl, i) => (
-                    <button key={i} type="button"
+                    <button key={`${seed}-${i}`} type="button"
                       className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
                       onClick={() => setSelectedVariant(i)}>
                       <img src={imgUrl} alt={`variant ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -298,8 +298,8 @@ const PortraitScreen: React.FC = () => {
 function arrayBufferToDataURL(buffer: number[] | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (const b of bytes) {
+    binary += String.fromCodePoint(b);
   }
   return 'data:image/png;base64,' + btoa(binary);
 }

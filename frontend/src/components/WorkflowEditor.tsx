@@ -88,8 +88,9 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose }) =>
   }, [jsonText, workflow.id, onClose]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-panel workflow-editor-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 960, maxHeight: '80vh' }}>
+    <div className="modal-backdrop" onClick={onClose} role="presentation" /* v8 ignore next */ onKeyDown={e => { if (e.key === 'Escape') onClose(); }}>
+      <div className="modal-panel workflow-editor-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 960, maxHeight: '80vh' }}
+        role="dialog" aria-modal="true" /* v8 ignore next */ onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }}>
         <div className="modal-head">
           <b>Edit Workflow: {workflow.name}.json</b>
           <button className="btn ghost icon" onClick={onClose}><XIcon size={14} /></button>

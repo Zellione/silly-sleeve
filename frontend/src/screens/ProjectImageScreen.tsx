@@ -196,7 +196,7 @@ const ProjectImageScreen: React.FC = () => {
               galleryContent={
                 <div className="proj-img-versions">
                   {variantImages.map((imgUrl, i) => (
-                    <button key={i} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
+                    <button key={`${seed}-${i}`} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
                       onClick={() => setSelectedVariant(i)}>
                       <div className="proj-version-thumb" style={{ overflow: 'hidden' }}>
                         <img src={imgUrl} alt={`variant ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -244,8 +244,8 @@ const ProjectImageScreen: React.FC = () => {
 function arrayBufferToDataURL(buffer: number[] | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (const b of bytes) {
+    binary += String.fromCodePoint(b);
   }
   return 'data:image/png;base64,' + btoa(binary);
 }

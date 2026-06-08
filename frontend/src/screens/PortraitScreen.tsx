@@ -9,11 +9,12 @@ import {
   GeneratePortrait, GenerateImagePrompt,
   GetComfySamplers, GetComfySchedulers,
   GetComfyCheckpoints, GetComfyVAEs, GetComfyLoRAs,
+  GetComfyWorkflows,
 } from '../../wailsjs/go/main/App';
 import { compose, comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
-import GenerationParamsPanel from '../components/GenerationParamsPanel';
+import GenerationParamsPanel, { WorkflowOption } from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 
@@ -47,6 +48,7 @@ const PortraitScreen: React.FC = () => {
   const [checkpoints, setCheckpoints] = useState<string[]>([]);
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
+  const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,6 +68,23 @@ const PortraitScreen: React.FC = () => {
     GetComfyVAEs().then(setVaes).catch(() => {});
     GetComfyLoRAs().then(setLoras).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    GetComfyWorkflows().then(wfs => {
+      setUploadedWorkflows(wfs.map(wf => ({
+        id: wf.id,
+        name: wf.name.replace(/\.json$/i, ''),
+        model: wf.params.checkpoint || 'custom',
+        size: wf.params.width && wf.params.height
+          ? `${wf.params.width}×${wf.params.height}`
+          : 'custom',
+        steps: wf.params.steps || 20,
+        sampler: wf.params.sampler || 'euler',
+      })));
+    }).catch(() => {});
+  }, []);
+
+  const allWorkflows = [...PORTRAIT_WORKFLOWS, ...uploadedWorkflows];
 
   useEffect(() => {
     /* v8 ignore start */
@@ -180,7 +199,7 @@ const PortraitScreen: React.FC = () => {
           <div className="img-grid">
             <GenerationParamsPanel
               aria-label="Portrait generation parameters"
-              workflows={PORTRAIT_WORKFLOWS}
+              workflows={allWorkflows}
               selectedWorkflow={workflow}
               onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}
               steps={steps} onStepsChange={setSteps}
@@ -253,7 +272,7 @@ const PortraitScreen: React.FC = () => {
                   <button className="img-auto-fill" onClick={handleAutoFill}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
-                  <select className="img-select" value={promptStyle} onChange={e => setPromptStyle(e.target.value as 'natural' | 'danbooru')}
+                  <select className="img-select" value={promptStyle} onChange={e => { setPromptStyle(e.target.value as 'natural' | 'danbooru'); e.target.blur(); }}
                     style={{ fontSize: 10, fontFamily: 'var(--f-mono)' }}>
                     <option value="natural">Natural</option>
                     <option value="danbooru">Danbooru</option>

@@ -70,6 +70,7 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
         <select className="field" value={selectedWorkflow.id} onChange={e => {
           const w = workflows.find(x => x.id === e.target.value);
           if (w) onWorkflowChange(w);
+          e.target.blur();
         }} style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>
           {workflows.map(w => <option key={w.id} value={w.id}>{w.name} — {w.size}</option>)}
         </select>
@@ -88,13 +89,13 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
             </>
           )}
           <label htmlFor={`${uid}-sampler`}>Sampler</label>
-          <select id={`${uid}-sampler`} value={sampler} onChange={e => onSamplerChange(e.target.value)} style={{ width: 'auto' }}>
+          <select id={`${uid}-sampler`} value={sampler} onChange={e => { onSamplerChange(e.target.value); e.target.blur(); }} style={{ width: 'auto' }}>
             {(samplerList && samplerList.length > 0 ? samplerList : ['dpmpp_2m_karras', 'euler_a', 'euler', 'dpmpp_3m_sde']).map(s => (
               <option key={s}>{s}</option>
             ))}
           </select>
           <label htmlFor={`${uid}-scheduler`}>Scheduler</label>
-          <select id={`${uid}-scheduler`} value={scheduler} onChange={e => onSchedulerChange(e.target.value)} style={{ width: 'auto' }}>
+          <select id={`${uid}-scheduler`} value={scheduler} onChange={e => { onSchedulerChange(e.target.value); e.target.blur(); }} style={{ width: 'auto' }}>
             {(schedulerList && schedulerList.length > 0 ? schedulerList : ['karras', 'normal', 'exponential', 'simple']).map(s => (
               <option key={s}>{s}</option>
             ))}

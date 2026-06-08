@@ -4,11 +4,11 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers } from '../../wailsjs/go/main/App';
+import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers, GetComfyWorkflows } from '../../wailsjs/go/main/App';
 import { comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
-import GenerationParamsPanel from '../components/GenerationParamsPanel';
+import GenerationParamsPanel, { WorkflowOption } from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 
@@ -34,12 +34,30 @@ const ProjectImageScreen: React.FC = () => {
   const [negPrompt, setNegPrompt] = useState('');
   const [samplers, setSamplers] = useState<string[]>([]);
   const [schedulers, setSchedulers] = useState<string[]>([]);
+  const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     GetComfySamplers().then(setSamplers).catch(() => {});
     GetComfySchedulers().then(setSchedulers).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    GetComfyWorkflows().then(wfs => {
+      setUploadedWorkflows(wfs.map(wf => ({
+        id: wf.id,
+        name: wf.name.replace(/\.json$/i, ''),
+        model: wf.params.checkpoint || 'custom',
+        size: wf.params.width && wf.params.height
+          ? `${wf.params.width}×${wf.params.height}`
+          : 'custom',
+        steps: wf.params.steps || 20,
+        sampler: wf.params.sampler || 'euler',
+      })));
+    }).catch(() => {});
+  }, []);
+
+  const allWorkflows = [...PROJECT_IMG_WORKFLOWS, ...uploadedWorkflows];
 
   useEffect(() => {
     /* v8 ignore start */
@@ -124,7 +142,7 @@ const ProjectImageScreen: React.FC = () => {
           <div className="proj-img-grid">
             <GenerationParamsPanel
               aria-label="Project image generation parameters"
-              workflows={PROJECT_IMG_WORKFLOWS}
+              workflows={allWorkflows}
               selectedWorkflow={workflow}
               onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}
               steps={steps} onStepsChange={setSteps}

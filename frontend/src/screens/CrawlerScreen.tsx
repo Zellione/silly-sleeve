@@ -117,7 +117,7 @@ const CrawlerScreen: React.FC = () => {
               <div className="crawl-opt">
                 <div className="row" style={{ justifyContent: 'space-between' }}>
                   <b>Follow links</b>
-                  <select className="field" value={follow} onChange={e => setFollow(+e.target.value)} style={{ width: 100, padding: '6px 8px', fontSize: 12 }}>
+                  <select className="field" value={follow} onChange={e => { setFollow(+e.target.value); e.target.blur(); }} style={{ width: 100, padding: '6px 8px', fontSize: 12 }}>
                     <option value={0}>No</option>
                     <option value={1}>1 hop</option>
                     <option value={2}>2 hops</option>

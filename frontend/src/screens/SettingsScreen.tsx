@@ -6,7 +6,7 @@ import {
 } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
-import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '../../wailsjs/go/main/App';
+import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
 
@@ -358,11 +358,17 @@ const ComfyUISettings: React.FC<{
       const id = `wf-${Date.now()}`;
       const encoder = new TextEncoder();
       const jsonData = Array.from(encoder.encode(text));
+      let params = comfy.WorkflowParams.createFrom({});
+      try {
+        params = await ParseComfyWorkflowParams(jsonData);
+      } catch {
+        // params stay empty
+      }
       const wf = comfy.ComfyWorkflow.createFrom({
         id,
         name: baseName,
         jsonData,
-        params: comfy.WorkflowParams.createFrom({}),
+        params,
       });
       const next = settings.Settings.createFrom({
         ...settingsState,
@@ -1106,7 +1112,7 @@ const SettingsScreen: React.FC = () => {
                       id="auto-save-mode"
                       className="field"
                       value={settingsState.autoSaveMode || 'off'}
-                      onChange={e => handleAutoSaveMode(e.target.value)}
+                      onChange={e => { handleAutoSaveMode(e.target.value); e.target.blur(); }}
                     >
                       <option value="off">Off</option>
                       <option value="onChange">On change</option>

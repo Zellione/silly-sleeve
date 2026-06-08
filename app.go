@@ -336,6 +336,15 @@ func (a *App) GetComfyLoRAs() ([]string, error) {
 	return client.GetNodeInputList("LoraLoader", "lora_name")
 }
 
+// ParseComfyWorkflowParams extracts WorkflowParams from raw workflow JSON.
+func (a *App) ParseComfyWorkflowParams(jsonData json.RawMessage) (comfy.WorkflowParams, error) {
+	wf, err := comfy.ParseWorkflow(jsonData)
+	if err != nil {
+		return comfy.WorkflowParams{}, err
+	}
+	return wf.ExtractParams(0), nil
+}
+
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.
 func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlResult {
 	result := crawler.FetchPage(pageURL)

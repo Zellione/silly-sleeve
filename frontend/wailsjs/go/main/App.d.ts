@@ -74,6 +74,8 @@ export function ImportComfyWorkflow(arg1:string):Promise<comfy.ComfyWorkflow>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 
+export function ParseComfyWorkflowParams(arg1:json.RawMessage):Promise<comfy.WorkflowParams>;
+
 export function PickExportFolder():Promise<string>;
 
 export function PickOpenBundle():Promise<string>;

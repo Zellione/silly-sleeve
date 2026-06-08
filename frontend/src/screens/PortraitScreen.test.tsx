@@ -27,6 +27,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetComfyCheckpoints: () => mockGetComfyCheckpoints(),
   GetComfyVAEs: () => mockGetComfyVAEs(),
   GetComfyLoRAs: () => mockGetComfyLoRAs(),
+  GetComfyWorkflows: () => Promise.resolve([]),
 }));
 
 const testChar = new compose.Character({

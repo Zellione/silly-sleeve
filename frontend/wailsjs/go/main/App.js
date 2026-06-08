@@ -130,6 +130,10 @@ export function OpenProjectBundle(arg1) {
   return window['go']['main']['App']['OpenProjectBundle'](arg1);
 }
 
+export function ParseComfyWorkflowParams(arg1) {
+  return window['go']['main']['App']['ParseComfyWorkflowParams'](arg1);
+}
+
 export function PickExportFolder() {
   return window['go']['main']['App']['PickExportFolder']();
 }

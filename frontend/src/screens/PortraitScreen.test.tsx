@@ -28,7 +28,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetComfyVAEs: () => mockGetComfyVAEs(),
   GetComfyLoRAs: () => mockGetComfyLoRAs(),
   GetComfyWorkflows: () => Promise.resolve([]),
-  GetComfyWorkflowTemplate: () => Promise.resolve([]),
+  GetComfyWorkflowTemplate: () => Promise.resolve('{"1":{"class_type":"KSampler"}}'),
 }));
 
 const testChar = new compose.Character({
@@ -344,6 +344,18 @@ describe('PortraitScreen', () => {
     await user.click(screen.getByText('Queue generation'));
     await waitFor(() => {
       expect(mockGeneratePortrait).toHaveBeenCalled();
+    });
+  });
+
+  it('generation calls GeneratePortrait with full checkpoint name', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      expect(mockGeneratePortrait).toHaveBeenCalled();
+      const params = mockGeneratePortrait.mock.calls[0][0];
+      expect(params.checkpoint).toBe('sd_xl_base_1.0.safetensors');
     });
   });
 

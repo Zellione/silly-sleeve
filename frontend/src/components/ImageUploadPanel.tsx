@@ -1,4 +1,4 @@
-import React, { useState, useRef, useId } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { UploadIcon, ImageIcon, CheckIcon, FolderIcon, DownloadIcon } from '../icons';
 
 export interface UploadFileInfo {
@@ -28,17 +28,77 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
 }) => {
   const [dragging, setDragging] = useState(false);
   const [uploadFile, setUploadFile] = useState<UploadFileInfo | null>(null);
+  const [imageData, setImageData] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dragCounterRef = useRef(0);
   const uid = useId();
+
+  const processFile = (file: File) => {
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    setUploadFile({ name: file.name, size: `${sizeMB} MB`, dims: '…×…' });
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        setUploadFile(prev => prev ? { ...prev, dims: `${img.width}×${img.height}` } : null);
+      };
+      img.src = url;
+      setImageData(url);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     /* v8 ignore start */
     const file = e.target.files?.[0];
     if (!file) return;
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    setUploadFile({ name: file.name, size: `${sizeMB} MB`, dims: '? × ?' });
+    processFile(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
     /* v8 ignore stop */
+  };
+
+  useEffect(() => {
+    const suppressDefaults = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener('dragover', suppressDefaults);
+    document.addEventListener('drop', suppressDefaults);
+    return () => {
+      document.removeEventListener('dragover', suppressDefaults);
+      document.removeEventListener('drop', suppressDefaults);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (imageData && imageData.startsWith('blob:')) {
+        URL.revokeObjectURL(imageData);
+      }
+    };
+  }, [imageData]);
+
+  const handleDragEnter = () => {
+    dragCounterRef.current += 1;
+    setDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   return (
@@ -47,9 +107,10 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
         type="button"
         className={`img-dropzone${dragging ? ' dragging' : ''}`}
         style={{ aspectRatio }}
-        onDragOver={e => { e.preventDefault(); /* v8 ignore next */ setDragging(true); }}
-        onDragLeave={() => /* v8 ignore next */ { setDragging(false); }}
-        onDrop={e => { /* v8 ignore start */ e.preventDefault(); setDragging(false); setUploadFile({ name: 'portrait.png', size: '1.2 MB', dims: '832×1216' }); /* v8 ignore stop */ }}
+        onDragEnter={/* v8 ignore next */ handleDragEnter}
+        onDragOver={e => { e.preventDefault(); }}
+        onDragLeave={/* v8 ignore next */ handleDragLeave}
+        onDrop={/* v8 ignore next */ handleDrop}
         onClick={() => fileInputRef.current?.click()}
         /* v8 ignore next */
         onKeyDown={e => { if (e.key === 'Enter') fileInputRef.current?.click(); }}
@@ -57,14 +118,18 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
         <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
         {uploadFile ? (
           <div className="img-upload-preview" style={{ aspectRatio }}>
-            <span>{uploadFile.dims}</span>
+            {imageData ? (
+              <img src={imageData} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <span>{uploadFile.dims}</span>
+            )}
           </div>
         ) : (
           <div className="col" style={{ alignItems: 'center', textAlign: 'center', gap: 12 }}>
             <UploadIcon size={32} style={{ color: 'var(--ink-3)' }} />
             <div className="serif-i" style={{ fontSize: 28 }}>{dropText}</div>
             <div className="helpr">{recommendedSize}<br />{maxSize}</div>
-            <button className="btn ghost"><FolderIcon size={14} /> Browse files</button>
+            <span className="btn ghost" aria-hidden="true"><FolderIcon size={14} /> Browse files</span>
           </div>
         )}
       </button>
@@ -90,7 +155,9 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
               <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }} onClick={onUseImage}>
                 <CheckIcon size={13} /> Use image
               </button>
-              <button className="btn ghost sm" onClick={() => setUploadFile(null)}>Choose a different file</button>
+              <button className="btn ghost sm" onClick={() => { setUploadFile(null); setImageData(null); }}>
+                Choose a different file
+              </button>
             </div>
           ) : (
             <div className="helpr" style={{ marginTop: 6 }}>None — drop or browse on the left.</div>

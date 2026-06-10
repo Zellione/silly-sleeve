@@ -3,6 +3,7 @@ package comfy
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
 )
@@ -10,23 +11,38 @@ import (
 var placeholderPattern = regexp.MustCompile(`\{\{(\w+)\}\}`)
 
 // BuildPlaceholderValues creates a map of placeholder names to typed values.
+// Zero/negative values are replaced with sensible defaults so the workflow
+// is always valid when sent to ComfyUI.
 func BuildPlaceholderValues(p GenerationParams) map[string]any {
-	m := map[string]any{
-		"seed":             float64(p.Seed),
-		"steps":            float64(p.Steps),
+	seed := float64(p.Seed)
+	if seed <= 0 {
+		seed = float64(int(rand.Int63n(1<<31)) + 1)
+	}
+	steps := float64(p.Steps)
+	if steps <= 0 {
+		steps = 20
+	}
+	width := float64(p.Width)
+	if width <= 0 {
+		width = 1024
+	}
+	height := float64(p.Height)
+	if height <= 0 {
+		height = 1024
+	}
+	return map[string]any{
+		"seed":             seed,
+		"steps":            steps,
 		"cfg":              p.CFG,
 		"sampler":          p.Sampler,
 		"scheduler":        p.Scheduler,
 		"denoise":          p.Denoise,
-		"width":            float64(p.Width),
-		"height":           float64(p.Height),
+		"width":            width,
+		"height":           height,
 		"positive_prompt":  p.PositivePrompt,
 		"negative_prompt":  p.NegativePrompt,
-		"ckpt_name":        p.Checkpoint,
 		"model":            p.Checkpoint,
-		"checkpoint":       p.Checkpoint,
 	}
-	return m
 }
 
 // ReplacePlaceholders walks the workflow JSON and substitutes {{placeholder}} in string values

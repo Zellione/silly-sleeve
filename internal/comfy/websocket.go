@@ -15,6 +15,7 @@ type EventHandler interface {
 	OnProgress(event ProgressEvent)
 	OnCompleted(event CompletedEvent)
 	OnError(event ErrorEvent)
+	OnBinaryImage(data []byte)
 }
 
 // WSListener connects to a ComfyUI WebSocket and listens for generation events.
@@ -94,12 +95,17 @@ func (l *WSListener) listen() {
 			return
 		}
 
-		_, message, err := conn.ReadMessage()
+		msgType, message, err := conn.ReadMessage()
 		if err != nil {
 			l.mu.Lock()
 			l.running = false
 			l.mu.Unlock()
 			return
+		}
+
+		if msgType == websocket.BinaryMessage {
+			l.handler.OnBinaryImage(message)
+			continue
 		}
 
 		l.handleMessage(message)
@@ -163,9 +169,12 @@ func (l *WSListener) handleExecutedMessage(data []byte) {
 		return
 	}
 	if len(msg.Data.Output.Images) > 0 {
+		fmt.Printf("[ws] executed node=%s images=%d\n", msg.Data.Node, len(msg.Data.Output.Images))
 		l.handler.OnCompleted(CompletedEvent{
 			Images: msg.Data.Output.Images,
 		})
+	} else {
+		fmt.Printf("[ws] executed node=%s (no images in output)\n", msg.Data.Node)
 	}
 }
 

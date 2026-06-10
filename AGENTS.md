@@ -143,6 +143,7 @@ Only ever load references if needed !
 - **Always ask** before adding a new external dependency.
 - **Default agent:** `build` is fine — edits are local-file-only and easily reversible.
 - **Bash:** read-only commands (`ls`, `grep`, `git status`, `git diff`) are safe to auto-allow. Writes (`rm`, `mv`, `git commit`, `git push`) should always require confirmation.
+- **Always activate and use the TypeScript LSP** inside the `frontend/` folder when reading or editing `.ts` and `.tsx` files.
 
 ## Editing rules
 

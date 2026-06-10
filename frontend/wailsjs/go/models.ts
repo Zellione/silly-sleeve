@@ -35,8 +35,8 @@ export namespace comfy {
 	export class ComfyWorkflow {
 	    id: string;
 	    name: string;
-	    jsonData: number[];
-	    template: number[];
+	    jsonData: string;
+	    template: string;
 	    params: WorkflowParams;
 	
 	    static createFrom(source: any = {}) {
@@ -89,7 +89,7 @@ export namespace comfy {
 	    }
 	}
 	export class GenerationParams {
-	    workflowTemplate: number[];
+	    workflowTemplate: string;
 	    seed: number;
 	    steps: number;
 	    cfg: number;

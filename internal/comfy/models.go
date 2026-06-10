@@ -1,6 +1,29 @@
 package comfy
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
+
+// JSONString is a string that can be unmarshaled from either a JSON string or a raw JSON value.
+// This handles backward compatibility with old settings files that stored workflows as raw JSON objects.
+type JSONString string
+
+func (s *JSONString) UnmarshalJSON(data []byte) error {
+	if len(data) > 0 && data[0] == '"' {
+		var str string
+		if err := json.Unmarshal(data, &str); err != nil {
+			return err
+		}
+		*s = JSONString(str)
+		return nil
+	}
+	*s = JSONString(string(data))
+	return nil
+}
+
+func (s JSONString) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(s))
+}
 
 // WorkflowParams holds extracted parameters from a ComfyUI workflow.
 type WorkflowParams struct {
@@ -19,11 +42,11 @@ type WorkflowParams struct {
 
 // ComfyWorkflow holds an imported ComfyUI workflow JSON and its extracted params.
 type ComfyWorkflow struct {
-	ID       string          `json:"id"`
-	Name     string          `json:"name"`
-	JSONData json.RawMessage `json:"jsonData"`
-	Template json.RawMessage `json:"template"`
-	Params   WorkflowParams  `json:"params"`
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	JSONData JSONString     `json:"jsonData"`
+	Template JSONString     `json:"template"`
+	Params   WorkflowParams `json:"params"`
 }
 
 // Node represents a single node in a ComfyUI workflow graph.
@@ -180,18 +203,18 @@ type CompletedImage struct {
 
 // GenerationParams holds all parameters for a generation job.
 type GenerationParams struct {
-	WorkflowTemplate json.RawMessage `json:"workflowTemplate"`
-	Seed             int             `json:"seed"`
-	Steps            int             `json:"steps"`
-	CFG              float64         `json:"cfg"`
-	Sampler          string          `json:"sampler"`
-	Scheduler        string          `json:"scheduler"`
-	Denoise          float64         `json:"denoise"`
-	PositivePrompt   string          `json:"positivePrompt"`
-	NegativePrompt   string          `json:"negativePrompt"`
-	Width            int             `json:"width"`
-	Height           int             `json:"height"`
-	Checkpoint       string          `json:"checkpoint"`
+	WorkflowTemplate string  `json:"workflowTemplate"`
+	Seed             int     `json:"seed"`
+	Steps            int     `json:"steps"`
+	CFG              float64 `json:"cfg"`
+	Sampler          string  `json:"sampler"`
+	Scheduler        string  `json:"scheduler"`
+	Denoise          float64 `json:"denoise"`
+	PositivePrompt   string  `json:"positivePrompt"`
+	NegativePrompt   string  `json:"negativePrompt"`
+	Width            int     `json:"width"`
+	Height           int     `json:"height"`
+	Checkpoint       string  `json:"checkpoint"`
 }
 
 // ObjectInfoResponse maps node type names to their definitions.

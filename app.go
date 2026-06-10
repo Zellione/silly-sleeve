@@ -122,7 +122,7 @@ func (a *App) ImportComfyWorkflow(filePath string) (comfy.ComfyWorkflow, error) 
 	cw := comfy.ComfyWorkflow{
 		ID:       fmt.Sprintf("wf-%d", len(a.settings.Comfy.Workflows)+1),
 		Name:     baseName,
-		JSONData: data,
+		JSONData: comfy.JSONString(data),
 		Params:   params,
 	}
 
@@ -270,7 +270,7 @@ func (a *App) GetComfyWorkflowByName(name string) (comfy.ComfyWorkflow, error) {
 
 // GetComfyWorkflowTemplate returns the workflow template JSON for a given workflow ID.
 // Returns the built-in template for known preset IDs, or the stored template/data for saved workflows.
-func (a *App) GetComfyWorkflowTemplate(id string) ([]byte, error) {
+func (a *App) GetComfyWorkflowTemplate(id string) (string, error) {
 	if tmpl, ok := comfy.GetBuiltInTemplate(id); ok {
 		return tmpl, nil
 	}
@@ -278,20 +278,20 @@ func (a *App) GetComfyWorkflowTemplate(id string) ([]byte, error) {
 	for _, wf := range a.settings.Comfy.Workflows {
 		if wf.ID == id {
 			if len(wf.Template) > 0 {
-				return wf.Template, nil
+				return string(wf.Template), nil
 			}
-			return wf.JSONData, nil
+			return string(wf.JSONData), nil
 		}
 	}
 
-	return nil, workflowNotFound(id)
+	return "", workflowNotFound(id)
 }
 
 // SaveComfyWorkflowTemplate stores an edited workflow template.
-func (a *App) SaveComfyWorkflowTemplate(id string, template json.RawMessage) error {
+func (a *App) SaveComfyWorkflowTemplate(id string, template string) error {
 	for i, wf := range a.settings.Comfy.Workflows {
 		if wf.ID == id {
-			a.settings.Comfy.Workflows[i].Template = template
+			a.settings.Comfy.Workflows[i].Template = comfy.JSONString(template)
 			return settings.Save(a.settings)
 		}
 	}
@@ -334,7 +334,11 @@ func (a *App) GetComfyCheckpoints() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.GetNodeInputList("CheckpointLoaderSimple", "ckpt_name")
+	values, err := client.GetNodeInputList("CheckpointLoaderSimple", "ckpt_name")
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 // GetComfyVAEs returns available VAE model names from ComfyUI.
@@ -343,7 +347,11 @@ func (a *App) GetComfyVAEs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.GetNodeInputList("VAELoader", "vae_name")
+	values, err := client.GetNodeInputList("VAELoader", "vae_name")
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 // GetComfyLoRAs returns available LoRA model names from ComfyUI.
@@ -352,12 +360,16 @@ func (a *App) GetComfyLoRAs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.GetNodeInputList("LoraLoader", "lora_name")
+	values, err := client.GetNodeInputList("LoraLoader", "lora_name")
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 // ParseComfyWorkflowParams extracts WorkflowParams from raw workflow JSON.
-func (a *App) ParseComfyWorkflowParams(jsonData json.RawMessage) (comfy.WorkflowParams, error) {
-	wf, err := comfy.ParseWorkflow(jsonData)
+func (a *App) ParseComfyWorkflowParams(jsonData string) (comfy.WorkflowParams, error) {
+	wf, err := comfy.ParseWorkflow(json.RawMessage(jsonData))
 	if err != nil {
 		return comfy.WorkflowParams{}, err
 	}

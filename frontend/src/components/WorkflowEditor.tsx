@@ -6,11 +6,11 @@ interface WorkflowEditorProps {
   workflow: {
     id: string;
     name: string;
-    jsonData: number[] | null;
-    template: number[] | null;
+    jsonData: string | null;
+    template: string | null;
   };
   onClose: () => void;
-  onSaved?: (bytes: number[]) => void;
+  onSaved?: (template: string) => void;
   onSaveError?: (msg: string) => void;
 }
 
@@ -27,19 +27,77 @@ const KNOWN_PLACEHOLDERS: Record<string, string> = {
   width: 'Image width',
   height: 'Image height',
   model: 'Checkpoint/model name',
-  checkpoint: 'Checkpoint/model name',
-  ckpt_name: 'Checkpoint filename',
   denoise: 'Denoising strength',
   batch_size: 'Images per batch',
 };
 
-function bytesToTemplateString(bytes: number[] | null | undefined): string {
-  if (!bytes || bytes.length === 0) return '';
+function bytesToTemplateString(s: string | null | undefined): string {
+  if (!s || s.length === 0) return '';
   try {
-    const decoder = new TextDecoder();
-    return JSON.stringify(JSON.parse(decoder.decode(new Uint8Array(bytes))), null, 2);
+    return JSON.stringify(JSON.parse(s), null, 2);
   } catch {
-    return '';
+    return s;
+  }
+}
+
+const KEY_TO_PLACEHOLDER: Record<string, string> = {
+  seed: '{{seed}}',
+  steps: '{{steps}}',
+  cfg: '{{cfg}}',
+  sampler_name: '{{sampler}}',
+  scheduler: '{{scheduler}}',
+  denoise: '{{denoise}}',
+  width: '{{width}}',
+  height: '{{height}}',
+  ckpt_name: '{{model}}',
+};
+
+function walkAndFix(obj: any): any {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (obj.inputs && typeof obj.inputs === 'object') {
+    const inputs = obj.inputs as Record<string, any>;
+    for (const key of Object.keys(inputs)) {
+      const val = inputs[key];
+      if (val === null) {
+        const ph = KEY_TO_PLACEHOLDER[key];
+        if (ph) inputs[key] = ph;
+      }
+      if (val === 0 && (key === 'width' || key === 'height')) {
+        inputs[key] = KEY_TO_PLACEHOLDER[key];
+      }
+      if (typeof val === 'string' && val.length > 2 && val[0] === '*' && val[val.length - 1] === '*') {
+        inputs[key] = 'None';
+      }
+      if (val === null && key.startsWith('lora_wt')) {
+        inputs[key] = 1.0;
+      }
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    obj[key] = walkAndFix(obj[key]);
+  }
+  return obj;
+}
+
+function wrapBarePlaceholders(text: string): string {
+  return text.replace(/(:\s*)\{\{(\w+)\}\}(\s*[,}\]])/g, '$1"{{$2}}"$3');
+}
+
+function fixWorkflowJson(text: string): string {
+  try {
+    const obj = JSON.parse(text);
+    const fixed = walkAndFix(obj);
+    return JSON.stringify(fixed, null, 2);
+  } catch {
+    const quoted = wrapBarePlaceholders(text);
+    if (quoted === text) return text;
+    try {
+      const obj = JSON.parse(quoted);
+      const fixed = walkAndFix(obj);
+      return JSON.stringify(fixed, null, 2);
+    } catch {
+      return text;
+    }
   }
 }
 
@@ -90,16 +148,26 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
     }
   }, [jsonText]);
 
+  const handleFix = useCallback(() => {
+    const fixed = fixWorkflowJson(jsonText);
+    if (fixed !== jsonText) {
+      setJsonText(fixed);
+    }
+  }, [jsonText]);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const encoder = new TextEncoder();
-      const bytes = Array.from(encoder.encode(jsonText));
-      await SaveComfyWorkflowTemplate(workflow.id, bytes);
-      onSaved?.(bytes);
+      JSON.parse(jsonText);
+      await SaveComfyWorkflowTemplate(workflow.id, jsonText);
+      onSaved?.(jsonText);
       onClose();
     } catch (e: any) {
-      onSaveError?.(e?.message || 'Could not save workflow template.');
+      if (e instanceof SyntaxError) {
+        onSaveError?.(`Invalid JSON: ${e.message}`);
+      } else {
+        onSaveError?.(e?.message || 'Could not save workflow template.');
+      }
     } finally {
       setSaving(false);
     }
@@ -134,6 +202,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
           <div className="workflow-editor-left">
             <div className="workflow-editor-toolbar">
               <button className="btn ghost sm" onClick={handleFormat}>Format JSON</button>
+              <button className="btn ghost sm" onClick={handleFix} title="Replace null with placeholders, fix '*lora*' → 'None', etc.">Fix workflow</button>
             </div>
             <textarea
               ref={textareaRef}

@@ -4,18 +4,19 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers, GetComfyWorkflows, GetComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
+import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers, GetComfyCheckpoints, GetComfyWorkflows, GetComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
 import { comfy } from '../../wailsjs/go/models';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel, { WorkflowOption } from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
+import { arrayBufferToDataURL } from '../utils/image';
 
 const PROJECT_IMG_WORKFLOWS = [
-  { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m_karras' },
-  { id: 'flux_banner', name: 'flux_banner', model: 'flux1-dev-fp8', size: '1216×832', steps: 20, sampler: 'euler' },
-  { id: 'painterly', name: 'painterly_square', model: 'juggernautXL_v9', size: '1024×1024', steps: 30, sampler: 'dpmpp_2m_karras' },
+  { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m', scheduler: 'karras' },
+  { id: 'flux_banner', name: 'flux_banner', model: 'flux1-dev-fp8', size: '1216×832', steps: 20, sampler: 'euler', scheduler: 'normal' },
+  { id: 'painterly', name: 'painterly_square', model: 'juggernautXL_v9', size: '1024×1024', steps: 30, sampler: 'dpmpp_2m', scheduler: 'karras' },
 ];
 
 const ProjectImageScreen: React.FC = () => {
@@ -24,7 +25,10 @@ const ProjectImageScreen: React.FC = () => {
   const [steps, setSteps] = useState(26);
   const [cfg, setCfg] = useState(7);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 4e9));
-  const [sampler, setSampler] = useState('dpmpp_2m_karras');
+  const [sampler, setSampler] = useState('dpmpp_2m');
+  const [scheduler, setScheduler] = useState('karras');
+  const [checkpoints, setCheckpoints] = useState<string[]>([]);
+  const [checkpoint, setCheckpoint] = useState(PROJECT_IMG_WORKFLOWS[0].model);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState(0);
@@ -35,12 +39,16 @@ const ProjectImageScreen: React.FC = () => {
   const [samplers, setSamplers] = useState<string[]>([]);
   const [schedulers, setSchedulers] = useState<string[]>([]);
   const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
-  const [workflowTemplate, setWorkflowTemplate] = useState<number[] | null>(null);
+  const [workflowTemplate, setWorkflowTemplate] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     GetComfySamplers().then(setSamplers).catch(() => {});
     GetComfySchedulers().then(setSchedulers).catch(() => {});
+    GetComfyCheckpoints().then(list => {
+      setCheckpoints(list);
+      if (list.length > 0) setCheckpoint(list[0]);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -54,6 +62,7 @@ const ProjectImageScreen: React.FC = () => {
           : 'custom',
         steps: wf.params.steps || 20,
         sampler: wf.params.sampler || 'euler',
+        scheduler: wf.params.scheduler || 'normal',
       })));
     }).catch(() => {});
   }, []);
@@ -100,17 +109,27 @@ const ProjectImageScreen: React.FC = () => {
         steps,
         cfg,
         sampler,
-        scheduler: 'normal',
+        scheduler,
         denoise: 1,
         positivePrompt: prompt,
         negativePrompt: negPrompt,
         width: w || 0,
         height: h || 0,
-        checkpoint: 'sd_xl_base_1.0',
+        checkpoint,
       });
 
       const images = await GenerateProjectImage(params);
-      setVariantImages(images.map(img => arrayBufferToDataURL(img.data)));
+      console.log('[ProjectImageScreen] GenerateProjectImage returned', images.length, 'images');
+      images.forEach((img, i) => {
+        const dataLen = img.data ? img.data.length : 0;
+        console.log(`[ProjectImageScreen] image ${i}: filename=${img.filename} data=${dataLen} bytes`);
+      });
+      const urls = images.map(img => {
+        const url = arrayBufferToDataURL(img.data);
+        console.log(`[ProjectImageScreen] url length=${url.length}`);
+        return url;
+      });
+      setVariantImages(urls);
       setHasImage(true);
       setProgress(100);
       toast({ kind: 'ok', title: 'Generation complete', body: '3 cover variants ready.' });
@@ -155,18 +174,27 @@ const ProjectImageScreen: React.FC = () => {
               aria-label="Project image generation parameters"
               workflows={allWorkflows}
               selectedWorkflow={workflow}
-              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}
+              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); setScheduler(w.scheduler); setCheckpoint(w.model); }}
               steps={steps} onStepsChange={setSteps}
               cfg={cfg} onCfgChange={setCfg}
               denoise={1} onDenoiseChange={() => {}}
               sampler={sampler} onSamplerChange={setSampler}
-              scheduler="normal" onSchedulerChange={() => {}}
+              scheduler={scheduler} onSchedulerChange={setScheduler}
               seed={seed} onSeedChange={setSeed}
               showDenoise={false}
               showAspectSelector
               samplerList={samplers}
               schedulerList={schedulers}
             >
+              <span className="uplabel">Checkpoint</span>
+              <div className="img-kv" style={{ marginBottom: 10 }}>
+                <select id="proj-checkpoint" style={{ width: 'auto' }} value={checkpoint}
+                  onChange={e => { setCheckpoint(e.target.value); e.target.blur(); }}>
+                  {(checkpoints.length > 0 ? checkpoints : [PROJECT_IMG_WORKFLOWS[0].model, PROJECT_IMG_WORKFLOWS[1].model, PROJECT_IMG_WORKFLOWS[2].model]).map(c => (
+                    <option key={c} value={c}>{c.replace(/\.safetensors$/, '')}</option>
+                  ))}
+                </select>
+              </div>
               <span className="uplabel">Use project context</span>
               <div className="col" style={{ gap: 6 }}>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
@@ -188,7 +216,7 @@ const ProjectImageScreen: React.FC = () => {
               canvasTitle={canvasTitle}
               workflowSize={workflow.size}
               seed={seed}
-              aspectRatio="16/9"
+              aspectRatio={workflow.size.includes('×') ? workflow.size.replace('×', '/') : undefined}
               generating={generating}
               progress={progress}
               steps={steps}
@@ -278,14 +306,5 @@ const ProjectImageScreen: React.FC = () => {
     </>
   );
 };
-
-function arrayBufferToDataURL(buffer: number[] | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let binary = '';
-  for (const b of bytes) {
-    binary += String.fromCodePoint(b);
-  }
-  return 'data:image/png;base64,' + btoa(binary);
-}
 
 export default ProjectImageScreen;

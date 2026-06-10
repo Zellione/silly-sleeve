@@ -17,11 +17,12 @@ import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel, { WorkflowOption } from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
+import { arrayBufferToDataURL } from '../utils/image';
 
 const PORTRAIT_WORKFLOWS = [
-  { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m_karras' },
-  { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, sampler: 'euler_a' },
-  { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, sampler: 'euler' },
+  { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
+  { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, sampler: 'euler_ancestral', scheduler: 'normal' },
+  { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, sampler: 'euler', scheduler: 'normal' },
 ];
 
 const PortraitScreen: React.FC = () => {
@@ -34,7 +35,7 @@ const PortraitScreen: React.FC = () => {
   const [cfg, setCfg] = useState(7);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 4e9));
   const [denoise, setDenoise] = useState(1);
-  const [sampler, setSampler] = useState('dpmpp_2m_karras');
+  const [sampler, setSampler] = useState('dpmpp_2m');
   const [scheduler, setScheduler] = useState('karras');
   const [promptStyle, setPromptStyle] = useState<'natural' | 'danbooru'>('natural');
   const [generating, setGenerating] = useState(false);
@@ -50,7 +51,7 @@ const PortraitScreen: React.FC = () => {
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
   const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
-  const [workflowTemplate, setWorkflowTemplate] = useState<number[] | null>(null);
+  const [workflowTemplate, setWorkflowTemplate] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,7 +67,10 @@ const PortraitScreen: React.FC = () => {
   useEffect(() => {
     GetComfySamplers().then(setSamplers).catch(() => {});
     GetComfySchedulers().then(setSchedulers).catch(() => {});
-    GetComfyCheckpoints().then(setCheckpoints).catch(() => {});
+    GetComfyCheckpoints().then(list => {
+      setCheckpoints(list);
+      if (list.length > 0) setCheckpoint(list[0]);
+    }).catch(() => {});
     GetComfyVAEs().then(setVaes).catch(() => {});
     GetComfyLoRAs().then(setLoras).catch(() => {});
   }, []);
@@ -82,6 +86,7 @@ const PortraitScreen: React.FC = () => {
           : 'custom',
         steps: wf.params.steps || 20,
         sampler: wf.params.sampler || 'euler',
+        scheduler: wf.params.scheduler || 'normal',
       })));
     }).catch(() => {});
   }, []);
@@ -159,7 +164,17 @@ const PortraitScreen: React.FC = () => {
       });
 
       const images = await GeneratePortrait(params);
-      setVariantImages(images.map(img => arrayBufferToDataURL(img.data)));
+      console.log('[PortraitScreen] GeneratePortrait returned', images.length, 'images');
+      images.forEach((img, i) => {
+        const dataLen = img.data ? img.data.length : 0;
+        console.log(`[PortraitScreen] image ${i}: filename=${img.filename} data=${dataLen} bytes`);
+      });
+      const urls = images.map(img => {
+        const url = arrayBufferToDataURL(img.data);
+        console.log(`[PortraitScreen] url length=${url.length} startsWith=${url.substring(0, 30)}`);
+        return url;
+      });
+      setVariantImages(urls);
       setProgress(100);
       toast({ kind: 'ok', title: 'Generation complete', body: `${images.length} portrait variants ready.` });
     /* v8 ignore start */} catch (err) {
@@ -213,7 +228,7 @@ const PortraitScreen: React.FC = () => {
               aria-label="Portrait generation parameters"
               workflows={allWorkflows}
               selectedWorkflow={workflow}
-              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); }}
+              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); setScheduler(w.scheduler); }}
               steps={steps} onStepsChange={setSteps}
               cfg={cfg} onCfgChange={setCfg}
               denoise={denoise} onDenoiseChange={setDenoise}
@@ -229,19 +244,19 @@ const PortraitScreen: React.FC = () => {
                 <select id="portrait-checkpoint" style={{ width: 'auto' }} value={checkpoint}
                   onChange={e => { setCheckpoint(e.target.value); e.target.blur(); }}>
                   {(checkpoints.length > 0 ? checkpoints : ['sd_xl_base_1.0', 'juggernautXL_v9', 'ponyDiffusion_v6']).map(c => (
-                    <option key={c} value={c.replace(/\.safetensors$/, '')}>{c.replace(/\.safetensors$/, '')}</option>
+                    <option key={c} value={c}>{c.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
                 <label htmlFor="portrait-vae">VAE</label>
                 <select id="portrait-vae" style={{ width: 'auto' }}>
                   {['— none —'].concat(vaes.length > 0 ? vaes : ['sdxl_vae_fp16_fix', 'baked']).map(v => (
-                    <option key={v}>{v.replace(/\.safetensors$/, '')}</option>
+                    <option key={v} value={v}>{v.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
                 <label htmlFor="portrait-lora">LoRA</label>
                 <select id="portrait-lora" style={{ width: 'auto' }}>
                   {['— none —'].concat(loras.length > 0 ? loras : ['oil_painting_v3']).map(l => (
-                    <option key={l}>{l.replace(/\.safetensors$/, '')}</option>
+                    <option key={l} value={l}>{l.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
               </div>
@@ -251,6 +266,7 @@ const PortraitScreen: React.FC = () => {
               canvasTitle={canvasTitle}
               workflowSize={workflow.size}
               seed={seed}
+              aspectRatio={workflow.size.includes('×') ? workflow.size.replace('×', '/') : undefined}
               generating={generating}
               progress={progress}
               steps={steps}
@@ -345,14 +361,5 @@ const PortraitScreen: React.FC = () => {
     </>
   );
 };
-
-function arrayBufferToDataURL(buffer: number[] | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let binary = '';
-  for (const b of bytes) {
-    binary += String.fromCodePoint(b);
-  }
-  return 'data:image/png;base64,' + btoa(binary);
-}
 
 export default PortraitScreen;

@@ -8,6 +8,7 @@ export interface WorkflowOption {
   size: string;
   steps: number;
   sampler: string;
+  scheduler: string;
 }
 
 interface GenerationParamsPanelProps {
@@ -90,7 +91,7 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
           )}
           <label htmlFor={`${uid}-sampler`}>Sampler</label>
           <select id={`${uid}-sampler`} value={sampler} onChange={e => { onSamplerChange(e.target.value); e.target.blur(); }} style={{ width: 'auto' }}>
-            {(samplerList && samplerList.length > 0 ? samplerList : ['dpmpp_2m_karras', 'euler_a', 'euler', 'dpmpp_3m_sde']).map(s => (
+            {(samplerList && samplerList.length > 0 ? samplerList : ['dpmpp_2m', 'euler_ancestral', 'euler', 'dpmpp_2m_sde']).map(s => (
               <option key={s}>{s}</option>
             ))}
           </select>

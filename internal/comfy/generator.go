@@ -2,12 +2,36 @@ package comfy
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+var barePlaceholderRE = regexp.MustCompile(`:\s*\{\{(\w+)\}\}`)
+
+// parseWorkflowTemplate attempts to parse a workflow template JSON string.
+// If the direct parse fails because of bare (unquoted) {{...}} placeholders,
+// it wraps them in JSON strings and retries.
+func parseWorkflowTemplate(template string) (map[string]any, error) {
+	var data map[string]any
+	if err := json.Unmarshal([]byte(template), &data); err == nil {
+		return data, nil
+	}
+	fixed := barePlaceholderRE.ReplaceAllString(template, `:"{{$1}}"`)
+	if fixed != template {
+		if err := json.Unmarshal([]byte(fixed), &data); err == nil {
+			return data, nil
+		}
+	}
+	return nil, fmt.Errorf("parse workflow template: invalid JSON")
+}
 
 // Generator orchestrates a ComfyUI image generation session:
 // connect WebSocket, queue a prompt, listen for progress/completion, fetch images.
@@ -17,12 +41,13 @@ type Generator struct {
 	ctx       context.Context
 	promptID  string
 
-	mu       sync.Mutex
-	images   []CompletedImage
-	err      error
-	done     chan struct{}
-	progress int
-	max      int
+	mu           sync.Mutex
+	images       []CompletedImage
+	err          error
+	done         chan struct{}
+	progress     int
+	max          int
+	binaryBuffer [][]byte
 }
 
 // NewGenerator creates a generation orchestrator.
@@ -43,17 +68,9 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 		values = BuildPlaceholderValues(params)
 	}
 
-	raw, err := json.Marshal(map[string]any{
-		"client_id": g.listener.ClientID,
-		"prompt":    params.WorkflowTemplate,
-	})
+	promptData, err := parseWorkflowTemplate(params.WorkflowTemplate)
 	if err != nil {
-		return fmt.Errorf("marshal queue request: %w", err)
-	}
-
-	var promptData map[string]any
-	if err := json.Unmarshal(raw, &promptData); err != nil {
-		return fmt.Errorf("unmarshal queue request: %w", err)
+		return err
 	}
 
 	replaced, err := replaceInValue(promptData, values)
@@ -65,7 +82,7 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 		return fmt.Errorf("unexpected replaced type: %T", replaced)
 	}
 
-	promptRaw, err := json.Marshal(replacedMap["prompt"])
+	promptRaw, err := json.Marshal(replacedMap)
 	if err != nil {
 		return fmt.Errorf("marshal replaced prompt: %w", err)
 	}
@@ -75,7 +92,7 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 	}
 	defer g.listener.Close()
 
-	clientID, _ := replacedMap["client_id"].(string)
+	clientID := g.listener.ClientID
 	fmt.Printf("[generator] queueing prompt clientID=%s promptLen=%d\n", clientID, len(promptRaw))
 	resp, err := g.client.QueuePrompt(clientID, promptRaw)
 	if err != nil {
@@ -101,18 +118,116 @@ func (g *Generator) OnProgress(event ProgressEvent) {
 	emitEvent(g.ctx, "comfy:progress", event)
 }
 
+// OnBinaryImage is called by WSListener when binary image data arrives.
+// ComfyUI binary WebSocket messages have an outer envelope: [4 bytes event_type (big-endian uint32)] + payload.
+// For PREVIEW_IMAGE (type 1/2): payload = [4 bytes image_type] + image_data.
+// For PREVIEW_IMAGE_WITH_METADATA (type 4): payload = [4 bytes metadata_len] + metadata_json + image_data.
+func (g *Generator) OnBinaryImage(data []byte) {
+	if len(data) < 4 {
+		return
+	}
+
+	eventType := binary.BigEndian.Uint32(data[0:4])
+	var imageData []byte
+
+	switch eventType {
+	case 1, 2: // PREVIEW_IMAGE / UNENCODED_PREVIEW_IMAGE — payload = [4 bytes image_type (1=JPEG, 2=PNG)] + image_data
+		if len(data) < 8 {
+			return
+		}
+		imageData = data[8:]
+	case 4: // PREVIEW_IMAGE_WITH_METADATA — payload = [4 bytes metadata_len] + metadata_json + image_data
+		if len(data) < 8 {
+			return
+		}
+		metadataLen := binary.BigEndian.Uint32(data[4:8])
+		headerEnd := 8 + int(metadataLen)
+		if headerEnd > len(data) {
+			return
+		}
+		imageData = data[headerEnd:]
+	default:
+		return
+	}
+
+	if len(imageData) == 0 || !isValidImage(imageData) {
+		return
+	}
+
+	fmt.Printf("[generator] OnBinaryImage eventType=%d imageData=%d bytes\n", eventType, len(imageData))
+	g.mu.Lock()
+	g.binaryBuffer = append(g.binaryBuffer, imageData)
+	g.mu.Unlock()
+}
+
+// isValidImage checks magic bytes to verify the data looks like a supported image format.
+func isValidImage(data []byte) bool {
+	if len(data) < 4 {
+		return false
+	}
+	// PNG — magic bytes 0x89 0x50 0x4E 0x47 (".PNG")
+	if data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+		return true
+	}
+	// JPEG — magic bytes 0xFF 0xD8
+	if data[0] == 0xFF && data[1] == 0xD8 {
+		return true
+	}
+	// WEBP — RIFF container (0x52 0x49 0x46 0x46 ... 0x57 0x45 0x42 0x50)
+	if len(data) >= 12 && data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 {
+		if data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50 {
+			return true
+		}
+	}
+	return false
+}
+
 // OnCompleted is called by WSListener on executed events.
 func (g *Generator) OnCompleted(event CompletedEvent) {
+	g.mu.Lock()
+	buf := make([][]byte, len(g.binaryBuffer))
+	copy(buf, g.binaryBuffer)
+	g.binaryBuffer = g.binaryBuffer[:0]
+	pid := g.promptID
+	g.mu.Unlock()
+
+	fmt.Printf("[generator] OnCompleted promptID=%s images=%d binaryBuf=%d\n", pid, len(event.Images), len(buf))
+
+	saveDir, dirErr := generatedImagesDir()
+
 	for i := range event.Images {
-		data, err := g.client.GetImage(
-			event.Images[i].Filename,
-			event.Images[i].Subfolder,
-			event.Images[i].Type,
-		)
-		if err != nil {
-			continue
+		img := &event.Images[i]
+
+		if i < len(buf) {
+			img.Data = buf[i]
+			fmt.Printf("[generator] OnCompleted image %d: using binary buffer (%d bytes)\n", i, len(img.Data))
+		} else {
+			var fetched []byte
+			var fetchErr error
+			for retry := 0; retry < 3; retry++ {
+				if retry > 0 {
+					time.Sleep(time.Duration(retry) * 250 * time.Millisecond)
+				}
+				fetched, fetchErr = g.client.GetImage(img.Filename, img.Subfolder, img.Type)
+				if fetchErr == nil {
+					break
+				}
+			}
+			if fetchErr != nil {
+				fmt.Printf("[generator] OnCompleted image %d: REST fetch FAILED for %s (after retries): %v\n", i, img.Filename, fetchErr)
+			} else {
+				img.Data = fetched
+				fmt.Printf("[generator] OnCompleted image %d: REST fetch OK (%d bytes)\n", i, len(fetched))
+			}
 		}
-		event.Images[i].Data = data
+
+		if dirErr == nil && len(img.Data) > 0 {
+			stamp := time.Now().UnixMilli()
+			imgPath := filepath.Join(saveDir, fmt.Sprintf("%s-%d-%d.png", pid, stamp, i))
+			if err := os.WriteFile(imgPath, img.Data, 0o644); err != nil {
+				fmt.Printf("[generator] failed to save image: %v\n", err)
+			}
+		}
 	}
 
 	g.mu.Lock()
@@ -154,4 +269,17 @@ func (g *Generator) Images() []CompletedImage {
 // PromptID returns the queued prompt ID.
 func (g *Generator) PromptID() string {
 	return g.promptID
+}
+
+// generatedImagesDir returns the path to the local image output directory.
+func generatedImagesDir() (string, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	genDir := filepath.Join(dir, "silly-sleeve", "generated-images")
+	if err := os.MkdirAll(genDir, 0o755); err != nil {
+		return "", err
+	}
+	return genDir, nil
 }

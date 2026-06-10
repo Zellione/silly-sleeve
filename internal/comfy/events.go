@@ -7,7 +7,8 @@ import (
 )
 
 // emitEvent sends a Wails event to the frontend.
-// This is a no-op in headless/test environments where the Wails runtime is not available.
+// When the context is not a valid Wails application context (e.g. in tests),
+// the call is silently ignored.
 func emitEvent(ctx context.Context, name string, data any) {
 	if ctx == nil {
 		return

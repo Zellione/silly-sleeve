@@ -356,18 +356,16 @@ const ComfyUISettings: React.FC<{
       JSON.parse(text);
       const baseName = file.name.replace(/\.json$/i, '');
       const id = `wf-${Date.now()}`;
-      const encoder = new TextEncoder();
-      const jsonData = Array.from(encoder.encode(text));
       let params = comfy.WorkflowParams.createFrom({});
       try {
-        params = await ParseComfyWorkflowParams(jsonData);
+        params = await ParseComfyWorkflowParams(text);
       } catch {
         // params stay empty
       }
       const wf = comfy.ComfyWorkflow.createFrom({
         id,
         name: baseName,
-        jsonData,
+        jsonData: text,
         params,
       });
       const next = settings.Settings.createFrom({
@@ -562,11 +560,11 @@ const ComfyUISettings: React.FC<{
         <WorkflowEditor
           workflow={editingWorkflow}
           onClose={() => setEditingWorkflow(null)}
-          onSaved={(bytes) => {
+          onSaved={(templateText) => {
             if (!editingWorkflow) return;
             const updatedWorkflows = workflows.map(wf =>
               wf.id === editingWorkflow.id
-                ? comfy.ComfyWorkflow.createFrom({ ...wf, template: bytes })
+                ? comfy.ComfyWorkflow.createFrom({ ...wf, template: templateText })
                 : wf
             );
             persist(settings.Settings.createFrom({

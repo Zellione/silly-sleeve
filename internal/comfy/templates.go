@@ -1,12 +1,10 @@
 package comfy
 
-import "encoding/json"
-
-var defaultWorkflowTemplate = json.RawMessage([]byte(`{
+var defaultWorkflowTemplate = `{
   "1": {
     "class_type": "CheckpointLoaderSimple",
     "inputs": {
-      "ckpt_name": "{{ckpt_name}}"
+      "ckpt_name": "{{model}}"
     }
   },
   "2": {
@@ -60,7 +58,7 @@ var defaultWorkflowTemplate = json.RawMessage([]byte(`{
       "images": ["6", 0]
     }
   }
-}`))
+}`
 
 var builtInIDs = map[string]bool{
 	"portrait_sdxl": true,
@@ -72,9 +70,9 @@ var builtInIDs = map[string]bool{
 }
 
 // GetBuiltInTemplate returns the default workflow template for a built-in ID.
-func GetBuiltInTemplate(id string) (json.RawMessage, bool) {
+func GetBuiltInTemplate(id string) (string, bool) {
 	if builtInIDs[id] {
 		return defaultWorkflowTemplate, true
 	}
-	return nil, false
+	return "", false
 }

@@ -11,10 +11,10 @@ import (
 func TestGetBuiltInTemplate(t *testing.T) {
 	tmpl, ok := GetBuiltInTemplate("portrait_sdxl")
 	require.True(t, ok)
-	require.NotNil(t, tmpl)
+	require.NotEmpty(t, tmpl)
 
 	var nodes map[string]any
-	err := json.Unmarshal(tmpl, &nodes)
+	err := json.Unmarshal([]byte(tmpl), &nodes)
 	require.NoError(t, err)
 
 	assert.Contains(t, nodes, "5")
@@ -30,7 +30,7 @@ func TestGetBuiltInTemplate(t *testing.T) {
 func TestGetBuiltInTemplate_NotFound(t *testing.T) {
 	tmpl, ok := GetBuiltInTemplate("nonexistent")
 	assert.False(t, ok)
-	assert.Nil(t, tmpl)
+	assert.Empty(t, tmpl)
 }
 
 func TestAllBuiltInIDs(t *testing.T) {
@@ -38,7 +38,7 @@ func TestAllBuiltInIDs(t *testing.T) {
 	for _, id := range ids {
 		tmpl, ok := GetBuiltInTemplate(id)
 		assert.True(t, ok, "id %q should be built-in", id)
-		assert.NotNil(t, tmpl)
+		assert.NotEmpty(t, tmpl)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestBuiltInTemplateHasPlaceholders(t *testing.T) {
 	tmpl, ok := GetBuiltInTemplate("portrait_sdxl")
 	require.True(t, ok)
 
-	templateStr := string(tmpl)
+	templateStr := tmpl
 	assert.Contains(t, templateStr, "{{seed}}")
 	assert.Contains(t, templateStr, "{{steps}}")
 	assert.Contains(t, templateStr, "{{cfg}}")
@@ -55,7 +55,7 @@ func TestBuiltInTemplateHasPlaceholders(t *testing.T) {
 	assert.Contains(t, templateStr, "{{denoise}}")
 	assert.Contains(t, templateStr, "{{width}}")
 	assert.Contains(t, templateStr, "{{height}}")
-	assert.Contains(t, templateStr, "{{ckpt_name}}")
+	assert.Contains(t, templateStr, "{{model}}")
 	assert.Contains(t, templateStr, "{{positive_prompt}}")
 	assert.Contains(t, templateStr, "{{negative_prompt}}")
 	assert.Contains(t, templateStr, "CheckpointLoaderSimple")

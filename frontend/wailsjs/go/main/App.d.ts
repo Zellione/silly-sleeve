@@ -7,7 +7,6 @@ import {settings} from '../models';
 import {prompts} from '../models';
 import {lorebook} from '../models';
 import {project} from '../models';
-import {json} from '../models';
 import {llm} from '../models';
 
 export function AddCharacter():Promise<compose.Character>;
@@ -54,7 +53,7 @@ export function GetComfyVAEs():Promise<Array<string>>;
 
 export function GetComfyWorkflowByName(arg1:string):Promise<comfy.ComfyWorkflow>;
 
-export function GetComfyWorkflowTemplate(arg1:string):Promise<Array<number>>;
+export function GetComfyWorkflowTemplate(arg1:string):Promise<string>;
 
 export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
 
@@ -76,7 +75,7 @@ export function ImportComfyWorkflow(arg1:string):Promise<comfy.ComfyWorkflow>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 
-export function ParseComfyWorkflowParams(arg1:json.RawMessage):Promise<comfy.WorkflowParams>;
+export function ParseComfyWorkflowParams(arg1:string):Promise<comfy.WorkflowParams>;
 
 export function PickExportFolder():Promise<string>;
 
@@ -84,7 +83,7 @@ export function PickOpenBundle():Promise<string>;
 
 export function PickSaveBundle():Promise<string>;
 
-export function SaveComfyWorkflowTemplate(arg1:string,arg2:json.RawMessage):Promise<void>;
+export function SaveComfyWorkflowTemplate(arg1:string,arg2:string):Promise<void>;
 
 export function SaveLorebook(arg1:Array<lorebook.Entry>):Promise<void>;
 

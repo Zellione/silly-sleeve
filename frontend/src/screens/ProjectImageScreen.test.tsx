@@ -10,8 +10,9 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
   GetComfySamplers: () => Promise.resolve(['euler', 'dpmpp_2m']),
   GetComfySchedulers: () => Promise.resolve(['karras', 'normal']),
+  GetComfyCheckpoints: () => Promise.resolve(['sd_xl_base_1.0.safetensors']),
   GetComfyWorkflows: () => Promise.resolve([]),
-  GetComfyWorkflowTemplate: () => Promise.resolve([]),
+  GetComfyWorkflowTemplate: () => Promise.resolve('{"1":{"class_type":"KSampler"}}'),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -144,6 +145,25 @@ describe('ProjectImageScreen', () => {
       expect(screen.getAllByText(/cover_sdxl_v2/).length).toBeGreaterThan(0);
       expect(screen.getByText(/flux_banner/)).toBeInTheDocument();
       expect(screen.getByText(/painterly_square/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders checkpoint selector', async () => {
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('Checkpoint')).toBeInTheDocument();
+    });
+  });
+
+  it('generation calls GenerateProjectImage with full checkpoint name', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      expect(mockGenerateProjectImage).toHaveBeenCalled();
+      const params = mockGenerateProjectImage.mock.calls[0][0];
+      expect(params.checkpoint).toBe('sd_xl_base_1.0.safetensors');
     });
   });
 

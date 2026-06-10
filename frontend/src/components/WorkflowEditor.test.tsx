@@ -11,11 +11,11 @@ vi.mock('../../wailsjs/go/main/App', () => ({
 const workflow = {
   id: 'wf-1',
   name: 'test_workflow',
-  jsonData: Array.from(new TextEncoder().encode(JSON.stringify({
+  jsonData: JSON.stringify({
     '1': { class_type: 'KSampler', inputs: { seed: '{{seed}}', steps: '{{steps}}', cfg: '{{cfg}}' } },
     '2': { class_type: 'CLIPTextEncode', inputs: { text: '{{positive_prompt}}' } },
     '3': { class_type: 'CLIPTextEncode', inputs: { text: '{{negative_prompt}}' } },
-  }))),
+  }),
   template: null,
 };
 
@@ -103,7 +103,7 @@ describe('WorkflowEditor', () => {
     expect(textarea.value).toContain('{{');
   });
 
-  it('calls onSaved with bytes on successful save', async () => {
+  it('calls onSaved with template string on successful save', async () => {
     const onSaved = vi.fn();
     const onClose = vi.fn();
     const user = userEvent.setup();
@@ -111,6 +111,7 @@ describe('WorkflowEditor', () => {
     render(<WorkflowEditor workflow={workflow} onClose={onClose} onSaved={onSaved} />);
     await user.click(screen.getByText('Save template'));
     expect(onSaved).toHaveBeenCalled();
+    expect(typeof onSaved.mock.calls[0][0]).toBe('string');
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -121,5 +122,99 @@ describe('WorkflowEditor', () => {
     render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} onSaveError={onSaveError} />);
     await user.click(screen.getByText('Save template'));
     expect(onSaveError).toHaveBeenCalledWith('disk full');
+  });
+
+  it('calls onSaveError for invalid JSON', async () => {
+    const onSaveError = vi.fn();
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} onSaveError={onSaveError} />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.clear(textarea);
+    await user.type(textarea, '{{broken json');
+    await user.click(screen.getByText('Save template'));
+    expect(onSaveError).toHaveBeenCalled();
+    expect(onSaveError.mock.calls[0][0]).toContain('Invalid JSON');
+  });
+
+  it('fix workflow wraps bare placeholders in quotes', async () => {
+    const wf = {
+      id: 'wf-5',
+      name: 'bare_placeholders',
+      jsonData: JSON.stringify({
+        '1': { inputs: { seed: '{{seed}}', steps: '{{steps}}' } },
+      }),
+      template: `{"1":{"inputs":{"seed":{{seed}}, "steps":{{steps}}}}}`,
+    };
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={wf} onClose={vi.fn()} />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    await user.click(screen.getByText('Fix workflow'));
+    expect(textarea.value).toContain('"{{seed}}"');
+    expect(textarea.value).toContain('"{{steps}}"');
+  });
+
+  it('fix workflow replaces null with placeholders', async () => {
+    const wf = {
+      id: 'wf-2',
+      name: 'broken_workflow',
+      jsonData: JSON.stringify({
+        '1': { class_type: 'KSampler', inputs: { seed: null, steps: null, cfg: null } },
+      }),
+      template: null,
+    };
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={wf} onClose={vi.fn()} />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    expect(textarea.value).toContain('null');
+    await user.click(screen.getByText('Fix workflow'));
+    expect(textarea.value).toContain('{{seed}}');
+    expect(textarea.value).toContain('{{steps}}');
+    expect(textarea.value).toContain('{{cfg}}');
+  });
+
+  it('fix workflow replaces asterisk placeholders with None', async () => {
+    const wf = {
+      id: 'wf-3',
+      name: 'lora_workflow',
+      jsonData: JSON.stringify({
+        '36': { class_type: 'LoRA Stacker', inputs: { lora_name_1: '*lora*', lora_name_2: '*lora2*', lora_wt_3: null } },
+      }),
+      template: null,
+    };
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={wf} onClose={vi.fn()} />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    expect(textarea.value).toContain('*lora*');
+    await user.click(screen.getByText('Fix workflow'));
+    expect(textarea.value).not.toContain('*lora*');
+    expect(textarea.value).toContain('None');
+    expect(textarea.value).toContain('1');
+  });
+
+  it('fix workflow replaces zero width/height with placeholders', async () => {
+    const wf = {
+      id: 'wf-4',
+      name: 'empty_latent',
+      jsonData: JSON.stringify({
+        '5': { class_type: 'EmptyLatentImage', inputs: { width: 0, height: 0, batch_size: 1 } },
+      }),
+      template: null,
+    };
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={wf} onClose={vi.fn()} />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    expect(textarea.value).toContain('"width": 0');
+    await user.click(screen.getByText('Fix workflow'));
+    expect(textarea.value).toContain('{{width}}');
+    expect(textarea.value).toContain('{{height}}');
+  });
+
+  it('fix workflow does not break valid JSON', async () => {
+    const user = userEvent.setup();
+    render(<WorkflowEditor workflow={workflow} onClose={vi.fn()} />);
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    const before = textarea.value;
+    await user.click(screen.getByText('Fix workflow'));
+    expect(textarea.value).toBe(before);
   });
 });

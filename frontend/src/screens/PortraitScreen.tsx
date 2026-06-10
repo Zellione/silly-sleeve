@@ -232,10 +232,6 @@ const PortraitScreen: React.FC = () => {
     setGenerating(false);
   };
 
-  const handleUseAsPortrait = () => {
-    toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' });
-  };
-
   const canvasTitle = 'Preview';
   const showDonePlaceholder = variantImages.length > 0;
 
@@ -385,7 +381,7 @@ const PortraitScreen: React.FC = () => {
               rerollLabel="Re-roll with these params"
               downloadLabel="Save PNG only"
               useImageLabel="Use as portrait"
-              onUseImage={handleUseAsPortrait}
+              onUseImage={() => toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' })}
               useImageDisabled={variantImages.length === 0}
             />
           </div>
@@ -397,7 +393,7 @@ const PortraitScreen: React.FC = () => {
             maxSize="Recommended 832 × 1216 for SillyTavern v2 cards"
             defaultCrop="Center 3:4"
             defaultResize="Fit to 832×1216"
-            onUseImage={handleUseAsPortrait}
+            onUseImage={() => toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' })}
           />
         )}
       </div>

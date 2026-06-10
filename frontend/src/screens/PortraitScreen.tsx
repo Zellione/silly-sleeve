@@ -131,6 +131,21 @@ function mapWorkflows(wfs: comfy.ComfyWorkflow[]): WorkflowOption[] {
   }));
 }
 
+
+function onComfyProgress(setProgress: (v: number) => void) {
+  return (event: { progress: number; max: number }) => {
+    if (event.max > 0) {
+      setProgress(Math.round((event.progress / event.max) * 100));
+    }
+  };
+}
+
+function onComfyError(toast: (opts: { kind: ToastKind; title: string; body: string }) => void) {
+  return (event: { error: string }) => {
+    toast({ kind: "bad", title: "Generation error", body: event.error });
+  };
+}
+
 const PortraitScreen: React.FC = () => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeCharId, setActiveCharId] = useState(0);
@@ -195,27 +210,14 @@ const PortraitScreen: React.FC = () => {
 
   useEffect(() => {
     /* v8 ignore start */
-    EventsOn('comfy:progress', (event: { progress: number; max: number }) => {
-      if (event.max > 0) {
-        setProgress(Math.round((event.progress / event.max) * 100));
-      }
-    });
-    EventsOn('comfy:error', (event: { error: string }) => {
-      toast({ kind: 'bad', title: 'Generation error', body: event.error });
-    });
+    EventsOn('comfy:progress', onComfyProgress(setProgress));
+    EventsOn('comfy:error', onComfyError(toast));
     return () => {
       EventsOff('comfy:progress');
       EventsOff('comfy:error');
     };
     /* v8 ignore stop */
   }, [toast]);
-
-  async function handleSelectChar(id: number) {
-    setActiveCharId(id);
-    await SetActiveCharacter(id);
-    const ch = await GetActiveCharacter();
-    setActiveChar(ch);
-  }
 
 
 
@@ -240,7 +242,7 @@ const PortraitScreen: React.FC = () => {
       <div className="character-strip">
         {characters.map(c => (
           <button key={c.id} className="cs-pill" data-on={activeCharId === c.id ? '1' : '0'}
-            onClick={() => handleSelectChar(c.id)}>
+            onClick={async () => { setActiveCharId(c.id); await SetActiveCharacter(c.id); const ch = await GetActiveCharacter(); setActiveChar(ch); }}>
             <span className="cs-av">{c.name[0] || '?'}</span>
             <span>{c.name}</span>
           </button>

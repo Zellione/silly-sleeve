@@ -379,10 +379,8 @@ export namespace project {
 	export class ProjectManifest {
 	    version: string;
 	    name: string;
-	    // Go type: time
-	    createdAt: any;
-	    // Go type: time
-	    updatedAt: any;
+	    createdAt: string;
+	    updatedAt: string;
 	    activeCharId: number;
 	    sourceUrl: string;
 	    crawlTitle: string;
@@ -396,31 +394,13 @@ export namespace project {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
 	        this.name = source["name"];
-	        this.createdAt = this.convertValues(source["createdAt"], null);
-	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
 	        this.activeCharId = source["activeCharId"];
 	        this.sourceUrl = source["sourceUrl"];
 	        this.crawlTitle = source["crawlTitle"];
 	        this.projectImage = source["projectImage"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }

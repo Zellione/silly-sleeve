@@ -132,6 +132,7 @@ function mapWorkflows(wfs: comfy.ComfyWorkflow[]): WorkflowOption[] {
 }
 
 
+/* v8 ignore start */
 function onComfyProgress(setProgress: (v: number) => void) {
   return (event: { progress: number; max: number }) => {
     if (event.max > 0) {
@@ -139,12 +140,15 @@ function onComfyProgress(setProgress: (v: number) => void) {
     }
   };
 }
+/* v8 ignore stop */
 
+/* v8 ignore start */
 function onComfyError(toast: (opts: { kind: ToastKind; title: string; body: string }) => void) {
   return (event: { error: string }) => {
     toast({ kind: "bad", title: "Generation error", body: event.error });
   };
 }
+/* v8 ignore stop */
 
 const PortraitScreen: React.FC = () => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);

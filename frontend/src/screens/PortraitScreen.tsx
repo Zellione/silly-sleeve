@@ -228,9 +228,6 @@ const PortraitScreen: React.FC = () => {
     );
   }, [generating, workflowTemplate, workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, toast]);
 
-  const handleStop = () => {
-    setGenerating(false);
-  };
 
   const canvasTitle = 'Preview';
   const showDonePlaceholder = variantImages.length > 0;
@@ -351,7 +348,7 @@ const PortraitScreen: React.FC = () => {
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? handleStop : handleGenerate}
+              onToggleGenerate={generating ? () => setGenerating(false) : handleGenerate}
               onSavePreset={() => {}}
             />
 

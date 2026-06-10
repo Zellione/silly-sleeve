@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"silly-sleeve/internal/compose"
+	"silly-sleeve/internal/comfy"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/project"
@@ -30,6 +31,7 @@ type App struct {
 	activeCharID    int
 	projectDir      string
 	lorebookEntries []lorebook.Entry
+	projectImage    []byte
 }
 
 // NewApp creates a new App application struct
@@ -90,6 +92,86 @@ func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
 	})
 }
 
+// GetComfyConfig returns the ComfyUI connection settings.
+func (a *App) GetComfyConfig() settings.ComfyConfig {
+	return a.settings.Comfy
+}
+
+// ImportComfyWorkflow reads a workflow JSON file, parses it, and stores it in settings.
+func (a *App) ImportComfyWorkflow(filePath string) (comfy.ComfyWorkflow, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return comfy.ComfyWorkflow{}, fmt.Errorf("read workflow file: %w", err)
+	}
+
+	wf, err := comfy.ParseWorkflow(data)
+	if err != nil {
+		return comfy.ComfyWorkflow{}, fmt.Errorf("parse workflow: %w", err)
+	}
+
+	params := wf.ExtractParams(0)
+
+	baseName := filePath
+	if idx := strings.LastIndexByte(baseName, '/'); idx >= 0 {
+		baseName = baseName[idx+1:]
+	}
+	if idx := strings.LastIndexByte(baseName, '.'); idx >= 0 {
+		baseName = baseName[:idx]
+	}
+
+	cw := comfy.ComfyWorkflow{
+		ID:       fmt.Sprintf("wf-%d", len(a.settings.Comfy.Workflows)+1),
+		Name:     baseName,
+		JSONData: comfy.JSONString(data),
+		Params:   params,
+	}
+
+	a.settings.Comfy.Workflows = append(a.settings.Comfy.Workflows, cw)
+	if err := settings.Save(a.settings); err != nil {
+		return comfy.ComfyWorkflow{}, fmt.Errorf("save settings: %w", err)
+	}
+
+	return cw, nil
+}
+
+// GetComfyWorkflows returns all saved ComfyUI workflows.
+func (a *App) GetComfyWorkflows() []comfy.ComfyWorkflow {
+	return a.settings.Comfy.Workflows
+}
+
+// DeleteComfyWorkflow removes a workflow by ID.
+func (a *App) DeleteComfyWorkflow(id string) error {
+	filtered := make([]comfy.ComfyWorkflow, 0, len(a.settings.Comfy.Workflows))
+	for _, wf := range a.settings.Comfy.Workflows {
+		if wf.ID != id {
+			filtered = append(filtered, wf)
+		}
+	}
+	a.settings.Comfy.Workflows = filtered
+	if a.settings.Comfy.DefaultWorkflow == id {
+		a.settings.Comfy.DefaultWorkflow = ""
+	}
+	return settings.Save(a.settings)
+}
+
+// TestComfyUIEndpoint verifies connectivity to a ComfyUI instance.
+func (a *App) TestComfyUIEndpoint(url, token string) llm.TestResult {
+	var t *string
+	if token != "" {
+		t = &token
+	}
+	client := comfy.NewClient(url, t)
+	if err := client.TestConnection(); err != nil {
+		return llm.TestResult{
+			Ok:    false,
+			Error: err.Error(),
+		}
+	}
+		return llm.TestResult{
+		Ok:        true,
+	}
+}
+
 // GetDefaultPromptTemplates returns the built-in factory default templates.
 func (a *App) GetDefaultPromptTemplates() prompts.TemplateSet {
 	return prompts.Defaults()
@@ -107,6 +189,191 @@ func (a *App) GetPromptTemplates() prompts.TemplateSet {
 func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
 	a.settings.PromptTemplates = t
 	return settings.Save(a.settings)
+}
+
+// GeneratePortrait starts 4 ComfyUI generation jobs with seed offsets and returns the images.
+func (a *App) GeneratePortrait(params comfy.GenerationParams) ([]comfy.CompletedImage, error) {
+	return a.generateVariants(params, 4)
+}
+
+// GenerateProjectImage starts 3 ComfyUI generation jobs with seed offsets and returns the images.
+func (a *App) GenerateProjectImage(params comfy.GenerationParams) ([]comfy.CompletedImage, error) {
+	return a.generateVariants(params, 3)
+}
+
+func (a *App) generateVariants(params comfy.GenerationParams, count int) ([]comfy.CompletedImage, error) {
+	var t *string
+	if a.settings.Comfy.AuthToken != nil {
+		t = a.settings.Comfy.AuthToken
+	}
+
+	var allImages []comfy.CompletedImage
+	for i := 0; i < count; i++ {
+		variantParams := params
+		variantParams.Seed = params.Seed + i
+
+		g := comfy.NewGenerator(a.ctx, a.settings.Comfy.URL, t)
+		if err := g.Run(variantParams, nil); err != nil {
+			return nil, fmt.Errorf("variant %d: %w", i+1, err)
+		}
+		allImages = append(allImages, g.Images()...)
+	}
+	return allImages, nil
+}
+
+// GenerateImagePrompt uses the default LLM endpoint to generate image generation prompts.
+// style: "natural" or "danbooru".
+func (a *App) GenerateImagePrompt(charID int, style string) (string, string, error) {
+	a.mu.Lock()
+	var target compose.Character
+	for _, c := range a.characters {
+		if c.ID == charID {
+			target = c
+			break
+		}
+	}
+	def := a.defaultEndpoint()
+	a.mu.Unlock()
+
+	if def.URL == "" {
+		return "", "", fmt.Errorf("no default LLM endpoint configured")
+	}
+
+	ep := llm.LLMEndpoint{
+		ID:           def.ID,
+		Name:         def.Name,
+		URL:          def.URL,
+		Model:        def.Model,
+		Key:          def.Key,
+		ContextSize:  def.ContextSize,
+		Temperature:  def.Temperature,
+	}
+
+	result, err := llm.Complete(ep, buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
+	if err != nil {
+		return "", "", fmt.Errorf("generate image prompt: %w", err)
+	}
+
+	positive, negative := parseImagePromptResult(result)
+	return positive, negative, nil
+}
+
+// GetComfyWorkflowByName returns a saved workflow by name, or the first workflow if name is empty.
+func (a *App) GetComfyWorkflowByName(name string) (comfy.ComfyWorkflow, error) {
+	for _, wf := range a.settings.Comfy.Workflows {
+		if wf.Name == name || name == "" {
+			return wf, nil
+		}
+	}
+	return comfy.ComfyWorkflow{}, workflowNotFound(name)
+}
+
+// GetComfyWorkflowTemplate returns the workflow template JSON for a given workflow ID.
+// Returns the built-in template for known preset IDs, or the stored template/data for saved workflows.
+func (a *App) GetComfyWorkflowTemplate(id string) (string, error) {
+	if tmpl, ok := comfy.GetBuiltInTemplate(id); ok {
+		return tmpl, nil
+	}
+
+	for _, wf := range a.settings.Comfy.Workflows {
+		if wf.ID == id {
+			if len(wf.Template) > 0 {
+				return string(wf.Template), nil
+			}
+			return string(wf.JSONData), nil
+		}
+	}
+
+	return "", workflowNotFound(id)
+}
+
+// SaveComfyWorkflowTemplate stores an edited workflow template.
+func (a *App) SaveComfyWorkflowTemplate(id, template string) error {
+	for i, wf := range a.settings.Comfy.Workflows {
+		if wf.ID == id {
+			a.settings.Comfy.Workflows[i].Template = comfy.JSONString(template)
+			return settings.Save(a.settings)
+		}
+	}
+	return workflowNotFound(id)
+}
+
+func (a *App) comfyClient() (*comfy.Client, error) {
+	url := a.settings.Comfy.URL
+	if url == "" {
+		return nil, fmt.Errorf("ComfyUI URL not configured")
+	}
+	var t *string
+	if a.settings.Comfy.AuthToken != nil {
+		t = a.settings.Comfy.AuthToken
+	}
+	return comfy.NewClient(url, t), nil
+}
+
+// GetComfySamplers returns available sampler names from ComfyUI.
+func (a *App) GetComfySamplers() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("KSampler", "sampler_name")
+}
+
+// GetComfySchedulers returns available scheduler names from ComfyUI.
+func (a *App) GetComfySchedulers() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetNodeInputList("KSampler", "scheduler")
+}
+
+// GetComfyCheckpoints returns available checkpoint model names from ComfyUI.
+func (a *App) GetComfyCheckpoints() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("CheckpointLoaderSimple", "ckpt_name")
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+// GetComfyVAEs returns available VAE model names from ComfyUI.
+func (a *App) GetComfyVAEs() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("VAELoader", "vae_name")
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+// GetComfyLoRAs returns available LoRA model names from ComfyUI.
+func (a *App) GetComfyLoRAs() ([]string, error) {
+	client, err := a.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("LoraLoader", "lora_name")
+	if err != nil {
+		return nil, err
+	}
+	return values, nil
+}
+
+// ParseComfyWorkflowParams extracts WorkflowParams from raw workflow JSON.
+func (a *App) ParseComfyWorkflowParams(jsonData string) (comfy.WorkflowParams, error) {
+	wf, err := comfy.ParseWorkflow(json.RawMessage(jsonData))
+	if err != nil {
+		return comfy.WorkflowParams{}, err
+	}
+	return wf.ExtractParams(0), nil
 }
 
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.
@@ -184,7 +451,7 @@ func (a *App) UpdateCharacter(ch compose.Character) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("character %d not found", ch.ID)
+	return charNotFound(ch.ID)
 }
 
 // DeleteCharacter removes a character by ID.
@@ -207,7 +474,7 @@ func (a *App) DeleteCharacter(id int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("character %d not found", id)
+	return charNotFound(id)
 }
 
 // GetActiveCharacter returns the currently active character.
@@ -396,6 +663,8 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	}
 	entries := make([]lorebook.Entry, len(a.lorebookEntries))
 	copy(entries, a.lorebookEntries)
+	projImg := make([]byte, len(a.projectImage))
+	copy(projImg, a.projectImage)
 	a.mu.Unlock()
 
 	projectName := "Untitled Project"
@@ -411,6 +680,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		ActiveCharID: activeID,
 		SourceURL:    sourceURL,
 		CrawlTitle:   crawlTitle,
+		ProjectImage: projImg,
 	}
 
 	b := bundle.Bundle{
@@ -461,6 +731,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.activeCharID = b.Manifest.ActiveCharID
 	a.projectDir = filePath
 	a.lorebookEntries = b.Lorebook
+	a.projectImage = b.Manifest.ProjectImage
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}
@@ -510,7 +781,7 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 		}
 	}
 	if found == nil {
-		return "", fmt.Errorf("character %d not found", charID)
+		return "", charNotFound(charID)
 	}
 
 	// export will be written by the export package
@@ -547,6 +818,53 @@ func (a *App) ExportLorebook(folderPath string) (string, error) {
 		return "", err
 	}
 	return filePath, nil
+}
+
+// GetPortrait returns the portrait bytes for a character.
+func (a *App) GetPortrait(charID int) []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, c := range a.characters {
+		if c.ID == charID {
+			return c.Portrait
+		}
+	}
+	return nil
+}
+
+// SavePortrait stores portrait bytes for a character.
+func (a *App) SavePortrait(charID int, data []byte) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for i, c := range a.characters {
+		if c.ID == charID {
+			a.characters[i].Portrait = data
+			return nil
+		}
+	}
+	return charNotFound(charID)
+}
+
+// GetProjectImage returns the project-level cover image.
+func (a *App) GetProjectImage() []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.projectImage
+}
+
+// SaveProjectImage stores the project-level cover image.
+func (a *App) SaveProjectImage(data []byte) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.projectImage = data
+}
+
+func charNotFound(id int) error {
+	return fmt.Errorf("character %d not found", id)
+}
+
+func workflowNotFound(id string) error {
+	return fmt.Errorf("workflow %q not found", id)
 }
 
 func slugify(s string) string {

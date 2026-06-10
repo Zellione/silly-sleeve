@@ -6,28 +6,39 @@ import (
 	"os"
 	"path/filepath"
 
+	"silly-sleeve/internal/comfy"
 	"silly-sleeve/internal/prompts"
 )
 
 // LLMEndpoint is a future-proof endpoint definition.
 type LLMEndpoint struct {
-	ID            int     `json:"id"`
-	Name          string  `json:"name"`
-	URL           string  `json:"url"`
-	Model         string  `json:"model"`
-	Key           *string `json:"key"`
-	IsDefault     bool    `json:"isDefault"`
-	ContextSize   int     `json:"contextSize"`
-	Temperature   float64 `json:"temperature"`
-	SystemPrompt  string  `json:"systemPrompt"`
-	Ok            bool    `json:"ok"`
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	URL          string  `json:"url"`
+	Model        string  `json:"model"`
+	Key          *string `json:"key"`
+	IsDefault    bool    `json:"isDefault"`
+	ContextSize  int     `json:"contextSize"`
+	Temperature  float64 `json:"temperature"`
+	SystemPrompt string  `json:"systemPrompt"`
+	Ok           bool    `json:"ok"`
+}
+
+// ComfyConfig holds ComfyUI backend connection settings.
+type ComfyConfig struct {
+	URL             string                `json:"url"`
+	AuthToken       *string               `json:"authToken"`
+	OutputFolder    string                `json:"outputFolder"`
+	DefaultWorkflow string                `json:"defaultWorkflow"`
+	Workflows       []comfy.ComfyWorkflow `json:"workflows"`
 }
 
 // Settings is the top-level persisted config.
 type Settings struct {
-	Endpoints       []LLMEndpoint        `json:"endpoints"`
-	PromptTemplates prompts.TemplateSet  `json:"promptTemplates,omitempty"`
-	AutoSaveMode    string               `json:"autoSaveMode,omitempty"`
+	Endpoints        []LLMEndpoint       `json:"endpoints"`
+	Comfy            ComfyConfig         `json:"comfy"`
+	PromptTemplates  prompts.TemplateSet `json:"promptTemplates,omitempty"`
+	AutoSaveMode     string              `json:"autoSaveMode,omitempty"`
 	AutoSaveInterval int                 `json:"autoSaveInterval,omitempty"`
 }
 

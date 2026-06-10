@@ -18,6 +18,10 @@ export function DeleteCharacter(arg1) {
   return window['go']['main']['App']['DeleteCharacter'](arg1);
 }
 
+export function DeleteComfyWorkflow(arg1) {
+  return window['go']['main']['App']['DeleteComfyWorkflow'](arg1);
+}
+
 export function ExportCharacter(arg1, arg2) {
   return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
 }
@@ -34,6 +38,18 @@ export function GenerateField(arg1, arg2) {
   return window['go']['main']['App']['GenerateField'](arg1, arg2);
 }
 
+export function GenerateImagePrompt(arg1, arg2) {
+  return window['go']['main']['App']['GenerateImagePrompt'](arg1, arg2);
+}
+
+export function GeneratePortrait(arg1) {
+  return window['go']['main']['App']['GeneratePortrait'](arg1);
+}
+
+export function GenerateProjectImage(arg1) {
+  return window['go']['main']['App']['GenerateProjectImage'](arg1);
+}
+
 export function GetActiveCharacter() {
   return window['go']['main']['App']['GetActiveCharacter']();
 }
@@ -46,12 +62,56 @@ export function GetCharacters() {
   return window['go']['main']['App']['GetCharacters']();
 }
 
+export function GetComfyCheckpoints() {
+  return window['go']['main']['App']['GetComfyCheckpoints']();
+}
+
+export function GetComfyConfig() {
+  return window['go']['main']['App']['GetComfyConfig']();
+}
+
+export function GetComfyLoRAs() {
+  return window['go']['main']['App']['GetComfyLoRAs']();
+}
+
+export function GetComfySamplers() {
+  return window['go']['main']['App']['GetComfySamplers']();
+}
+
+export function GetComfySchedulers() {
+  return window['go']['main']['App']['GetComfySchedulers']();
+}
+
+export function GetComfyVAEs() {
+  return window['go']['main']['App']['GetComfyVAEs']();
+}
+
+export function GetComfyWorkflowByName(arg1) {
+  return window['go']['main']['App']['GetComfyWorkflowByName'](arg1);
+}
+
+export function GetComfyWorkflowTemplate(arg1) {
+  return window['go']['main']['App']['GetComfyWorkflowTemplate'](arg1);
+}
+
+export function GetComfyWorkflows() {
+  return window['go']['main']['App']['GetComfyWorkflows']();
+}
+
 export function GetDefaultPromptTemplates() {
   return window['go']['main']['App']['GetDefaultPromptTemplates']();
 }
 
 export function GetLorebook() {
   return window['go']['main']['App']['GetLorebook']();
+}
+
+export function GetPortrait(arg1) {
+  return window['go']['main']['App']['GetPortrait'](arg1);
+}
+
+export function GetProjectImage() {
+  return window['go']['main']['App']['GetProjectImage']();
 }
 
 export function GetPromptTemplates() {
@@ -66,8 +126,16 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function ImportComfyWorkflow(arg1) {
+  return window['go']['main']['App']['ImportComfyWorkflow'](arg1);
+}
+
 export function OpenProjectBundle(arg1) {
   return window['go']['main']['App']['OpenProjectBundle'](arg1);
+}
+
+export function ParseComfyWorkflowParams(arg1) {
+  return window['go']['main']['App']['ParseComfyWorkflowParams'](arg1);
 }
 
 export function PickExportFolder() {
@@ -82,12 +150,24 @@ export function PickSaveBundle() {
   return window['go']['main']['App']['PickSaveBundle']();
 }
 
+export function SaveComfyWorkflowTemplate(arg1, arg2) {
+  return window['go']['main']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
+}
+
 export function SaveLorebook(arg1) {
   return window['go']['main']['App']['SaveLorebook'](arg1);
 }
 
+export function SavePortrait(arg1, arg2) {
+  return window['go']['main']['App']['SavePortrait'](arg1, arg2);
+}
+
 export function SaveProjectBundle(arg1) {
   return window['go']['main']['App']['SaveProjectBundle'](arg1);
+}
+
+export function SaveProjectImage(arg1) {
+  return window['go']['main']['App']['SaveProjectImage'](arg1);
 }
 
 export function SavePromptTemplates(arg1) {
@@ -100,6 +180,10 @@ export function SaveSettings(arg1) {
 
 export function SetActiveCharacter(arg1) {
   return window['go']['main']['App']['SetActiveCharacter'](arg1);
+}
+
+export function TestComfyUIEndpoint(arg1, arg2) {
+  return window['go']['main']['App']['TestComfyUIEndpoint'](arg1, arg2);
 }
 
 export function TestLLMEndpoint(arg1) {

@@ -37,14 +37,22 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetLorebook: () => mockGetLorebook(),
   SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
   ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
+  GetComfySamplers: vi.fn().mockResolvedValue([]),
+  GetComfySchedulers: vi.fn().mockResolvedValue([]),
+  GetComfyCheckpoints: vi.fn().mockResolvedValue([]),
+  GetComfyVAEs: vi.fn().mockResolvedValue([]),
+  GetComfyLoRAs: vi.fn().mockResolvedValue([]),
+  GenerateImagePrompt: vi.fn().mockResolvedValue(''),
+  GeneratePortrait: vi.fn().mockResolvedValue([]),
+  GenerateProjectImage: vi.fn().mockResolvedValue([]),
+  GetComfyWorkflows: vi.fn().mockResolvedValue([]),
+  GetComfyWorkflowTemplate: vi.fn().mockResolvedValue(''),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
 
 const placeholders = [
-  { name: 'ProjectImageScreen', component: ProjectImageScreen, title: 'Project image' },
-  { name: 'PortraitScreen', component: PortraitScreen, title: 'Portrait' },
   { name: 'PreviewScreen', component: PreviewScreen, title: 'Preview character card' },
 ];
 
@@ -214,6 +222,40 @@ describe('screens/index', () => {
 
     it('is a function component', () => {
       expect(typeof Comp).toBe('function');
+    });
+  });
+
+  describe('PortraitScreen', () => {
+    it('renders generate/upload tabs', async () => {
+      const { container } = renderWithToast(<PortraitScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('Generate');
+        expect(container.textContent).toContain('Upload');
+      });
+    });
+
+    it('renders portrait title', async () => {
+      const { container } = renderWithToast(<PortraitScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('portrait');
+      });
+    });
+  });
+
+  describe('ProjectImageScreen', () => {
+    it('renders generate/upload tabs', async () => {
+      const { container } = renderWithToast(<ProjectImageScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('Generate');
+        expect(container.textContent).toContain('Upload');
+      });
+    });
+
+    it('renders project image title', async () => {
+      const { container } = renderWithToast(<ProjectImageScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('Project');
+      });
     });
   });
 

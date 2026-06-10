@@ -75,15 +75,17 @@ func TestSaveProject_SetsTimestamps(t *testing.T) {
 
 	loaded, _, err := LoadProject(dir)
 	require.NoError(t, err)
-	assert.False(t, loaded.CreatedAt.IsZero())
-	assert.False(t, loaded.UpdatedAt.IsZero())
-	assert.True(t, loaded.CreatedAt.Before(after.Add(time.Second)))
-	assert.True(t, loaded.CreatedAt.After(before.Add(-time.Second)))
+	assert.NotEmpty(t, loaded.CreatedAt)
+	assert.NotEmpty(t, loaded.UpdatedAt)
+	createdAt, err := time.Parse(time.RFC3339, loaded.CreatedAt)
+	require.NoError(t, err)
+	assert.True(t, createdAt.Before(after.Add(time.Second)))
+	assert.True(t, createdAt.After(before.Add(-time.Second)))
 }
 
 func TestSaveProject_PreservesCreatedAt(t *testing.T) {
 	dir := t.TempDir()
-	fixed := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
+	fixed := "2024-01-15T12:00:00Z"
 	m := ProjectManifest{Name: "Preserve", CreatedAt: fixed}
 	chars := sampleCharacters()
 
@@ -99,7 +101,7 @@ func TestSaveProject_PreservesCreatedAt(t *testing.T) {
 func TestLoadProject(t *testing.T) {
 	dir := t.TempDir()
 	m := sampleManifest()
-	m.CreatedAt = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	m.CreatedAt = "2024-01-01T00:00:00Z"
 	chars := sampleCharacters()
 
 	err := SaveProject(dir, m, chars)

@@ -20,6 +20,7 @@ type Character struct {
 	Quotes        []string  `json:"quotes"`
 	Stats         []StatKV  `json:"stats"`
 	Dirty         bool      `json:"dirty"`
+	Portrait      []byte    `json:"portrait"`
 }
 
 // NewCharacter creates a fresh character with empty fields.

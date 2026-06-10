@@ -121,15 +121,16 @@ wails build -clean -platform windows/amd64
 ## Lint
 
 ```bash
-cd frontend && npm run lint && cd ..
+go vet ./...
 golangci-lint run ./...
+cd frontend && npm run lint && cd ..
 ```
 
 ## Test
 
 ```bash
-go test ./...
-cd frontend && npm test
+go test ./... -race -cover
+cd frontend && npm run test:coverage && cd ..
 ```
 
 ## License

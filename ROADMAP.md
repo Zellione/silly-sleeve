@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-02
+> Last updated: 2026-06-07
 
 ## Overview
 
@@ -82,13 +82,22 @@ Goal: Per-field AI assistance, lorebook basics, and project bundles.
 
 Goal: Full SillyTavern drop-in experience with portraits and PNG embedding.
 
-- [ ] **5.1** ComfyUI settings: server URL, auth, output folder, workflow import
-- [ ] **5.2** WebSocket listener for generation progress
-- [ ] **5.3** Portrait screen: generate (auto-fill from appearance) + upload, 4-variant gallery
-- [ ] **5.4** Project image screen: generate cover art + upload dropzone
-- [ ] **5.5** PNG export v2: embed portrait + JSON in `tEXt` chunk
-- [ ] **5.6** PNG export v3 (CCv3): with embedded lorebook and asset library
-- [ ] **5.7** Export hub: bulk format picker, destination folder, embedding options, progress queue
+### Milestone A — Images & ComfyUI
+
+- [x] **5a.1** Data model: add Portrait to Character, ProjectImage to Manifest, ComfyConfig + ComfyWorkflow to Settings, image persistence in bundle
+- [x] **5a.2** ComfyUI settings UI: server URL, auth, output folder, workflow import/parse/delete, default workflow
+- [x] **5a.3** ComfyUI Go client & workflow parser: `internal/comfy/` package (models, parser, HTTP client, WebSocket listener)
+- [x] **5a.4** Portrait screen — generate mode: workflow picker, sampler params, prompt auto-fill from appearance, 4-variant gallery via ComfyUI
+- [x] **5a.5** Portrait screen — upload mode: drag-drop zone, file metadata, crop/resize, URL paste
+- [x] **5a.6** Project image screen: generate cover art (16:9), 3-variant comparator, upload mode
+- [x] **5a.7** Bundle image persistence, Wails Events for progress, tests, quality gate
+
+### Milestone B — Production Export
+
+- [ ] **5b.1** PNG CCv3 export engine: `internal/export/png.go` with custom tEXt chunk injection (chara + ccv3)
+- [ ] **5b.2** Export hub screen: character grid picker, lorebook entry list, format picker, embedding options, destination tree preview
+- [ ] **5b.3** Export queue & bulk logic: sequential export with Wails Events progress per character
+- [ ] **5b.4** Tests, quality gate, enable PNG export buttons
 
 ---
 
@@ -193,3 +202,24 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - Updated packages: `internal/settings/`, `internal/compose/generate.go`
 - Frontend: prompt template editor, per-field reroll wiring, lorebook editor, auto-save hook
 - Go tests: 231 in 10 packages; Frontend tests: ~330 (including lorebook + auto-save tests)
+
+### 2026-06-07
+
+- Started Phase 3A — Images & ComfyUI (`milestone/5a-images-comfy`).
+
+#### Completed Milestone A — Images & ComfyUI
+
+- [x] **5a.1** Data model — `Portrait []byte` on `Character`, `ProjectImage []byte` on `ProjectManifest`, `ComfyConfig`/`ComfyWorkflow`/`WorkflowParams` in settings, image persistence in `.slv` zip entries
+- [x] **5a.2** ComfyUI settings UI in `SettingsScreen.tsx` — server URL + test, auth token toggle, output folder, workflow import/parse/delete with auto-extracted params panel
+- [x] **5a.3** `internal/comfy/` Go package — HTTP REST client (SystemStats, QueuePrompt, History, GetImage, TestConnection), WebSocket listener (progress/executing/executed/error events), workflow JSON parser with KSampler graph traversal, 10 client tests with mock HTTP server
+- [x] **5a.4** PortraitScreen generate mode — workflow picker, sampler params, model/VAE/LoRA selectors, auto-fill prompt from character appearance, 4-variant mock generation with seed offsets, `ImageCanvasPanel` shared component
+- [x] **5a.5** PortraitScreen upload mode — drag-drop zone with file metadata, crop/resize select, URL paste card, `ImageUploadPanel` shared component
+- [x] **5a.6** ProjectImageScreen — generate cover art (16:9), 3-variant comparator, lorebook context checkboxes, upload mode, `ImageGalleryPanel` shared component
+- [x] **5a.7** Backend bindings — `ImportComfyWorkflow`, `TestComfyUIEndpoint`, `DeleteComfyWorkflow`; image persistence as `images/portrait_<id>.png` and `images/project.png` zip entries; Wails Events plumbing for generation progress
+- Frontend: 16 test files, 462 tests, 81.08% line coverage
+- Go: 10 packages, lint + vet clean
+- Shared components extracted to eliminate SonarCloud duplications: `ImageCanvasPanel`, `ImageGalleryPanel`, `ImageUploadPanel`, `GenerationParamsPanel`
+- SonarCloud quality gate: all 5 conditions OK
+- PR #6 opened at https://github.com/Zellione/silly-sleeve/pull/6
+- Real ComfyUI generation wired: placeholder system (`ReplacePlaceholders`, `ExtractPlaceholders`), `Generator` orchestrator with per-variant WSListener, Wails events bridge (`comfy:progress`/`comfy:completed`/`comfy:error`), LLM prompt generation (natural/Danbooru styles), WorkflowEditor modal for JSON template editing with placeholder detection
+- Frontend: 17 test files, 475 tests, 80.03% line coverage

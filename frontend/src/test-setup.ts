@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 
 globalThis.confirm = () => true;
 
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(globalThis, 'matchMedia', {
   writable: true,
   value: (query: string) => ({
     matches: false,
@@ -28,4 +28,26 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
+
+(globalThis as any).runtime = {
+  EventsOnMultiple: (_eventName: string, _callback: (...data: any) => void, _maxCallbacks: number) => {
+    return () => {};
+  },
+  EventsOn: (_eventName: string, _callback: (...data: any) => void) => {
+    return () => {};
+  },
+  EventsOnce: (_eventName: string, _callback: (...data: any) => void) => { },
+  EventsOff: (_eventName: string) => { },
+  EventsOffAll: () => { },
+  EventsEmit: (_eventName: string, ..._data: any) => { },
+  LogPrint: (_message: string) => { },
+};
+
+(HTMLDialogElement.prototype as any).showModal = function () {
+  this.open = true;
+};
+(HTMLDialogElement.prototype as any).close = function () {
+  this.open = false;
+  this.dispatchEvent(new Event('close'));
+};

@@ -42,13 +42,13 @@ describe('Sidebar', () => {
   it('highlights active route', () => {
     render(<Sidebar current="crawler" onNav={onNav} />);
     const button = screen.getByText('Crawl').closest('button');
-    expect(button!.getAttribute('data-active')).toBe('1');
+    expect(button!.dataset.active).toBe('1');
   });
 
   it('does not highlight inactive routes', () => {
     render(<Sidebar current="dashboard" onNav={onNav} />);
     const button = screen.getByText('Crawl').closest('button');
-    expect(button!.getAttribute('data-active')).toBe('0');
+    expect(button!.dataset.active).toBe('0');
   });
 
   it('calls onNav when clicking a nav item', async () => {
@@ -142,26 +142,26 @@ describe('ThemeToggle', () => {
   it('reads saved theme from localStorage', () => {
     localStorage.setItem('ss-theme', 'dark');
     render(<ThemeToggle />);
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 
   it('falls back to light mode when no saved theme', () => {
     render(<ThemeToggle />);
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('toggles theme on click', async () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
 
     await user.click(screen.getByRole('button'));
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
     expect(localStorage.getItem('ss-theme')).toBe('dark');
 
     await user.click(screen.getByRole('button'));
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('ss-theme')).toBe('light');
   });
 

@@ -232,10 +232,10 @@ describe('SettingsScreen', () => {
     });
 
     const authSwitch = screen.getByRole('switch');
-    expect(authSwitch.getAttribute('data-on')).toBe('0');
+    expect(authSwitch.dataset.on).toBe('0');
 
     await user.click(authSwitch);
-    expect(authSwitch.getAttribute('data-on')).toBe('1');
+    expect(authSwitch.dataset.on).toBe('1');
   });
 
   it('tests endpoint from flyout', async () => {
@@ -715,6 +715,152 @@ describe('SettingsScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+    });
+  });
+
+  describe('ComfyUI section', () => {
+    beforeEach(() => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({
+        endpoints: [createEndpoint()],
+        comfy: settings.ComfyConfig.createFrom({
+          url: 'http://127.0.0.1:8188',
+          outputFolder: '/tmp/comfy',
+          workflows: [],
+        }),
+      }));
+      mockSaveSettings.mockResolvedValue(undefined);
+    });
+
+    it('renders ComfyUI nav item', async () => {
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+      expect(screen.getByText('ComfyUI')).toBeInTheDocument();
+    });
+
+    it('shows ComfyUI section when nav item clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText('Server URL')).toBeInTheDocument();
+      });
+    });
+
+    it('has server URL text', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText('Server URL')).toBeInTheDocument();
+        expect(screen.getByText('Authentication')).toBeInTheDocument();
+        expect(screen.getByText('Output folder')).toBeInTheDocument();
+      });
+    });
+
+    it('has auth toggle', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText('Use auth token')).toBeInTheDocument();
+      });
+    });
+
+    it('has workflow section', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText('Saved workflows')).toBeInTheDocument();
+      });
+    });
+
+    it('has Import workflow .json button', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText('Import workflow .json')).toBeInTheDocument();
+      });
+    });
+
+    it('shows no workflows message when empty', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText(/No workflows imported yet/)).toBeInTheDocument();
+      });
+    });
+
+    it('has test connection button', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        expect(screen.getByText('Test')).toBeInTheDocument();
+      });
+    });
+
+    it('clicks auth toggle to reveal token input', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => screen.getByText('Use auth token'));
+
+      const authSwitch = screen.getByRole('switch');
+      await user.click(authSwitch);
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Your ComfyUI auth token')).toBeInTheDocument();
+        expect(screen.getByText('Save auth')).toBeInTheDocument();
+      });
+    });
+
+    it('finds output folder input with value', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => {
+        const input = screen.getByPlaceholderText('/path/to/comfyui/output') as HTMLInputElement;
+        expect(input).toBeInTheDocument();
+        expect(input.value).toBe('/tmp/comfy');
+      });
+    });
+
+    it('saves ComfyUI URL', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => screen.getByText('Save URL'));
+      await user.click(screen.getByText('Save URL'));
+      await waitFor(() => {
+        expect(mockSaveSettings).toHaveBeenCalled();
+      });
+    });
+
+    it('toggles back to LLM section', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('ComfyUI'));
+      await waitFor(() => screen.getByText('Server URL'));
+      await user.click(screen.getByText('LLM endpoints'));
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Server URL')).not.toBeInTheDocument();
     });
   });
 });

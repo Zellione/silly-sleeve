@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { CheckIcon, XIcon, BoltIcon, SaveIcon } from '../icons';
 
 export type ToastKind = 'ok' | 'bad' | 'warn' | 'info';
@@ -46,8 +46,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts(prev => prev.filter(x => x.id !== id));
   }, []);
 
+  const ctx = useMemo<ToastContextValue>(() => ({ toast }), [toast]);
+
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={ctx}>
       {children}
       {toasts.length > 0 && (
         <div className="ss-toast-stack">

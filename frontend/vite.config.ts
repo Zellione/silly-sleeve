@@ -19,6 +19,7 @@ export default defineConfig({
       exclude: [
         'src/test-setup.ts',
         'src/vite-env.d.ts',
+        'src/main.tsx',
         'wailsjs/**',
       ],
     },

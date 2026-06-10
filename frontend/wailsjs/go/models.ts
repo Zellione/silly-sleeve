@@ -1,3 +1,130 @@
+export namespace comfy {
+	
+	export class WorkflowParams {
+	    prompt: string;
+	    negativePrompt: string;
+	    seed: number;
+	    steps: number;
+	    cfg: number;
+	    sampler: string;
+	    scheduler: string;
+	    width: number;
+	    height: number;
+	    checkpoint: string;
+	    denoise: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkflowParams(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prompt = source["prompt"];
+	        this.negativePrompt = source["negativePrompt"];
+	        this.seed = source["seed"];
+	        this.steps = source["steps"];
+	        this.cfg = source["cfg"];
+	        this.sampler = source["sampler"];
+	        this.scheduler = source["scheduler"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.checkpoint = source["checkpoint"];
+	        this.denoise = source["denoise"];
+	    }
+	}
+	export class ComfyWorkflow {
+	    id: string;
+	    name: string;
+	    jsonData: string;
+	    template: string;
+	    params: WorkflowParams;
+	
+	    static createFrom(source: any = {}) {
+	        return new ComfyWorkflow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.jsonData = source["jsonData"];
+	        this.template = source["template"];
+	        this.params = this.convertValues(source["params"], WorkflowParams);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CompletedImage {
+	    filename: string;
+	    subfolder: string;
+	    type: string;
+	    data: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CompletedImage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filename = source["filename"];
+	        this.subfolder = source["subfolder"];
+	        this.type = source["type"];
+	        this.data = source["data"];
+	    }
+	}
+	export class GenerationParams {
+	    workflowTemplate: string;
+	    seed: number;
+	    steps: number;
+	    cfg: number;
+	    sampler: string;
+	    scheduler: string;
+	    denoise: number;
+	    positivePrompt: string;
+	    negativePrompt: string;
+	    width: number;
+	    height: number;
+	    checkpoint: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GenerationParams(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workflowTemplate = source["workflowTemplate"];
+	        this.seed = source["seed"];
+	        this.steps = source["steps"];
+	        this.cfg = source["cfg"];
+	        this.sampler = source["sampler"];
+	        this.scheduler = source["scheduler"];
+	        this.denoise = source["denoise"];
+	        this.positivePrompt = source["positivePrompt"];
+	        this.negativePrompt = source["negativePrompt"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.checkpoint = source["checkpoint"];
+	    }
+	}
+
+}
+
 export namespace compose {
 	
 	export class StatKV {
@@ -27,6 +154,7 @@ export namespace compose {
 	    quotes: string[];
 	    stats: StatKV[];
 	    dirty: boolean;
+	    portrait: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Character(source);
@@ -46,6 +174,7 @@ export namespace compose {
 	        this.quotes = source["quotes"];
 	        this.stats = this.convertValues(source["stats"], StatKV);
 	        this.dirty = source["dirty"];
+	        this.portrait = source["portrait"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -250,13 +379,12 @@ export namespace project {
 	export class ProjectManifest {
 	    version: string;
 	    name: string;
-	    // Go type: time
-	    createdAt: any;
-	    // Go type: time
-	    updatedAt: any;
+	    createdAt: string;
+	    updatedAt: string;
 	    activeCharId: number;
 	    sourceUrl: string;
 	    crawlTitle: string;
+	    projectImage: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ProjectManifest(source);
@@ -266,30 +394,13 @@ export namespace project {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
 	        this.name = source["name"];
-	        this.createdAt = this.convertValues(source["createdAt"], null);
-	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
 	        this.activeCharId = source["activeCharId"];
 	        this.sourceUrl = source["sourceUrl"];
 	        this.crawlTitle = source["crawlTitle"];
+	        this.projectImage = source["projectImage"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }
@@ -315,6 +426,44 @@ export namespace prompts {
 
 export namespace settings {
 	
+	export class ComfyConfig {
+	    url: string;
+	    authToken?: string;
+	    outputFolder: string;
+	    defaultWorkflow: string;
+	    workflows: comfy.ComfyWorkflow[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ComfyConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.authToken = source["authToken"];
+	        this.outputFolder = source["outputFolder"];
+	        this.defaultWorkflow = source["defaultWorkflow"];
+	        this.workflows = this.convertValues(source["workflows"], comfy.ComfyWorkflow);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LLMEndpoint {
 	    id: number;
 	    name: string;
@@ -347,6 +496,7 @@ export namespace settings {
 	}
 	export class Settings {
 	    endpoints: LLMEndpoint[];
+	    comfy: ComfyConfig;
 	    promptTemplates?: prompts.TemplateSet;
 	    autoSaveMode?: string;
 	    autoSaveInterval?: number;
@@ -358,6 +508,7 @@ export namespace settings {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.endpoints = this.convertValues(source["endpoints"], LLMEndpoint);
+	        this.comfy = this.convertValues(source["comfy"], ComfyConfig);
 	        this.promptTemplates = this.convertValues(source["promptTemplates"], prompts.TemplateSet);
 	        this.autoSaveMode = source["autoSaveMode"];
 	        this.autoSaveInterval = source["autoSaveInterval"];

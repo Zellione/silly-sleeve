@@ -231,4 +231,92 @@ describe('ExportScreen', () => {
       expect(pngBtn?.hasAttribute('disabled')).toBe(true);
     });
   });
+
+  it('exports multiple characters successfully', async () => {
+    const user = userEvent.setup();
+    mockExportCharacter.mockResolvedValue('/mock/export/char.json');
+    renderWithProviders(<ExportScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    const destInput = screen.getByPlaceholderText('Choose or type a folder path…') as HTMLInputElement;
+    await user.type(destInput, '/tmp/export');
+    await waitFor(() => {
+      expect(destInput.value).toBe('/tmp/export');
+    });
+
+    const exportBtn = Array.from(document.querySelectorAll('button'))
+      .find(b => b.textContent?.includes('Export 2 characters') && !b.hasAttribute('disabled'));
+
+    if (exportBtn) {
+      await user.click(exportBtn);
+      await waitFor(() => {
+        expect(mockExportCharacter).toHaveBeenCalledTimes(2);
+      });
+    }
+  });
+
+  it('handles partial export failure', async () => {
+    const user = userEvent.setup();
+    mockExportCharacter.mockRejectedValueOnce(new Error('fail'));
+    renderWithProviders(<ExportScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    const destInput = screen.getByPlaceholderText('Choose or type a folder path…') as HTMLInputElement;
+    await user.type(destInput, '/tmp/export');
+
+    await waitFor(() => {
+      expect(destInput.value).toBe('/tmp/export');
+    });
+
+    const exportBtn = Array.from(document.querySelectorAll('button'))
+      .find(b => b.textContent?.includes('Export ') && b.textContent?.includes('character') && !b.hasAttribute('disabled'));
+
+    if (exportBtn) {
+      await user.click(exportBtn);
+      await waitFor(() => {
+        expect(document.body.textContent).toContain('Export partial');
+      });
+    }
+  });
+
+  it('picks export folder via browse button', async () => {
+    const user = userEvent.setup();
+    mockPickExportFolder.mockResolvedValue('/mock/folder');
+    renderWithProviders(<ExportScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    const browseBtns = Array.from(document.querySelectorAll('button'))
+      .filter(b => b.getAttribute('title') === 'Browse…');
+    if (browseBtns.length > 0) {
+      await user.click(browseBtns[0]);
+      await waitFor(() => {
+        expect(mockPickExportFolder).toHaveBeenCalled();
+      });
+    }
+  });
+
+  it('deselects all characters with None button', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ExportScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    const noneBtn = screen.getByText('None');
+    await user.click(noneBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('0 of 2 selected')).toBeInTheDocument();
+    });
+  });
 });

@@ -20,11 +20,12 @@ const ManifestVersion = "1"
 type ProjectManifest struct {
 	Version      string    `json:"version"`
 	Name         string    `json:"name"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
 	ActiveCharID int       `json:"activeCharId"`
 	SourceURL    string    `json:"sourceUrl"`
 	CrawlTitle   string    `json:"crawlTitle"`
+	ProjectImage []byte    `json:"projectImage"`
 }
 
 const manifestFile = "manifest.json"
@@ -36,8 +37,8 @@ func SaveProject(folderPath string, m ProjectManifest, characters []compose.Char
 	if v.Version == "" {
 		v.Version = ManifestVersion
 	}
-	now := time.Now().UTC()
-	if v.CreatedAt.IsZero() {
+	now := time.Now().UTC().Format(time.RFC3339)
+	if v.CreatedAt == "" {
 		v.CreatedAt = now
 	}
 	v.UpdatedAt = now

@@ -26,19 +26,30 @@ const PORTRAIT_WORKFLOWS = [
   { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, sampler: 'euler', scheduler: 'normal' },
 ];
 
+interface PortraitGenParams {
+  generating: boolean;
+  workflowTemplate: string | null;
+  workflowSize: string;
+  seed: number;
+  steps: number;
+  cfg: number;
+  sampler: string;
+  scheduler: string;
+  denoise: number;
+  prompt: string;
+  negPrompt: string;
+  checkpoint: string;
+}
+
 async function portraitGenerateVariants(
-  generating: boolean,
-  workflowTemplate: string | null,
-  workflowSize: string,
-  seed: number, steps: number, cfg: number, sampler: string, scheduler: string,
-  denoise: number, prompt: string, negPrompt: string, checkpoint: string,
+  params: PortraitGenParams,
   setGenerating: (v: boolean) => void,
   setProgress: (v: number) => void,
   setVariantImages: (v: string[]) => void,
   toast: (opts: { kind: ToastKind; title: string; body: string }) => void,
 ): Promise<void> {
-  if (generating) return;
-  if (!workflowTemplate) {
+  if (params.generating) return;
+  if (!params.workflowTemplate) {
     toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
     return;
   }
@@ -46,10 +57,11 @@ async function portraitGenerateVariants(
   setProgress(0);
   setVariantImages([]);
 
+  const { workflowTemplate, workflowSize, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint } = params;
   const [w, h] = workflowSize.split('×').map(Number);
 
   try {
-    const params = new comfy.GenerationParams({
+    const genParams = new comfy.GenerationParams({
       workflowTemplate,
       seed,
       steps,
@@ -64,7 +76,7 @@ async function portraitGenerateVariants(
       checkpoint,
     });
 
-    const images = await GeneratePortrait(params);
+    const images = await GeneratePortrait(genParams);
     console.log('[PortraitScreen] GeneratePortrait returned', images.length, 'images');
     images.forEach((img, i) => {
       const dataLen = img.data ? img.data.length : 0;
@@ -103,6 +115,20 @@ async function autoFillImagePrompt(
       setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
     }
   }
+}
+
+function mapWorkflows(wfs: comfy.ComfyWorkflow[]): WorkflowOption[] {
+  return wfs.map(wf => ({
+    id: wf.id,
+    name: wf.name.replace(/\.json$/i, ''),
+    model: wf.params.checkpoint || 'custom',
+    size: wf.params.width && wf.params.height
+      ? `${wf.params.width}×${wf.params.height}`
+      : 'custom',
+    steps: wf.params.steps || 20,
+    sampler: wf.params.sampler || 'euler',
+    scheduler: wf.params.scheduler || 'normal',
+  }));
 }
 
 const PortraitScreen: React.FC = () => {
@@ -157,17 +183,7 @@ const PortraitScreen: React.FC = () => {
 
   useEffect(() => {
     GetComfyWorkflows().then(wfs => {
-      setUploadedWorkflows(wfs.map(wf => ({
-        id: wf.id,
-        name: wf.name.replace(/\.json$/i, ''),
-        model: wf.params.checkpoint || 'custom',
-        size: wf.params.width && wf.params.height
-          ? `${wf.params.width}×${wf.params.height}`
-          : 'custom',
-        steps: wf.params.steps || 20,
-        sampler: wf.params.sampler || 'euler',
-        scheduler: wf.params.scheduler || 'normal',
-      })));
+      setUploadedWorkflows(mapWorkflows(wfs));
     }).catch(() => {});
   }, []);
 
@@ -207,9 +223,7 @@ const PortraitScreen: React.FC = () => {
 
   const handleGenerate = useCallback(() => {
     portraitGenerateVariants(
-      generating, workflowTemplate, workflow.size,
-      seed, steps, cfg, sampler, scheduler, denoise,
-      prompt, negPrompt, checkpoint,
+      { generating, workflowTemplate, workflowSize: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint },
       setGenerating, setProgress, setVariantImages, toast,
     );
   }, [generating, workflowTemplate, workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, toast]);

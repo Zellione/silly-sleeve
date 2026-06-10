@@ -15,6 +15,14 @@ function loadImageDimensions(url: string): Promise<{ width: number; height: numb
   });
 }
 
+function updateUploadFileDims(
+  setter: React.Dispatch<React.SetStateAction<UploadFileInfo | null>>,
+  width: number,
+  height: number,
+) {
+  setter(prev => prev ? { ...prev, dims: `${width}×${height}` } : null);
+}
+
 interface ImageUploadPanelProps {
   aspectRatio: string;
   dropText: string;
@@ -49,7 +57,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
       const url = reader.result as string;
       setImageData(url);
       loadImageDimensions(url).then(({ width, height }) => {
-        setUploadFile(prev => prev ? { ...prev, dims: `${width}×${height}` } : null);
+        updateUploadFileDims(setUploadFile, width, height);
       });
     };
     reader.readAsDataURL(file);

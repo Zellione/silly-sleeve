@@ -150,6 +150,15 @@ function onComfyError(toast: (opts: { kind: ToastKind; title: string; body: stri
 }
 /* v8 ignore stop */
 
+function cleanupComfyEvents() {
+  EventsOff("comfy:progress");
+  EventsOff("comfy:error");
+}
+
+function getInitial(name: string): string {
+  return name[0] || "?";
+}
+
 const PortraitScreen: React.FC = () => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeCharId, setActiveCharId] = useState(0);
@@ -216,10 +225,7 @@ const PortraitScreen: React.FC = () => {
     /* v8 ignore start */
     EventsOn('comfy:progress', onComfyProgress(setProgress));
     EventsOn('comfy:error', onComfyError(toast));
-    return () => {
-      EventsOff('comfy:progress');
-      EventsOff('comfy:error');
-    };
+    return cleanupComfyEvents;
     /* v8 ignore stop */
   }, [toast]);
 
@@ -247,7 +253,7 @@ const PortraitScreen: React.FC = () => {
         {characters.map(c => (
           <button key={c.id} className="cs-pill" data-on={activeCharId === c.id ? '1' : '0'}
             onClick={async () => { setActiveCharId(c.id); await SetActiveCharacter(c.id); const ch = await GetActiveCharacter(); setActiveChar(ch); }}>
-            <span className="cs-av">{c.name[0] || '?'}</span>
+            <span className="cs-av">{getInitial(c.name)}</span>
             <span>{c.name}</span>
           </button>
         ))}

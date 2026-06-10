@@ -190,7 +190,7 @@ function toggleHandler(
   toast: (opts: { kind: ToastKind; title: string; body: string }) => void,
 ): () => void {
   if (generating) return () => setGenerating(false);
-  return () => portraitGenerateVariants(genParams, setGenerating, setProgress, setVariantImages, toast);
+  return () => { portraitGenerateVariants(genParams, setGenerating, setProgress, setVariantImages, toast); };
 }
 
 const PortraitScreen: React.FC = () => {

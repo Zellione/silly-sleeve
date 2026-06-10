@@ -1,9 +1,10 @@
 package comfy
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"regexp"
 	"strings"
 )
@@ -16,7 +17,9 @@ var placeholderPattern = regexp.MustCompile(`\{\{(\w+)\}\}`)
 func BuildPlaceholderValues(p GenerationParams) map[string]any {
 	seed := float64(p.Seed)
 	if seed <= 0 {
-		seed = float64(int(rand.Int63n(1<<31)) + 1)
+		var buf [8]byte
+		_, _ = rand.Read(buf[:])
+		seed = float64(int(binary.BigEndian.Uint64(buf[:])%(1<<31)) + 1)
 	}
 	steps := float64(p.Steps)
 	if steps <= 0 {

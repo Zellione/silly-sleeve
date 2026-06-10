@@ -52,25 +52,28 @@ const KEY_TO_PLACEHOLDER: Record<string, string> = {
   ckpt_name: '{{model}}',
 };
 
+function fixInputValue(key: string, val: any): any {
+  if (val === null) {
+    const ph = KEY_TO_PLACEHOLDER[key];
+    if (ph) return ph;
+    if (key.startsWith('lora_wt')) return 1;
+    return val;
+  }
+  if (val === 0 && (key === 'width' || key === 'height')) {
+    return KEY_TO_PLACEHOLDER[key];
+  }
+  if (typeof val === 'string' && val.length > 2 && val.startsWith('*') && val.endsWith('*')) {
+    return 'None';
+  }
+  return val;
+}
+
 function walkAndFix(obj: any): any {
   if (typeof obj !== 'object' || obj === null) return obj;
   if (obj.inputs && typeof obj.inputs === 'object') {
     const inputs = obj.inputs as Record<string, any>;
     for (const key of Object.keys(inputs)) {
-      const val = inputs[key];
-      if (val === null) {
-        const ph = KEY_TO_PLACEHOLDER[key];
-        if (ph) inputs[key] = ph;
-      }
-      if (val === 0 && (key === 'width' || key === 'height')) {
-        inputs[key] = KEY_TO_PLACEHOLDER[key];
-      }
-      if (typeof val === 'string' && val.length > 2 && val[0] === '*' && val[val.length - 1] === '*') {
-        inputs[key] = 'None';
-      }
-      if (val === null && key.startsWith('lora_wt')) {
-        inputs[key] = 1.0;
-      }
+      inputs[key] = fixInputValue(key, inputs[key]);
     }
   }
   for (const key of Object.keys(obj)) {

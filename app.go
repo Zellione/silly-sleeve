@@ -288,7 +288,7 @@ func (a *App) GetComfyWorkflowTemplate(id string) (string, error) {
 }
 
 // SaveComfyWorkflowTemplate stores an edited workflow template.
-func (a *App) SaveComfyWorkflowTemplate(id string, template string) error {
+func (a *App) SaveComfyWorkflowTemplate(id, template string) error {
 	for i, wf := range a.settings.Comfy.Workflows {
 		if wf.ID == id {
 			a.settings.Comfy.Workflows[i].Template = comfy.JSONString(template)

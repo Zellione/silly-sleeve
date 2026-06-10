@@ -264,7 +264,7 @@ func makeBinaryPreviewImage(imageType uint32, imageData []byte) []byte {
 	return buf
 }
 
-func makeBinaryPreviewWithMetadata(metadata []byte, imageData []byte) []byte {
+func makeBinaryPreviewWithMetadata(metadata, imageData []byte) []byte {
 	buf := make([]byte, 8+len(metadata)+len(imageData))
 	binary.BigEndian.PutUint32(buf[0:4], 4)
 	binary.BigEndian.PutUint32(buf[4:8], uint32(len(metadata)))

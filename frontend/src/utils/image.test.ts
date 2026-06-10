@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { arrayBufferToDataURL } from './image';
 
 function toBase64(bytes: number[]): string {
-  return btoa(String.fromCharCode(...bytes));
+  return btoa(String.fromCodePoint(...bytes));
 }
 
 describe('arrayBufferToDataURL', () => {

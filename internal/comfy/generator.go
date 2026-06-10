@@ -194,55 +194,55 @@ func (g *Generator) OnCompleted(event CompletedEvent) {
 	fmt.Printf("[generator] OnCompleted promptID=%s images=%d binaryBuf=%d\n", pid, len(event.Images), len(buf))
 
 	saveDir, dirErr := generatedImagesDir()
-
 	for i := range event.Images {
 		img := &event.Images[i]
-
 		if i < len(buf) {
 			img.Data = buf[i]
 			fmt.Printf("[generator] OnCompleted image %d: using binary buffer (%d bytes)\n", i, len(img.Data))
 		} else {
-			var fetched []byte
-			var fetchErr error
-			for retry := 0; retry < 3; retry++ {
-				if retry > 0 {
-					time.Sleep(time.Duration(retry) * 250 * time.Millisecond)
-				}
-				fetched, fetchErr = g.client.GetImage(img.Filename, img.Subfolder, img.Type)
-				if fetchErr == nil {
-					break
-				}
-			}
-			if fetchErr != nil {
-				fmt.Printf("[generator] OnCompleted image %d: REST fetch FAILED for %s (after retries): %v\n", i, img.Filename, fetchErr)
-			} else {
-				img.Data = fetched
-				fmt.Printf("[generator] OnCompleted image %d: REST fetch OK (%d bytes)\n", i, len(fetched))
-			}
+			img.Data = fetchImageWithRetry(g.client, img.Filename, img.Subfolder, img.Type)
 		}
-
 		if dirErr == nil && len(img.Data) > 0 {
-			stamp := time.Now().UnixMilli()
-			imgPath := filepath.Join(saveDir, fmt.Sprintf("%s-%d-%d.png", pid, stamp, i))
-			if err := os.WriteFile(imgPath, img.Data, 0o644); err != nil {
-				fmt.Printf("[generator] failed to save image: %v\n", err)
-			}
+			saveGeneratedImage(saveDir, pid, i, img.Data)
 		}
 	}
 
 	g.mu.Lock()
 	g.images = event.Images
+	emitCompletedAndClose(g, event)
 	g.mu.Unlock()
+}
 
+func emitCompletedAndClose(g *Generator, event CompletedEvent) {
 	emitEvent(g.ctx, "comfy:completed", event)
-
-	g.mu.Lock()
 	select {
 	case <-g.done:
 	default:
 		close(g.done)
 	}
-	g.mu.Unlock()
+}
+
+func fetchImageWithRetry(client *Client, filename, subfolder, imgType string) []byte {
+	for retry := 0; retry < 3; retry++ {
+		if retry > 0 {
+			time.Sleep(time.Duration(retry) * 250 * time.Millisecond)
+		}
+		data, err := client.GetImage(filename, subfolder, imgType)
+		if err == nil {
+			fmt.Printf("[generator] OnCompleted image: REST fetch OK (%d bytes)\n", len(data))
+			return data
+		}
+		fmt.Printf("[generator] OnCompleted image: REST fetch retry %d/3 for %s: %v\n", retry+1, filename, err)
+	}
+	return nil
+}
+
+func saveGeneratedImage(dir, promptID string, index int, data []byte) {
+	stamp := time.Now().UnixMilli()
+	imgPath := filepath.Join(dir, fmt.Sprintf("%s-%d-%d.png", promptID, stamp, index))
+	if err := os.WriteFile(imgPath, data, 0o644); err != nil {
+		fmt.Printf("[generator] failed to save image: %v\n", err)
+	}
 }
 
 // OnError is called by WSListener on error events.

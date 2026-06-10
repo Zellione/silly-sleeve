@@ -7,6 +7,14 @@ export interface UploadFileInfo {
   dims: string;
 }
 
+function loadImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.src = url;
+  });
+}
+
 interface ImageUploadPanelProps {
   aspectRatio: string;
   dropText: string;
@@ -39,12 +47,10 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
     const reader = new FileReader();
     reader.onload = () => {
       const url = reader.result as string;
-      const img = new Image();
-      img.onload = () => {
-        setUploadFile(prev => prev ? { ...prev, dims: `${img.width}×${img.height}` } : null);
-      };
-      img.src = url;
       setImageData(url);
+      loadImageDimensions(url).then(({ width, height }) => {
+        setUploadFile(prev => prev ? { ...prev, dims: `${width}×${height}` } : null);
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -73,7 +79,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
 
   useEffect(() => {
     return () => {
-      if (imageData && imageData.startsWith('blob:')) {
+      if (imageData?.startsWith('blob:')) {
         URL.revokeObjectURL(imageData);
       }
     };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
+import type { ToastKind } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, ImageIcon,
 } from '../icons';
@@ -24,6 +25,85 @@ const PORTRAIT_WORKFLOWS = [
   { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, sampler: 'euler_ancestral', scheduler: 'normal' },
   { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, sampler: 'euler', scheduler: 'normal' },
 ];
+
+async function portraitGenerateVariants(
+  generating: boolean,
+  workflowTemplate: string | null,
+  workflowSize: string,
+  seed: number, steps: number, cfg: number, sampler: string, scheduler: string,
+  denoise: number, prompt: string, negPrompt: string, checkpoint: string,
+  setGenerating: (v: boolean) => void,
+  setProgress: (v: number) => void,
+  setVariantImages: (v: string[]) => void,
+  toast: (opts: { kind: ToastKind; title: string; body: string }) => void,
+): Promise<void> {
+  if (generating) return;
+  if (!workflowTemplate) {
+    toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
+    return;
+  }
+  setGenerating(true);
+  setProgress(0);
+  setVariantImages([]);
+
+  const [w, h] = workflowSize.split('×').map(Number);
+
+  try {
+    const params = new comfy.GenerationParams({
+      workflowTemplate,
+      seed,
+      steps,
+      cfg,
+      sampler,
+      scheduler,
+      denoise,
+      positivePrompt: prompt,
+      negativePrompt: negPrompt,
+      width: w || 0,
+      height: h || 0,
+      checkpoint,
+    });
+
+    const images = await GeneratePortrait(params);
+    console.log('[PortraitScreen] GeneratePortrait returned', images.length, 'images');
+    images.forEach((img, i) => {
+      const dataLen = img.data ? img.data.length : 0;
+      console.log(`[PortraitScreen] image ${i}: filename=${img.filename} data=${dataLen} bytes`);
+    });
+    const urls = images.map(img => {
+      const url = arrayBufferToDataURL(img.data);
+      console.log(`[PortraitScreen] url length=${url.length} startsWith=${url.substring(0, 30)}`);
+      return url;
+    });
+    setVariantImages(urls);
+    setProgress(100);
+    toast({ kind: 'ok', title: 'Generation complete', body: `${images.length} portrait variants ready.` });
+  } catch (err) {
+    toast({ kind: 'bad', title: 'Generation failed', body: String(err) });
+  } finally {
+    setGenerating(false);
+  }
+}
+
+async function autoFillImagePrompt(
+  activeChar: compose.Character | null,
+  activeCharId: number,
+  promptStyle: string,
+  setPrompt: (v: string) => void,
+  setNegPrompt: (v: string) => void,
+): Promise<void> {
+  if (!activeChar) return;
+  try {
+    const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
+    setPrompt(positive);
+    setNegPrompt(negative);
+  } catch {
+    const appearance = activeChar.appearance;
+    if (appearance.trim()) {
+      setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
+    }
+  }
+}
 
 const PortraitScreen: React.FC = () => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
@@ -121,69 +201,18 @@ const PortraitScreen: React.FC = () => {
     setActiveChar(ch);
   }, []);
 
-  const handleAutoFill = async () => {
-    if (!activeChar) return;
-    try {
-      const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
-      setPrompt(positive);
-      setNegPrompt(negative);
-    } catch {
-      const appearance = activeChar.appearance;
-      if (appearance.trim()) {
-        setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
-      }
-    }
-  };
+  const handleAutoFill = useCallback(() => {
+    autoFillImagePrompt(activeChar, activeCharId, promptStyle, setPrompt, setNegPrompt);
+  }, [activeChar, activeCharId, promptStyle]);
 
-  const generateVariants = async () => {
-    if (generating) return;
-    if (!workflowTemplate) {
-      toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
-      return;
-    }
-    setGenerating(true);
-    setProgress(0);
-    setVariantImages([]);
-
-    const [w, h] = workflow.size.split('×').map(Number);
-
-    try {
-      const params = new comfy.GenerationParams({
-        workflowTemplate,
-        seed,
-        steps,
-        cfg,
-        sampler,
-        scheduler,
-        denoise,
-        positivePrompt: prompt,
-        negativePrompt: negPrompt,
-        width: w || 0,
-        height: h || 0,
-        checkpoint,
-      });
-
-      const images = await GeneratePortrait(params);
-      console.log('[PortraitScreen] GeneratePortrait returned', images.length, 'images');
-      images.forEach((img, i) => {
-        const dataLen = img.data ? img.data.length : 0;
-        console.log(`[PortraitScreen] image ${i}: filename=${img.filename} data=${dataLen} bytes`);
-      });
-      const urls = images.map(img => {
-        const url = arrayBufferToDataURL(img.data);
-        console.log(`[PortraitScreen] url length=${url.length} startsWith=${url.substring(0, 30)}`);
-        return url;
-      });
-      setVariantImages(urls);
-      setProgress(100);
-      toast({ kind: 'ok', title: 'Generation complete', body: `${images.length} portrait variants ready.` });
-    /* v8 ignore start */} catch (err) {
-      toast({ kind: 'bad', title: 'Generation failed', body: String(err) });
-    } finally {
-      /* v8 ignore stop */
-      setGenerating(false);
-    }
-  };
+  const handleGenerate = useCallback(() => {
+    portraitGenerateVariants(
+      generating, workflowTemplate, workflow.size,
+      seed, steps, cfg, sampler, scheduler, denoise,
+      prompt, negPrompt, checkpoint,
+      setGenerating, setProgress, setVariantImages, toast,
+    );
+  }, [generating, workflowTemplate, workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, toast]);
 
   const handleStop = () => {
     setGenerating(false);
@@ -312,7 +341,7 @@ const PortraitScreen: React.FC = () => {
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? handleStop : generateVariants}
+              onToggleGenerate={generating ? handleStop : handleGenerate}
               onSavePreset={() => {}}
             />
 

@@ -160,36 +160,37 @@ function getInitial(name: string): string {
 }
 
 
-function loadCharacters(
-  setCharacters: (c: any[]) => void,
-  setActiveCharId: (id: number) => void,
-  setActiveChar: (c: any) => void,
-) {
-  GetCharacters().then((chars: any[]) => {
-    setCharacters(chars);
-    if (chars.length > 0) {
-      setActiveCharId(chars[0].id);
-      setActiveChar(chars[0]);
-    }
-  }).catch(() => {});
+function activeState(current: any, target: any): string {
+  return current === target ? '1' : '0';
 }
 
-function loadComfyOptions(
-  setSamplers: (s: string[]) => void,
-  setSchedulers: (s: string[]) => void,
-  setCheckpoints: (c: string[]) => void,
-  setCheckpoint: (c: string) => void,
-  setVaes: (v: string[]) => void,
-  setLoras: (l: string[]) => void,
-) {
-  GetComfySamplers().then(setSamplers).catch(() => {});
-  GetComfySchedulers().then(setSchedulers).catch(() => {});
-  GetComfyCheckpoints().then((list: string[]) => {
-    setCheckpoints(list);
-    if (list.length > 0) setCheckpoint(list[0]);
-  }).catch(() => {});
-  GetComfyVAEs().then(setVaes).catch(() => {});
-  GetComfyLoRAs().then(setLoras).catch(() => {});
+function checkpointOpts(list: string[]): string[] {
+  return list.length > 0 ? list : ['sd_xl_base_1.0', 'juggernautXL_v9', 'ponyDiffusion_v6'];
+}
+
+function modelOpts(list: string[], fallback: string[]): string[] {
+  return (['— none —'] as string[]).concat(list.length > 0 ? list : fallback);
+}
+
+function aspectFromSize(size: string): string | undefined {
+  return size.includes('\u00d7') ? size.replace('\u00d7', '/') : undefined;
+}
+
+function variantUrl(images: string[], index: number): string | null {
+  if (images.length > 0 && images[index]) return images[index];
+  return null;
+}
+
+function toggleHandler(
+  generating: boolean,
+  setGenerating: (v: boolean) => void,
+  genParams: PortraitGenParams,
+  setProgress: (v: number) => void,
+  setVariantImages: (v: string[]) => void,
+  toast: (opts: { kind: ToastKind; title: string; body: string }) => void,
+): () => void {
+  if (generating) return () => setGenerating(false);
+  return () => portraitGenerateVariants(genParams, setGenerating, setProgress, setVariantImages, toast);
 }
 
 const PortraitScreen: React.FC = () => {
@@ -222,8 +223,27 @@ const PortraitScreen: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadCharacters(setCharacters, setActiveCharId, setActiveChar);
-    loadComfyOptions(setSamplers, setSchedulers, setCheckpoints, setCheckpoint, setVaes, setLoras);
+    GetCharacters().then(chars => {
+      setCharacters(chars);
+      if (chars.length > 0) {
+        setActiveCharId(chars[0].id);
+        setActiveChar(chars[0]);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    GetComfySamplers().then(setSamplers).catch(() => {});
+    GetComfySchedulers().then(setSchedulers).catch(() => {});
+    GetComfyCheckpoints().then(list => {
+      setCheckpoints(list);
+      if (list.length > 0) setCheckpoint(list[0]);
+    }).catch(() => {});
+    GetComfyVAEs().then(setVaes).catch(() => {});
+    GetComfyLoRAs().then(setLoras).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     GetComfyWorkflows().then(wfs => {
       setUploadedWorkflows(mapWorkflows(wfs));
     }).catch(() => {});
@@ -254,10 +274,10 @@ const PortraitScreen: React.FC = () => {
         title={<>Conjure a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>portrait</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">
-              <button data-on={mode === 'generate' ? '1' : '0'} onClick={() => setMode('generate')}>
+              <button data-on={activeState(mode, 'generate')} onClick={() => setMode('generate')}>
                 <SparksIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Generate
               </button>
-              <button data-on={mode === 'upload' ? '1' : '0'} onClick={() => setMode('upload')}>
+              <button data-on={activeState(mode, 'upload')} onClick={() => setMode('upload')}>
                 <UploadIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Upload
               </button>
             </div>
@@ -265,7 +285,7 @@ const PortraitScreen: React.FC = () => {
 
       <div className="character-strip">
         {characters.map(c => (
-          <button key={c.id} className="cs-pill" data-on={activeCharId === c.id ? '1' : '0'}
+          <button key={c.id} className="cs-pill" data-on={activeState(activeCharId, c.id)}
             onClick={async () => { setActiveCharId(c.id); await SetActiveCharacter(c.id); const ch = await GetActiveCharacter(); setActiveChar(ch); }}>
             <span className="cs-av">{getInitial(c.name)}</span>
             <span>{c.name}</span>
@@ -295,19 +315,19 @@ const PortraitScreen: React.FC = () => {
                 <label htmlFor="portrait-checkpoint">Checkpoint</label>
                 <select id="portrait-checkpoint" style={{ width: 'auto' }} value={checkpoint}
                   onChange={e => { setCheckpoint(e.target.value); e.target.blur(); }}>
-                  {(checkpoints.length > 0 ? checkpoints : ['sd_xl_base_1.0', 'juggernautXL_v9', 'ponyDiffusion_v6']).map(c => (
+                  {checkpointOpts(checkpoints).map(c => (
                     <option key={c} value={c}>{c.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
                 <label htmlFor="portrait-vae">VAE</label>
                 <select id="portrait-vae" style={{ width: 'auto' }}>
-                  {['— none —'].concat(vaes.length > 0 ? vaes : ['sdxl_vae_fp16_fix', 'baked']).map(v => (
+                  {modelOpts(vaes, ['sdxl_vae_fp16_fix', 'baked']).map(v => (
                     <option key={v} value={v}>{v.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
                 <label htmlFor="portrait-lora">LoRA</label>
                 <select id="portrait-lora" style={{ width: 'auto' }}>
-                  {['— none —'].concat(loras.length > 0 ? loras : ['oil_painting_v3']).map(l => (
+                  {modelOpts(loras, ['oil_painting_v3']).map(l => (
                     <option key={l} value={l}>{l.replace(/\.safetensors$/, '')}</option>
                   ))}
                 </select>
@@ -318,7 +338,7 @@ const PortraitScreen: React.FC = () => {
               canvasTitle={canvasTitle}
               workflowSize={workflow.size}
               seed={seed}
-              aspectRatio={workflow.size.includes('×') ? workflow.size.replace('×', '/') : undefined}
+              aspectRatio={aspectFromSize(workflow.size)}
               generating={generating}
               progress={progress}
               steps={steps}
@@ -331,7 +351,7 @@ const PortraitScreen: React.FC = () => {
                 </div>
               }
               donePlaceholder={
-                variantImages.length > 0 && variantImages[selectedVariant] ? (
+                variantUrl(variantImages, selectedVariant) ? (
                   <div className="img-placeholder" style={{ background: 'var(--panel-2)', overflow: 'hidden' }}>
                     <img src={variantImages[selectedVariant]} alt={`variant ${selectedVariant + 1}`}
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -364,7 +384,7 @@ const PortraitScreen: React.FC = () => {
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? () => setGenerating(false) : () => portraitGenerateVariants({ generating, workflowTemplate, workflowSize: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint }, setGenerating, setProgress, setVariantImages, toast)}
+              onToggleGenerate={toggleHandler(generating, setGenerating, { generating, workflowTemplate, workflowSize: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint }, setProgress, setVariantImages, toast)}
               onSavePreset={() => {}}
             />
 
@@ -376,7 +396,7 @@ const PortraitScreen: React.FC = () => {
                 <div className="img-gallery">
                   {variantImages.map((imgUrl, i) => (
                     <button key={`${seed}-${i}`} type="button"
-                      className="img-thumb" data-on={selectedVariant === i ? '1' : '0'}
+                      className="img-thumb" data-on={activeState(selectedVariant, i)}
                       onClick={() => setSelectedVariant(i)}>
                       <img src={imgUrl} alt={`variant ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </button>

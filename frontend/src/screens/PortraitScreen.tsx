@@ -221,11 +221,9 @@ const PortraitScreen: React.FC = () => {
   const [workflowTemplate, setWorkflowTemplate] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => { loadCharacters(setCharacters, setActiveCharId, setActiveChar); }, []);
-
-  useEffect(() => { loadComfyOptions(setSamplers, setSchedulers, setCheckpoints, setCheckpoint, setVaes, setLoras); }, []);
-
   useEffect(() => {
+    loadCharacters(setCharacters, setActiveCharId, setActiveChar);
+    loadComfyOptions(setSamplers, setSchedulers, setCheckpoints, setCheckpoint, setVaes, setLoras);
     GetComfyWorkflows().then(wfs => {
       setUploadedWorkflows(mapWorkflows(wfs));
     }).catch(() => {});

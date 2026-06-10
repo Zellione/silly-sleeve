@@ -159,6 +159,39 @@ function getInitial(name: string): string {
   return name[0] || "?";
 }
 
+
+function loadCharacters(
+  setCharacters: (c: any[]) => void,
+  setActiveCharId: (id: number) => void,
+  setActiveChar: (c: any) => void,
+) {
+  GetCharacters().then((chars: any[]) => {
+    setCharacters(chars);
+    if (chars.length > 0) {
+      setActiveCharId(chars[0].id);
+      setActiveChar(chars[0]);
+    }
+  }).catch(() => {});
+}
+
+function loadComfyOptions(
+  setSamplers: (s: string[]) => void,
+  setSchedulers: (s: string[]) => void,
+  setCheckpoints: (c: string[]) => void,
+  setCheckpoint: (c: string) => void,
+  setVaes: (v: string[]) => void,
+  setLoras: (l: string[]) => void,
+) {
+  GetComfySamplers().then(setSamplers).catch(() => {});
+  GetComfySchedulers().then(setSchedulers).catch(() => {});
+  GetComfyCheckpoints().then((list: string[]) => {
+    setCheckpoints(list);
+    if (list.length > 0) setCheckpoint(list[0]);
+  }).catch(() => {});
+  GetComfyVAEs().then(setVaes).catch(() => {});
+  GetComfyLoRAs().then(setLoras).catch(() => {});
+}
+
 const PortraitScreen: React.FC = () => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeCharId, setActiveCharId] = useState(0);
@@ -188,26 +221,9 @@ const PortraitScreen: React.FC = () => {
   const [workflowTemplate, setWorkflowTemplate] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    GetCharacters().then(chars => {
-      setCharacters(chars);
-      if (chars.length > 0) {
-        setActiveCharId(chars[0].id);
-        setActiveChar(chars[0]);
-      }
-    }).catch(() => {});
-  }, []);
+  useEffect(() => { loadCharacters(setCharacters, setActiveCharId, setActiveChar); }, []);
 
-  useEffect(() => {
-    GetComfySamplers().then(setSamplers).catch(() => {});
-    GetComfySchedulers().then(setSchedulers).catch(() => {});
-    GetComfyCheckpoints().then(list => {
-      setCheckpoints(list);
-      if (list.length > 0) setCheckpoint(list[0]);
-    }).catch(() => {});
-    GetComfyVAEs().then(setVaes).catch(() => {});
-    GetComfyLoRAs().then(setLoras).catch(() => {});
-  }, []);
+  useEffect(() => { loadComfyOptions(setSamplers, setSchedulers, setCheckpoints, setCheckpoint, setVaes, setLoras); }, []);
 
   useEffect(() => {
     GetComfyWorkflows().then(wfs => {

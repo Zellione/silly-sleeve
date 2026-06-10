@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import type { ToastKind } from '../components/ToastProvider';
@@ -210,23 +210,13 @@ const PortraitScreen: React.FC = () => {
     /* v8 ignore stop */
   }, [toast]);
 
-  const handleSelectChar = useCallback(async (id: number) => {
+  async function handleSelectChar(id: number) {
     setActiveCharId(id);
     await SetActiveCharacter(id);
     const ch = await GetActiveCharacter();
     setActiveChar(ch);
-  }, []);
+  }
 
-  const handleAutoFill = useCallback(() => {
-    autoFillImagePrompt(activeChar, activeCharId, promptStyle, setPrompt, setNegPrompt);
-  }, [activeChar, activeCharId, promptStyle]);
-
-  const handleGenerate = useCallback(() => {
-    portraitGenerateVariants(
-      { generating, workflowTemplate, workflowSize: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint },
-      setGenerating, setProgress, setVariantImages, toast,
-    );
-  }, [generating, workflowTemplate, workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, toast]);
 
 
   const canvasTitle = 'Preview';
@@ -334,7 +324,7 @@ const PortraitScreen: React.FC = () => {
               }
               autoFillButton={
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button className="img-auto-fill" onClick={handleAutoFill}>
+                  <button className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, setPrompt, setNegPrompt)}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
                   <select className="img-select" value={promptStyle} onChange={e => { setPromptStyle(e.target.value as 'natural' | 'danbooru'); e.target.blur(); }}
@@ -348,7 +338,7 @@ const PortraitScreen: React.FC = () => {
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? () => setGenerating(false) : handleGenerate}
+              onToggleGenerate={generating ? () => setGenerating(false) : () => portraitGenerateVariants({ generating, workflowTemplate, workflowSize: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint }, setGenerating, setProgress, setVariantImages, toast)}
               onSavePreset={() => {}}
             />
 

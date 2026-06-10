@@ -98,7 +98,9 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 	if err != nil {
 		return fmt.Errorf("queue prompt: %w", err)
 	}
+	g.mu.Lock()
 	g.promptID = resp.PromptID
+	g.mu.Unlock()
 
 	<-g.done
 
@@ -268,6 +270,8 @@ func (g *Generator) Images() []CompletedImage {
 
 // PromptID returns the queued prompt ID.
 func (g *Generator) PromptID() string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	return g.promptID
 }
 

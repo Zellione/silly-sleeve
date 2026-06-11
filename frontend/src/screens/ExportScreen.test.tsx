@@ -1,19 +1,35 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { render, waitFor, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ExportScreen from './ExportScreen';
 import { ToastProvider } from '../components/ToastProvider';
-import { compose } from '../../wailsjs/go/models';
+import { compose, lorebook } from '../../wailsjs/go/models';
 
 const mockGetCharacters = vi.fn();
-const mockExportCharacter = vi.fn();
+const mockGetLorebook = vi.fn();
+const mockExportCharactersBulk = vi.fn();
+const mockExportLorebook = vi.fn();
 const mockPickExportFolder = vi.fn();
+const mockPickSaveBundle = vi.fn();
+const mockSaveProjectBundle = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
-  ExportCharacter: (id: number, folder: string) => mockExportCharacter(id, folder),
+  GetLorebook: () => mockGetLorebook(),
+  ExportCharactersBulk: (ids: number[], fmt: string, opts: unknown, dest: string) =>
+    mockExportCharactersBulk(ids, fmt, opts, dest),
+  ExportLorebook: (dest: string) => mockExportLorebook(dest),
   PickExportFolder: () => mockPickExportFolder(),
+  PickSaveBundle: () => mockPickSaveBundle(),
+  SaveProjectBundle: (path: string) => mockSaveProjectBundle(path),
 }));
+
+vi.mock('../../wailsjs/runtime/runtime', () => ({
+  EventsOn: vi.fn(),
+  EventsOff: vi.fn(),
+}));
+
+import { EventsOn } from '../../wailsjs/runtime/runtime';
 
 const renderWithProviders = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
@@ -23,300 +39,194 @@ const mockCharacters = [
   compose.Character.createFrom({ id: 2, name: 'Bob', tags: [], quotes: [''], stats: [] }),
 ];
 
+const mockEntries = [
+  lorebook.Entry.createFrom({ uid: 0, comment: 'The Harpers', order: 100, position: 0 }),
+  lorebook.Entry.createFrom({ uid: 1, comment: 'Faerûn baseline', order: 200, position: 1 }),
+];
+
+// findExportButton returns the primary export/save action button.
+const findExportButton = () =>
+  Array.from(document.querySelectorAll('button'))
+    .find(b => /Export \d|Save bundle/.test(b.textContent ?? ''));
+
 describe('ExportScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCharacters.mockResolvedValue(mockCharacters);
-    mockExportCharacter.mockResolvedValue('/mock/export/alice.json');
+    mockGetLorebook.mockResolvedValue(mockEntries);
+    mockExportCharactersBulk.mockResolvedValue({ exported: 2, failed: 0, paths: ['/a.png', '/b.png'] });
+    mockExportLorebook.mockResolvedValue('/mock/world_info.json');
     mockPickExportFolder.mockResolvedValue('/mock/export');
+    mockPickSaveBundle.mockResolvedValue('/mock/project.slv');
+    mockSaveProjectBundle.mockResolvedValue(undefined);
   });
 
-  it('renders the page head with step 7', async () => {
+  it('renders the page head', async () => {
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Export');
-    });
+    await waitFor(() => expect(document.body.textContent).toContain('Ship the project'));
   });
 
-  it('shows character list with all characters', async () => {
+  it('lists characters with a selected count', async () => {
     renderWithProviders(<ExportScreen />);
     await waitFor(() => {
       expect(document.body.textContent).toContain('Alice');
       expect(document.body.textContent).toContain('Bob');
-    });
-  });
-
-  it('shows All/None selection buttons', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(screen.getByText('All')).toBeInTheDocument();
-      expect(screen.getByText('None')).toBeInTheDocument();
-    });
-  });
-
-  it('clicking All selects all characters', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(screen.getByText('All')).toBeInTheDocument();
-    });
-    await user.click(screen.getByText('All'));
-    await waitFor(() => {
       expect(document.body.textContent).toContain('2 of 2 selected');
     });
   });
 
-  it('clicking None deselects all characters', async () => {
+  it('lists lorebook entries with a selected count', async () => {
+    renderWithProviders(<ExportScreen />);
+    await waitFor(() => {
+      expect(document.body.textContent).toContain('The Harpers');
+      expect(document.body.textContent).toContain('Faerûn baseline');
+    });
+  });
+
+  it('shows an empty state when there are no lorebook entries', async () => {
+    mockGetLorebook.mockResolvedValue([]);
+    renderWithProviders(<ExportScreen />);
+    await waitFor(() => expect(document.body.textContent).toContain('No lorebook entries'));
+  });
+
+  it('character All/None toggles the selection count', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(screen.getByText('None')).toBeInTheDocument();
-    });
-    await user.click(screen.getByText('None'));
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('0 of 2 selected');
-    });
+    await waitFor(() => expect(screen.getAllByText('None').length).toBeGreaterThan(0));
+    await user.click(screen.getAllByText('None')[0]);
+    await waitFor(() => expect(document.body.textContent).toContain('0 of 2 selected'));
+    await user.click(screen.getAllByText('All')[0]);
+    await waitFor(() => expect(document.body.textContent).toContain('2 of 2 selected'));
   });
 
-  it('shows format picker with JSON only enabled', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('JSON only');
-      expect(document.body.textContent).toContain('Character PNG');
-    });
-  });
-
-  it('shows destination input', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      const input = document.querySelector('input[placeholder*="folder"]');
-      expect(input).toBeTruthy();
-    });
-  });
-
-  it('shows summary with character count', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('2');
-    });
-  });
-
-  it('toggles character selection on click', async () => {
+  it('toggles a single character off', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Alice');
-    });
-
-    const aliceBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Alice'));
-    if (aliceBtn) await user.click(aliceBtn);
-
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('1 of 2 selected');
-    });
+    await waitFor(() => expect(document.body.textContent).toContain('Alice'));
+    const aliceBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Alice'));
+    await user.click(aliceBtn!);
+    await waitFor(() => expect(document.body.textContent).toContain('1 of 2 selected'));
   });
 
-  it('calls PickExportFolder on folder browse button click', async () => {
+  it('shows embedding options for PNG formats and hides them for JSON', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Destination');
-    });
-    const browseBtn = document.querySelector('button[title="Browse…"]');
-    if (browseBtn) await user.click(browseBtn);
+    await waitFor(() => expect(document.body.textContent).toContain('Embed lorebook in each character (CCv3)'));
+
+    const jsonBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('JSON only'));
+    await user.click(jsonBtn!);
+    await waitFor(() => expect(document.body.textContent).not.toContain('Strip generation metadata'));
+  });
+
+  it('browse button calls PickExportFolder and fills the destination', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ExportScreen />);
+    await waitFor(() => expect(document.body.textContent).toContain('Destination'));
+    await user.click(document.querySelector('button[title="Browse…"]')!);
     await waitFor(() => {
       expect(mockPickExportFolder).toHaveBeenCalled();
+      const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
+      expect(input.value).toBe('/mock/export');
     });
   });
 
-  it('handles export with no destination gracefully', async () => {
-    mockPickExportFolder.mockResolvedValue('');
+  it('disables export until a destination is set', async () => {
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Export');
-    });
-    const exportBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Export') && !b.textContent?.includes('Exporting'));
-    expect(exportBtn?.hasAttribute('disabled')).toBe(true);
+    await waitFor(() => expect(findExportButton()).toBeTruthy());
+    expect(findExportButton()!.hasAttribute('disabled')).toBe(true);
   });
 
-  it('renders character epithets when available', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Brave');
-    });
-  });
-
-  it('enables export button when destination is set', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      const exportBtn = Array.from(document.querySelectorAll('button'))
-        .find(b => b.textContent?.includes('Export') && !b.textContent?.includes('Exporting'));
-      expect(exportBtn).toBeTruthy();
-    });
-  });
-
-  it('exports characters on export click', async () => {
+  it('exports characters via ExportCharactersBulk and toasts success', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Export');
-    });
+    await waitFor(() => expect(document.body.textContent).toContain('Alice'));
 
-    const exportBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Export') && !b.textContent?.includes('Exporting'));
-    if (exportBtn && !exportBtn.hasAttribute('disabled')) {
-      await user.click(exportBtn);
-      await waitFor(() => {
-        expect(mockExportCharacter).toHaveBeenCalled();
-      });
-    }
+    const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
+    await user.type(input, '/out');
+    await user.click(findExportButton()!);
+
+    await waitFor(() => {
+      expect(mockExportCharactersBulk).toHaveBeenCalledWith([1, 2], 'png-v2', expect.anything(), '/out');
+      expect(document.body.textContent).toContain('Export complete');
+    });
   });
 
-  it('shows export complete toast after successful export', async () => {
+  it('warns when some exports fail', async () => {
+    mockExportCharactersBulk.mockResolvedValue({ exported: 1, failed: 1, paths: ['/a.png'] });
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Export');
-    });
-    const exportBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Export') && !b.textContent?.includes('Exporting'));
-    if (exportBtn && !exportBtn.hasAttribute('disabled')) {
-      await user.click(exportBtn);
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Export complete');
-      });
-    }
+    await waitFor(() => expect(document.body.textContent).toContain('Alice'));
+    const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
+    await user.type(input, '/out');
+    await user.click(findExportButton()!);
+    await waitFor(() => expect(document.body.textContent).toContain('Export partial'));
   });
 
-  it('shows partial export warning when some fail', async () => {
-    mockExportCharacter.mockRejectedValue(new Error('fail'));
+  it('toasts an error when the bulk export rejects', async () => {
+    mockExportCharactersBulk.mockRejectedValue(new Error('boom'));
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Export');
-    });
-    const exportBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Export') && !b.textContent?.includes('Exporting'));
-    if (exportBtn && !exportBtn.hasAttribute('disabled')) {
-      await user.click(exportBtn);
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Export partial');
-      });
-    }
+    await waitFor(() => expect(document.body.textContent).toContain('Alice'));
+    const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
+    await user.type(input, '/out');
+    await user.click(findExportButton()!);
+    await waitFor(() => expect(document.body.textContent).toContain('Export failed'));
   });
 
-  it('shows summary section', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Summary');
-      expect(document.body.textContent).toContain('Format');
-    });
-  });
-
-  it('handles GetCharacters error gracefully', async () => {
-    mockGetCharacters.mockRejectedValue(new Error('fail'));
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Export');
-    });
-  });
-
-  it('has PNG v2 option disabled', async () => {
-    renderWithProviders(<ExportScreen />);
-    await waitFor(() => {
-      const pngBtn = Array.from(document.querySelectorAll('button'))
-        .find(b => b.textContent?.includes('v2 spec'));
-      expect(pngBtn?.hasAttribute('disabled')).toBe(true);
-    });
-  });
-
-  it('exports multiple characters successfully', async () => {
-    const user = userEvent.setup();
-    mockExportCharacter.mockResolvedValue('/mock/export/char.json');
-    renderWithProviders(<ExportScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
-    });
-
-    const destInput = screen.getByPlaceholderText('Choose or type a folder path…') as HTMLInputElement;
-    await user.type(destInput, '/tmp/export');
-    await waitFor(() => {
-      expect(destInput.value).toBe('/tmp/export');
-    });
-
-    const exportBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Export 2 characters') && !b.hasAttribute('disabled'));
-
-    if (exportBtn) {
-      await user.click(exportBtn);
-      await waitFor(() => {
-        expect(mockExportCharacter).toHaveBeenCalledTimes(2);
-      });
-    }
-  });
-
-  it('handles partial export failure', async () => {
-    const user = userEvent.setup();
-    mockExportCharacter.mockRejectedValueOnce(new Error('fail'));
-    renderWithProviders(<ExportScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
-    });
-
-    const destInput = screen.getByPlaceholderText('Choose or type a folder path…') as HTMLInputElement;
-    await user.type(destInput, '/tmp/export');
-
-    await waitFor(() => {
-      expect(destInput.value).toBe('/tmp/export');
-    });
-
-    const exportBtn = Array.from(document.querySelectorAll('button'))
-      .find(b => b.textContent?.includes('Export ') && b.textContent?.includes('character') && !b.hasAttribute('disabled'));
-
-    if (exportBtn) {
-      await user.click(exportBtn);
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Export partial');
-      });
-    }
-  });
-
-  it('picks export folder via browse button', async () => {
-    const user = userEvent.setup();
-    mockPickExportFolder.mockResolvedValue('/mock/folder');
-    renderWithProviders(<ExportScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
-    });
-
-    const browseBtns = Array.from(document.querySelectorAll('button'))
-      .filter(b => b.getAttribute('title') === 'Browse…');
-    if (browseBtns.length > 0) {
-      await user.click(browseBtns[0]);
-      await waitFor(() => {
-        expect(mockPickExportFolder).toHaveBeenCalled();
-      });
-    }
-  });
-
-  it('deselects all characters with None button', async () => {
+  it('switches to bundle format and saves via PickSaveBundle + SaveProjectBundle', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
+    await waitFor(() => expect(document.body.textContent).toContain('Silly Sleeve bundle'));
 
+    const bundleBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Silly Sleeve bundle'));
+    await user.click(bundleBtn!);
+
+    // Destination card is hidden in bundle mode; the action becomes Save bundle.
+    await waitFor(() => expect(document.body.textContent).toContain('Save bundle'));
+    await user.click(findExportButton()!);
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(mockPickSaveBundle).toHaveBeenCalled();
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/mock/project.slv');
+      expect(document.body.textContent).toContain('Bundle saved');
     });
+  });
 
-    const noneBtn = screen.getByText('None');
-    await user.click(noneBtn);
+  it('exports the lorebook via ExportLorebook', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ExportScreen />);
+    await waitFor(() => expect(document.body.textContent).toContain('The Harpers'));
+    const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
+    await user.type(input, '/out');
 
+    const loreBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Export lorebook'));
+    await user.click(loreBtn!);
     await waitFor(() => {
-      expect(screen.getByText('0 of 2 selected')).toBeInTheDocument();
+      expect(mockExportLorebook).toHaveBeenCalledWith('/out');
+      expect(document.body.textContent).toContain('Lorebook exported');
     });
+  });
+
+  it('renders an export queue driven by progress events', async () => {
+    // Hold the bulk call open so the queue panel stays mounted.
+    let resolveBulk!: (v: { exported: number; failed: number; paths: string[] }) => void;
+    mockExportCharactersBulk.mockImplementation(() => new Promise(r => { resolveBulk = r; }));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ExportScreen />);
+    await waitFor(() => expect(document.body.textContent).toContain('Alice'));
+    const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
+    await user.type(input, '/out');
+    await user.click(findExportButton()!);
+
+    await waitFor(() => expect(document.body.textContent).toContain('Export queue'));
+
+    // Fire a progress event captured from the EventsOn subscription.
+    const onCall = (EventsOn as unknown as Mock).mock.calls.find(c => c[0] === 'export:progress');
+    expect(onCall).toBeTruthy();
+    act(() => onCall![1]({ charId: 1, status: 'done' }));
+    await waitFor(() => expect(document.body.textContent).toContain('done'));
+
+    act(() => resolveBulk({ exported: 2, failed: 0, paths: [] }));
+    await waitFor(() => expect(document.body.textContent).toContain('Export complete'));
   });
 });

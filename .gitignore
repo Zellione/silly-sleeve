@@ -22,6 +22,9 @@ node_modules/
 # Logs
 *.log
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Wails auto-generated
 frontend/package.json.md5
 

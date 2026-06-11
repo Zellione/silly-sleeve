@@ -1,101 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
-import type { ToastKind } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, ImageIcon,
 } from '../icons';
 import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
-  GetComfySamplers, GetComfySchedulers,
-  GetComfyCheckpoints, GetComfyVAEs, GetComfyLoRAs,
-  GetComfyWorkflows, GetComfyWorkflowTemplate,
+  GetComfyVAEs, GetComfyLoRAs,
 } from '../../wailsjs/go/main/App';
-import { compose, comfy } from '../../wailsjs/go/models';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
-import GenerationParamsPanel, { WorkflowOption } from '../components/GenerationParamsPanel';
+import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
-import { arrayBufferToDataURL } from '../utils/image';
+import { useImageGeneration } from '../components/useImageGeneration';
+import { aspectFromSize } from '../utils/workflow';
 
 const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
   { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, sampler: 'euler_ancestral', scheduler: 'normal' },
   { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, sampler: 'euler', scheduler: 'normal' },
 ];
-
-interface PortraitGenParams {
-  generating: boolean;
-  workflowTemplate: string | null;
-  workflowSize: string;
-  seed: number;
-  steps: number;
-  cfg: number;
-  sampler: string;
-  scheduler: string;
-  denoise: number;
-  prompt: string;
-  negPrompt: string;
-  checkpoint: string;
-}
-
-async function portraitGenerateVariants(
-  params: PortraitGenParams,
-  setGenerating: (v: boolean) => void,
-  setProgress: (v: number) => void,
-  setVariantImages: (v: string[]) => void,
-  toast: (opts: { kind: ToastKind; title: string; body: string }) => void,
-): Promise<void> {
-  if (params.generating) return;
-  if (!params.workflowTemplate) {
-    toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
-    return;
-  }
-  setGenerating(true);
-  setProgress(0);
-  setVariantImages([]);
-
-  const { workflowTemplate, workflowSize, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint } = params;
-  const [w, h] = workflowSize.split('×').map(Number);
-
-  try {
-    const genParams = new comfy.GenerationParams({
-      workflowTemplate,
-      seed,
-      steps,
-      cfg,
-      sampler,
-      scheduler,
-      denoise,
-      positivePrompt: prompt,
-      negativePrompt: negPrompt,
-      width: w || 0,
-      height: h || 0,
-      checkpoint,
-    });
-
-    const images = await GeneratePortrait(genParams);
-    console.log('[PortraitScreen] GeneratePortrait returned', images.length, 'images');
-    images.forEach((img, i) => {
-      const dataLen = img.data ? img.data.length : 0;
-      console.log(`[PortraitScreen] image ${i}: filename=${img.filename} data=${dataLen} bytes`);
-    });
-    const urls = images.map(img => {
-      const url = arrayBufferToDataURL(img.data);
-      console.log(`[PortraitScreen] url length=${url.length} startsWith=${url.substring(0, 30)}`);
-      return url;
-    });
-    setVariantImages(urls);
-    setProgress(100);
-    toast({ kind: 'ok', title: 'Generation complete', body: `${images.length} portrait variants ready.` });
-  } catch (err) {
-    toast({ kind: 'bad', title: 'Generation failed', body: String(err) });
-  } finally {
-    setGenerating(false);
-  }
-}
 
 async function autoFillImagePrompt(
   activeChar: compose.Character | null,
@@ -117,48 +43,9 @@ async function autoFillImagePrompt(
   }
 }
 
-function mapWorkflows(wfs: comfy.ComfyWorkflow[]): WorkflowOption[] {
-  return wfs.map(wf => ({
-    id: wf.id,
-    name: wf.name.replace(/\.json$/i, ''),
-    model: wf.params.checkpoint || 'custom',
-    size: wf.params.width && wf.params.height
-      ? `${wf.params.width}×${wf.params.height}`
-      : 'custom',
-    steps: wf.params.steps || 20,
-    sampler: wf.params.sampler || 'euler',
-    scheduler: wf.params.scheduler || 'normal',
-  }));
-}
-
-
-/* v8 ignore start */
-function onComfyProgress(setProgress: (v: number) => void) {
-  return (event: { progress: number; max: number }) => {
-    if (event.max > 0) {
-      setProgress(Math.round((event.progress / event.max) * 100));
-    }
-  };
-}
-/* v8 ignore stop */
-
-/* v8 ignore start */
-function onComfyError(toast: (opts: { kind: ToastKind; title: string; body: string }) => void) {
-  return (event: { error: string }) => {
-    toast({ kind: "bad", title: "Generation error", body: event.error });
-  };
-}
-/* v8 ignore stop */
-
-function cleanupComfyEvents() {
-  EventsOff("comfy:progress");
-  EventsOff("comfy:error");
-}
-
 function getInitial(name: string): string {
   return name[0] || "?";
 }
-
 
 function activeState(current: any, target: any): string {
   return current === target ? '1' : '0';
@@ -172,25 +59,9 @@ function modelOpts(list: string[], fallback: string[]): string[] {
   return (['— none —'] as string[]).concat(list.length > 0 ? list : fallback);
 }
 
-function aspectFromSize(size: string): string | undefined {
-  return size.includes('\u00d7') ? size.replace('\u00d7', '/') : undefined;
-}
-
 function variantUrl(images: string[], index: number): string | null {
   if (images.length > 0 && images[index]) return images[index];
   return null;
-}
-
-function toggleHandler(
-  generating: boolean,
-  setGenerating: (v: boolean) => void,
-  genParams: PortraitGenParams,
-  setProgress: (v: number) => void,
-  setVariantImages: (v: string[]) => void,
-  toast: (opts: { kind: ToastKind; title: string; body: string }) => void,
-): () => void {
-  if (generating) return () => setGenerating(false);
-  return () => { portraitGenerateVariants(genParams, setGenerating, setProgress, setVariantImages, toast); };
 }
 
 const PortraitScreen: React.FC = () => {
@@ -206,21 +77,23 @@ const PortraitScreen: React.FC = () => {
   const [sampler, setSampler] = useState('dpmpp_2m');
   const [scheduler, setScheduler] = useState('karras');
   const [promptStyle, setPromptStyle] = useState<'natural' | 'danbooru'>('natural');
-  const [generating, setGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState(0);
-  const [variantImages, setVariantImages] = useState<string[]>([]);
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
-  const [samplers, setSamplers] = useState<string[]>([]);
-  const [schedulers, setSchedulers] = useState<string[]>([]);
-  const [checkpoints, setCheckpoints] = useState<string[]>([]);
-  const [checkpoint, setCheckpoint] = useState('sd_xl_base_1.0');
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
-  const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
-  const [workflowTemplate, setWorkflowTemplate] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const {
+    samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
+    generating, progress, variantImages, selectedVariant, setSelectedVariant,
+    clearVariants, stop, runGeneration,
+  } = useImageGeneration({
+    workflowId: workflow.id,
+    workflowDefaults: PORTRAIT_WORKFLOWS,
+    generate: GeneratePortrait,
+    completionBody: n => `${n} portrait variants ready.`,
+    initialCheckpoint: 'sd_xl_base_1.0',
+  });
 
   useEffect(() => {
     GetCharacters().then(chars => {
@@ -233,37 +106,9 @@ const PortraitScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    GetComfySamplers().then(setSamplers).catch(() => {});
-    GetComfySchedulers().then(setSchedulers).catch(() => {});
-    GetComfyCheckpoints().then(list => {
-      setCheckpoints(list);
-      if (list.length > 0) setCheckpoint(list[0]);
-    }).catch(() => {});
     GetComfyVAEs().then(setVaes).catch(() => {});
     GetComfyLoRAs().then(setLoras).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    GetComfyWorkflows().then(wfs => {
-      setUploadedWorkflows(mapWorkflows(wfs));
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    GetComfyWorkflowTemplate(workflow.id).then(setWorkflowTemplate).catch(() => {});
-  }, [workflow.id]);
-
-  const allWorkflows = [...PORTRAIT_WORKFLOWS, ...uploadedWorkflows];
-
-  useEffect(() => {
-    /* v8 ignore start */
-    EventsOn('comfy:progress', onComfyProgress(setProgress));
-    EventsOn('comfy:error', onComfyError(toast));
-    return cleanupComfyEvents;
-    /* v8 ignore stop */
-  }, [toast]);
-
-
 
   const canvasTitle = 'Preview';
   const showDonePlaceholder = variantImages.length > 0;
@@ -384,14 +229,14 @@ const PortraitScreen: React.FC = () => {
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={toggleHandler(generating, setGenerating, { generating, workflowTemplate, workflowSize: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint }, setProgress, setVariantImages, toast)}
+              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint })}
               onSavePreset={() => {}}
             />
 
             <ImageGalleryPanel
               headLabel="Generated"
               variantCount={variantImages.length}
-              onClear={() => { setVariantImages([]); }}
+              onClear={clearVariants}
               galleryContent={
                 <div className="img-gallery">
                   {variantImages.map((imgUrl, i) => (

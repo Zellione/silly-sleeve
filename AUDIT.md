@@ -143,9 +143,20 @@ tag field now renders `<TagsInput>` directly; `LorebookScreen`'s `TokenInput`
 became a thin wrapper so its call sites are untouched. 10 unit tests added.
 (`StatsField` stays separate — it's a key/value grid, not a token field.)
 
-### 4.3 Extract a `useImageGeneration` hook
-`PortraitScreen.tsx` and `ProjectImageScreen.tsx` share ~80 LOC of generation +
-workflow-mapping logic. Pull into a hook + `utils/workflow.ts`.
+### 4.3 Extract a `useImageGeneration` hook — DONE
+`PortraitScreen` and `ProjectImageScreen` shared the whole ComfyUI generation
+flow. Extracted:
+- `utils/workflow.ts` — `mapWorkflows`, `parseSize`, `aspectFromSize` (pure,
+  unit-tested).
+- `components/useImageGeneration.ts` — owns sampler/scheduler/checkpoint/workflow
+  loading (auto-selecting the first checkpoint), the selected workflow's
+  template, the `comfy:progress`/`comfy:error` subscription, and `runGeneration`
+  (build params → decode images → toast). Returns the generation state plus
+  `stop`/`clearVariants`/`runGeneration`. Hook-level tests cover the success,
+  template-not-ready, and failure paths.
+Both screens shrank to view + screen-specific state; `ProjectImageScreen`'s
+redundant `hasImage` flag folded into `variantImages.length > 0`, and the
+verbose per-image `console.log` debug spam was removed (a 4.1 win).
 
 ### 4.4 Decompose monolith screens
 - `SettingsScreen.tsx` (1164 LOC): extract `LLMEndpointCard`, `GenerationDefaultsForm`, reusable auth-token block.

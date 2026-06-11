@@ -13,6 +13,7 @@ import {
 } from './screens';
 import { GetSettings } from '../wailsjs/go/main/App';
 import { settings } from '../wailsjs/go/models';
+import { logError } from './utils/log';
 
 function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
@@ -20,11 +21,14 @@ function AppShell() {
   const [projectPath, setProjectPath] = useState('');
 
   useEffect(() => {
-    GetSettings().then(s => setSettingsData(s)).catch(() => setSettingsData(settings.Settings.createFrom({ endpoints: [] })));
+    GetSettings().then(s => setSettingsData(s)).catch(e => {
+      logError('App.loadSettings', e);
+      setSettingsData(settings.Settings.createFrom({ endpoints: [] }));
+    });
   }, []);
 
   useEffect(() => {
-    GetSettings().then(s => setSettingsData(s)).catch(() => {});
+    GetSettings().then(s => setSettingsData(s)).catch(e => logError('App.reloadSettings', e));
   }, [route]);
 
   const routeLabels: Record<Route, string> = {

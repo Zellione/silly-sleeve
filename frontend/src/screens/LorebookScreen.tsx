@@ -323,16 +323,14 @@ const LorebookScreen: React.FC = () => {
       characters: [],
     });
     const next = [...entries, fresh];
-    setEntries(next);
-    SaveLorebook(next).catch(() => {});
+    persist(next);
     setSelectedUid(fresh.uid);
   };
 
   const deleteSelected = () => {
     if (selectedUid == null) return;
     const next = entries.filter(e => e.uid !== selectedUid);
-    setEntries(next);
-    SaveLorebook(next).catch(() => {});
+    persist(next);
     setSelectedUid(null);
   };
 
@@ -341,8 +339,7 @@ const LorebookScreen: React.FC = () => {
     const maxUid = entries.reduce((m, e) => Math.max(m, e.uid || 0), -1);
     const copy = {...selected, uid: maxUid + 1, comment: (selected.comment || 'Entry') + ' (copy)'};
     const next = [...entries, copy];
-    setEntries(next);
-    SaveLorebook(next).catch(() => {});
+    persist(next);
     setSelectedUid(copy.uid);
   };
 

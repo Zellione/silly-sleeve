@@ -14,6 +14,7 @@ import {
   PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
 import { SectionContent } from '../components/SectionContent';
+import { logError } from '../utils/log';
 import { compose, crawler } from '../../wailsjs/go/models';
 
 interface FieldSpec {
@@ -373,8 +374,8 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
         setActiveChar(ch);
         await SetActiveCharacter(ch.id);
       }
-    }).catch(() => {});
-    GetCachedCrawl().then(r => { if (r) setCrawl(r); }).catch(() => {});
+    }).catch(e => logError('EditorScreen.loadCharacters', e));
+    GetCachedCrawl().then(r => { if (r) setCrawl(r); }).catch(e => logError('EditorScreen.loadCachedCrawl', e));
   }, []);
 
   useEffect(() => {

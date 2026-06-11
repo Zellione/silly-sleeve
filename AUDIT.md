@@ -133,9 +133,15 @@ Multiple `.catch(() => {})` (e.g. `EditorScreen.tsx:376`, `ProjectImageScreen.ts
 hide failures from the user. Add a small async helper that toasts + logs on
 error; apply at all Wails call sites. **Highest-value frontend fix.**
 
-### 4.2 Extract a shared `TagsInput` component
-`TagsField`/`StatsField` (`EditorScreen.tsx`) and `TokenInput`
-(`LorebookScreen.tsx`) duplicate add/remove/draft logic. Extract one component.
+### 4.2 Extract a shared `TagsInput` component — DONE
+New `components/TagsInput.tsx` owns the add/remove/draft/dedup logic (commit on
+Enter or comma, Backspace removes last, duplicates ignored). It's parametrized
+for the two call sites' cosmetic differences — container/tag/accent class names,
+an `emptyClassName`, `accentCount`, a `normalize` transform (editor lowercases),
+`disabled` (locked) gating, and split empty/filled placeholders. `EditorScreen`'s
+tag field now renders `<TagsInput>` directly; `LorebookScreen`'s `TokenInput`
+became a thin wrapper so its call sites are untouched. 10 unit tests added.
+(`StatsField` stays separate — it's a key/value grid, not a token field.)
 
 ### 4.3 Extract a `useImageGeneration` hook
 `PortraitScreen.tsx` and `ProjectImageScreen.tsx` share ~80 LOC of generation +

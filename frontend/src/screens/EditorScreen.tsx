@@ -14,6 +14,7 @@ import {
   PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
 import { SectionContent } from '../components/SectionContent';
+import { TagsInput } from '../components/TagsInput';
 import { logError } from '../utils/log';
 import { compose, crawler } from '../../wailsjs/go/models';
 
@@ -98,38 +99,6 @@ function fieldStateFromChar(ch: compose.Character, field: FieldSpec): FieldState
   }
   return { value: val, locked: false, dirty: false, showPrompt: false, prompt: '', rolling: false, history: 1 };
 }
-
-const TagsField: React.FC<{
-  value: string[]; onChange: (v: string[]) => void; locked: boolean;
-}> = ({ value, onChange, locked }) => {
-  const [draft, setDraft] = useState('');
-  const submit = () => {
-    const t = draft.trim().toLowerCase();
-    if (t && !value.includes(t)) onChange([...value, t]);
-    setDraft('');
-  };
-  return (
-    <div className="tags-input">
-      {value.map((t, i) => (
-        <span key={t} className={`tag ${i < 2 ? 'acc' : ''}`}>
-          {t}
-          {!locked && <button type="button" className="x" aria-label={`Remove tag ${t}`} onClick={() => onChange(value.filter(x => x !== t))}>×</button>}
-        </span>
-      ))}
-      {!locked && (
-        <input
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); submit(); }
-            if (e.key === 'Backspace' && !draft && value.length) onChange(value.slice(0, -1));
-          }}
-          placeholder={value.length ? '' : 'Add tag and press Enter…'}
-        />
-      )}
-    </div>
-  );
-};
 
 const StatsField: React.FC<{
   value: compose.StatKV[]; onChange: (v: compose.StatKV[]) => void; locked: boolean;
@@ -240,7 +209,14 @@ const FieldCard: React.FC<{
           )}
 
           {field.type === 'tags' && (
-            <TagsField value={st.value} onChange={v => { onChange(v); onPatch({ dirty: true }); }} locked={st.locked} />
+            <TagsInput
+              value={st.value}
+              onChange={v => { onChange(v); onPatch({ dirty: true }); }}
+              disabled={st.locked}
+              placeholder="Add tag and press Enter…"
+              normalize={s => s.toLowerCase()}
+              accentCount={2}
+            />
           )}
 
           {field.type === 'quotes' && (

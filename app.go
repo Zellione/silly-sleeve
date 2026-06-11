@@ -30,16 +30,19 @@ type App struct {
 	lorebookEntries []lorebook.Entry
 	projectImage    []byte
 
-	comfy *ComfyUIService
+	comfy   *ComfyUIService
+	charGen *CharacterGenerator
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
 	a := &App{}
+	ctxFn := func() context.Context { return a.ctx }
 	a.comfy = &ComfyUIService{
 		settings: &a.settings,
-		ctx:      func() context.Context { return a.ctx },
+		ctx:      ctxFn,
 	}
+	a.charGen = &CharacterGenerator{ctx: ctxFn}
 	return a
 }
 
@@ -168,23 +171,7 @@ func (a *App) GenerateImagePrompt(charID int, style string) (string, string, err
 		return "", "", fmt.Errorf("no default LLM endpoint configured")
 	}
 
-	ep := llm.LLMEndpoint{
-		ID:           def.ID,
-		Name:         def.Name,
-		URL:          def.URL,
-		Model:        def.Model,
-		Key:          def.Key,
-		ContextSize:  def.ContextSize,
-		Temperature:  def.Temperature,
-	}
-
-	result, err := llm.Complete(a.ctx, ep, buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
-	if err != nil {
-		return "", "", fmt.Errorf("generate image prompt: %w", err)
-	}
-
-	positive, negative := parseImagePromptResult(result)
-	return positive, negative, nil
+	return a.charGen.GenerateImagePrompt(target, def, style)
 }
 
 // GetComfyWorkflowByName returns a saved workflow by name, or the first workflow if name is empty.
@@ -391,18 +378,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	def := a.defaultEndpoint()
 	a.mu.Unlock()
 
-	ep := llm.LLMEndpoint{
-		ID:           def.ID,
-		Name:         def.Name,
-		URL:          def.URL,
-		Model:        def.Model,
-		Key:          def.Key,
-		ContextSize:  def.ContextSize,
-		Temperature:  def.Temperature,
-		SystemPrompt: def.SystemPrompt,
-	}
-
-	ch, err := compose.GenerateBulk(a.ctx, *crawl, ep, lockedFields, existing)
+	ch, err := a.charGen.GenerateBulk(*crawl, def, lockedFields, existing)
 	if err != nil {
 		fmt.Println("bulk generate error:", err)
 		return existing
@@ -443,18 +419,7 @@ func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 		return existing
 	}
 
-	ep := llm.LLMEndpoint{
-		ID:           def.ID,
-		Name:         def.Name,
-		URL:          def.URL,
-		Model:        def.Model,
-		Key:          def.Key,
-		ContextSize:  def.ContextSize,
-		Temperature:  def.Temperature,
-		SystemPrompt: def.SystemPrompt,
-	}
-
-	ch, err := compose.GenerateField(a.ctx, fieldID, *crawl, ep, customPrompt, existing, templates)
+	ch, err := a.charGen.GenerateField(fieldID, customPrompt, *crawl, def, existing, templates)
 	if err != nil {
 		fmt.Println("generate field error:", err)
 		return existing

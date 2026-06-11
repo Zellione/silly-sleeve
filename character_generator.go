@@ -1,0 +1,60 @@
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"silly-sleeve/internal/compose"
+	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/prompts"
+	"silly-sleeve/internal/settings"
+)
+
+// CharacterGenerator owns the LLM-backed character generation logic decomposed
+// out of App: bulk generation, per-field generation, and image-prompt
+// generation. It is stateless with respect to App's character store — callers
+// pass in the crawl, endpoint and existing character, and the generator returns
+// the result. App keeps the mutex and character-store orchestration, so the
+// LLM seam lives in one place (the natural home for an llm.Completer interface).
+//
+// ctx reads App's context lazily because it is only available after startup.
+type CharacterGenerator struct {
+	ctx func() context.Context
+}
+
+// toLLMEndpoint maps a stored settings endpoint to the llm package's endpoint.
+func toLLMEndpoint(def settings.LLMEndpoint) llm.LLMEndpoint {
+	return llm.LLMEndpoint{
+		ID:           def.ID,
+		Name:         def.Name,
+		URL:          def.URL,
+		Model:        def.Model,
+		Key:          def.Key,
+		ContextSize:  def.ContextSize,
+		Temperature:  def.Temperature,
+		SystemPrompt: def.SystemPrompt,
+	}
+}
+
+// GenerateBulk generates a full character from the crawl via the bulk prompt.
+// lockedFields are field IDs that must not be overwritten.
+func (g *CharacterGenerator) GenerateBulk(crawl crawler.CrawlResult, def settings.LLMEndpoint, lockedFields []string, existing compose.Character) (compose.Character, error) {
+	return compose.GenerateBulk(g.ctx(), crawl, toLLMEndpoint(def), lockedFields, existing)
+}
+
+// GenerateField generates a single character field via a per-field prompt.
+func (g *CharacterGenerator) GenerateField(fieldID, customPrompt string, crawl crawler.CrawlResult, def settings.LLMEndpoint, existing compose.Character, templates prompts.TemplateSet) (compose.Character, error) {
+	return compose.GenerateField(g.ctx(), fieldID, crawl, toLLMEndpoint(def), customPrompt, existing, templates)
+}
+
+// GenerateImagePrompt generates positive/negative image-generation prompts for
+// a character. style is "natural" or "danbooru".
+func (g *CharacterGenerator) GenerateImagePrompt(target compose.Character, def settings.LLMEndpoint, style string) (string, string, error) {
+	result, err := llm.Complete(g.ctx(), toLLMEndpoint(def), buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
+	if err != nil {
+		return "", "", fmt.Errorf("generate image prompt: %w", err)
+	}
+	positive, negative := parseImagePromptResult(result)
+	return positive, negative, nil
+}

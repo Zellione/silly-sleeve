@@ -221,6 +221,11 @@ func (g *Generator) OnCompleted(event CompletedEvent) {
 	fmt.Printf("[generator] OnCompleted promptID=%s images=%d binaryBuf=%d\n", pid, len(event.Images), len(buf))
 
 	saveDir, dirErr := generatedImagesDir()
+	if dirErr != nil {
+		// Generation still succeeds (images are returned to the caller); we just
+		// can't persist copies locally. Surface it rather than failing silently.
+		fmt.Printf("[generator] cannot persist generated images locally: %v\n", dirErr)
+	}
 	for i := range event.Images {
 		img := &event.Images[i]
 		if i < len(buf) {

@@ -784,8 +784,7 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 		return "", charNotFound(charID)
 	}
 
-	// export will be written by the export package
-	filePath, writeErr := saveCharacterAsST(*found, folderPath)
+	filePath, writeErr := compose.ExportSillyTavernCard(*found, folderPath)
 	if writeErr != nil {
 		return "", writeErr
 	}
@@ -867,109 +866,3 @@ func workflowNotFound(id string) error {
 	return fmt.Errorf("workflow %q not found", id)
 }
 
-func slugify(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, " ", "-")
-	s = strings.ReplaceAll(s, "_", "-")
-	var b strings.Builder
-	for _, r := range s {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			b.WriteRune(r)
-		}
-	}
-	result := b.String()
-	result = strings.Trim(result, "-")
-	var sb strings.Builder
-	prevDash := false
-	for _, r := range result {
-		if r == '-' {
-			if prevDash {
-				continue
-			}
-			prevDash = true
-		} else {
-			prevDash = false
-		}
-		sb.WriteRune(r)
-	}
-	return sb.String()
-}
-
-func saveCharacterAsST(ch compose.Character, folderPath string) (string, error) {
-	// Build SillyTavern-compatible description from all text fields
-	var descParts []string
-	if ch.Appearance != "" {
-		descParts = append(descParts, "### Appearance\n"+ch.Appearance)
-	}
-	if ch.Personality != "" {
-		descParts = append(descParts, "### Personality\n"+ch.Personality)
-	}
-	if ch.Backstory != "" {
-		descParts = append(descParts, "### Backstory\n"+ch.Backstory)
-	}
-	if ch.Abilities != "" {
-		descParts = append(descParts, "### Abilities & Skills\n"+ch.Abilities)
-	}
-	if ch.Relationships != "" {
-		descParts = append(descParts, "### Relationships\n"+ch.Relationships)
-	}
-	if len(ch.Stats) > 0 {
-		var sb strings.Builder
-		sb.WriteString("### Stats\n")
-		for _, s := range ch.Stats {
-			if s.Key != "" || s.Value != "" {
-				sb.WriteString(fmt.Sprintf("- **%s**: %s\n", s.Key, s.Value))
-			}
-		}
-		descParts = append(descParts, sb.String())
-	}
-
-	firstMes := ""
-	mesExample := ""
-	if len(ch.Quotes) > 0 {
-		firstMes = ch.Quotes[0]
-		if len(ch.Quotes) > 1 {
-			var sb strings.Builder
-			for i, q := range ch.Quotes[1:] {
-				if i > 0 {
-					sb.WriteString("\n")
-				}
-				sb.WriteString("<START>\n{{user}}: ...\n{{char}}: " + q + "\n")
-			}
-			mesExample = sb.String()
-		}
-	}
-
-	st := map[string]any{
-		"name":              ch.Name,
-		"description":       strings.Join(descParts, "\n\n"),
-		"personality":       ch.Personality,
-		"scenario":          "",
-		"first_mes":         firstMes,
-		"mes_example":       mesExample,
-		"creatorcomment":    ch.Epithet,
-		"tags":              ch.Tags,
-		"creator":           "Silly Sleeve",
-		"character_version": "1.0",
-	}
-
-	// Ensure tags is an array in JSON even when empty
-	if st["tags"] == nil {
-		st["tags"] = []string{}
-	}
-
-	data, err := json.MarshalIndent(st, "", "  ")
-	if err != nil {
-		return "", err
-	}
-
-	fname := slugify(ch.Name)
-	if fname == "" {
-		fname = "character"
-	}
-	filePath := folderPath + "/" + fname + ".json"
-	if err := os.WriteFile(filePath, data, 0o644); err != nil {
-		return "", fmt.Errorf("write character JSON: %w", err)
-	}
-	return filePath, nil
-}

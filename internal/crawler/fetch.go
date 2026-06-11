@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -14,6 +15,12 @@ import (
 // maxCrawlResponseBytes caps the MediaWiki API response read from an untrusted
 // wiki host, guarding against memory exhaustion.
 const maxCrawlResponseBytes = 32 << 20 // 32 MiB
+
+// Sentinel errors so callers can classify fetch failures with errors.Is.
+var (
+	ErrHTTPStatus  = errors.New("non-2xx HTTP status")
+	ErrEmptyResult = errors.New("empty parse result")
+)
 
 // isBlockedIP reports whether an IP is in a range we refuse to be redirected
 // to: loopback, private, link-local (incl. cloud metadata at 169.254.169.254),
@@ -123,7 +130,7 @@ func FetchPage(pageURL string) FetchResult {
 		return FetchResult{
 			Domain:    domain,
 			LatencyMs: latency,
-			Error:     fmt.Errorf("HTTP %d", resp.StatusCode),
+			Error:     fmt.Errorf("%w: %d", ErrHTTPStatus, resp.StatusCode),
 		}
 	}
 
@@ -138,7 +145,7 @@ func FetchPage(pageURL string) FetchResult {
 		return FetchResult{
 			Domain:    domain,
 			LatencyMs: latency,
-			Error:     fmt.Errorf("empty parse result"),
+			Error:     ErrEmptyResult,
 		}
 	}
 

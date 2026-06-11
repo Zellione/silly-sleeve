@@ -108,7 +108,12 @@ async function countTokens(fields: Record<string, FieldState>): Promise<Record<s
   const cache: Record<string, number> = {};
   for (const f of FIELDS) {
     const val = fields[f.id]?.value;
-    const text = typeof val === 'string' ? val : Array.isArray(val) ? JSON.stringify(val) : '';
+    let text = '';
+    if (typeof val === 'string') {
+      text = val;
+    } else if (Array.isArray(val)) {
+      text = JSON.stringify(val);
+    }
     if (!text) {
       cache[f.id] = 0;
       continue;

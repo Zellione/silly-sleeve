@@ -57,7 +57,13 @@ func (g *CharacterGenerator) GenerateBulk(crawl crawler.CrawlResult, def setting
 
 // GenerateField generates a single character field via a per-field prompt.
 func (g *CharacterGenerator) GenerateField(fieldID, customPrompt string, crawl crawler.CrawlResult, def settings.LLMEndpoint, existing compose.Character, templates prompts.TemplateSet) (compose.Character, error) {
-	return compose.GenerateFieldWith(g.ctx(), g.completerOrDefault(), fieldID, crawl, toLLMEndpoint(def), customPrompt, existing, templates)
+	return compose.GenerateFieldWith(g.ctx(), g.completerOrDefault(), toLLMEndpoint(def), compose.FieldRequest{
+		FieldID:      fieldID,
+		Result:       crawl,
+		CustomPrompt: customPrompt,
+		Existing:     existing,
+		Templates:    templates,
+	})
 }
 
 // GenerateImagePrompt generates positive/negative image-generation prompts for

@@ -67,9 +67,9 @@ const EndpointFlyout: React.FC<{
   return (
     <>
       <button type="button" className="ep-flyout-bg" aria-label="Close endpoint editor" onClick={onClose} />
-      <aside
+      <dialog
         className="ep-flyout"
-        role="dialog"
+        open
         aria-modal="true"
         aria-label={isNew ? 'New endpoint' : 'Edit endpoint'}
       >
@@ -257,7 +257,7 @@ const EndpointFlyout: React.FC<{
             <CheckIcon size={13} /> {isNew ? 'Create' : 'Save'}
           </button>
         </footer>
-      </aside>
+      </dialog>
     </>
   );
 };

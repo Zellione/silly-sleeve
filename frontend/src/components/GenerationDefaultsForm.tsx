@@ -13,25 +13,26 @@ export const GenerationDefaultsForm: React.FC = () => (
     <h3 style={{ marginTop: 24 }}>Generation defaults</h3>
     <div className="settings-form">
       <div className="form-row">
-        <label>
+        <label htmlFor="gen-temperature">
           Temperature <small>0 deterministic — 2 wild</small>
         </label>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <input type="range" min={0} max={2} step={0.05} defaultValue={0.85} style={{ flex: 1, accentColor: 'var(--acc)' }} />
-          <input className="field" type="text" defaultValue="0.85" style={{ width: 70, textAlign: 'right', fontFamily: 'var(--f-mono)' }} />
+          <input id="gen-temperature" type="range" min={0} max={2} step={0.05} defaultValue={0.85} style={{ flex: 1, accentColor: 'var(--acc)' }} />
+          <input className="field" type="text" aria-label="Temperature value" defaultValue="0.85" style={{ width: 70, textAlign: 'right', fontFamily: 'var(--f-mono)' }} />
         </div>
       </div>
       <div className="form-row">
-        <label>
+        <label htmlFor="gen-max-tokens">
           Max tokens <small>per field re-roll</small>
         </label>
-        <input className="field" type="number" defaultValue={320} style={{ width: 120, fontFamily: 'var(--f-mono)' }} />
+        <input id="gen-max-tokens" className="field" type="number" defaultValue={320} style={{ width: 120, fontFamily: 'var(--f-mono)' }} />
       </div>
       <div className="form-row">
-        <label>
+        <label htmlFor="gen-system-prompt">
           System prompt template <small>injected at the top of every formatting call</small>
         </label>
         <textarea
+          id="gen-system-prompt"
           className="field"
           defaultValue={DEFAULT_SYSTEM_PROMPT}
           style={{ minHeight: 110, fontFamily: 'var(--f-mono)', fontSize: 12 }}

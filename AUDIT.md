@@ -103,35 +103,26 @@ on unmount, await the save, and catch+report errors.
 
 ---
 
-## Phase 3 — Backend architecture & testability (MEDIUM, ~2–3 days)
+## Phase 3 — Backend architecture & testability (MEDIUM)
 
-### 3.1 Decompose the `app.go` god object (975 LOC) — highest-leverage refactor
-`App` mixes Wails binding, app state, business logic, IO, and external
-integration. Extract services (each behind an interface for testing):
-- **`ComfyUIService`** — `comfyClient()`, all `GetComfy*`, test/generate.
-- **`CharacterGenerator`** — `GenerateCharacterBulk`, `GenerateField`, `GenerateImagePrompt`.
-- **`ProjectManager`** — save/open bundle, export character/lorebook, path pickers.
-`App` shrinks to thin Wails bindings delegating to services. Do this
-incrementally, one service at a time, keeping tests green.
+> **Status:** the contained, test-backed parts are **done** (commit `369a081`).
+> The larger, binding-sensitive refactors (god-object decomposition,
+> sanitize.go HTML-walker dedup) were moved to **Phase 6** at the end of the
+> plan at the maintainer's request — to be done last, as their own increments.
 
-### 3.2 Introduce interfaces at network seams
-Define `comfy.ComfyClient` and `llm.Completer` interfaces; inject them so
-generation logic is unit-testable without real HTTP/WebSocket. Enables the
-currently-missing `websocket_test.go` and pure-logic tests for `GenerateBulk`.
+### 3.4 Genericize `comfy/parser.go` param extractors — DONE
+Removed 7 redundant pass-through `extract*Param` wrappers; the switch calls the
+underlying `extractInt/Float/String/TextPrompt` helpers directly.
 
-### 3.3 Extract duplicated helpers in `internal/crawler/sanitize.go` (592 LOC)
-- A single `normalizeWhitespace` (4 near-duplicate implementations).
-- A generic `walkNodes(n, fn)` replacing ~5 inline recursive `walk` closures.
-- Replace the O(n²) `for strings.Contains(s,"  ")` space-collapse with a single-pass builder.
+### 3.5 Smaller robustness fixes — DONE
+- Crawler sentinel errors `ErrHTTPStatus`/`ErrEmptyResult` (classifiable via `errors.Is`).
+- `comfy/generator.go` surfaces the image-persistence dir error instead of skipping silently.
+- (Magic-number/timeout constants: several added in Phase 1; further centralization deferred.)
 
-### 3.4 Genericize `comfy/parser.go` param extractors
-Collapse the 6 near-identical `extract*Param` funcs into
-`extractIntParamNamed`/`extractStringParamNamed`.
-
-### 3.5 Smaller robustness fixes
-- Wrap errors with `%w` consistently (`crawler/fetch.go:66,81`).
-- Don't silently skip image persistence on dir-create failure (`comfy/generator.go:198–209`).
-- Centralize hardcoded timeouts/limits/retry constants in one config file.
+### 3.6 Extract character export — DONE
+Moved SillyTavern card export out of `app.go` into
+`internal/compose/export.go` (`ExportSillyTavernCard`) with tests; `app.go`
+868 LOC (was 975). First safe increment of the god-object decomposition.
 
 ---
 
@@ -184,14 +175,43 @@ baseline. The above are gaps, not rewrites.
 
 ---
 
+## Phase 6 — Deferred large refactors (do last, incrementally)
+
+Moved here intentionally: these are the highest-effort, highest-regression-risk
+changes and unlock little that the rest of the plan depends on. Each should be
+its own small increment with tests green at every step.
+
+### 6.1 Decompose the `app.go` god object — highest-leverage, do incrementally
+`App` mixes Wails binding, app state, business logic, IO, and external
+integration. Extract services (each behind an interface for testing), with
+`App` methods reduced to thin delegators so the **Wails binding surface stays
+identical** (the frontend depends on it):
+- **`ComfyUIService`** — `comfyClient()`, all `GetComfy*`, test/generate.
+- **`CharacterGenerator`** — `GenerateCharacterBulk`, `GenerateField`, `GenerateImagePrompt`.
+- **`ProjectManager`** — save/open bundle, export character/lorebook, path pickers.
+The `internal/compose` export extraction (3.6) is the template for one increment.
+
+### 6.2 Introduce interfaces at network seams
+Define `comfy.ComfyClient` and `llm.Completer` interfaces; inject them so
+generation logic is unit-testable without real HTTP/WebSocket. Pairs with 6.1.
+
+### 6.3 Extract duplicated helpers in `internal/crawler/sanitize.go` (592 LOC)
+- A single `normalizeWhitespace` (4 near-duplicate implementations) — safe.
+- A generic `walkNodes(n, fn)` replacing ~5 inline recursive `walk` closures —
+  **highest regression surface** (untrusted-HTML parsing); do carefully with
+  the crawler test suite as the guard.
+- Replace the O(n²) `for strings.Contains(s,"  ")` space-collapse with a single-pass builder.
+
+---
+
 ## Suggested execution order
 
-1. **Phase 0** (hygiene) — minutes.
-2. **Phase 1.1–1.5 + Phase 2** — the security/correctness core. One PR per logical group, each with a regression test.
-3. **Phase 5.1–5.4** — supply-chain/CI guards, cheap and high-value.
-4. **Phase 3.1–3.2** — god-object decomposition (unlocks everything else; do incrementally).
-5. **Phase 4.1–4.3** — error surfacing + dedup (user-visible wins).
-6. Remaining Phase 3/4/5 polish as capacity allows.
+1. **Phase 0** (hygiene) — minutes. ✅ done
+2. **Phase 1 + Phase 2** — the security/correctness core. ✅ done
+3. **Phase 5** — supply-chain/CI guards (incl. the x/net + vite vuln fixes). ✅ done
+4. **Phase 3.4–3.6** — contained backend dedup/robustness + export extraction. ✅ done
+5. **Phase 4** — frontend error surfacing, dedup, decomposition, a11y. ← next
+6. **Phase 6** — god-object decomposition + sanitize dedup, last, incrementally.
 
 Each change should land with tests and keep `go test ./... -race` and the
 frontend suite green. Keep PRs small and single-purpose.

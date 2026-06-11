@@ -36,7 +36,7 @@ const EndpointFlyout: React.FC<{
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const { toast } = useToast();
 
-  const set = (k: keyof settings.LLMEndpoint, v: any) =>
+  const set = <K extends keyof settings.LLMEndpoint>(k: K, v: settings.LLMEndpoint[K]) =>
     setDraft(prev => ({ ...prev, [k]: v }));
 
   const authOn = draft.key !== undefined && draft.key !== null;

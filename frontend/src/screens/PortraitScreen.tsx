@@ -47,7 +47,7 @@ function getInitial(name: string): string {
   return name[0] || "?";
 }
 
-function activeState(current: any, target: any): string {
+function activeState(current: unknown, target: unknown): string {
   return current === target ? '1' : '0';
 }
 

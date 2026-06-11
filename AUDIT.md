@@ -162,9 +162,17 @@ verbose per-image `console.log` debug spam was removed (a 4.1 win).
 - `SettingsScreen.tsx` (1164 LOC): extract `LLMEndpointCard`, `GenerationDefaultsForm`, reusable auth-token block.
 - `EditorScreen.tsx` (705 LOC): extract a `useFieldEditor` hook to stop prop-drilling field state; debounce backend `CountTokens`.
 
-### 4.5 Tighten TypeScript at the edges
-Replace `v: any` setters with generic `<K extends keyof T>(k: K, v: T[K])`;
-type `FieldState.value` as a union instead of `any`.
+### 4.5 Tighten TypeScript at the edges — DONE
+- `EditorScreen`: introduced `type FieldValue = string | string[] | StatKV[]`;
+  `FieldState.value`, the `wordCount`/`wordCountLabel` helpers, `setFieldValue`,
+  and the `FieldCard` `onChange` prop now use it instead of `any`. The render
+  branches narrow with explicit `as` casts keyed by `field.type` (also dropped a
+  stray `(_: any, j)` in the quote-remove handler).
+- `SettingsScreen.set` and `LorebookScreen.set` are now generic
+  `<K extends keyof T>(k: K, v: T[K])` instead of `(k, v: any)`.
+- `PortraitScreen.activeState` params `any` → `unknown` (equality-only use).
+- Left the `catch (e: any)` blocks as-is: narrowing to `unknown` is a separate,
+  broader sweep and out of this item's scope.
 
 ### 4.6 Accessibility — DONE
 - New shared `useFocusTrap(active, onEscape?)` hook (`components/useFocusTrap.ts`):

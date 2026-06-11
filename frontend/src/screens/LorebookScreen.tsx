@@ -79,7 +79,7 @@ const LbDetail: React.FC<{
     </div>
   );
 
-  const set = (k: keyof lorebook.Entry, v: any) => onChange({...entry, [k]: v} as lorebook.Entry);
+  const set = <K extends keyof lorebook.Entry>(k: K, v: lorebook.Entry[K]) => onChange({...entry, [k]: v} as lorebook.Entry);
   const tokenCount = entry.content ? Math.round(entry.content.length / 4) : 0;
 
   return (

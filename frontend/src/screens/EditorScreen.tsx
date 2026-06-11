@@ -39,8 +39,11 @@ const FIELDS: FieldSpec[] = [
   { id: 'stats',         label: 'Stat block',           required: false, type: 'stats',  helper: 'Custom numbers — STR, HP, age, etc.' },
 ];
 
+/** A field's value is one of three concrete shapes, keyed by `FieldSpec.type`. */
+type FieldValue = string | string[] | compose.StatKV[];
+
 interface FieldState {
-  value: any;
+  value: FieldValue;
   locked: boolean;
   dirty: boolean;
   showPrompt: boolean;
@@ -49,15 +52,13 @@ interface FieldState {
   history: number;
 }
 
-function wordCount(val: any, type: string): number {
+function wordCount(val: FieldValue, type: string): number {
   if (typeof val === 'string') return val.trim().split(/\s+/).filter(Boolean).length;
-  if (Array.isArray(val) && type === 'tags') return 0;
-  if (Array.isArray(val) && type === 'quotes') return val.map((q: string) => q.trim().split(/\s+/).filter(Boolean).length).reduce((a: number,b: number) => a+b, 0);
-  if (Array.isArray(val) && type === 'stats') return 0;
-  return 0;
+  if (type === 'quotes') return (val as string[]).reduce((sum, q) => sum + q.trim().split(/\s+/).filter(Boolean).length, 0);
+  return 0; // tags and stats contribute no word count
 }
 
-function wordCountLabel(val: any, type: string): string {
+function wordCountLabel(val: FieldValue, type: string): string {
   const wc = wordCount(val, type);
   if (Array.isArray(val) && type === 'tags') return val.length + ' tags';
   if (Array.isArray(val) && type === 'quotes') return val.length + ' quotes, ' + wc + ' words';
@@ -83,7 +84,7 @@ function charsFromFieldState(ch: compose.Character, fields: Record<string, Field
 }
 
 function fieldStateFromChar(ch: compose.Character, field: FieldSpec): FieldState {
-  let val: any;
+  let val: FieldValue;
   switch (field.id) {
     case 'name': val = ch.name; break;
     case 'epithet': val = ch.epithet; break;
@@ -132,7 +133,7 @@ const FieldCard: React.FC<{
   idx: number;
   st: FieldState;
   tokenCount: number;
-  onChange: (v: any) => void;
+  onChange: (v: FieldValue) => void;
   onPatch: (p: Partial<FieldState>) => void;
   onReroll: () => void;
   onBlur: () => void;
@@ -196,13 +197,13 @@ const FieldCard: React.FC<{
       ) : (
         <>
           {field.type === 'line' && (
-            <input className="field" value={st.value} disabled={st.locked}
+            <input className="field" value={st.value as string} disabled={st.locked}
               onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
               onBlur={onBlur} />
           )}
 
           {field.type === 'text' && (
-            <textarea className="field" value={st.value} disabled={st.locked}
+            <textarea className="field" value={st.value as string} disabled={st.locked}
               onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
               onBlur={onBlur}
               style={{ minHeight: field.id === 'backstory' || field.id === 'appearance' ? 140 : 100 }} />
@@ -210,7 +211,7 @@ const FieldCard: React.FC<{
 
           {field.type === 'tags' && (
             <TagsInput
-              value={st.value}
+              value={st.value as string[]}
               onChange={v => { onChange(v); onPatch({ dirty: true }); }}
               disabled={st.locked}
               placeholder="Add tag and press Enter…"
@@ -221,20 +222,20 @@ const FieldCard: React.FC<{
 
           {field.type === 'quotes' && (
             <div className="col" style={{ gap: 6 }}>
-              {st.value.map((q: string, i: number) => (
+              {(st.value as string[]).map((q, i) => (
                 <div key={i} className="quote-row">
                   <textarea
                     rows={Math.max(2, Math.ceil(q.length / 60))}
                     value={q}
                     disabled={st.locked}
                     onChange={e => {
-                      const next = st.value.map((x: string, j: number) => j === i ? e.target.value : x);
+                      const next = (st.value as string[]).map((x, j) => j === i ? e.target.value : x);
                       onChange(next);
                       onPatch({ dirty: true });
                     }}
                   />
                   {!st.locked && (
-                    <button type="button" className="x" aria-label="Remove quote" onClick={() => onChange(st.value.filter((_: any, j: number) => j !== i))}>
+                    <button type="button" className="x" aria-label="Remove quote" onClick={() => onChange((st.value as string[]).filter((_, j) => j !== i))}>
                       <XIcon size={12} />
                     </button>
                   )}
@@ -242,7 +243,7 @@ const FieldCard: React.FC<{
               ))}
               {!st.locked && (
                 <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
-                  onClick={() => onChange([...st.value, ''])}>
+                  onClick={() => onChange([...(st.value as string[]), ''])}>
                   <PlusIcon size={11} /> Add quote
                 </button>
               )}
@@ -250,7 +251,7 @@ const FieldCard: React.FC<{
           )}
 
           {field.type === 'stats' && (
-            <StatsField value={st.value} onChange={v => { onChange(v); onPatch({ dirty: true }); }} locked={st.locked} />
+            <StatsField value={st.value as compose.StatKV[]} onChange={v => { onChange(v); onPatch({ dirty: true }); }} locked={st.locked} />
           )}
         </>
       )}
@@ -490,7 +491,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     }
   }, [toast, onProjectPathChange]);
 
-  const setFieldValue = useCallback((id: string, value: any) => {
+  const setFieldValue = useCallback((id: string, value: FieldValue) => {
     setFields(prev => ({ ...prev, [id]: { ...prev[id], value } }));
     autoSaveChange();
   }, [autoSaveChange]);

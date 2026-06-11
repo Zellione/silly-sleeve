@@ -158,17 +158,18 @@ Both screens shrank to view + screen-specific state; `ProjectImageScreen`'s
 redundant `hasImage` flag folded into `variantImages.length > 0`, and the
 verbose per-image `console.log` debug spam was removed (a 4.1 win).
 
-### 4.4 Decompose monolith screens — IN PROGRESS
-- `SettingsScreen.tsx` (was 1164 LOC):
+### 4.4 Decompose monolith screens — DONE
+- `SettingsScreen.tsx` (1164 → 1028 LOC):
   - [x] `components/LLMEndpointCard.tsx` extracted (one endpoint row + its
     overflow menu); the screen passes menu state/handlers down, keeping the
-    outside-click detection in the parent. Screen now 1109 LOC; component
-    unit-tested.
+    outside-click detection in the parent. Unit-tested.
   - [x] `components/AuthTokenBlock.tsx` extracted — the "Use API key / auth
     token" toggle + reveal-able secret input, previously duplicated between the
     endpoint flyout and ComfyUI settings. Reveal state moved inside; value/toggle
-    stay controlled. Screen now 1054 LOC; unit-tested.
-  - [ ] `GenerationDefaultsForm`.
+    stay controlled. Unit-tested.
+  - [x] `components/GenerationDefaultsForm.tsx` extracted — the temperature /
+    max-tokens / system-prompt block (presentational; uncontrolled defaults for
+    now). Smoke-tested.
 - `EditorScreen.tsx` (was ~705 LOC):
   - [x] `components/useFieldEditor.ts` extracted — owns the per-field state
     machine (field map, sync-from-character preserving locked edits, derived

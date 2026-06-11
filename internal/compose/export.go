@@ -29,9 +29,24 @@ func ExportSillyTavernCard(ch Character, folderPath string) (string, error) {
 	return outPath, nil
 }
 
-// sillyTavernCard builds the SillyTavern card map from a character.
-func sillyTavernCard(ch Character) map[string]any {
-	description := strings.Join(buildDescriptionSections(ch), "\n\n")
+// CardFields holds the SillyTavern-derived fields for a character. It is the
+// single source of truth shared by the v1 JSON export here and the v2/v3 PNG
+// export engine in internal/export.
+type CardFields struct {
+	Name        string
+	Description string
+	Personality string
+	Scenario    string
+	FirstMes    string
+	MesExample  string
+	Epithet     string
+	Tags        []string
+}
+
+// BuildCardFields derives the SillyTavern card fields from a character: the
+// markdown description assembled from text sections, greeting/example messages
+// from quotes, and a non-nil tags slice.
+func BuildCardFields(ch Character) CardFields {
 	firstMes, mesExample := buildMessages(ch)
 
 	tags := ch.Tags
@@ -39,15 +54,30 @@ func sillyTavernCard(ch Character) map[string]any {
 		tags = []string{}
 	}
 
+	return CardFields{
+		Name:        ch.Name,
+		Description: strings.Join(buildDescriptionSections(ch), "\n\n"),
+		Personality: ch.Personality,
+		Scenario:    "",
+		FirstMes:    firstMes,
+		MesExample:  mesExample,
+		Epithet:     ch.Epithet,
+		Tags:        tags,
+	}
+}
+
+// sillyTavernCard builds the SillyTavern v1 card map from a character.
+func sillyTavernCard(ch Character) map[string]any {
+	f := BuildCardFields(ch)
 	return map[string]any{
-		"name":              ch.Name,
-		"description":       description,
-		"personality":       ch.Personality,
-		"scenario":          "",
-		"first_mes":         firstMes,
-		"mes_example":       mesExample,
-		"creatorcomment":    ch.Epithet,
-		"tags":              tags,
+		"name":              f.Name,
+		"description":       f.Description,
+		"personality":       f.Personality,
+		"scenario":          f.Scenario,
+		"first_mes":         f.FirstMes,
+		"mes_example":       f.MesExample,
+		"creatorcomment":    f.Epithet,
+		"tags":              f.Tags,
 		"creator":           "Silly Sleeve",
 		"character_version": "1.0",
 	}
@@ -103,6 +133,12 @@ func buildMessages(ch Character) (firstMes, mesExample string) {
 		mesExample = sb.String()
 	}
 	return firstMes, mesExample
+}
+
+// Slugify converts a name into a lowercase, dash-separated filename slug. It is
+// exported for reuse by the export engine so PNG and JSON files share naming.
+func Slugify(s string) string {
+	return slugify(s)
 }
 
 // slugify converts a name into a lowercase, dash-separated filename slug.

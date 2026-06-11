@@ -56,7 +56,7 @@ describe('useAutoSave', () => {
     const { result } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
 
     await waitFor(() => {
-      expect(mockGetSettings).toHaveBeenCalled();
+      expect(result.current.autoSaveMode).toBe('onBlur');
     });
 
     result.current.handleBlur();
@@ -70,7 +70,7 @@ describe('useAutoSave', () => {
     const { result } = renderHook(() => useAutoSave({ projectPath: '', onSave }));
 
     await waitFor(() => {
-      expect(mockGetSettings).toHaveBeenCalled();
+      expect(result.current.autoSaveMode).toBe('onBlur');
     });
 
     result.current.handleBlur();

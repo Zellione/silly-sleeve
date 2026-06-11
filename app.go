@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -32,11 +29,18 @@ type App struct {
 	projectDir      string
 	lorebookEntries []lorebook.Entry
 	projectImage    []byte
+
+	comfy *ComfyUIService
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	a := &App{}
+	a.comfy = &ComfyUIService{
+		settings: &a.settings,
+		ctx:      func() context.Context { return a.ctx },
+	}
+	return a
 }
 
 // startup is called when the app starts. The context is saved
@@ -94,82 +98,27 @@ func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
 
 // GetComfyConfig returns the ComfyUI connection settings.
 func (a *App) GetComfyConfig() settings.ComfyConfig {
-	return a.settings.Comfy
+	return a.comfy.GetComfyConfig()
 }
 
 // ImportComfyWorkflow reads a workflow JSON file, parses it, and stores it in settings.
 func (a *App) ImportComfyWorkflow(filePath string) (comfy.ComfyWorkflow, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return comfy.ComfyWorkflow{}, fmt.Errorf("read workflow file: %w", err)
-	}
-
-	wf, err := comfy.ParseWorkflow(data)
-	if err != nil {
-		return comfy.ComfyWorkflow{}, fmt.Errorf("parse workflow: %w", err)
-	}
-
-	params := wf.ExtractParams(0)
-
-	baseName := filePath
-	if idx := strings.LastIndexByte(baseName, '/'); idx >= 0 {
-		baseName = baseName[idx+1:]
-	}
-	if idx := strings.LastIndexByte(baseName, '.'); idx >= 0 {
-		baseName = baseName[:idx]
-	}
-
-	cw := comfy.ComfyWorkflow{
-		ID:       fmt.Sprintf("wf-%d", len(a.settings.Comfy.Workflows)+1),
-		Name:     baseName,
-		JSONData: comfy.JSONString(data),
-		Params:   params,
-	}
-
-	a.settings.Comfy.Workflows = append(a.settings.Comfy.Workflows, cw)
-	if err := settings.Save(a.settings); err != nil {
-		return comfy.ComfyWorkflow{}, fmt.Errorf("save settings: %w", err)
-	}
-
-	return cw, nil
+	return a.comfy.ImportComfyWorkflow(filePath)
 }
 
 // GetComfyWorkflows returns all saved ComfyUI workflows.
 func (a *App) GetComfyWorkflows() []comfy.ComfyWorkflow {
-	return a.settings.Comfy.Workflows
+	return a.comfy.GetComfyWorkflows()
 }
 
 // DeleteComfyWorkflow removes a workflow by ID.
 func (a *App) DeleteComfyWorkflow(id string) error {
-	filtered := make([]comfy.ComfyWorkflow, 0, len(a.settings.Comfy.Workflows))
-	for _, wf := range a.settings.Comfy.Workflows {
-		if wf.ID != id {
-			filtered = append(filtered, wf)
-		}
-	}
-	a.settings.Comfy.Workflows = filtered
-	if a.settings.Comfy.DefaultWorkflow == id {
-		a.settings.Comfy.DefaultWorkflow = ""
-	}
-	return settings.Save(a.settings)
+	return a.comfy.DeleteComfyWorkflow(id)
 }
 
 // TestComfyUIEndpoint verifies connectivity to a ComfyUI instance.
 func (a *App) TestComfyUIEndpoint(url, token string) llm.TestResult {
-	var t *string
-	if token != "" {
-		t = &token
-	}
-	client := comfy.NewClient(url, t)
-	if err := client.TestConnection(); err != nil {
-		return llm.TestResult{
-			Ok:    false,
-			Error: err.Error(),
-		}
-	}
-		return llm.TestResult{
-		Ok:        true,
-	}
+	return a.comfy.TestComfyUIEndpoint(url, token)
 }
 
 // GetDefaultPromptTemplates returns the built-in factory default templates.
@@ -193,32 +142,12 @@ func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
 
 // GeneratePortrait starts 4 ComfyUI generation jobs with seed offsets and returns the images.
 func (a *App) GeneratePortrait(params comfy.GenerationParams) ([]comfy.CompletedImage, error) {
-	return a.generateVariants(params, 4)
+	return a.comfy.GeneratePortrait(params)
 }
 
 // GenerateProjectImage starts 3 ComfyUI generation jobs with seed offsets and returns the images.
 func (a *App) GenerateProjectImage(params comfy.GenerationParams) ([]comfy.CompletedImage, error) {
-	return a.generateVariants(params, 3)
-}
-
-func (a *App) generateVariants(params comfy.GenerationParams, count int) ([]comfy.CompletedImage, error) {
-	var t *string
-	if a.settings.Comfy.AuthToken != nil {
-		t = a.settings.Comfy.AuthToken
-	}
-
-	var allImages []comfy.CompletedImage
-	for i := 0; i < count; i++ {
-		variantParams := params
-		variantParams.Seed = params.Seed + i
-
-		g := comfy.NewGenerator(a.ctx, a.settings.Comfy.URL, t)
-		if err := g.Run(variantParams, nil); err != nil {
-			return nil, fmt.Errorf("variant %d: %w", i+1, err)
-		}
-		allImages = append(allImages, g.Images()...)
-	}
-	return allImages, nil
+	return a.comfy.GenerateProjectImage(params)
 }
 
 // GenerateImagePrompt uses the default LLM endpoint to generate image generation prompts.
@@ -260,120 +189,48 @@ func (a *App) GenerateImagePrompt(charID int, style string) (string, string, err
 
 // GetComfyWorkflowByName returns a saved workflow by name, or the first workflow if name is empty.
 func (a *App) GetComfyWorkflowByName(name string) (comfy.ComfyWorkflow, error) {
-	for _, wf := range a.settings.Comfy.Workflows {
-		if wf.Name == name || name == "" {
-			return wf, nil
-		}
-	}
-	return comfy.ComfyWorkflow{}, workflowNotFound(name)
+	return a.comfy.GetComfyWorkflowByName(name)
 }
 
 // GetComfyWorkflowTemplate returns the workflow template JSON for a given workflow ID.
 // Returns the built-in template for known preset IDs, or the stored template/data for saved workflows.
 func (a *App) GetComfyWorkflowTemplate(id string) (string, error) {
-	if tmpl, ok := comfy.GetBuiltInTemplate(id); ok {
-		return tmpl, nil
-	}
-
-	for _, wf := range a.settings.Comfy.Workflows {
-		if wf.ID == id {
-			if len(wf.Template) > 0 {
-				return string(wf.Template), nil
-			}
-			return string(wf.JSONData), nil
-		}
-	}
-
-	return "", workflowNotFound(id)
+	return a.comfy.GetComfyWorkflowTemplate(id)
 }
 
 // SaveComfyWorkflowTemplate stores an edited workflow template.
 func (a *App) SaveComfyWorkflowTemplate(id, template string) error {
-	for i, wf := range a.settings.Comfy.Workflows {
-		if wf.ID == id {
-			a.settings.Comfy.Workflows[i].Template = comfy.JSONString(template)
-			return settings.Save(a.settings)
-		}
-	}
-	return workflowNotFound(id)
-}
-
-func (a *App) comfyClient() (*comfy.Client, error) {
-	url := a.settings.Comfy.URL
-	if url == "" {
-		return nil, fmt.Errorf("ComfyUI URL not configured")
-	}
-	var t *string
-	if a.settings.Comfy.AuthToken != nil {
-		t = a.settings.Comfy.AuthToken
-	}
-	return comfy.NewClient(url, t), nil
+	return a.comfy.SaveComfyWorkflowTemplate(id, template)
 }
 
 // GetComfySamplers returns available sampler names from ComfyUI.
 func (a *App) GetComfySamplers() ([]string, error) {
-	client, err := a.comfyClient()
-	if err != nil {
-		return nil, err
-	}
-	return client.GetNodeInputList("KSampler", "sampler_name")
+	return a.comfy.GetComfySamplers()
 }
 
 // GetComfySchedulers returns available scheduler names from ComfyUI.
 func (a *App) GetComfySchedulers() ([]string, error) {
-	client, err := a.comfyClient()
-	if err != nil {
-		return nil, err
-	}
-	return client.GetNodeInputList("KSampler", "scheduler")
+	return a.comfy.GetComfySchedulers()
 }
 
 // GetComfyCheckpoints returns available checkpoint model names from ComfyUI.
 func (a *App) GetComfyCheckpoints() ([]string, error) {
-	client, err := a.comfyClient()
-	if err != nil {
-		return nil, err
-	}
-	values, err := client.GetNodeInputList("CheckpointLoaderSimple", "ckpt_name")
-	if err != nil {
-		return nil, err
-	}
-	return values, nil
+	return a.comfy.GetComfyCheckpoints()
 }
 
 // GetComfyVAEs returns available VAE model names from ComfyUI.
 func (a *App) GetComfyVAEs() ([]string, error) {
-	client, err := a.comfyClient()
-	if err != nil {
-		return nil, err
-	}
-	values, err := client.GetNodeInputList("VAELoader", "vae_name")
-	if err != nil {
-		return nil, err
-	}
-	return values, nil
+	return a.comfy.GetComfyVAEs()
 }
 
 // GetComfyLoRAs returns available LoRA model names from ComfyUI.
 func (a *App) GetComfyLoRAs() ([]string, error) {
-	client, err := a.comfyClient()
-	if err != nil {
-		return nil, err
-	}
-	values, err := client.GetNodeInputList("LoraLoader", "lora_name")
-	if err != nil {
-		return nil, err
-	}
-	return values, nil
+	return a.comfy.GetComfyLoRAs()
 }
 
 // ParseComfyWorkflowParams extracts WorkflowParams from raw workflow JSON.
 func (a *App) ParseComfyWorkflowParams(jsonData string) (comfy.WorkflowParams, error) {
-	wf, err := comfy.ParseWorkflow(json.RawMessage(jsonData))
-	if err != nil {
-		return comfy.WorkflowParams{}, err
-	}
-	return wf.ExtractParams(0), nil
+	return a.comfy.ParseComfyWorkflowParams(jsonData)
 }
 
 // CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.

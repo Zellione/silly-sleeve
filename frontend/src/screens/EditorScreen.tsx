@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import { useAutoSave } from '../components/useAutoSave';
@@ -9,97 +9,18 @@ import {
 } from '../icons';
 import {
   GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
-  SetActiveCharacter, GetCachedCrawl, CountTokens,
+  SetActiveCharacter, GetCachedCrawl,
   GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
 } from '../../wailsjs/go/main/App';
 import { SectionContent } from '../components/SectionContent';
 import { TagsInput } from '../components/TagsInput';
 import { logError } from '../utils/log';
+import {
+  FIELDS, type FieldSpec, type FieldState, type FieldValue,
+  wordCountLabel, useFieldEditor,
+} from '../components/useFieldEditor';
 import { compose, crawler } from '../../wailsjs/go/models';
-
-interface FieldSpec {
-  id: string;
-  label: string;
-  required: boolean;
-  type: 'line' | 'text' | 'tags' | 'quotes' | 'stats';
-  helper: string;
-}
-
-const FIELDS: FieldSpec[] = [
-  { id: 'name',          label: 'Name',                required: true,  type: 'line',   helper: 'How the model addresses the character.' },
-  { id: 'epithet',       label: 'Title / epithet',     required: false, type: 'line',   helper: 'Optional flourish, shown beneath the name.' },
-  { id: 'tags',          label: 'Tags',                 required: false, type: 'tags',   helper: "Used by SillyTavern's prompt filters." },
-  { id: 'appearance',    label: 'Appearance',           required: true,  type: 'text',   helper: 'Sensory description: build, dress, marks.' },
-  { id: 'personality',   label: 'Personality',          required: true,  type: 'text',   helper: 'Traits as a comma list or short prose.' },
-  { id: 'backstory',     label: 'Backstory',            required: false, type: 'text',   helper: 'Compressed past — model condenses lore.' },
-  { id: 'abilities',     label: 'Abilities & skills',   required: false, type: 'text',   helper: 'Powers, magic, mundane talents.' },
-  { id: 'relationships', label: 'Relationships',        required: false, type: 'text',   helper: 'Allies, rivals, ties to other NPCs.' },
-  { id: 'quotes',        label: 'Example quotes',       required: false, type: 'quotes', helper: 'Voice anchors — italic, in-character.' },
-  { id: 'stats',         label: 'Stat block',           required: false, type: 'stats',  helper: 'Custom numbers — STR, HP, age, etc.' },
-];
-
-/** A field's value is one of three concrete shapes, keyed by `FieldSpec.type`. */
-type FieldValue = string | string[] | compose.StatKV[];
-
-interface FieldState {
-  value: FieldValue;
-  locked: boolean;
-  dirty: boolean;
-  showPrompt: boolean;
-  prompt: string;
-  rolling: boolean;
-  history: number;
-}
-
-function wordCount(val: FieldValue, type: string): number {
-  if (typeof val === 'string') return val.trim().split(/\s+/).filter(Boolean).length;
-  if (type === 'quotes') return (val as string[]).reduce((sum, q) => sum + q.trim().split(/\s+/).filter(Boolean).length, 0);
-  return 0; // tags and stats contribute no word count
-}
-
-function wordCountLabel(val: FieldValue, type: string): string {
-  const wc = wordCount(val, type);
-  if (Array.isArray(val) && type === 'tags') return val.length + ' tags';
-  if (Array.isArray(val) && type === 'quotes') return val.length + ' quotes, ' + wc + ' words';
-  if (Array.isArray(val) && type === 'stats') return val.length + ' rows';
-  return wc + ' words';
-}
-
-function charsFromFieldState(ch: compose.Character, fields: Record<string, FieldState>): compose.Character {
-  return compose.Character.createFrom({
-    ...ch,
-    name: fields.name?.value ?? ch.name,
-    epithet: fields.epithet?.value ?? ch.epithet,
-    tags: fields.tags?.value ?? ch.tags,
-    appearance: fields.appearance?.value ?? ch.appearance,
-    personality: fields.personality?.value ?? ch.personality,
-    backstory: fields.backstory?.value ?? ch.backstory,
-    abilities: fields.abilities?.value ?? ch.abilities,
-    relationships: fields.relationships?.value ?? ch.relationships,
-    quotes: fields.quotes?.value ?? ch.quotes,
-    stats: fields.stats?.value ?? ch.stats,
-    dirty: Object.values(fields).some(f => f.dirty),
-  });
-}
-
-function fieldStateFromChar(ch: compose.Character, field: FieldSpec): FieldState {
-  let val: FieldValue;
-  switch (field.id) {
-    case 'name': val = ch.name; break;
-    case 'epithet': val = ch.epithet; break;
-    case 'tags': val = ch.tags ?? []; break;
-    case 'appearance': val = ch.appearance; break;
-    case 'personality': val = ch.personality; break;
-    case 'backstory': val = ch.backstory; break;
-    case 'abilities': val = ch.abilities; break;
-    case 'relationships': val = ch.relationships; break;
-    case 'quotes': val = (ch.quotes && ch.quotes.length > 0) ? ch.quotes : ['']; break;
-    case 'stats': val = (ch.stats && ch.stats.length > 0) ? ch.stats : [{ key: '', value: '' }]; break;
-    default: val = '';
-  }
-  return { value: val, locked: false, dirty: false, showPrompt: false, prompt: '', rolling: false, history: 1 };
-}
 
 const StatsField: React.FC<{
   value: compose.StatKV[]; onChange: (v: compose.StatKV[]) => void; locked: boolean;
@@ -306,8 +227,6 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeChar, setActiveChar] = useState<compose.Character | null>(null);
   const [crawl, setCrawl] = useState<crawler.CrawlResult | null>(null);
-  const [fields, setFields] = useState<Record<string, FieldState>>({});
-  const [tokenCache, setTokenCache] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const flushActiveCharRef = useRef<() => Promise<compose.Character | null>>(
@@ -330,6 +249,11 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     projectPath,
     onSave: doSaveBundle,
   });
+
+  const {
+    fields, tokenCache, totalTokens, dirtyCount, lockedCount, isComposing, ready,
+    setFieldValue, patchField, patchAll, applyGenerated, markAllSaved, buildCharacter, lockedIds,
+  } = useFieldEditor(activeChar, { onValueChange: autoSaveChange });
 
   useEffect(() => {
     if (autoSaveMode === 'off' || projectPath || warnedNoPathRef.current) return;
@@ -355,80 +279,21 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     GetCachedCrawl().then(r => { if (r) setCrawl(r); }).catch(e => logError('EditorScreen.loadCachedCrawl', e));
   }, []);
 
-  useEffect(() => {
-    if (!activeChar) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFields(prev => {
-      const next: Record<string, FieldState> = {};
-      for (const f of FIELDS) {
-        const isLocked = prev[f.id]?.locked ?? false;
-        const charVal = fieldStateFromChar(activeChar, f);
-        next[f.id] = {
-          value: isLocked ? (prev[f.id]?.value ?? charVal.value) : charVal.value,
-          locked: isLocked,
-          dirty: isLocked ? (prev[f.id]?.dirty ?? false) : false,
-          showPrompt: isLocked ? (prev[f.id]?.showPrompt ?? false) : false,
-          prompt: isLocked ? (prev[f.id]?.prompt ?? '') : '',
-          rolling: false,
-          history: prev[f.id]?.history ?? 1,
-        };
-      }
-      return next;
-    });
-  }, [activeChar]);
-
   const flushActiveCharacter = useCallback(async (): Promise<compose.Character | null> => {
     if (!activeChar) return null;
-    const updated = charsFromFieldState(activeChar, fields);
+    const updated = buildCharacter(activeChar);
     await UpdateCharacter(updated);
     await refreshCharacters();
     setActiveChar(updated);
-    for (const f of FIELDS) {
-      setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], dirty: false } }));
-    }
+    markAllSaved();
     return updated;
-  }, [activeChar, fields, refreshCharacters]);
+  }, [activeChar, buildCharacter, markAllSaved, refreshCharacters]);
 
   useEffect(() => {
     flushActiveCharRef.current = flushActiveCharacter;
   }, [flushActiveCharacter]);
 
-  useEffect(() => {
-    const updateTokens = async () => {
-      const cache: Record<string, number> = {};
-      for (const f of FIELDS) {
-        const val = fields[f.id]?.value;
-        const text = typeof val === 'string' ? val : Array.isArray(val) ? JSON.stringify(val) : '';
-        if (text) {
-          try {
-            cache[f.id] = await CountTokens(text);
-          } catch {
-            cache[f.id] = Math.round(text.length / 4);
-          }
-        } else {
-          cache[f.id] = 0;
-        }
-      }
-      setTokenCache(cache);
-    };
-    if (Object.keys(fields).length > 0) updateTokens();
-  }, [fields]);
-
-  const totalTokens = useMemo(() =>
-    Object.values(tokenCache).reduce((a, b) => a + b, 0),
-    [tokenCache],
-  );
-
   const activeId = activeChar?.id ?? 0;
-  const dirtyCount = useMemo(() =>
-    Object.values(fields).filter(f => f.dirty).length,
-    [fields],
-  );
-
-  const lockedCount = useMemo(() =>
-    Object.values(fields).filter(f => f.locked).length,
-    [fields],
-  );
 
   const loadActive = useCallback(async (id: number) => {
     const chars = await refreshCharacters();
@@ -491,24 +356,10 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     }
   }, [toast, onProjectPathChange]);
 
-  const setFieldValue = useCallback((id: string, value: FieldValue) => {
-    setFields(prev => ({ ...prev, [id]: { ...prev[id], value } }));
-    autoSaveChange();
-  }, [autoSaveChange]);
-
-  const patchField = useCallback((id: string, patch: Partial<FieldState>) => {
-    setFields(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
-  }, []);
-
   const handleCompose = useCallback(async () => {
     if (!activeChar) return;
-    const locked = FIELDS.filter(f => fields[f.id]?.locked).map(f => f.id);
-
-    for (const f of FIELDS) {
-      if (!fields[f.id]?.locked) {
-        patchField(f.id, { rolling: true });
-      }
-    }
+    const locked = lockedIds();
+    patchAll({ rolling: true }, st => !st.locked);
 
     try {
       const ch = await GenerateCharacterBulk(locked);
@@ -518,19 +369,16 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       for (const f of FIELDS) {
         if (fields[f.id]?.locked) {
           patchField(f.id, { rolling: false });
-          continue;
+        } else {
+          applyGenerated(f.id, ch);
         }
-        const val = fieldStateFromChar(ch, FIELDS.find(x => x.id === f.id)!);
-        setFields(prev => ({ ...prev, [f.id]: { ...prev[f.id], value: val.value, dirty: false, rolling: false, history: prev[f.id]?.history ? prev[f.id].history + 1 : 2 } }));
       }
       toast({ kind: 'ok', title: 'Composed', body: `"${ch.name}" generated from ${locked.length > 0 ? (FIELDS.length - locked.length) + ' of ' + FIELDS.length : 'all'} fields.` });
     } catch (e: any) {
-      for (const f of FIELDS) {
-        patchField(f.id, { rolling: false });
-      }
+      patchAll({ rolling: false });
       toast({ kind: 'bad', title: 'Compose failed', body: e?.message || 'Could not reach the LLM endpoint.' });
     }
-  }, [activeChar, fields, patchField, toast, refreshCharacters]);
+  }, [activeChar, fields, lockedIds, patchAll, patchField, applyGenerated, toast, refreshCharacters]);
 
   const handleFieldReroll = useCallback(async (fieldID: string) => {
     const st = fields[fieldID];
@@ -545,15 +393,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       setActiveChar(ch);
       const spec = FIELDS.find(x => x.id === fieldID);
       if (spec) {
-        const val = fieldStateFromChar(ch, spec);
-        patchField(fieldID, {
-          value: val.value,
-          rolling: false,
-          dirty: false,
-          history: (st.history || 1) + 1,
-          showPrompt: false,
-          prompt: '',
-        });
+        applyGenerated(fieldID, ch, { showPrompt: false, prompt: '' });
       } else {
         patchField(fieldID, { rolling: false });
       }
@@ -563,11 +403,9 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       patchField(fieldID, { rolling: false });
       toast({ kind: 'bad', title: 'Reroll failed', body: e?.message || 'Could not reach the LLM endpoint.' });
     }
-  }, [fields, activeChar, patchField, toast, refreshCharacters]);
+  }, [fields, activeChar, patchField, applyGenerated, toast, refreshCharacters]);
 
-  const isComposing = FIELDS.some(f => fields[f.id]?.rolling);
-
-  if (!activeChar || Object.keys(fields).length === 0) {
+  if (!activeChar || !ready) {
     return (
       <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
         <div className="serif-i" style={{ fontSize: 28, color: 'var(--ink-2)' }}>Loading character…</div>

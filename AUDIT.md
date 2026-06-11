@@ -169,8 +169,17 @@ verbose per-image `console.log` debug spam was removed (a 4.1 win).
     endpoint flyout and ComfyUI settings. Reveal state moved inside; value/toggle
     stay controlled. Screen now 1054 LOC; unit-tested.
   - [ ] `GenerationDefaultsForm`.
-- `EditorScreen.tsx` (~660 LOC): extract a `useFieldEditor` hook to stop
-  prop-drilling field state; debounce backend `CountTokens`.
+- `EditorScreen.tsx` (was ~705 LOC):
+  - [x] `components/useFieldEditor.ts` extracted — owns the per-field state
+    machine (field map, sync-from-character preserving locked edits, derived
+    dirty/locked/composing tallies) and the field mutators (`setFieldValue`,
+    `patchField`, `patchAll`, `applyGenerated`, `markAllSaved`, `buildCharacter`,
+    `lockedIds`). The field types/`FIELDS`/pure helpers moved into the module
+    too. `CountTokens` is now **debounced (300 ms)** instead of firing ~10 calls
+    per keystroke. Screen 705 → 521 LOC; the screen keeps character CRUD + LLM
+    calls and talks to fields only through the hook. Hook unit-tested (10 tests)
+    on top of the 33 existing EditorScreen tests.
+  - [ ] (optional) further split the source/preview panes.
 
 ### 4.5 Tighten TypeScript at the edges — DONE
 - `EditorScreen`: introduced `type FieldValue = string | string[] | StatKV[]`;

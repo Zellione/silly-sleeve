@@ -72,7 +72,6 @@ const EndpointFlyout: React.FC<{
         role="dialog"
         aria-modal="true"
         aria-label={isNew ? 'New endpoint' : 'Edit endpoint'}
-        onClick={e => e.stopPropagation()}
       >
         <header className="ep-fly-head">
           <div style={{ minWidth: 0 }}>

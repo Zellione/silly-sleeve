@@ -40,12 +40,6 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPending(null);
   }, [pending]);
 
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleCancel();
-    }
-  }, [handleCancel]);
-
   const confirmValue = useMemo(() => ({ confirm }), [confirm]);
   const trapRef = useFocusTrap<HTMLDivElement>(!!pending, handleCancel);
 
@@ -53,7 +47,13 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <ConfirmContext.Provider value={confirmValue}>
       {children}
       {pending && (
-        <div className="ss-confirm-backdrop" onClick={handleBackdropClick}>
+        <div className="ss-confirm-backdrop">
+          <button
+            type="button"
+            className="ss-confirm-bg"
+            aria-label="Dismiss dialog"
+            onClick={handleCancel}
+          />
           <div
             className="ss-confirm-card"
             ref={trapRef}

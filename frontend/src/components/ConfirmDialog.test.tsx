@@ -65,8 +65,7 @@ describe('ConfirmDialog', () => {
 
     await user.click(screen.getByText('Trigger'));
 
-    const backdrop = document.querySelector('.ss-confirm-backdrop') as HTMLElement;
-    await user.click(backdrop);
+    await user.click(screen.getByRole('button', { name: 'Dismiss dialog' }));
 
     expect(onResult).toHaveBeenCalledWith(false);
   });

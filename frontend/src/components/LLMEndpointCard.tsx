@@ -62,7 +62,7 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
           <MoreIcon size={14} />
         </button>
         {menuOpen && (
-          <div className="ep-more-menu" onClick={ev => ev.stopPropagation()}>
+          <div className="ep-more-menu">
             <button className="ep-more-item" disabled={e.isDefault} onClick={onSetDefault}>
               <CheckIcon size={13} /> Set as default
               {e.isDefault && <span className="hint">current</span>}

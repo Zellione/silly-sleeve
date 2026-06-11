@@ -97,46 +97,51 @@ func shouldSkipSections(node *html.Node, include map[string]bool) bool {
 	return shouldSkip(node)
 }
 
+// walkNodes does a depth-first pre-order traversal starting at n, calling fn on
+// each node. When fn returns false the node's children are skipped (siblings are
+// still visited by the caller's loop). It replaces the hand-rolled recursive
+// `walk` closures throughout this file.
+func walkNodes(n *html.Node, fn func(*html.Node) bool) {
+	if !fn(n) {
+		return
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		walkNodes(c, fn)
+	}
+}
+
 func getTextContent(node *html.Node) string {
 	var buf strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if shouldSkip(n) {
-			return
-		}
-		if n.Type == html.TextNode {
-			buf.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		walk(c)
+		walkNodes(c, func(n *html.Node) bool {
+			if shouldSkip(n) {
+				return false
+			}
+			if n.Type == html.TextNode {
+				buf.WriteString(n.Data)
+			}
+			return true
+		})
 	}
 	return strings.TrimSpace(buf.String())
 }
 
 func getInlineText(node *html.Node) string {
 	var buf strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if shouldSkip(n) {
-			return
-		}
-		if n.Type == html.ElementNode && n.Data == "br" {
-			buf.WriteString("\n")
-			return
-		}
-		if n.Type == html.TextNode {
-			buf.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		walk(c)
+		walkNodes(c, func(n *html.Node) bool {
+			if shouldSkip(n) {
+				return false
+			}
+			if n.Type == html.ElementNode && n.Data == "br" {
+				buf.WriteString("\n")
+				return false
+			}
+			if n.Type == html.TextNode {
+				buf.WriteString(n.Data)
+			}
+			return true
+		})
 	}
 	return strings.TrimSpace(buf.String())
 }
@@ -197,28 +202,24 @@ func limitConsecutiveNewlines(s string, max int) string {
 
 func getParagraphText(node *html.Node) string {
 	var buf strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if shouldSkip(n) {
-			return
-		}
-		if n.Type == html.ElementNode && n.Data == "br" {
-			buf.WriteString("\n")
-			return
-		}
-		if n.Type == html.TextNode {
-			text := strings.ReplaceAll(n.Data, nbSpace, " ")
-			text = strings.ReplaceAll(text, "\t", " ")
-			text = strings.ReplaceAll(text, "\r", " ")
-			text = strings.ReplaceAll(text, "\n", " ")
-			buf.WriteString(text)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		walk(c)
+		walkNodes(c, func(n *html.Node) bool {
+			if shouldSkip(n) {
+				return false
+			}
+			if n.Type == html.ElementNode && n.Data == "br" {
+				buf.WriteString("\n")
+				return false
+			}
+			if n.Type == html.TextNode {
+				text := strings.ReplaceAll(n.Data, nbSpace, " ")
+				text = strings.ReplaceAll(text, "\t", " ")
+				text = strings.ReplaceAll(text, "\r", " ")
+				text = strings.ReplaceAll(text, "\n", " ")
+				buf.WriteString(text)
+			}
+			return true
+		})
 	}
 	result := collapseInlineSpaces(buf.String())
 	result = limitConsecutiveNewlines(result, 2)
@@ -320,23 +321,19 @@ func ExtractInfobox(rawHTML string) []InfoboxEntry {
 	}
 
 	var entries []InfoboxEntry
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	walkNodes(doc, func(n *html.Node) bool {
 		if n.Type == html.ElementNode {
 			if n.Data == "table" && hasClass(n, "infobox") {
 				entries = extractTableInfobox(n)
-				return
+				return false
 			}
 			if n.Data == "aside" && hasClass(n, infoboxClass) {
 				entries = extractPortableInfobox(n)
-				return
+				return false
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+		return true
+	})
 	return entries
 }
 
@@ -373,8 +370,7 @@ func extractTableInfobox(table *html.Node) []InfoboxEntry {
 func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 	var entries []InfoboxEntry
 	var currentSection string
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	walkNodes(aside, func(n *html.Node) bool {
 		if n.Type == html.ElementNode {
 			if n.Data == "h2" && hasClass(n, "pi-header") {
 				currentSection = cleanText(getTextContent(n))
@@ -391,27 +387,20 @@ func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 				}
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(aside)
+		return true
+	})
 	return entries
 }
 
 func getPortableInfoboxValue(node *html.Node) string {
 	var value string
-	var findValue func(*html.Node)
-	findValue = func(n *html.Node) {
+	walkNodes(node, func(n *html.Node) bool {
 		if n.Type == html.ElementNode && hasClass(n, "pi-data-value") {
 			value = cleanInfoboxText(getInlineText(n))
-			return
+			return false
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findValue(c)
-		}
-	}
-	findValue(node)
+		return true
+	})
 	if value == "" {
 		value = cleanInfoboxText(getInlineText(node))
 	}
@@ -450,18 +439,14 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 	var current *Section
 	collecting := false
 
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	walkNodes(doc, func(n *html.Node) bool {
 		if shouldSkipSections(n, include) {
-			return
+			return false
 		}
 		if n.Type == html.ElementNode && (n.Data == "h2" || n.Data == "h3" || n.Data == "h4") {
 			heading := cleanHeading(cleanText(getTextContent(n)))
 			if heading == "" {
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				return
+				return true
 			}
 			if current != nil {
 				sections = append(sections, *current)
@@ -477,7 +462,7 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 			}
 			current = &Section{Heading: heading, Level: level}
 			collecting = true
-			return
+			return false
 		}
 		if n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery") {
 			if current != nil {
@@ -489,7 +474,7 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 					current.Body += text
 				}
 			}
-			return
+			return false
 		}
 		if n.Type == html.ElementNode && (n.Data == "p" || n.Data == "ul" || n.Data == "ol") {
 			if !collecting {
@@ -511,11 +496,8 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 				}
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+		return true
+	})
 
 	if current != nil {
 		sections = append(sections, *current)

@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   SaveIcon, PlusIcon, CheckIcon, XIcon,
   TrashIcon,
-  LinkIcon, KeyIcon, EyeIcon, UploadIcon, FolderIcon,
+  LinkIcon, UploadIcon, FolderIcon,
 } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import { LLMEndpointCard } from '../components/LLMEndpointCard';
+import { AuthTokenBlock } from '../components/AuthTokenBlock';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -33,7 +34,6 @@ const EndpointFlyout: React.FC<{
   onDelete?: () => void;
 }> = ({ endpoint, isNew, onSave, onClose, onDelete }) => {
   const [draft, setDraft] = useState<settings.LLMEndpoint>({ ...endpoint });
-  const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const { toast } = useToast();
 
@@ -123,42 +123,15 @@ const EndpointFlyout: React.FC<{
               Authentication
               <small>Toggle on for hosted endpoints that require an API key.</small>
             </label>
-            <div className="ep-auth-block">
-              <div className="ep-toggle-row">
-                <div>
-                  <b>Use API key</b>
-                  <small>Sent as <code>Authorization: Bearer …</code></small>
-                </div>
-                <button
-                  className="ep-switch"
-                  data-on={authOn ? '1' : '0'}
-                  onClick={() => toggleAuth(!authOn)}
-                  role="switch"
-                  aria-checked={authOn}
-                >
-                  <i />
-                </button>
-              </div>
-              {authOn && (
-                <div className="ep-key-input">
-                  <KeyIcon size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    value={draft.key || ''}
-                    onChange={e => set('key', e.target.value)}
-                    placeholder="sk-… or msk-… or your provider's token"
-                    spellCheck={false}
-                  />
-                  <button
-                    className="ep-eye"
-                    onClick={() => setShowKey(!showKey)}
-                    title={showKey ? 'Hide key' : 'Reveal key'}
-                  >
-                    {showKey ? <XIcon size={12} /> : <EyeIcon size={12} />}
-                  </button>
-                </div>
-              )}
-            </div>
+            <AuthTokenBlock
+              enabled={authOn}
+              onToggle={toggleAuth}
+              value={draft.key || ''}
+              onChange={v => set('key', v)}
+              toggleLabel="Use API key"
+              placeholder="sk-… or msk-… or your provider's token"
+              secretNoun="key"
+            />
           </div>
 
           {/* Model */}
@@ -298,7 +271,6 @@ const ComfyUISettings: React.FC<{
   const [draftURL, setDraftURL] = useState(settingsState.comfy?.url || '');
   const [draftToken, setDraftToken] = useState(settingsState.comfy?.authToken || '');
   const [draftOutput, setDraftOutput] = useState(settingsState.comfy?.outputFolder || '');
-  const [showToken, setShowToken] = useState(false);
   const [authOn, setAuthOn] = useState(settingsState.comfy?.authToken !== undefined && settingsState.comfy?.authToken !== null);
   const [testing, setTesting] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<comfy.ComfyWorkflow | null>(null);
@@ -444,43 +416,16 @@ const ComfyUISettings: React.FC<{
             <span>Authentication</span>
             <small>Toggle on if your ComfyUI instance requires an API token.</small>
           </label>
-          <div className="ep-auth-block">
-            <div className="ep-toggle-row">
-              <div>
-                <b>Use auth token</b>
-                <small>Sent as <code>Authorization: Bearer …</code></small>
-              </div>
-              <button
-                className="ep-switch"
-                data-on={authOn ? '1' : '0'}
-                onClick={() => setAuthOn(!authOn)}
-                role="switch"
-                aria-checked={authOn}
-              >
-                <i />
-              </button>
-            </div>
-            {authOn && (
-              <div className="ep-key-input">
-                <KeyIcon size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-                <input
-                  id="settings-auth-token"
-                  type={showToken ? 'text' : 'password'}
-                  value={draftToken}
-                  onChange={e => setDraftToken(e.target.value)}
-                  placeholder="Your ComfyUI auth token"
-                  spellCheck={false}
-                />
-                <button
-                  className="ep-eye"
-                  onClick={() => setShowToken(!showToken)}
-                  title={showToken ? 'Hide token' : 'Reveal token'}
-                >
-                  {showToken ? <XIcon size={12} /> : <EyeIcon size={12} />}
-                </button>
-              </div>
-            )}
-          </div>
+          <AuthTokenBlock
+            enabled={authOn}
+            onToggle={setAuthOn}
+            value={draftToken}
+            onChange={setDraftToken}
+            toggleLabel="Use auth token"
+            placeholder="Your ComfyUI auth token"
+            inputId="settings-auth-token"
+            secretNoun="token"
+          />
           <div className="row" style={{ marginTop: 6 }}>
             <button className="btn ghost sm" onClick={handleSaveToken}>Save auth</button>
           </div>

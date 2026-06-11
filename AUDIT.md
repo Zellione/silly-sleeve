@@ -164,8 +164,11 @@ verbose per-image `console.log` debug spam was removed (a 4.1 win).
     overflow menu); the screen passes menu state/handlers down, keeping the
     outside-click detection in the parent. Screen now 1109 LOC; component
     unit-tested.
+  - [x] `components/AuthTokenBlock.tsx` extracted — the "Use API key / auth
+    token" toggle + reveal-able secret input, previously duplicated between the
+    endpoint flyout and ComfyUI settings. Reveal state moved inside; value/toggle
+    stay controlled. Screen now 1054 LOC; unit-tested.
   - [ ] `GenerationDefaultsForm`.
-  - [ ] reusable auth-token block (shared with the endpoint flyout).
 - `EditorScreen.tsx` (~660 LOC): extract a `useFieldEditor` hook to stop
   prop-drilling field state; debounce backend `CountTokens`.
 

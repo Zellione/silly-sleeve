@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   SaveIcon, PlusIcon, CheckIcon, XIcon,
-  MoreIcon, TrashIcon, DownloadIcon, CopyIcon,
+  TrashIcon,
   LinkIcon, KeyIcon, EyeIcon, UploadIcon, FolderIcon,
 } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
+import { LLMEndpointCard } from '../components/LLMEndpointCard';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -973,91 +974,29 @@ const SettingsScreen: React.FC = () => {
                 </p>
                 <div className="settings-form">
                   {settingsState.endpoints.map(e => (
-                    <div key={e.id} className="endpoint-card">
-                      <div className="h">
-                        <span className="ic">{e.name[0]}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <span>{e.name}</span>
-                          <span style={{ font: '500 10px/1 var(--f-mono)', color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 3 }}>
-                            {e.model}
-                          </span>
-                        </div>
-                        <span className="grow" />
-                        {e.isDefault && (
-                          <span className="pill" style={{ color: 'var(--acc)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>
-                            default
-                          </span>
-                        )}
-                        <span className={`pill ${e.ok ? 'ok' : 'idle'}`}>{e.ok ? '✓ connected' : '… untested'}</span>
-                        <div className="ep-more-wrap" ref={moreOpen === e.id ? moreRef : null}>
-                          <button
-                            className="btn icon ghost"
-                            style={{ width: 28, height: 28 }}
-                            data-on={moreOpen === e.id ? '1' : '0'}
-                            onClick={ev => {
-                              ev.stopPropagation();
-                              setMoreOpen(moreOpen === e.id ? null : e.id);
-                            }}
-                          >
-                            <MoreIcon size={14} />
-                          </button>
-                          {moreOpen === e.id && (
-                            <div className="ep-more-menu" onClick={ev => ev.stopPropagation()}>
-                              <button className="ep-more-item" disabled={e.isDefault} onClick={() => setDefault(e.id)}>
-                                <CheckIcon size={13} /> Set as default
-                                {e.isDefault && <span className="hint">current</span>}
-                              </button>
-                              <button className="ep-more-item" onClick={() => duplicateEndpoint(e)}>
-                                <CopyIcon size={13} /> Duplicate
-                              </button>
-                              <button
-                                className="ep-more-item"
-                                onClick={() => {
-                                  setMoreOpen(null);
-                                  toast({ kind: 'ok', title: 'Config copied to clipboard', body: 'Paste into a .json file or another machine.' });
-                                }}
-                              >
-                                <DownloadIcon size={13} /> Export config
-                              </button>
-                              <div className="ep-more-sep" />
-                              <button
-                                className="ep-more-item danger"
-                                onClick={() => {
-                                  deleteEndpoint(e.id);
-                                  setMoreOpen(null);
-                                }}
-                              >
-                                <TrashIcon size={13} /> Delete endpoint
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="url">{e.url}</div>
-                      <div className="row foot">
-                        <span>{e.key ? `auth · ${e.key.slice(0, 6)}${'•'.repeat(8)}` : 'no auth'}</span>
-                        <div className="row" style={{ gap: 6 }}>
-                          <button className="btn ghost sm" disabled={testingMap[e.id]} onClick={() => testEndpoint(e)}>
-                            {testingMap[e.id] ? (
-                              <>
-                                <span className="dot warn" style={{ boxShadow: 'none', width: 6, height: 6 }} /> Testing…
-                              </>
-                            ) : (
-                              'Test'
-                            )}
-                          </button>
-                          <button
-                            className="btn ghost sm"
-                            onClick={() => {
-                              setIsNew(false);
-                              setEditing(e);
-                            }}
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <LLMEndpointCard
+                      key={e.id}
+                      endpoint={e}
+                      testing={!!testingMap[e.id]}
+                      menuOpen={moreOpen === e.id}
+                      menuRef={moreOpen === e.id ? moreRef : null}
+                      onToggleMenu={() => setMoreOpen(moreOpen === e.id ? null : e.id)}
+                      onSetDefault={() => setDefault(e.id)}
+                      onDuplicate={() => duplicateEndpoint(e)}
+                      onExportConfig={() => {
+                        setMoreOpen(null);
+                        toast({ kind: 'ok', title: 'Config copied to clipboard', body: 'Paste into a .json file or another machine.' });
+                      }}
+                      onDelete={() => {
+                        deleteEndpoint(e.id);
+                        setMoreOpen(null);
+                      }}
+                      onTest={() => testEndpoint(e)}
+                      onEdit={() => {
+                        setIsNew(false);
+                        setEditing(e);
+                      }}
+                    />
                   ))}
                   <button className="btn ghost" style={{ alignSelf: 'flex-start' }} onClick={addNew}>
                     <PlusIcon size={14} /> Add endpoint

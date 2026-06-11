@@ -158,9 +158,16 @@ Both screens shrank to view + screen-specific state; `ProjectImageScreen`'s
 redundant `hasImage` flag folded into `variantImages.length > 0`, and the
 verbose per-image `console.log` debug spam was removed (a 4.1 win).
 
-### 4.4 Decompose monolith screens
-- `SettingsScreen.tsx` (1164 LOC): extract `LLMEndpointCard`, `GenerationDefaultsForm`, reusable auth-token block.
-- `EditorScreen.tsx` (705 LOC): extract a `useFieldEditor` hook to stop prop-drilling field state; debounce backend `CountTokens`.
+### 4.4 Decompose monolith screens — IN PROGRESS
+- `SettingsScreen.tsx` (was 1164 LOC):
+  - [x] `components/LLMEndpointCard.tsx` extracted (one endpoint row + its
+    overflow menu); the screen passes menu state/handlers down, keeping the
+    outside-click detection in the parent. Screen now 1109 LOC; component
+    unit-tested.
+  - [ ] `GenerationDefaultsForm`.
+  - [ ] reusable auth-token block (shared with the endpoint flyout).
+- `EditorScreen.tsx` (~660 LOC): extract a `useFieldEditor` hook to stop
+  prop-drilling field state; debounce backend `CountTokens`.
 
 ### 4.5 Tighten TypeScript at the edges — DONE
 - `EditorScreen`: introduced `type FieldValue = string | string[] | StatKV[]`;

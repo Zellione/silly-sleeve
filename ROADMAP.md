@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-07
+> Last updated: 2026-06-12
 
 ## Overview
 
@@ -94,7 +94,7 @@ Goal: Full SillyTavern drop-in experience with portraits and PNG embedding.
 
 ### Milestone B — Production Export
 
-- [ ] **5b.1** PNG CCv3 export engine: `internal/export/png.go` with custom tEXt chunk injection (chara + ccv3)
+- [~] **5b.1** PNG CCv3 export engine: `internal/export/png.go` with custom tEXt chunk injection (chara + ccv3)
 - [ ] **5b.2** Export hub screen: character grid picker, lorebook entry list, format picker, embedding options, destination tree preview
 - [ ] **5b.3** Export queue & bulk logic: sequential export with Wails Events progress per character
 - [ ] **5b.4** Tests, quality gate, enable PNG export buttons
@@ -117,6 +117,11 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-12
+
+- Started Phase 3B — Production Export (`milestone/5b-production-export`).
+- [~] **5b.1** PNG CCv3 export engine: `internal/export/` package with tEXt chunk injection (chara + ccv3).
 
 ### 2026-05-29
 

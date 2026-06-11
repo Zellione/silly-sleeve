@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/comfy"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
-	"silly-sleeve/internal/bundle"
 	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/settings"
 )
@@ -32,6 +29,7 @@ type App struct {
 
 	comfy   *ComfyUIService
 	charGen *CharacterGenerator
+	project *ProjectManager
 }
 
 // NewApp creates a new App application struct
@@ -43,6 +41,7 @@ func NewApp() *App {
 		ctx:      ctxFn,
 	}
 	a.charGen = &CharacterGenerator{ctx: ctxFn}
+	a.project = &ProjectManager{ctx: ctxFn}
 	return a
 }
 
@@ -452,17 +451,7 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 
 // PickSaveBundle opens a native save dialog for creating a .slv project bundle.
 func (a *App) PickSaveBundle() (string, error) {
-	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "Save project bundle",
-		DefaultFilename: "silly-sleeve-project.slv",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	return filePath, nil
+	return a.project.PickSaveBundle()
 }
 
 // SaveProjectBundle writes the current project state as a .slv bundle.
@@ -470,50 +459,28 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
 	chars := make([]compose.Character, len(a.characters))
 	copy(chars, a.characters)
-	activeID := a.activeCharID
-	sourceURL := ""
-	crawlTitle := ""
-	var cachedCrawl *crawler.CrawlResult
-	if a.cachedCrawl != nil {
-		sourceURL = a.cachedCrawl.URL
-		crawlTitle = a.cachedCrawl.Title
-		cachedCrawl = a.cachedCrawl
+	snap := ProjectSnapshot{
+		Characters:   chars,
+		ActiveCharID: a.activeCharID,
 	}
-	templates := a.settings.PromptTemplates
-	if len(templates.FieldPrompts) == 0 {
-		templates = prompts.Defaults()
+	if a.cachedCrawl != nil {
+		snap.SourceURL = a.cachedCrawl.URL
+		snap.CrawlTitle = a.cachedCrawl.Title
+		snap.CrawlCache = a.cachedCrawl
+	}
+	snap.Prompts = a.settings.PromptTemplates
+	if len(snap.Prompts.FieldPrompts) == 0 {
+		snap.Prompts = prompts.Defaults()
 	}
 	entries := make([]lorebook.Entry, len(a.lorebookEntries))
 	copy(entries, a.lorebookEntries)
+	snap.Lorebook = entries
 	projImg := make([]byte, len(a.projectImage))
 	copy(projImg, a.projectImage)
+	snap.ProjectImage = projImg
 	a.mu.Unlock()
 
-	projectName := "Untitled Project"
-	if len(chars) > 0 && chars[0].Name != "Untitled" {
-		projectName = chars[0].Name
-	}
-	if crawlTitle != "" {
-		projectName = crawlTitle
-	}
-
-	m := project.ProjectManifest{
-		Name:         projectName,
-		ActiveCharID: activeID,
-		SourceURL:    sourceURL,
-		CrawlTitle:   crawlTitle,
-		ProjectImage: projImg,
-	}
-
-	b := bundle.Bundle{
-		Manifest:   m,
-		Characters:  chars,
-		Lorebook:   entries,
-		Prompts:    templates,
-		CrawlCache: cachedCrawl,
-	}
-
-	if err := bundle.WriteBundle(filePath, b); err != nil {
+	if err := a.project.SaveBundle(filePath, snap); err != nil {
 		return err
 	}
 
@@ -525,25 +492,12 @@ func (a *App) SaveProjectBundle(filePath string) error {
 
 // PickOpenBundle opens a native file picker for loading a .slv project bundle.
 func (a *App) PickOpenBundle() (string, error) {
-	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Open project bundle",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	return filePath, nil
+	return a.project.PickOpenBundle()
 }
 
 // OpenProjectBundle loads a project from a .slv bundle file.
 func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error) {
-	if filePath == "" {
-		return project.ProjectManifest{}, fmt.Errorf("no file selected")
-	}
-
-	b, err := bundle.ReadBundle(filePath)
+	b, err := a.project.ReadBundle(filePath)
 	if err != nil {
 		return project.ProjectManifest{}, err
 	}
@@ -560,13 +514,8 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 		a.activeCharID = 1
 	}
 
-	if b.CrawlCache != nil {
-		a.cachedCrawl = b.CrawlCache
-	} else if b.Manifest.CrawlTitle != "" {
-		c, err := crawler.LoadCache()
-		if err == nil && c != nil && c.Title == b.Manifest.CrawlTitle {
-			a.cachedCrawl = c
-		}
+	if resolved := a.project.ResolveCrawlCache(b); resolved != nil {
+		a.cachedCrawl = resolved
 	}
 
 	if len(b.Prompts.FieldPrompts) > 0 {
@@ -579,13 +528,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 
 // PickExportFolder opens a native folder picker for exporting characters.
 func (a *App) PickExportFolder() (string, error) {
-	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Choose export folder",
-	})
-	if err != nil {
-		return "", err
-	}
-	return dir, nil
+	return a.project.PickExportFolder()
 }
 
 // ExportCharacter exports a single character as SillyTavern-compatible JSON.
@@ -606,11 +549,7 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 		return "", charNotFound(charID)
 	}
 
-	filePath, writeErr := compose.ExportSillyTavernCard(*found, folderPath)
-	if writeErr != nil {
-		return "", writeErr
-	}
-	return filePath, nil
+	return a.project.ExportCharacter(*found, folderPath)
 }
 
 // GetLorebook returns all lorebook entries.
@@ -634,11 +573,7 @@ func (a *App) ExportLorebook(folderPath string) (string, error) {
 	copy(entries, a.lorebookEntries)
 	a.mu.Unlock()
 
-	filePath := folderPath + "/world_info.json"
-	if err := lorebook.ExportWorldInfo(entries, filePath); err != nil {
-		return "", err
-	}
-	return filePath, nil
+	return a.project.ExportLorebook(entries, folderPath)
 }
 
 // GetPortrait returns the portrait bytes for a character.

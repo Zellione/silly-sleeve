@@ -248,12 +248,24 @@ The `internal/compose` export extraction (3.6) is the template for one increment
 Define `comfy.ComfyClient` and `llm.Completer` interfaces; inject them so
 generation logic is unit-testable without real HTTP/WebSocket. Pairs with 6.1.
 
-### 6.3 Extract duplicated helpers in `internal/crawler/sanitize.go` (592 LOC)
-- A single `normalizeWhitespace` (4 near-duplicate implementations) — safe.
-- A generic `walkNodes(n, fn)` replacing ~5 inline recursive `walk` closures —
-  **highest regression surface** (untrusted-HTML parsing); do carefully with
-  the crawler test suite as the guard.
-- Replace the O(n²) `for strings.Contains(s,"  ")` space-collapse with a single-pass builder.
+### 6.3 Extract duplicated helpers in `internal/crawler/sanitize.go` — DONE
+- ~~A single `normalizeWhitespace` (4 near-duplicate implementations) — safe.~~
+  On inspection the four normalizers (`cleanText`, `cleanParagraph`,
+  `cleanInfoboxText`, plus the post-loops) are **not** interchangeable —
+  they differ in newline handling (flatten vs. preserve vs. limit) and in
+  whether spaces around newlines are trimmed. Merging them would be
+  behavior-changing, so instead the genuinely-duplicated logic (the O(n²)
+  space-collapse) was extracted into the shared `collapseInlineSpaces`
+  primitive now used by all three call sites.
+- ~~A generic `walkNodes(n, fn)` replacing ~5 inline recursive `walk`
+  closures.~~ Done: one `walkNodes(n, fn func(*html.Node) bool)` (return
+  false to skip children) replaces six closures across getTextContent,
+  getInlineText, getParagraphText, ExtractInfobox, extractPortableInfobox,
+  getPortableInfoboxValue and ExtractSections. `getListContent` keeps its
+  depth-carrying walker. Crawler suite (94 tests) green, coverage 93.2%.
+- ~~Replace the O(n²) `for strings.Contains(s,"  ")` space-collapse with a
+  single-pass builder.~~ Done: `collapseInlineSpaces` +
+  `limitConsecutiveNewlines`.
 
 ---
 

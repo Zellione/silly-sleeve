@@ -413,9 +413,13 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 @keyframes ep-fade { from { opacity: 0; } to { opacity: 1; } }
 .ep-flyout {
   position: fixed;
-  top: 32px; right: 0; bottom: 24px;
+  /* `inset` (not just top/right/bottom) so left:auto overrides the native
+     <dialog> UA rule `inset-inline-start: 0`, which would otherwise pin the
+     panel to the left. `height: auto` likewise overrides UA `height: fit-content`,
+     which would collapse it to content height. */
+  inset: 32px 0 24px auto;
   width: 480px; max-width: 100vw;
-  max-height: none;
+  height: auto; max-height: none;
   margin: 0; padding: 0;
   color: inherit;
   background: var(--panel);

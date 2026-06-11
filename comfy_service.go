@@ -23,6 +23,20 @@ import (
 type ComfyUIService struct {
 	settings *settings.Settings
 	ctx      func() context.Context
+
+	// newClient is the injectable factory for the HTTP client seam; when nil
+	// the production comfy.NewClient is used.
+	newClient func(baseURL string, token *string) comfy.ComfyClient
+}
+
+// clientFactory returns the injected client factory, or the production one.
+func (s *ComfyUIService) clientFactory() func(baseURL string, token *string) comfy.ComfyClient {
+	if s.newClient != nil {
+		return s.newClient
+	}
+	return func(baseURL string, token *string) comfy.ComfyClient {
+		return comfy.NewClient(baseURL, token)
+	}
 }
 
 // GetComfyConfig returns the ComfyUI connection settings.
@@ -93,7 +107,7 @@ func (s *ComfyUIService) TestComfyUIEndpoint(url, token string) llm.TestResult {
 	if token != "" {
 		t = &token
 	}
-	client := comfy.NewClient(url, t)
+	client := s.clientFactory()(url, t)
 	if err := client.TestConnection(); err != nil {
 		return llm.TestResult{
 			Ok:    false,
@@ -175,7 +189,7 @@ func (s *ComfyUIService) SaveComfyWorkflowTemplate(id, template string) error {
 	return workflowNotFound(id)
 }
 
-func (s *ComfyUIService) comfyClient() (*comfy.Client, error) {
+func (s *ComfyUIService) comfyClient() (comfy.ComfyClient, error) {
 	url := s.settings.Comfy.URL
 	if url == "" {
 		return nil, fmt.Errorf("ComfyUI URL not configured")
@@ -184,7 +198,7 @@ func (s *ComfyUIService) comfyClient() (*comfy.Client, error) {
 	if s.settings.Comfy.AuthToken != nil {
 		t = s.settings.Comfy.AuthToken
 	}
-	return comfy.NewClient(url, t), nil
+	return s.clientFactory()(url, t), nil
 }
 
 // GetComfySamplers returns available sampler names from ComfyUI.

@@ -22,6 +22,33 @@ func newTestComfyService(set *settings.Settings) *ComfyUIService {
 	}
 }
 
+// fakeComfyClient is an in-memory comfy.ComfyClient for testing the service
+// without a real ComfyUI instance.
+type fakeComfyClient struct {
+	testErr   error
+	lists     map[string][]string
+	listErr   error
+	testCalls int
+}
+
+func (f *fakeComfyClient) TestConnection() error {
+	f.testCalls++
+	return f.testErr
+}
+
+func (f *fakeComfyClient) GetNodeInputList(nodeType, inputName string) ([]string, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return f.lists[nodeType+"."+inputName], nil
+}
+
+func newTestComfyServiceWithClient(set *settings.Settings, c comfy.ComfyClient) *ComfyUIService {
+	svc := newTestComfyService(set)
+	svc.newClient = func(string, *string) comfy.ComfyClient { return c }
+	return svc
+}
+
 func TestComfyService_GetComfyConfig(t *testing.T) {
 	set := settings.Settings{Comfy: settings.ComfyConfig{URL: "http://localhost:8188"}}
 	svc := newTestComfyService(&set)
@@ -141,6 +168,46 @@ func TestComfyService_ParseComfyWorkflowParams(t *testing.T) {
 
 	_, err = svc.ParseComfyWorkflowParams(`{not json`)
 	assert.Error(t, err)
+}
+
+func TestComfyService_DiscoveryViaInjectedClient(t *testing.T) {
+	fake := &fakeComfyClient{lists: map[string][]string{
+		"KSampler.sampler_name":            {"euler", "dpmpp_2m"},
+		"CheckpointLoaderSimple.ckpt_name": {"sdxl.safetensors"},
+	}}
+	set := settings.Settings{Comfy: settings.ComfyConfig{URL: "http://comfy"}}
+	svc := newTestComfyServiceWithClient(&set, fake)
+
+	samplers, err := svc.GetComfySamplers()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"euler", "dpmpp_2m"}, samplers)
+
+	ckpts, err := svc.GetComfyCheckpoints()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"sdxl.safetensors"}, ckpts)
+}
+
+func TestComfyService_DiscoveryPropagatesClientError(t *testing.T) {
+	fake := &fakeComfyClient{listErr: assert.AnError}
+	set := settings.Settings{Comfy: settings.ComfyConfig{URL: "http://comfy"}}
+	svc := newTestComfyServiceWithClient(&set, fake)
+
+	_, err := svc.GetComfyVAEs()
+	assert.ErrorIs(t, err, assert.AnError)
+}
+
+func TestComfyService_TestEndpointViaInjectedClient(t *testing.T) {
+	set := settings.Settings{}
+
+	ok := newTestComfyServiceWithClient(&set, &fakeComfyClient{})
+	res := ok.TestComfyUIEndpoint("http://comfy", "")
+	assert.True(t, res.Ok)
+	assert.Empty(t, res.Error)
+
+	bad := newTestComfyServiceWithClient(&set, &fakeComfyClient{testErr: assert.AnError})
+	res = bad.TestComfyUIEndpoint("http://comfy", "tok")
+	assert.False(t, res.Ok)
+	assert.NotEmpty(t, res.Error)
 }
 
 func TestComfyService_ClientErrorsWithoutURL(t *testing.T) {

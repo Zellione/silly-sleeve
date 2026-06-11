@@ -26,6 +26,14 @@ export function ExportCharacter(arg1, arg2) {
   return window['go']['main']['App']['ExportCharacter'](arg1, arg2);
 }
 
+export function ExportCharacterPNG(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ExportCharacterPNG'](arg1, arg2, arg3, arg4);
+}
+
+export function ExportCharactersBulk(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ExportCharactersBulk'](arg1, arg2, arg3, arg4);
+}
+
 export function ExportLorebook(arg1) {
   return window['go']['main']['App']['ExportLorebook'](arg1);
 }

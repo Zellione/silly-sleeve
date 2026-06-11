@@ -1,3 +1,26 @@
+export namespace cardexport {
+	
+	export class Options {
+	    EmbedLorebook: boolean;
+	    ScopePerChar: boolean;
+	    IncludeGreetings: boolean;
+	    StripMetadata: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Options(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.EmbedLorebook = source["EmbedLorebook"];
+	        this.ScopePerChar = source["ScopePerChar"];
+	        this.IncludeGreetings = source["IncludeGreetings"];
+	        this.StripMetadata = source["StripMetadata"];
+	    }
+	}
+
+}
+
 export namespace comfy {
 	
 	export class WorkflowParams {
@@ -369,6 +392,27 @@ export namespace lorebook {
 	        this.excludeRecursion = source["excludeRecursion"];
 	        this.preventRecursion = source["preventRecursion"];
 	        this.characters = source["characters"];
+	    }
+	}
+
+}
+
+export namespace main {
+	
+	export class ExportResult {
+	    exported: number;
+	    failed: number;
+	    paths: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.exported = source["exported"];
+	        this.failed = source["failed"];
+	        this.paths = source["paths"];
 	    }
 	}
 

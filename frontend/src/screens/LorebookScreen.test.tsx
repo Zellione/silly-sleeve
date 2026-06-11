@@ -54,6 +54,19 @@ describe('LorebookScreen', () => {
     });
   });
 
+  it('surfaces a toast when saving a new entry fails', async () => {
+    mockSaveLorebook.mockRejectedValue(new Error('disk full'));
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('New entry')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('New entry'));
+    await waitFor(() => {
+      expect(screen.getByText('Save failed')).toBeInTheDocument();
+    });
+  });
+
   it('loads existing entries', async () => {
     mockGetLorebook.mockResolvedValue([
       { uid: 0, comment: 'Test entry', key: ['test'], keysecondary: [], content: 'hello', order: 100, position: 0, probability: 100 },

@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -32,7 +33,7 @@ func TestComplete_Success(t *testing.T) {
 	defer srv.Close()
 
 	ep := LLMEndpoint{URL: srv.URL, Model: "test-model", Temperature: 0.8}
-	content, err := Complete(ep, "You are helpful.", "Hello")
+	content, err := Complete(context.Background(), ep, "You are helpful.", "Hello")
 	assert.NoError(t, err)
 	assert.Equal(t, "generated content", content)
 }
@@ -44,7 +45,7 @@ func TestComplete_HTTPError(t *testing.T) {
 	defer srv.Close()
 
 	ep := LLMEndpoint{URL: srv.URL, Model: "model"}
-	_, err := Complete(ep, "sys", "user")
+	_, err := Complete(context.Background(), ep, "sys", "user")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP 500")
 }
@@ -64,7 +65,7 @@ func TestComplete_AuthHeader(t *testing.T) {
 
 	key := "sk-test"
 	ep := LLMEndpoint{URL: srv.URL, Model: "model", Key: &key}
-	_, err := Complete(ep, "sys", "user")
+	_, err := Complete(context.Background(), ep, "sys", "user")
 	assert.NoError(t, err)
 	assert.Equal(t, "Bearer sk-test", receivedAuth)
 }
@@ -79,7 +80,7 @@ func TestComplete_EmptyChoices(t *testing.T) {
 	defer srv.Close()
 
 	ep := LLMEndpoint{URL: srv.URL, Model: "model"}
-	_, err := Complete(ep, "sys", "user")
+	_, err := Complete(context.Background(), ep, "sys", "user")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no choices")
 }
@@ -98,7 +99,7 @@ func TestComplete_NoAuthWhenKeyNil(t *testing.T) {
 	defer srv.Close()
 
 	ep := LLMEndpoint{URL: srv.URL, Model: "model"}
-	_, err := Complete(ep, "sys", "user")
+	_, err := Complete(context.Background(), ep, "sys", "user")
 	assert.NoError(t, err)
 	assert.Empty(t, receivedAuth)
 }
@@ -120,7 +121,7 @@ func TestComplete_ResponseBodyParsing(t *testing.T) {
 	defer srv.Close()
 
 	ep := LLMEndpoint{URL: srv.URL, Model: "gpt-4", Temperature: 0.7}
-	content, err := Complete(ep, "system prompt", "user prompt")
+	content, err := Complete(context.Background(), ep, "system prompt", "user prompt")
 	assert.NoError(t, err)
 	assert.Equal(t, "test", content)
 }

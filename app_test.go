@@ -671,14 +671,6 @@ func TestExportCharacter_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-func TestSlugify(t *testing.T) {
-	assert.Equal(t, "alice-the-brave", slugify("Alice the Brave"))
-	assert.Equal(t, "test-character", slugify("Test_Character"))
-	assert.Equal(t, "hello-world", slugify("Hello! World?"))
-	assert.Equal(t, "", slugify("?! "))
-	assert.Equal(t, "123", slugify("123"))
-}
-
 func mustMarshal(t *testing.T, v any) string {
 	t.Helper()
 	b, err := json.Marshal(v)

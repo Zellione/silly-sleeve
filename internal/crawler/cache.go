@@ -13,7 +13,8 @@ func cachePath() (string, error) {
 		return "", err
 	}
 	appDir := filepath.Join(dir, "silly-sleeve")
-	if err := os.MkdirAll(appDir, 0o755); err != nil {
+	// 0o700: shared app config dir also holds settings.json with secrets.
+	if err := os.MkdirAll(appDir, 0o700); err != nil {
 		return "", err
 	}
 	return filepath.Join(appDir, "crawl-cache.json"), nil
@@ -29,7 +30,7 @@ func SaveCache(r CrawlResult) error {
 	if err != nil {
 		return fmt.Errorf("encode cache: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write cache: %w", err)
 	}
 	return nil

@@ -10,17 +10,43 @@ interface UseAutoSaveOptions {
 export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSaveOptions) {
   const [autoSaveMode, setAutoSaveMode] = useState<string>('off');
   const [autoSaveInterval, setAutoSaveInterval] = useState(30);
-  const timerRef = useRef<ReturnType<typeof setInterval> | ReturnType<typeof setTimeout> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const changeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
   const pathRef = useRef(projectPath);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     onSaveRef.current = onSave;
-  });
+  }, [onSave]);
 
   useEffect(() => {
     pathRef.current = projectPath;
-  });
+  }, [projectPath]);
+
+  // Clear any pending timers and stop saves once the component unmounts, so a
+  // debounced save can't fire against a stale path or after teardown.
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (changeTimerRef.current) clearTimeout(changeTimerRef.current);
+    };
+  }, []);
+
+  // runSave invokes the latest onSave for the current path, surfacing failures
+  // instead of silently dropping them.
+  const runSave = useCallback((mode: string) => {
+    if (!mountedRef.current) return;
+    const p = pathRef.current;
+    if (!p) {
+      console.warn(`Auto-save (${mode}): skipped — no project path set. Save or open a project first.`);
+      return;
+    }
+    Promise.resolve(onSaveRef.current(p)).catch(err => {
+      console.error(`Auto-save (${mode}) failed:`, err);
+    });
+  }, []);
 
   useEffect(() => {
     GetSettings().then(s => {
@@ -30,49 +56,30 @@ export function useAutoSave({ projectPath, onSave, enabled = true }: UseAutoSave
   }, []);
 
   useEffect(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
     if (!enabled || autoSaveMode !== 'timed') return;
 
     const interval = autoSaveInterval * 1000;
-    timerRef.current = setInterval(() => {
-      const p = pathRef.current;
-      if (p) {
-        onSaveRef.current(p);
-      } else {
-        console.warn('Auto-save (timed): skipped — no project path set. Save or open a project first.');
-      }
-    }, interval);
+    intervalRef.current = setInterval(() => runSave('timed'), interval);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [enabled, autoSaveMode, autoSaveInterval]);
+  }, [enabled, autoSaveMode, autoSaveInterval, runSave]);
 
   const handleChange = useCallback(() => {
     if (autoSaveMode !== 'onChange') return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      const p = pathRef.current;
-      if (p) {
-        onSaveRef.current(p);
-      } else {
-        console.warn('Auto-save (onChange): skipped — no project path set. Save or open a project first.');
-      }
-    }, 2000);
-  }, [autoSaveMode]);
+    if (changeTimerRef.current) clearTimeout(changeTimerRef.current);
+    changeTimerRef.current = setTimeout(() => runSave('onChange'), 2000);
+  }, [autoSaveMode, runSave]);
 
   const handleBlur = useCallback(() => {
     if (autoSaveMode !== 'onBlur') return;
-    const p = pathRef.current;
-    if (p) {
-      onSaveRef.current(p);
-    } else {
-      console.warn('Auto-save (onBlur): skipped — no project path set. Save or open a project first.');
-    }
-  }, [autoSaveMode]);
+    runSave('onBlur');
+  }, [autoSaveMode, runSave]);
 
   return { handleChange, handleBlur, autoSaveMode, autoSaveInterval };
 }

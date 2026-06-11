@@ -161,25 +161,25 @@ func extractFromKSamplerParam(ks Node, w *Workflow, p *WorkflowParams) {
 		case "seed":
 			p.Seed = extractSeedParam(in, p.Seed)
 		case "steps":
-			if s, ok := extractStepsParam(in); ok {
+			if s, ok := extractIntParam(in); ok {
 				p.Steps = s
 			}
 		case "cfg":
-			if f, ok := extractCFGParam(in); ok {
+			if f, ok := extractFloatParam(in); ok {
 				p.CFG = f
 			}
 		case "sampler_name":
-			p.Sampler = extractSamplerNameParam(in)
+			p.Sampler = extractStringParam(in)
 		case "scheduler":
-			p.Scheduler = extractSchedulerParam(in)
+			p.Scheduler = extractStringParam(in)
 		case "denoise":
-			if f, ok := extractDenoiseParam(in); ok {
+			if f, ok := extractFloatParam(in); ok {
 				p.Denoise = f
 			}
 		case "positive":
-			p.Prompt = extractPositivePromptParam(in, w)
+			p.Prompt = extractTextPromptParam(in, w)
 		case "negative":
-			p.NegativePrompt = extractNegativePromptParam(in, w)
+			p.NegativePrompt = extractTextPromptParam(in, w)
 		}
 	}
 }
@@ -194,18 +194,6 @@ func extractSeedParam(in NodeInput, fallback int) int {
 	return fallback
 }
 
-func extractStepsParam(in NodeInput) (int, bool) {
-	return extractIntParam(in)
-}
-
-func extractCFGParam(in NodeInput) (float64, bool) {
-	return extractFloatParam(in)
-}
-
-func extractDenoiseParam(in NodeInput) (float64, bool) {
-	return extractFloatParam(in)
-}
-
 func extractIntParam(in NodeInput) (int, bool) {
 	s, ok := toInt(in.Value)
 	return s, ok && s > 0
@@ -216,27 +204,11 @@ func extractFloatParam(in NodeInput) (float64, bool) {
 	return f, ok && f > 0
 }
 
-func extractSamplerNameParam(in NodeInput) string {
-	return extractStringParam(in)
-}
-
-func extractSchedulerParam(in NodeInput) string {
-	return extractStringParam(in)
-}
-
 func extractStringParam(in NodeInput) string {
 	if s, ok := in.Value.(string); ok {
 		return s
 	}
 	return ""
-}
-
-func extractPositivePromptParam(in NodeInput, w *Workflow) string {
-	return extractTextPromptParam(in, w)
-}
-
-func extractNegativePromptParam(in NodeInput, w *Workflow) string {
-	return extractTextPromptParam(in, w)
 }
 
 func extractTextPromptParam(in NodeInput, w *Workflow) string {

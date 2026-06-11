@@ -64,10 +64,17 @@ func (l *WSListener) Connect() error {
 		header["Authorization"] = []string{"Bearer " + *l.Token}
 	}
 
-	conn, _, err := dialer.Dial(wsURL, header)
+	conn, resp, err := dialer.Dial(wsURL, header)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		return fmt.Errorf("dial WebSocket: %w", err)
 	}
+
+	// Bound message size: ComfyUI is potentially untrusted, and ReadMessage
+	// otherwise buffers an entire (possibly huge) frame into memory.
+	conn.SetReadLimit(maxResponseBytes)
 
 	l.conn = conn
 	l.running = true
@@ -89,9 +96,14 @@ func (l *WSListener) Close() {
 }
 
 func (l *WSListener) listen() {
-	for l.isRunning() {
-		conn := l.getConn()
-		if conn == nil {
+	for {
+		// Snapshot conn and running together under one lock acquisition so the
+		// loop reads a consistent view even if Close() runs concurrently.
+		l.mu.Lock()
+		conn := l.conn
+		running := l.running
+		l.mu.Unlock()
+		if !running || conn == nil {
 			return
 		}
 
@@ -191,16 +203,4 @@ func (l *WSListener) handleExecutionErrorMessage(data []byte) {
 			Error:    msg.Data.Error,
 		})
 	}
-}
-
-func (l *WSListener) isRunning() bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.running
-}
-
-func (l *WSListener) getConn() *websocket.Conn {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.conn
 }

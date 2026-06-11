@@ -4,15 +4,83 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGenerator_MarkDone_Idempotent(t *testing.T) {
+	g := &Generator{done: make(chan struct{})}
+	g.markDone(errors.New("first"))
+	g.markDone(nil)                 // no-op: done already closed
+	g.markDone(errors.New("third")) // no-op: must not panic or overwrite
+
+	select {
+	case <-g.done:
+	default:
+		t.Fatal("done channel should be closed")
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	require.Error(t, g.err)
+	assert.Contains(t, g.err.Error(), "first")
+}
+
+func TestGenerator_Run_ContextCancelled(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/prompt" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"prompt_id":"p1","number":1}`))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer srv.Close()
+
+	// WebSocket server that upgrades but never sends a completion event.
+	wsSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}))
+	defer wsSrv.Close()
+	wsURL := "http://" + strings.TrimPrefix(wsSrv.URL, "http://")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	g := NewGenerator(ctx, srv.URL, nil)
+	g.listener.BaseURL = wsURL
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- g.Run(GenerationParams{WorkflowTemplate: `{"1":{"class_type":"X","inputs":{}}}`}, nil)
+	}()
+
+	time.Sleep(100 * time.Millisecond) // let Run queue the prompt and start waiting
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.Canceled)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run did not return after context cancellation")
+	}
+}
 
 func TestGenerator_Run_QueuesPromptWithReplacedPlaceholders(t *testing.T) {
 	var receivedPrompt json.RawMessage

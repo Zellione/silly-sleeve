@@ -97,88 +97,132 @@ func shouldSkipSections(node *html.Node, include map[string]bool) bool {
 	return shouldSkip(node)
 }
 
+// walkNodes does a depth-first pre-order traversal starting at n, calling fn on
+// each node. When fn returns false the node's children are skipped (siblings are
+// still visited by the caller's loop). It replaces the hand-rolled recursive
+// `walk` closures throughout this file.
+func walkNodes(n *html.Node, fn func(*html.Node) bool) {
+	if !fn(n) {
+		return
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		walkNodes(c, fn)
+	}
+}
+
 func getTextContent(node *html.Node) string {
 	var buf strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if shouldSkip(n) {
-			return
-		}
-		if n.Type == html.TextNode {
-			buf.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		walk(c)
+		walkNodes(c, func(n *html.Node) bool {
+			if shouldSkip(n) {
+				return false
+			}
+			if n.Type == html.TextNode {
+				buf.WriteString(n.Data)
+			}
+			return true
+		})
 	}
 	return strings.TrimSpace(buf.String())
 }
 
 func getInlineText(node *html.Node) string {
 	var buf strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if shouldSkip(n) {
-			return
-		}
-		if n.Type == html.ElementNode && n.Data == "br" {
-			buf.WriteString("\n")
-			return
-		}
-		if n.Type == html.TextNode {
-			buf.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		walk(c)
+		walkNodes(c, func(n *html.Node) bool {
+			if shouldSkip(n) {
+				return false
+			}
+			if n.Type == html.ElementNode && n.Data == "br" {
+				buf.WriteString("\n")
+				return false
+			}
+			if n.Type == html.TextNode {
+				buf.WriteString(n.Data)
+			}
+			return true
+		})
 	}
 	return strings.TrimSpace(buf.String())
 }
 
+// collapseInlineSpaces collapses runs of ASCII spaces to a single space and
+// drops spaces sitting directly before or after a newline, preserving newlines
+// and every other rune. It is a single-pass replacement for the repeated
+// O(n²) strings.Contains/ReplaceAll space-collapse loops. A single leading or
+// trailing space is preserved (callers TrimSpace as needed), matching the old
+// loop behavior.
+func collapseInlineSpaces(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	pendingSpace := false
+	atLineStart := false
+	for _, r := range s {
+		switch r {
+		case ' ':
+			pendingSpace = true
+		case '\n':
+			pendingSpace = false
+			b.WriteByte('\n')
+			atLineStart = true
+		default:
+			if pendingSpace && !atLineStart {
+				b.WriteByte(' ')
+			}
+			pendingSpace = false
+			atLineStart = false
+			b.WriteRune(r)
+		}
+	}
+	if pendingSpace && !atLineStart {
+		b.WriteByte(' ')
+	}
+	return b.String()
+}
+
+// limitConsecutiveNewlines collapses runs of more than max consecutive newlines
+// down to exactly max, in a single pass.
+func limitConsecutiveNewlines(s string, max int) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	run := 0
+	for _, r := range s {
+		if r == '\n' {
+			run++
+			if run <= max {
+				b.WriteByte('\n')
+			}
+			continue
+		}
+		run = 0
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 func getParagraphText(node *html.Node) string {
 	var buf strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if shouldSkip(n) {
-			return
-		}
-		if n.Type == html.ElementNode && n.Data == "br" {
-			buf.WriteString("\n")
-			return
-		}
-		if n.Type == html.TextNode {
-			text := strings.ReplaceAll(n.Data, nbSpace, " ")
-			text = strings.ReplaceAll(text, "\t", " ")
-			text = strings.ReplaceAll(text, "\r", " ")
-			text = strings.ReplaceAll(text, "\n", " ")
-			buf.WriteString(text)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
-		walk(c)
+		walkNodes(c, func(n *html.Node) bool {
+			if shouldSkip(n) {
+				return false
+			}
+			if n.Type == html.ElementNode && n.Data == "br" {
+				buf.WriteString("\n")
+				return false
+			}
+			if n.Type == html.TextNode {
+				text := strings.ReplaceAll(n.Data, nbSpace, " ")
+				text = strings.ReplaceAll(text, "\t", " ")
+				text = strings.ReplaceAll(text, "\r", " ")
+				text = strings.ReplaceAll(text, "\n", " ")
+				buf.WriteString(text)
+			}
+			return true
+		})
 	}
-	result := buf.String()
-	for strings.Contains(result, "  ") {
-		result = strings.ReplaceAll(result, "  ", " ")
-	}
-	for strings.Contains(result, " \n") {
-		result = strings.ReplaceAll(result, " \n", "\n")
-	}
-	for strings.Contains(result, "\n ") {
-		result = strings.ReplaceAll(result, "\n ", "\n")
-	}
-	for strings.Contains(result, "\n\n\n") {
-		result = strings.ReplaceAll(result, "\n\n\n", "\n\n")
-	}
+	result := collapseInlineSpaces(buf.String())
+	result = limitConsecutiveNewlines(result, 2)
 	return strings.TrimSpace(result)
 }
 
@@ -222,18 +266,10 @@ func joinTextParts(parts []string) string {
 		buf.WriteString(part)
 		needSpace = true
 	}
-	result := buf.String()
-	for strings.Contains(result, "  ") {
-		result = strings.ReplaceAll(result, "  ", " ")
-	}
-	for strings.Contains(result, " \n") {
-		result = strings.ReplaceAll(result, " \n", "\n")
-	}
-	for strings.Contains(result, "\n ") {
-		result = strings.ReplaceAll(result, "\n ", "\n")
-	}
+	result := collapseInlineSpaces(buf.String())
 	return strings.TrimSpace(result)
 }
+
 func getListContent(node *html.Node) string {
 	var lines []string
 	var walk func(*html.Node, int)
@@ -285,23 +321,19 @@ func ExtractInfobox(rawHTML string) []InfoboxEntry {
 	}
 
 	var entries []InfoboxEntry
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	walkNodes(doc, func(n *html.Node) bool {
 		if n.Type == html.ElementNode {
 			if n.Data == "table" && hasClass(n, "infobox") {
 				entries = extractTableInfobox(n)
-				return
+				return false
 			}
 			if n.Data == "aside" && hasClass(n, infoboxClass) {
 				entries = extractPortableInfobox(n)
-				return
+				return false
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+		return true
+	})
 	return entries
 }
 
@@ -338,8 +370,7 @@ func extractTableInfobox(table *html.Node) []InfoboxEntry {
 func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 	var entries []InfoboxEntry
 	var currentSection string
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	walkNodes(aside, func(n *html.Node) bool {
 		if n.Type == html.ElementNode {
 			if n.Data == "h2" && hasClass(n, "pi-header") {
 				currentSection = cleanText(getTextContent(n))
@@ -356,27 +387,20 @@ func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
 				}
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(aside)
+		return true
+	})
 	return entries
 }
 
 func getPortableInfoboxValue(node *html.Node) string {
 	var value string
-	var findValue func(*html.Node)
-	findValue = func(n *html.Node) {
+	walkNodes(node, func(n *html.Node) bool {
 		if n.Type == html.ElementNode && hasClass(n, "pi-data-value") {
 			value = cleanInfoboxText(getInlineText(n))
-			return
+			return false
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findValue(c)
-		}
-	}
-	findValue(node)
+		return true
+	})
 	if value == "" {
 		value = cleanInfoboxText(getInlineText(node))
 	}
@@ -401,17 +425,7 @@ func cleanInfoboxText(s string) string {
 			prevWasNewline = false
 		}
 	}
-	s = string(result)
-	for strings.Contains(s, " \n") {
-		s = strings.ReplaceAll(s, " \n", "\n")
-	}
-	for strings.Contains(s, "\n ") {
-		s = strings.ReplaceAll(s, "\n ", "\n")
-	}
-	for strings.Contains(s, "  ") {
-		s = strings.ReplaceAll(s, "  ", " ")
-	}
-	return s
+	return collapseInlineSpaces(string(result))
 }
 
 // ExtractSections parses raw HTML into structured sections.
@@ -425,18 +439,14 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 	var current *Section
 	collecting := false
 
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
+	walkNodes(doc, func(n *html.Node) bool {
 		if shouldSkipSections(n, include) {
-			return
+			return false
 		}
 		if n.Type == html.ElementNode && (n.Data == "h2" || n.Data == "h3" || n.Data == "h4") {
 			heading := cleanHeading(cleanText(getTextContent(n)))
 			if heading == "" {
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					walk(c)
-				}
-				return
+				return true
 			}
 			if current != nil {
 				sections = append(sections, *current)
@@ -452,7 +462,7 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 			}
 			current = &Section{Heading: heading, Level: level}
 			collecting = true
-			return
+			return false
 		}
 		if n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery") {
 			if current != nil {
@@ -464,7 +474,7 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 					current.Body += text
 				}
 			}
-			return
+			return false
 		}
 		if n.Type == html.ElementNode && (n.Data == "p" || n.Data == "ul" || n.Data == "ol") {
 			if !collecting {
@@ -486,11 +496,8 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 				}
 			}
 		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
+		return true
+	})
 
 	if current != nil {
 		sections = append(sections, *current)

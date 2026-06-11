@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetComfySamplers, GetComfySchedulers, GetComfyCheckpoints, GetComfyWorkflows, GetComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
-import { comfy } from '../../wailsjs/go/models';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { GenerateProjectImage } from '../../wailsjs/go/main/App';
 import ImageUploadPanel from '../components/ImageUploadPanel';
-import GenerationParamsPanel, { WorkflowOption } from '../components/GenerationParamsPanel';
+import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
-import { arrayBufferToDataURL } from '../utils/image';
+import { useImageGeneration } from '../components/useImageGeneration';
+import { aspectFromSize } from '../utils/workflow';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m', scheduler: 'karras' },
@@ -27,130 +26,28 @@ const ProjectImageScreen: React.FC = () => {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 4e9));
   const [sampler, setSampler] = useState('dpmpp_2m');
   const [scheduler, setScheduler] = useState('karras');
-  const [checkpoints, setCheckpoints] = useState<string[]>([]);
-  const [checkpoint, setCheckpoint] = useState(PROJECT_IMG_WORKFLOWS[0].model);
-  const [generating, setGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState(0);
-  const [variantImages, setVariantImages] = useState<string[]>([]);
-  const [hasImage, setHasImage] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
-  const [samplers, setSamplers] = useState<string[]>([]);
-  const [schedulers, setSchedulers] = useState<string[]>([]);
-  const [uploadedWorkflows, setUploadedWorkflows] = useState<WorkflowOption[]>([]);
-  const [workflowTemplate, setWorkflowTemplate] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    GetComfySamplers().then(setSamplers).catch(() => {});
-    GetComfySchedulers().then(setSchedulers).catch(() => {});
-    GetComfyCheckpoints().then(list => {
-      setCheckpoints(list);
-      if (list.length > 0) setCheckpoint(list[0]);
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    GetComfyWorkflows().then(wfs => {
-      setUploadedWorkflows(wfs.map(wf => ({
-        id: wf.id,
-        name: wf.name.replace(/\.json$/i, ''),
-        model: wf.params.checkpoint || 'custom',
-        size: wf.params.width && wf.params.height
-          ? `${wf.params.width}×${wf.params.height}`
-          : 'custom',
-        steps: wf.params.steps || 20,
-        sampler: wf.params.sampler || 'euler',
-        scheduler: wf.params.scheduler || 'normal',
-      })));
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    GetComfyWorkflowTemplate(workflow.id).then(setWorkflowTemplate).catch(() => {});
-  }, [workflow.id]);
-
-  const allWorkflows = [...PROJECT_IMG_WORKFLOWS, ...uploadedWorkflows];
-
-  useEffect(() => {
-    /* v8 ignore start */
-    EventsOn('comfy:progress', (event: { progress: number; max: number }) => {
-      if (event.max > 0) {
-        setProgress(Math.round((event.progress / event.max) * 100));
-      }
-    });
-    EventsOn('comfy:error', (event: { error: string }) => {
-      toast({ kind: 'bad', title: 'Generation error', body: event.error });
-    });
-    return () => {
-      EventsOff('comfy:progress');
-      EventsOff('comfy:error');
-    };
-    /* v8 ignore stop */
-  }, [toast]);
-
-  const generateVariants = async () => {
-    if (generating) return;
-    if (!workflowTemplate) {
-      toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
-      return;
-    }
-    setGenerating(true);
-    setProgress(0);
-    setVariantImages([]);
-
-    const [w, h] = workflow.size.split('×').map(Number);
-
-    try {
-      const params = new comfy.GenerationParams({
-        workflowTemplate,
-        seed,
-        steps,
-        cfg,
-        sampler,
-        scheduler,
-        denoise: 1,
-        positivePrompt: prompt,
-        negativePrompt: negPrompt,
-        width: w || 0,
-        height: h || 0,
-        checkpoint,
-      });
-
-      const images = await GenerateProjectImage(params);
-      console.log('[ProjectImageScreen] GenerateProjectImage returned', images.length, 'images');
-      images.forEach((img, i) => {
-        const dataLen = img.data ? img.data.length : 0;
-        console.log(`[ProjectImageScreen] image ${i}: filename=${img.filename} data=${dataLen} bytes`);
-      });
-      const urls = images.map(img => {
-        const url = arrayBufferToDataURL(img.data);
-        console.log(`[ProjectImageScreen] url length=${url.length}`);
-        return url;
-      });
-      setVariantImages(urls);
-      setHasImage(true);
-      setProgress(100);
-      toast({ kind: 'ok', title: 'Generation complete', body: '3 cover variants ready.' });
-    /* v8 ignore start */} catch (err) {
-      toast({ kind: 'bad', title: 'Generation failed', body: String(err) });
-    } finally {
-      /* v8 ignore stop */
-      setGenerating(false);
-    }
-  };
-
-  const handleStop = () => {
-    setGenerating(false);
-  };
+  const {
+    samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
+    generating, progress, variantImages, selectedVariant, setSelectedVariant,
+    clearVariants, stop, runGeneration,
+  } = useImageGeneration({
+    workflowId: workflow.id,
+    workflowDefaults: PROJECT_IMG_WORKFLOWS,
+    generate: GenerateProjectImage,
+    completionBody: n => `${n} cover variants ready.`,
+    initialCheckpoint: PROJECT_IMG_WORKFLOWS[0].model,
+  });
 
   const handleUseAsProjectImage = () => {
     toast({ kind: 'ok', title: 'Project image set', body: 'Cover art saved and will appear in exports.' });
   };
 
   const canvasTitle = 'Project cover';
-  const showDonePlaceholder = hasImage;
+  const showDonePlaceholder = variantImages.length > 0;
 
   return (
     <>
@@ -216,7 +113,7 @@ const ProjectImageScreen: React.FC = () => {
               canvasTitle={canvasTitle}
               workflowSize={workflow.size}
               seed={seed}
-              aspectRatio={workflow.size.includes('×') ? workflow.size.replace('×', '/') : undefined}
+              aspectRatio={aspectFromSize(workflow.size)}
               generating={generating}
               progress={progress}
               steps={steps}
@@ -251,14 +148,14 @@ const ProjectImageScreen: React.FC = () => {
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? handleStop : generateVariants}
+              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise: 1, prompt, negPrompt, checkpoint })}
               onSavePreset={() => {}}
             />
 
             <ImageGalleryPanel
               headLabel="Versions"
               variantCount={variantImages.length}
-              onClear={() => { setVariantImages([]); setHasImage(false); }}
+              onClear={clearVariants}
               galleryContent={
                 <div className="proj-img-versions">
                   {variantImages.map((imgUrl, i) => (

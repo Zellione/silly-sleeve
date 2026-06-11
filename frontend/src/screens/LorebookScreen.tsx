@@ -6,6 +6,7 @@ import {
   MoreIcon, BookIcon, UploadIcon, PenIcon,
 } from '../icons';
 import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder } from '../../wailsjs/go/main/App';
+import { TagsInput } from '../components/TagsInput';
 import { lorebook } from '../../wailsjs/go/models';
 
 const POSITIONS = [
@@ -32,38 +33,19 @@ const TokenInput: React.FC<{
   onChange: (v: string[]) => void;
   accentFirst?: boolean;
   placeholder?: string;
-}> = ({ value, onChange, accentFirst, placeholder }) => {
-  const [draft, setDraft] = useState('');
-  const submit = () => {
-    const t = draft.trim();
-    if (t && !value.includes(t)) onChange([...value, t]);
-    setDraft('');
-  };
-  return (
-    <div className={'lb-keys' + (value.length === 0 && !draft ? ' empty' : '')}>
-      {value.map((k, i) => (
-        <span key={k + String(i)} className={'lb-key' + (accentFirst && i === 0 ? ' primary' : '')}>
-          {k}
-          <button
-            type="button"
-            className="x"
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(value.filter((_, j) => j !== i)); } }}
-            onClick={() => onChange(value.filter((_, j) => j !== i))}
-          >×</button>
-        </span>
-      ))}
-      <input
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); submit(); }
-          if (e.key === 'Backspace' && !draft && value.length) onChange(value.slice(0, -1));
-        }}
-        placeholder={value.length ? 'Add another…' : (placeholder || 'Type and press Enter…')}
-      />
-    </div>
-  );
-};
+}> = ({ value, onChange, accentFirst, placeholder }) => (
+  <TagsInput
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder || 'Type and press Enter…'}
+    placeholderWhenFilled="Add another…"
+    accentCount={accentFirst ? 1 : 0}
+    className="lb-keys"
+    emptyClassName="empty"
+    tagClassName="lb-key"
+    accentClassName="primary"
+  />
+);
 
 /* ─── Toggle ────────────────────────────────────────── */
 
@@ -97,7 +79,7 @@ const LbDetail: React.FC<{
     </div>
   );
 
-  const set = (k: keyof lorebook.Entry, v: any) => onChange({...entry, [k]: v} as lorebook.Entry);
+  const set = <K extends keyof lorebook.Entry>(k: K, v: lorebook.Entry[K]) => onChange({...entry, [k]: v} as lorebook.Entry);
   const tokenCount = entry.content ? Math.round(entry.content.length / 4) : 0;
 
   return (
@@ -323,16 +305,14 @@ const LorebookScreen: React.FC = () => {
       characters: [],
     });
     const next = [...entries, fresh];
-    setEntries(next);
-    SaveLorebook(next).catch(() => {});
+    persist(next);
     setSelectedUid(fresh.uid);
   };
 
   const deleteSelected = () => {
     if (selectedUid == null) return;
     const next = entries.filter(e => e.uid !== selectedUid);
-    setEntries(next);
-    SaveLorebook(next).catch(() => {});
+    persist(next);
     setSelectedUid(null);
   };
 
@@ -341,8 +321,7 @@ const LorebookScreen: React.FC = () => {
     const maxUid = entries.reduce((m, e) => Math.max(m, e.uid || 0), -1);
     const copy = {...selected, uid: maxUid + 1, comment: (selected.comment || 'Entry') + ' (copy)'};
     const next = [...entries, copy];
-    setEntries(next);
-    SaveLorebook(next).catch(() => {});
+    persist(next);
     setSelectedUid(copy.uid);
   };
 

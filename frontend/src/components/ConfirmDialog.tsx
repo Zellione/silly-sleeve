@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 
 interface ConfirmState {
   message: string;
@@ -39,30 +40,32 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPending(null);
   }, [pending]);
 
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleCancel();
-    }
-  }, [handleCancel]);
-
   const confirmValue = useMemo(() => ({ confirm }), [confirm]);
+  const trapRef = useFocusTrap<HTMLDivElement>(!!pending, handleCancel);
 
   return (
     <ConfirmContext.Provider value={confirmValue}>
       {children}
       {pending && (
-        <div
-          className="ss-confirm-backdrop"
-          role="dialog"
-          aria-modal="true"
-          onClick={handleBackdropClick}
-          onKeyDown={e => { if (e.key === 'Escape') handleCancel(); }}
-        >
-          <div className="ss-confirm-card">
-            <p>{pending.message}</p>
+        <div className="ss-confirm-backdrop">
+          <button
+            type="button"
+            className="ss-confirm-bg"
+            aria-label="Dismiss dialog"
+            onClick={handleCancel}
+          />
+          <div
+            className="ss-confirm-card"
+            ref={trapRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ss-confirm-msg"
+            tabIndex={-1}
+          >
+            <p id="ss-confirm-msg">{pending.message}</p>
             <div className="ss-confirm-actions">
               <button className="btn ghost sm" onClick={handleCancel}>Cancel</button>
-              <button className="btn primary sm" onClick={handleConfirm}>Confirm</button>
+              <button className="btn primary sm" data-autofocus onClick={handleConfirm}>Confirm</button>
             </div>
           </div>
         </div>

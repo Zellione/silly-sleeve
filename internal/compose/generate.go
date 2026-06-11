@@ -1,6 +1,7 @@
 package compose
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -25,15 +26,21 @@ type generateResponse struct {
 
 // GenerateBulk sends a bulk prompt to the LLM and returns a Character
 // populated from the JSON response. lockedFields are field IDs that should
-// retain their existing values from the provided character.
-func GenerateBulk(result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
+// retain their existing values from the provided character. It uses the
+// production HTTP completer; see GenerateBulkWith to inject a Completer.
+func GenerateBulk(ctx context.Context, result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
+	return GenerateBulkWith(ctx, llm.DefaultCompleter, result, ep, lockedFields, existing)
+}
+
+// GenerateBulkWith is GenerateBulk with an injectable Completer.
+func GenerateBulkWith(ctx context.Context, completer llm.Completer, result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
 	userPrompt := buildUserPrompt(result)
 
 	if len(lockedFields) > 0 {
 		userPrompt += buildFieldMaskString(lockedFields)
 	}
 
-	content, err := llm.Complete(ep, systemPrompt, userPrompt)
+	content, err := completer.Complete(ctx, ep, systemPrompt, userPrompt)
 	if err != nil {
 		return Character{}, fmt.Errorf("llm complete: %w", err)
 	}
@@ -145,10 +152,20 @@ func truncate(s string, n int) string {
 	return s[:n] + "..."
 }
 
+// FieldRequest bundles the inputs for per-field generation.
+type FieldRequest struct {
+	FieldID      string
+	Result       crawler.CrawlResult
+	CustomPrompt string
+	Existing     Character
+	Templates    prompts.TemplateSet
+}
+
 // GenerateField sends a per-field prompt to the LLM and returns the
 // character with that field updated. customPrompt is appended to the
 // field-specific instruction. templates provides the system prompt.
 func GenerateField(
+	ctx context.Context,
 	fieldID string,
 	result crawler.CrawlResult,
 	ep llm.LLMEndpoint,
@@ -156,35 +173,46 @@ func GenerateField(
 	existing Character,
 	templates prompts.TemplateSet,
 ) (Character, error) {
-	fieldTemplate := templates.FieldPrompts[fieldID]
+	return GenerateFieldWith(ctx, llm.DefaultCompleter, ep, FieldRequest{
+		FieldID:      fieldID,
+		Result:       result,
+		CustomPrompt: customPrompt,
+		Existing:     existing,
+		Templates:    templates,
+	})
+}
+
+// GenerateFieldWith is GenerateField with an injectable Completer.
+func GenerateFieldWith(ctx context.Context, completer llm.Completer, ep llm.LLMEndpoint, req FieldRequest) (Character, error) {
+	fieldTemplate := req.Templates.FieldPrompts[req.FieldID]
 	if fieldTemplate == "" {
-		return existing, fmt.Errorf("no template for field %s", fieldID)
+		return req.Existing, fmt.Errorf("no template for field %s", req.FieldID)
 	}
 
-	vars := prompts.BuildVars(result.Title, result.URL, buildCrawlContent(result))
+	vars := prompts.BuildVars(req.Result.Title, req.Result.URL, buildCrawlContent(req.Result))
 	userPrompt := prompts.Substitute(fieldTemplate, vars)
 
-	if customPrompt != "" {
-		userPrompt += "\n\nAdditional instructions: " + customPrompt
+	if req.CustomPrompt != "" {
+		userPrompt += "\n\nAdditional instructions: " + req.CustomPrompt
 	}
 
-	sysPrompt := templates.SystemPrompt
+	sysPrompt := req.Templates.SystemPrompt
 	if sysPrompt == "" {
 		sysPrompt = systemPrompt
 	}
 
-	content, err := llm.Complete(ep, sysPrompt, userPrompt)
+	content, err := completer.Complete(ctx, ep, sysPrompt, userPrompt)
 	if err != nil {
-		return existing, fmt.Errorf("llm complete: %w", err)
+		return req.Existing, fmt.Errorf("llm complete: %w", err)
 	}
 
-	val, err := resolveFieldValue(fieldID, cleanResponse(content))
+	val, err := resolveFieldValue(req.FieldID, cleanResponse(content))
 	if err != nil {
-		return existing, err
+		return req.Existing, err
 	}
 
-	ch := existing
-	applyField(&ch, fieldID, val)
+	ch := req.Existing
+	applyField(&ch, req.FieldID, val)
 	ch.Dirty = true
 
 	return ch, nil

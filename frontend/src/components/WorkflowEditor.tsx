@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/main/App';
+import { useFocusTrap } from './useFocusTrap';
 import { XIcon } from '../icons';
 
 interface WorkflowEditorProps {
@@ -113,6 +114,9 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
   const [jsonText, setJsonText] = useState(initialTemplate);
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Escape is handled by the backdrop's onKeyDown; the trap only manages
+  // Tab cycling, initial focus, and focus restoration on close.
+  const cardRef = useFocusTrap<HTMLDivElement>(true);
 
   const placeholders = useMemo(() => {
     const names = new Set<string>();
@@ -196,7 +200,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
       onClick={handleBackdropClick}
       onKeyDown={handleBackdropKey}
     >
-      <div className="workflow-editor-card">
+      <div className="workflow-editor-card" ref={cardRef}>
         <div className="modal-head">
           <b>Edit Workflow: {displayName}.json</b>
           <button className="btn ghost icon" aria-label="Close" onClick={onClose}><XIcon size={14} /></button>
@@ -209,6 +213,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
             </div>
             <textarea
               ref={textareaRef}
+              data-autofocus
               className="field workflow-editor-textarea"
               value={jsonText}
               onChange={e => setJsonText(e.target.value)}

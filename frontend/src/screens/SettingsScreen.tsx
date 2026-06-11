@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   SaveIcon, PlusIcon, CheckIcon, XIcon,
-  MoreIcon, TrashIcon, DownloadIcon, CopyIcon,
-  LinkIcon, KeyIcon, EyeIcon, UploadIcon, FolderIcon,
+  TrashIcon,
+  LinkIcon, UploadIcon, FolderIcon,
 } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
+import { LLMEndpointCard } from '../components/LLMEndpointCard';
+import { AuthTokenBlock } from '../components/AuthTokenBlock';
+import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -32,11 +35,10 @@ const EndpointFlyout: React.FC<{
   onDelete?: () => void;
 }> = ({ endpoint, isNew, onSave, onClose, onDelete }) => {
   const [draft, setDraft] = useState<settings.LLMEndpoint>({ ...endpoint });
-  const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const { toast } = useToast();
 
-  const set = (k: keyof settings.LLMEndpoint, v: any) =>
+  const set = <K extends keyof settings.LLMEndpoint>(k: K, v: settings.LLMEndpoint[K]) =>
     setDraft(prev => ({ ...prev, [k]: v }));
 
   const authOn = draft.key !== undefined && draft.key !== null;
@@ -64,8 +66,13 @@ const EndpointFlyout: React.FC<{
 
   return (
     <>
-      <div className="ep-flyout-bg" onClick={onClose} />
-      <aside className="ep-flyout" onClick={e => e.stopPropagation()}>
+      <button type="button" className="ep-flyout-bg" aria-label="Close endpoint editor" onClick={onClose} />
+      <dialog
+        className="ep-flyout"
+        open
+        aria-modal="true"
+        aria-label={isNew ? 'New endpoint' : 'Edit endpoint'}
+      >
         <header className="ep-fly-head">
           <div style={{ minWidth: 0 }}>
             <div className="uplabel">{isNew ? 'New endpoint' : 'Edit endpoint'}</div>
@@ -116,42 +123,15 @@ const EndpointFlyout: React.FC<{
               Authentication
               <small>Toggle on for hosted endpoints that require an API key.</small>
             </label>
-            <div className="ep-auth-block">
-              <div className="ep-toggle-row">
-                <div>
-                  <b>Use API key</b>
-                  <small>Sent as <code>Authorization: Bearer …</code></small>
-                </div>
-                <button
-                  className="ep-switch"
-                  data-on={authOn ? '1' : '0'}
-                  onClick={() => toggleAuth(!authOn)}
-                  role="switch"
-                  aria-checked={authOn}
-                >
-                  <i />
-                </button>
-              </div>
-              {authOn && (
-                <div className="ep-key-input">
-                  <KeyIcon size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    value={draft.key || ''}
-                    onChange={e => set('key', e.target.value)}
-                    placeholder="sk-… or msk-… or your provider's token"
-                    spellCheck={false}
-                  />
-                  <button
-                    className="ep-eye"
-                    onClick={() => setShowKey(!showKey)}
-                    title={showKey ? 'Hide key' : 'Reveal key'}
-                  >
-                    {showKey ? <XIcon size={12} /> : <EyeIcon size={12} />}
-                  </button>
-                </div>
-              )}
-            </div>
+            <AuthTokenBlock
+              enabled={authOn}
+              onToggle={toggleAuth}
+              value={draft.key || ''}
+              onChange={v => set('key', v)}
+              toggleLabel="Use API key"
+              placeholder="sk-… or msk-… or your provider's token"
+              secretNoun="key"
+            />
           </div>
 
           {/* Model */}
@@ -277,7 +257,7 @@ const EndpointFlyout: React.FC<{
             <CheckIcon size={13} /> {isNew ? 'Create' : 'Save'}
           </button>
         </footer>
-      </aside>
+      </dialog>
     </>
   );
 };
@@ -291,7 +271,6 @@ const ComfyUISettings: React.FC<{
   const [draftURL, setDraftURL] = useState(settingsState.comfy?.url || '');
   const [draftToken, setDraftToken] = useState(settingsState.comfy?.authToken || '');
   const [draftOutput, setDraftOutput] = useState(settingsState.comfy?.outputFolder || '');
-  const [showToken, setShowToken] = useState(false);
   const [authOn, setAuthOn] = useState(settingsState.comfy?.authToken !== undefined && settingsState.comfy?.authToken !== null);
   const [testing, setTesting] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<comfy.ComfyWorkflow | null>(null);
@@ -437,43 +416,16 @@ const ComfyUISettings: React.FC<{
             <span>Authentication</span>
             <small>Toggle on if your ComfyUI instance requires an API token.</small>
           </label>
-          <div className="ep-auth-block">
-            <div className="ep-toggle-row">
-              <div>
-                <b>Use auth token</b>
-                <small>Sent as <code>Authorization: Bearer …</code></small>
-              </div>
-              <button
-                className="ep-switch"
-                data-on={authOn ? '1' : '0'}
-                onClick={() => setAuthOn(!authOn)}
-                role="switch"
-                aria-checked={authOn}
-              >
-                <i />
-              </button>
-            </div>
-            {authOn && (
-              <div className="ep-key-input">
-                <KeyIcon size={13} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-                <input
-                  id="settings-auth-token"
-                  type={showToken ? 'text' : 'password'}
-                  value={draftToken}
-                  onChange={e => setDraftToken(e.target.value)}
-                  placeholder="Your ComfyUI auth token"
-                  spellCheck={false}
-                />
-                <button
-                  className="ep-eye"
-                  onClick={() => setShowToken(!showToken)}
-                  title={showToken ? 'Hide token' : 'Reveal token'}
-                >
-                  {showToken ? <XIcon size={12} /> : <EyeIcon size={12} />}
-                </button>
-              </div>
-            )}
-          </div>
+          <AuthTokenBlock
+            enabled={authOn}
+            onToggle={setAuthOn}
+            value={draftToken}
+            onChange={setDraftToken}
+            toggleLabel="Use auth token"
+            placeholder="Your ComfyUI auth token"
+            inputId="settings-auth-token"
+            secretNoun="token"
+          />
           <div className="row" style={{ marginTop: 6 }}>
             <button className="btn ghost sm" onClick={handleSaveToken}>Save auth</button>
           </div>
@@ -967,125 +919,36 @@ const SettingsScreen: React.FC = () => {
                 </p>
                 <div className="settings-form">
                   {settingsState.endpoints.map(e => (
-                    <div key={e.id} className="endpoint-card">
-                      <div className="h">
-                        <span className="ic">{e.name[0]}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <span>{e.name}</span>
-                          <span style={{ font: '500 10px/1 var(--f-mono)', color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 3 }}>
-                            {e.model}
-                          </span>
-                        </div>
-                        <span className="grow" />
-                        {e.isDefault && (
-                          <span className="pill" style={{ color: 'var(--acc)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>
-                            default
-                          </span>
-                        )}
-                        <span className={`pill ${e.ok ? 'ok' : 'idle'}`}>{e.ok ? '✓ connected' : '… untested'}</span>
-                        <div className="ep-more-wrap" ref={moreOpen === e.id ? moreRef : null}>
-                          <button
-                            className="btn icon ghost"
-                            style={{ width: 28, height: 28 }}
-                            data-on={moreOpen === e.id ? '1' : '0'}
-                            onClick={ev => {
-                              ev.stopPropagation();
-                              setMoreOpen(moreOpen === e.id ? null : e.id);
-                            }}
-                          >
-                            <MoreIcon size={14} />
-                          </button>
-                          {moreOpen === e.id && (
-                            <div className="ep-more-menu" onClick={ev => ev.stopPropagation()}>
-                              <button className="ep-more-item" disabled={e.isDefault} onClick={() => setDefault(e.id)}>
-                                <CheckIcon size={13} /> Set as default
-                                {e.isDefault && <span className="hint">current</span>}
-                              </button>
-                              <button className="ep-more-item" onClick={() => duplicateEndpoint(e)}>
-                                <CopyIcon size={13} /> Duplicate
-                              </button>
-                              <button
-                                className="ep-more-item"
-                                onClick={() => {
-                                  setMoreOpen(null);
-                                  toast({ kind: 'ok', title: 'Config copied to clipboard', body: 'Paste into a .json file or another machine.' });
-                                }}
-                              >
-                                <DownloadIcon size={13} /> Export config
-                              </button>
-                              <div className="ep-more-sep" />
-                              <button
-                                className="ep-more-item danger"
-                                onClick={() => {
-                                  deleteEndpoint(e.id);
-                                  setMoreOpen(null);
-                                }}
-                              >
-                                <TrashIcon size={13} /> Delete endpoint
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="url">{e.url}</div>
-                      <div className="row foot">
-                        <span>{e.key ? `auth · ${e.key.slice(0, 6)}${'•'.repeat(8)}` : 'no auth'}</span>
-                        <div className="row" style={{ gap: 6 }}>
-                          <button className="btn ghost sm" disabled={testingMap[e.id]} onClick={() => testEndpoint(e)}>
-                            {testingMap[e.id] ? (
-                              <>
-                                <span className="dot warn" style={{ boxShadow: 'none', width: 6, height: 6 }} /> Testing…
-                              </>
-                            ) : (
-                              'Test'
-                            )}
-                          </button>
-                          <button
-                            className="btn ghost sm"
-                            onClick={() => {
-                              setIsNew(false);
-                              setEditing(e);
-                            }}
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <LLMEndpointCard
+                      key={e.id}
+                      endpoint={e}
+                      testing={!!testingMap[e.id]}
+                      menuOpen={moreOpen === e.id}
+                      menuRef={moreOpen === e.id ? moreRef : null}
+                      onToggleMenu={() => setMoreOpen(moreOpen === e.id ? null : e.id)}
+                      onSetDefault={() => setDefault(e.id)}
+                      onDuplicate={() => duplicateEndpoint(e)}
+                      onExportConfig={() => {
+                        setMoreOpen(null);
+                        toast({ kind: 'ok', title: 'Config copied to clipboard', body: 'Paste into a .json file or another machine.' });
+                      }}
+                      onDelete={() => {
+                        deleteEndpoint(e.id);
+                        setMoreOpen(null);
+                      }}
+                      onTest={() => testEndpoint(e)}
+                      onEdit={() => {
+                        setIsNew(false);
+                        setEditing(e);
+                      }}
+                    />
                   ))}
                   <button className="btn ghost" style={{ alignSelf: 'flex-start' }} onClick={addNew}>
                     <PlusIcon size={14} /> Add endpoint
                   </button>
                 </div>
 
-                <h3 style={{ marginTop: 24 }}>Generation defaults</h3>
-                <div className="settings-form">
-                  <div className="form-row">
-                    <label>
-                      Temperature <small>0 deterministic — 2 wild</small>
-                    </label>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <input type="range" min={0} max={2} step={0.05} defaultValue={0.85} style={{ flex: 1, accentColor: 'var(--acc)' }} />
-                      <input className="field" type="text" defaultValue="0.85" style={{ width: 70, textAlign: 'right', fontFamily: 'var(--f-mono)' }} />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      Max tokens <small>per field re-roll</small>
-                    </label>
-                    <input className="field" type="number" defaultValue={320} style={{ width: 120, fontFamily: 'var(--f-mono)' }} />
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      System prompt template <small>injected at the top of every formatting call</small>
-                    </label>
-                    <textarea
-                      className="field"
-                      defaultValue={`You are formatting wiki content into a SillyTavern character card. Stay in third person present tense. Avoid plot spoilers post-act 1 unless tagged. Output only the requested field — no preamble.`}
-                      style={{ minHeight: 110, fontFamily: 'var(--f-mono)', fontSize: 12 }}
-                    />
-                  </div>
-                </div>
+                <GenerationDefaultsForm />
               </div>
             )}
 

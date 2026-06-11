@@ -33,7 +33,7 @@ sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
 On Arch:
 
 ```bash
-sudo pacman -S gtk3 webkit2gtk
+sudo pacman -S gtk3 webkit2gtk-4.1
 ```
 
 On Fedora:

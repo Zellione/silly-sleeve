@@ -11,11 +11,28 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"silly-sleeve/internal/compose"
+	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/settings"
 )
 
 func newTestCharacterGenerator() *CharacterGenerator {
 	return &CharacterGenerator{ctx: func() context.Context { return context.Background() }}
+}
+
+// fakeCompleter is an in-memory llm.Completer for testing the generator without
+// any real HTTP endpoint.
+type fakeCompleter struct {
+	resp            string
+	err             error
+	calls           int
+	gotSys, gotUser string
+}
+
+func (f *fakeCompleter) Complete(_ context.Context, _ llm.LLMEndpoint, systemPrompt, userPrompt string) (string, error) {
+	f.calls++
+	f.gotSys, f.gotUser = systemPrompt, userPrompt
+	return f.resp, f.err
 }
 
 // chatServer returns an httptest server that replies with a single chat
@@ -77,6 +94,44 @@ func TestCharacterGenerator_GenerateImagePrompt_FallsBackOnMissingMarkers(t *tes
 	require.NoError(t, err)
 	assert.Equal(t, "a lone wanderer beneath a stormy sky", pos, "falls back to raw lines when no POSITIVE marker")
 	assert.Equal(t, defaultNegativePrompt, neg, "falls back to the default negative prompt")
+}
+
+func TestCharacterGenerator_UsesInjectedCompleter(t *testing.T) {
+	fake := &fakeCompleter{resp: "POSITIVE: auburn hair\nNEGATIVE: blurry"}
+	gen := &CharacterGenerator{
+		ctx:       func() context.Context { return context.Background() },
+		completer: fake,
+	}
+
+	pos, neg, err := gen.GenerateImagePrompt(
+		compose.Character{Name: "Elara"},
+		settings.LLMEndpoint{URL: "http://unused-no-network"},
+		"natural",
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "auburn hair", pos)
+	assert.Equal(t, "blurry", neg)
+	assert.Equal(t, 1, fake.calls, "routed through the injected completer, no HTTP")
+	assert.Contains(t, fake.gotUser, "Name: Elara")
+}
+
+func TestCharacterGenerator_GenerateBulk_WithFakeCompleter(t *testing.T) {
+	fake := &fakeCompleter{resp: `{"name":"Gen","tags":["rogue"]}`}
+	gen := &CharacterGenerator{
+		ctx:       func() context.Context { return context.Background() },
+		completer: fake,
+	}
+
+	ch, err := gen.GenerateBulk(
+		crawler.CrawlResult{Title: "Wiki"},
+		settings.LLMEndpoint{URL: "http://unused-no-network"},
+		nil,
+		compose.Character{},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "Gen", ch.Name)
+	assert.Equal(t, []string{"rogue"}, ch.Tags)
+	assert.Equal(t, 1, fake.calls)
 }
 
 func TestCharacterGenerator_GenerateImagePrompt_HTTPError(t *testing.T) {

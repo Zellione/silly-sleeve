@@ -26,15 +26,21 @@ type generateResponse struct {
 
 // GenerateBulk sends a bulk prompt to the LLM and returns a Character
 // populated from the JSON response. lockedFields are field IDs that should
-// retain their existing values from the provided character.
+// retain their existing values from the provided character. It uses the
+// production HTTP completer; see GenerateBulkWith to inject a Completer.
 func GenerateBulk(ctx context.Context, result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
+	return GenerateBulkWith(ctx, llm.DefaultCompleter, result, ep, lockedFields, existing)
+}
+
+// GenerateBulkWith is GenerateBulk with an injectable Completer.
+func GenerateBulkWith(ctx context.Context, completer llm.Completer, result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
 	userPrompt := buildUserPrompt(result)
 
 	if len(lockedFields) > 0 {
 		userPrompt += buildFieldMaskString(lockedFields)
 	}
 
-	content, err := llm.Complete(ctx, ep, systemPrompt, userPrompt)
+	content, err := completer.Complete(ctx, ep, systemPrompt, userPrompt)
 	if err != nil {
 		return Character{}, fmt.Errorf("llm complete: %w", err)
 	}
@@ -158,6 +164,20 @@ func GenerateField(
 	existing Character,
 	templates prompts.TemplateSet,
 ) (Character, error) {
+	return GenerateFieldWith(ctx, llm.DefaultCompleter, fieldID, result, ep, customPrompt, existing, templates)
+}
+
+// GenerateFieldWith is GenerateField with an injectable Completer.
+func GenerateFieldWith(
+	ctx context.Context,
+	completer llm.Completer,
+	fieldID string,
+	result crawler.CrawlResult,
+	ep llm.LLMEndpoint,
+	customPrompt string,
+	existing Character,
+	templates prompts.TemplateSet,
+) (Character, error) {
 	fieldTemplate := templates.FieldPrompts[fieldID]
 	if fieldTemplate == "" {
 		return existing, fmt.Errorf("no template for field %s", fieldID)
@@ -175,7 +195,7 @@ func GenerateField(
 		sysPrompt = systemPrompt
 	}
 
-	content, err := llm.Complete(ctx, ep, sysPrompt, userPrompt)
+	content, err := completer.Complete(ctx, ep, sysPrompt, userPrompt)
 	if err != nil {
 		return existing, fmt.Errorf("llm complete: %w", err)
 	}

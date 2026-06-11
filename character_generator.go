@@ -19,8 +19,20 @@ import (
 // LLM seam lives in one place (the natural home for an llm.Completer interface).
 //
 // ctx reads App's context lazily because it is only available after startup.
+// completer is the injectable LLM seam; when nil the production HTTP completer
+// is used.
 type CharacterGenerator struct {
-	ctx func() context.Context
+	ctx       func() context.Context
+	completer llm.Completer
+}
+
+// completerOrDefault returns the injected completer, or the production
+// HTTP-backed completer when none was set.
+func (g *CharacterGenerator) completerOrDefault() llm.Completer {
+	if g.completer != nil {
+		return g.completer
+	}
+	return llm.DefaultCompleter
 }
 
 // toLLMEndpoint maps a stored settings endpoint to the llm package's endpoint.
@@ -40,18 +52,18 @@ func toLLMEndpoint(def settings.LLMEndpoint) llm.LLMEndpoint {
 // GenerateBulk generates a full character from the crawl via the bulk prompt.
 // lockedFields are field IDs that must not be overwritten.
 func (g *CharacterGenerator) GenerateBulk(crawl crawler.CrawlResult, def settings.LLMEndpoint, lockedFields []string, existing compose.Character) (compose.Character, error) {
-	return compose.GenerateBulk(g.ctx(), crawl, toLLMEndpoint(def), lockedFields, existing)
+	return compose.GenerateBulkWith(g.ctx(), g.completerOrDefault(), crawl, toLLMEndpoint(def), lockedFields, existing)
 }
 
 // GenerateField generates a single character field via a per-field prompt.
 func (g *CharacterGenerator) GenerateField(fieldID, customPrompt string, crawl crawler.CrawlResult, def settings.LLMEndpoint, existing compose.Character, templates prompts.TemplateSet) (compose.Character, error) {
-	return compose.GenerateField(g.ctx(), fieldID, crawl, toLLMEndpoint(def), customPrompt, existing, templates)
+	return compose.GenerateFieldWith(g.ctx(), g.completerOrDefault(), fieldID, crawl, toLLMEndpoint(def), customPrompt, existing, templates)
 }
 
 // GenerateImagePrompt generates positive/negative image-generation prompts for
 // a character. style is "natural" or "danbooru".
 func (g *CharacterGenerator) GenerateImagePrompt(target compose.Character, def settings.LLMEndpoint, style string) (string, string, error) {
-	result, err := llm.Complete(g.ctx(), toLLMEndpoint(def), buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
+	result, err := g.completerOrDefault().Complete(g.ctx(), toLLMEndpoint(def), buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
 	if err != nil {
 		return "", "", fmt.Errorf("generate image prompt: %w", err)
 	}

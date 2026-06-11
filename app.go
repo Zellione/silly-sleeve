@@ -40,7 +40,7 @@ func NewApp() *App {
 		settings: &a.settings,
 		ctx:      ctxFn,
 	}
-	a.charGen = &CharacterGenerator{ctx: ctxFn}
+	a.charGen = &CharacterGenerator{ctx: ctxFn, completer: llm.DefaultCompleter}
 	a.project = &ProjectManager{ctx: ctxFn}
 	return a
 }

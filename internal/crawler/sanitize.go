@@ -141,6 +141,60 @@ func getInlineText(node *html.Node) string {
 	return strings.TrimSpace(buf.String())
 }
 
+// collapseInlineSpaces collapses runs of ASCII spaces to a single space and
+// drops spaces sitting directly before or after a newline, preserving newlines
+// and every other rune. It is a single-pass replacement for the repeated
+// O(n²) strings.Contains/ReplaceAll space-collapse loops. A single leading or
+// trailing space is preserved (callers TrimSpace as needed), matching the old
+// loop behavior.
+func collapseInlineSpaces(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	pendingSpace := false
+	atLineStart := false
+	for _, r := range s {
+		switch r {
+		case ' ':
+			pendingSpace = true
+		case '\n':
+			pendingSpace = false
+			b.WriteByte('\n')
+			atLineStart = true
+		default:
+			if pendingSpace && !atLineStart {
+				b.WriteByte(' ')
+			}
+			pendingSpace = false
+			atLineStart = false
+			b.WriteRune(r)
+		}
+	}
+	if pendingSpace && !atLineStart {
+		b.WriteByte(' ')
+	}
+	return b.String()
+}
+
+// limitConsecutiveNewlines collapses runs of more than max consecutive newlines
+// down to exactly max, in a single pass.
+func limitConsecutiveNewlines(s string, max int) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	run := 0
+	for _, r := range s {
+		if r == '\n' {
+			run++
+			if run <= max {
+				b.WriteByte('\n')
+			}
+			continue
+		}
+		run = 0
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 func getParagraphText(node *html.Node) string {
 	var buf strings.Builder
 	var walk func(*html.Node)
@@ -166,19 +220,8 @@ func getParagraphText(node *html.Node) string {
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
 		walk(c)
 	}
-	result := buf.String()
-	for strings.Contains(result, "  ") {
-		result = strings.ReplaceAll(result, "  ", " ")
-	}
-	for strings.Contains(result, " \n") {
-		result = strings.ReplaceAll(result, " \n", "\n")
-	}
-	for strings.Contains(result, "\n ") {
-		result = strings.ReplaceAll(result, "\n ", "\n")
-	}
-	for strings.Contains(result, "\n\n\n") {
-		result = strings.ReplaceAll(result, "\n\n\n", "\n\n")
-	}
+	result := collapseInlineSpaces(buf.String())
+	result = limitConsecutiveNewlines(result, 2)
 	return strings.TrimSpace(result)
 }
 
@@ -222,18 +265,10 @@ func joinTextParts(parts []string) string {
 		buf.WriteString(part)
 		needSpace = true
 	}
-	result := buf.String()
-	for strings.Contains(result, "  ") {
-		result = strings.ReplaceAll(result, "  ", " ")
-	}
-	for strings.Contains(result, " \n") {
-		result = strings.ReplaceAll(result, " \n", "\n")
-	}
-	for strings.Contains(result, "\n ") {
-		result = strings.ReplaceAll(result, "\n ", "\n")
-	}
+	result := collapseInlineSpaces(buf.String())
 	return strings.TrimSpace(result)
 }
+
 func getListContent(node *html.Node) string {
 	var lines []string
 	var walk func(*html.Node, int)
@@ -401,17 +436,7 @@ func cleanInfoboxText(s string) string {
 			prevWasNewline = false
 		}
 	}
-	s = string(result)
-	for strings.Contains(s, " \n") {
-		s = strings.ReplaceAll(s, " \n", "\n")
-	}
-	for strings.Contains(s, "\n ") {
-		s = strings.ReplaceAll(s, "\n ", "\n")
-	}
-	for strings.Contains(s, "  ") {
-		s = strings.ReplaceAll(s, "  ", " ")
-	}
-	return s
+	return collapseInlineSpaces(string(result))
 }
 
 // ExtractSections parses raw HTML into structured sections.

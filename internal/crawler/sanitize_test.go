@@ -289,6 +289,32 @@ func TestCleanParagraph(t *testing.T) {
 	assert.Equal(t, "Hello World", result)
 }
 
+func TestCollapseInlineSpaces(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"a  b", "a b"},
+		{"a     b", "a b"},
+		{"a \n b", "a\nb"},
+		{"a  \n\n  b", "a\n\nb"},
+		{"line\n  indented", "line\nindented"},
+		{"trailing ", "trailing "},
+		{" leading", " leading"},
+		{"no change", "no change"},
+		{"keep\nnewline", "keep\nnewline"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		assert.Equalf(t, c.want, collapseInlineSpaces(c.in), "collapseInlineSpaces(%q)", c.in)
+	}
+}
+
+func TestLimitConsecutiveNewlines(t *testing.T) {
+	assert.Equal(t, "a\n\nb", limitConsecutiveNewlines("a\n\n\n\nb", 2))
+	assert.Equal(t, "a\nb", limitConsecutiveNewlines("a\n\n\nb", 1))
+	assert.Equal(t, "a\n\nb", limitConsecutiveNewlines("a\n\nb", 2))
+	assert.Equal(t, "a\nb\nc", limitConsecutiveNewlines("a\nb\nc", 2))
+	assert.Equal(t, "", limitConsecutiveNewlines("", 2))
+}
+
 func TestSanitize_MinePage(t *testing.T) {
 	html := `<div class="mw-parser-output">
 <aside class="portable-infobox pi-background pi-border-color pi-theme-wikia pi-layout-default">

@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Go modules — keeps golang.org/x/net etc. patched (govulncheck gates the rest).
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # Frontend npm dependencies.
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # GitHub Actions — surfaces new action versions / SHA updates.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

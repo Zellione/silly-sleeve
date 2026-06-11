@@ -64,7 +64,10 @@ func (l *WSListener) Connect() error {
 		header["Authorization"] = []string{"Bearer " + *l.Token}
 	}
 
-	conn, _, err := dialer.Dial(wsURL, header)
+	conn, resp, err := dialer.Dial(wsURL, header)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		return fmt.Errorf("dial WebSocket: %w", err)
 	}

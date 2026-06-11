@@ -1,0 +1,26 @@
+version: "2"
+
+# Pin the linter set explicitly so CI behaviour is stable across golangci-lint
+# releases (the CI action also pins a specific version).
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose # catches unclosed HTTP response bodies in production code
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling # ignore unchecked errors on Close/Write/Fprint, etc.
+    paths:
+      - frontend/node_modules
+    rules:
+      # Unchecked errors / unclosed bodies in tests (os.Setenv, WriteMessage,
+      # error-path Get without a body) are noise.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - bodyclose
+      # Disable purely-stylistic staticcheck "quickfix" suggestions (not bugs):
+      # QF1002/QF1003 (tagged switch), QF1012 (WriteString(fmt.Sprintf)).
+      - linters:
+          - staticcheck
+        text: "QF1002|QF1003|QF1012"

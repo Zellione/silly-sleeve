@@ -149,10 +149,18 @@ workflow-mapping logic. Pull into a hook + `utils/workflow.ts`.
 Replace `v: any` setters with generic `<K extends keyof T>(k: K, v: T[K])`;
 type `FieldState.value` as a union instead of `any`.
 
-### 4.6 Accessibility
-- `ConfirmDialog.tsx`: move `role="dialog"`/`aria-modal` onto the card, add `aria-labelledby`, autofocus the confirm button.
-- `WorkflowEditor.tsx` modal: add a focus trap.
-- Convert clickable `div`/`span` (`onClick`) to `<button>` (e.g. flyout backdrop, tag remove span).
+### 4.6 Accessibility — DONE
+- New shared `useFocusTrap(active, onEscape?)` hook (`components/useFocusTrap.ts`):
+  initial focus (`[data-autofocus]` → first focusable → container), Tab/Shift+Tab
+  cycling, optional Escape routing, focus restoration on close. Unit-tested.
+- `ConfirmDialog.tsx`: `role="dialog"`/`aria-modal`/`aria-labelledby` moved onto
+  the card, Confirm button autofocused, Escape closes via the trap.
+- `WorkflowEditor.tsx` modal: focus trap applied (textarea autofocused); existing
+  backdrop role/Escape/click-dismiss kept to preserve its test contract.
+- Clickable `<span className="x">` remove controls → `<button>` (`EditorScreen`
+  tags/stats/quotes); Settings endpoint flyout backdrop `<div>` → `<button>` with
+  `aria-label`, and the flyout `<aside>` gained `role="dialog"`/`aria-modal`/label.
+  CSS resets added so the buttons render identically.
 
 ---
 

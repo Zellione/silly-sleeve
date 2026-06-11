@@ -113,7 +113,7 @@ const TagsField: React.FC<{
       {value.map((t, i) => (
         <span key={t} className={`tag ${i < 2 ? 'acc' : ''}`}>
           {t}
-          {!locked && <span className="x" onClick={() => onChange(value.filter(x => x !== t))}>×</span>}
+          {!locked && <button type="button" className="x" aria-label={`Remove tag ${t}`} onClick={() => onChange(value.filter(x => x !== t))}>×</button>}
         </span>
       ))}
       {!locked && (
@@ -143,9 +143,9 @@ const StatsField: React.FC<{
         <input className="val" placeholder="—" value={row.value} disabled={locked}
           onChange={e => onChange(value.map((r, j) => j === i ? compose.StatKV.createFrom({ key: r.key, value: e.target.value }) : r))} />
         {!locked && (
-          <span className="x" onClick={() => onChange(value.filter((_, j) => j !== i))}>
+          <button type="button" className="x" aria-label="Remove stat" onClick={() => onChange(value.filter((_, j) => j !== i))}>
             <XIcon size={12} />
-          </span>
+          </button>
         )}
       </div>
     ))}
@@ -258,9 +258,9 @@ const FieldCard: React.FC<{
                     }}
                   />
                   {!st.locked && (
-                    <span className="x" onClick={() => onChange(st.value.filter((_: any, j: number) => j !== i))}>
+                    <button type="button" className="x" aria-label="Remove quote" onClick={() => onChange(st.value.filter((_: any, j: number) => j !== i))}>
                       <XIcon size={12} />
-                    </span>
+                    </button>
                   )}
                 </div>
               ))}

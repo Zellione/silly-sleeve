@@ -403,6 +403,7 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 
 /* ─── Flyout (endpoint editor) ──────────────────────────── */
 .ep-flyout-bg {
+  appearance: none; border: 0; padding: 0;
   position: fixed; inset: 0;
   background: oklch(0.18 0.01 60 / 0.4);
   backdrop-filter: blur(4px);
@@ -1247,6 +1248,7 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   background: var(--acc-soft); border-color: var(--acc-line); color: var(--acc);
 }
 .tags-input .tag .x {
+  appearance: none; border: 0; background: transparent; padding: 0;
   color: var(--ink-3); cursor: pointer; font-size: 13px; line-height: 1;
 }
 .tags-input .tag .x:hover { color: var(--ink); }
@@ -1280,6 +1282,8 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 }
 .stat-row .key:focus, .stat-row .val:focus { border-color: var(--acc-line); }
 .stat-row .x {
+  appearance: none; border: 0; background: transparent;
+  display: inline-flex; align-items: center;
   color: var(--ink-3); cursor: pointer; padding: 4px;
   border-radius: 3px;
 }
@@ -1303,6 +1307,8 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 }
 .quote-row textarea:focus { border-color: var(--acc-line); }
 .quote-row .x {
+  appearance: none; border: 0; background: transparent;
+  display: inline-flex; align-items: center;
   color: var(--ink-3); cursor: pointer;
   margin-top: 8px;
   padding: 4px; border-radius: 3px;

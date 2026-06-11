@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfirmProvider, useConfirmDialog } from './ConfirmDialog';
 
@@ -69,6 +69,38 @@ describe('ConfirmDialog', () => {
     await user.click(backdrop);
 
     expect(onResult).toHaveBeenCalledWith(false);
+  });
+
+  it('exposes the dialog with an accessible name and autofocuses Confirm', async () => {
+    const user = userEvent.setup();
+    render(
+      <ConfirmProvider>
+        <Trigger message="Delete everything?" onResult={vi.fn()} />
+      </ConfirmProvider>
+    );
+
+    await user.click(screen.getByText('Trigger'));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName('Delete everything?');
+    expect(document.activeElement).toBe(screen.getByText('Confirm'));
+  });
+
+  it('resolves false on Escape', async () => {
+    const user = userEvent.setup();
+    const onResult = vi.fn();
+
+    render(
+      <ConfirmProvider>
+        <Trigger message="Are you sure?" onResult={onResult} />
+      </ConfirmProvider>
+    );
+
+    await user.click(screen.getByText('Trigger'));
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(false));
   });
 
   it('falls back to window.confirm when no provider', async () => {

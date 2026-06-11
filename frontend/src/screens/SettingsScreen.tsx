@@ -64,8 +64,14 @@ const EndpointFlyout: React.FC<{
 
   return (
     <>
-      <div className="ep-flyout-bg" onClick={onClose} />
-      <aside className="ep-flyout" onClick={e => e.stopPropagation()}>
+      <button type="button" className="ep-flyout-bg" aria-label="Close endpoint editor" onClick={onClose} />
+      <aside
+        className="ep-flyout"
+        role="dialog"
+        aria-modal="true"
+        aria-label={isNew ? 'New endpoint' : 'Edit endpoint'}
+        onClick={e => e.stopPropagation()}
+      >
         <header className="ep-fly-head">
           <div style={{ minWidth: 0 }}>
             <div className="uplabel">{isNew ? 'New endpoint' : 'Edit endpoint'}</div>

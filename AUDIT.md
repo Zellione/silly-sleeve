@@ -261,9 +261,22 @@ touches just `settings.Comfy`) owns its slice of shared state via a live
 pointer. This keeps locking discipline in one place and the services
 unit-testable.
 
-### 6.2 Introduce interfaces at network seams
-Define `comfy.ComfyClient` and `llm.Completer` interfaces; inject them so
-generation logic is unit-testable without real HTTP/WebSocket. Pairs with 6.1.
+### 6.2 Introduce interfaces at network seams — DONE
+- ~~`llm.Completer`~~ Done (`internal/llm/completer.go`): interface +
+  `CompleterFunc` adapter + `DefaultCompleter`. compose grows injectable
+  `GenerateBulkWith`/`GenerateFieldWith` (the original functions delegate with
+  `DefaultCompleter`, so existing httptest tests are untouched);
+  `CharacterGenerator` holds an `llm.Completer` and routes all three paths
+  through it. Unit-tested with an in-memory fakeCompleter (no HTTP).
+- ~~`comfy.ComfyClient`~~ Done (`internal/comfy/iface.go`): `TestConnection` +
+  `GetNodeInputList`, with `var _ ComfyClient = (*Client)(nil)`. `ComfyUIService`
+  gains an injectable client factory (falls back to `comfy.NewClient`); the
+  discovery getters and `TestComfyUIEndpoint` route through it. Unit-tested
+  with a fakeComfyClient (no network).
+
+Scope note: image generation still uses the concrete `comfy.Generator`
+(websocket); the AUDIT named only `ComfyClient`, so the generator seam is left
+as-is — a natural follow-up if generation logic ever needs unit tests.
 
 ### 6.3 Extract duplicated helpers in `internal/crawler/sanitize.go` — DONE
 - ~~A single `normalizeWhitespace` (4 near-duplicate implementations) — safe.~~
@@ -292,8 +305,9 @@ generation logic is unit-testable without real HTTP/WebSocket. Pairs with 6.1.
 2. **Phase 1 + Phase 2** — the security/correctness core. ✅ done
 3. **Phase 5** — supply-chain/CI guards (incl. the x/net + vite vuln fixes). ✅ done
 4. **Phase 3.4–3.6** — contained backend dedup/robustness + export extraction. ✅ done
-5. **Phase 4** — frontend error surfacing, dedup, decomposition, a11y. ← next
-6. **Phase 6** — god-object decomposition + sanitize dedup, last, incrementally.
+5. **Phase 4** — frontend error surfacing, dedup, decomposition, a11y. ✅ done
+6. **Phase 6** — god-object decomposition + sanitize dedup + network-seam
+   interfaces, last, incrementally. ✅ done
 
 Each change should land with tests and keep `go test ./... -race` and the
 frontend suite green. Keep PRs small and single-purpose.

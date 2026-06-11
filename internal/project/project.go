@@ -51,7 +51,7 @@ func SaveProject(folderPath string, m ProjectManifest, characters []compose.Char
 	if err != nil {
 		return fmt.Errorf("encode manifest: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(folderPath, manifestFile), data, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(folderPath, manifestFile), data, 0o600); err != nil {
 		return fmt.Errorf("write manifest: %w", err)
 	}
 
@@ -65,7 +65,7 @@ func SaveProject(folderPath string, m ProjectManifest, characters []compose.Char
 			return fmt.Errorf("encode character %d: %w", ch.ID, err)
 		}
 		fname := filepath.Join(charsPath, fmt.Sprintf("%d.json", ch.ID))
-		if err := os.WriteFile(fname, chData, 0o644); err != nil {
+		if err := os.WriteFile(fname, chData, 0o600); err != nil {
 			return fmt.Errorf("write character %d: %w", ch.ID, err)
 		}
 	}

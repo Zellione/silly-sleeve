@@ -48,7 +48,8 @@ func configPath() (string, error) {
 		return "", err
 	}
 	appDir := filepath.Join(dir, "silly-sleeve")
-	if err := os.MkdirAll(appDir, 0o755); err != nil {
+	// 0o700: this directory holds settings.json with API keys and auth tokens.
+	if err := os.MkdirAll(appDir, 0o700); err != nil {
 		return "", err
 	}
 	return filepath.Join(appDir, "settings.json"), nil
@@ -87,7 +88,8 @@ func Save(s Settings) error {
 	if err != nil {
 		return fmt.Errorf("encode settings: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	// 0o600: settings contain LLM API keys and ComfyUI auth tokens.
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write settings: %w", err)
 	}
 	return nil

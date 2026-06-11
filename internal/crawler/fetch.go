@@ -3,11 +3,66 @@ package crawler
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
+
+// maxCrawlResponseBytes caps the MediaWiki API response read from an untrusted
+// wiki host, guarding against memory exhaustion.
+const maxCrawlResponseBytes = 32 << 20 // 32 MiB
+
+// isBlockedIP reports whether an IP is in a range we refuse to be redirected
+// to: loopback, private, link-local (incl. cloud metadata at 169.254.169.254),
+// and unspecified addresses.
+func isBlockedIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+}
+
+// checkRedirectTarget rejects redirects to non-http(s) schemes or to hosts that
+// resolve into a blocked IP range. The user's originally entered host is
+// trusted; this guards against a malicious wiki redirecting the request to an
+// internal address (SSRF).
+func checkRedirectTarget(u *url.URL) error {
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("refusing redirect to scheme %q", u.Scheme)
+	}
+	host := u.Hostname()
+	if ip := net.ParseIP(host); ip != nil {
+		if isBlockedIP(ip) {
+			return fmt.Errorf("refusing redirect to blocked address %s", host)
+		}
+		return nil
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("resolve redirect host %s: %w", host, err)
+	}
+	for _, ip := range ips {
+		if isBlockedIP(ip) {
+			return fmt.Errorf("refusing redirect to blocked address %s (%s)", host, ip)
+		}
+	}
+	return nil
+}
+
+// newSafeClient returns an HTTP client that caps redirects and refuses to
+// follow redirects into blocked IP ranges or non-http(s) schemes.
+func newSafeClient() *http.Client {
+	return &http.Client{
+		Timeout: 15 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("stopped after 5 redirects")
+			}
+			return checkRedirectTarget(req.URL)
+		},
+	}
+}
 
 // FetchResult holds the raw API response data.
 type FetchResult struct {
@@ -43,12 +98,17 @@ func FetchPage(pageURL string) FetchResult {
 		return FetchResult{LatencyMs: time.Since(start).Milliseconds(), Error: err}
 	}
 
+	if u.Scheme != "" && u.Scheme != "http" && u.Scheme != "https" {
+		err := fmt.Errorf("unsupported URL scheme %q", u.Scheme)
+		return FetchResult{Domain: domain, LatencyMs: time.Since(start).Milliseconds(), Error: err}
+	}
+
 	apiURL := buildParseURLWithScheme(u.Scheme, domain, title)
 	if u.Scheme == "" {
 		apiURL = buildParseURL(domain, title)
 	}
 
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := newSafeClient()
 	fmt.Println("[crawler] GET", apiURL)
 	resp, err := client.Get(apiURL)
 	latency := time.Since(start).Milliseconds()
@@ -68,7 +128,7 @@ func FetchPage(pageURL string) FetchResult {
 	}
 
 	var body mediaWikiParseResponse
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxCrawlResponseBytes)).Decode(&body); err != nil {
 		fmt.Println("[crawler] JSON decode error:", err)
 		return FetchResult{Domain: domain, LatencyMs: latency, Error: fmt.Errorf("parse response: %w", err)}
 	}

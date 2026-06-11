@@ -4,9 +4,31 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
+
+// maxLLMResponseBytes caps the response body read from a user-configured
+// (and thus untrusted) LLM endpoint, guarding against memory exhaustion.
+const maxLLMResponseBytes = 32 << 20 // 32 MiB
+
+// validateEndpointURL ensures a user-supplied endpoint URL uses http(s) and
+// has a host, rejecting schemes like file:// or gopher://.
+func validateEndpointURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid endpoint URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("endpoint URL must use http or https, got %q", u.Scheme)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("endpoint URL must include a host")
+	}
+	return nil
+}
 
 // ChatMessage represents a single message in a chat completion.
 type ChatMessage struct {
@@ -32,6 +54,10 @@ func Complete(ep LLMEndpoint, systemPrompt, userPrompt string) (string, error) {
 	messages := []ChatMessage{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
+	}
+
+	if err := validateEndpointURL(ep.URL); err != nil {
+		return "", err
 	}
 
 	payload := chatRequest{
@@ -66,7 +92,7 @@ func Complete(ep LLMEndpoint, systemPrompt, userPrompt string) (string, error) {
 	}
 
 	var cr chatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&cr); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxLLMResponseBytes)).Decode(&cr); err != nil {
 		return "", fmt.Errorf("decode response: %w", err)
 	}
 

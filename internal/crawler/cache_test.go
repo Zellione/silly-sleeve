@@ -4,12 +4,29 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSaveCache_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file mode bits not meaningful on Windows")
+	}
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	require.NoError(t, SaveCache(CrawlResult{Title: "Perms"}))
+
+	cp, err := cachePath()
+	require.NoError(t, err)
+	info, err := os.Stat(cp)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
 
 func TestSaveCache_Success(t *testing.T) {
 	tmpDir := t.TempDir()

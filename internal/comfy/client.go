@@ -12,6 +12,14 @@ import (
 
 const httpErrorFormat = "HTTP %d: %s"
 
+const (
+	// maxResponseBytes caps successful response bodies (images, object_info JSON)
+	// read from a potentially untrusted ComfyUI server, guarding against memory exhaustion.
+	maxResponseBytes = 256 << 20 // 256 MiB
+	// maxErrorBodyBytes caps the body read when surfacing an HTTP error response.
+	maxErrorBodyBytes = 64 << 10 // 64 KiB
+)
+
 // Client communicates with a ComfyUI instance via its REST API.
 type Client struct {
 	BaseURL string
@@ -120,7 +128,26 @@ func (c *Client) fullURL(path string) string {
 	return base + path
 }
 
+// validateBaseURL rejects ComfyUI base URLs with non-http(s) schemes (e.g.
+// file://) or no host, before any request is made.
+func (c *Client) validateBaseURL() error {
+	u, err := url.Parse(c.BaseURL)
+	if err != nil {
+		return fmt.Errorf("invalid ComfyUI URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("ComfyUI URL must use http or https, got %q", u.Scheme)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("ComfyUI URL must include a host")
+	}
+	return nil
+}
+
 func (c *Client) doGet(path string, dest any) error {
+	if err := c.validateBaseURL(); err != nil {
+		return err
+	}
 	u := c.fullURL(path)
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
@@ -133,16 +160,19 @@ func (c *Client) doGet(path string, dest any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 		return fmt.Errorf(httpErrorFormat, resp.StatusCode, string(body))
 	}
 	if dest != nil {
-		return json.NewDecoder(resp.Body).Decode(dest)
+		return json.NewDecoder(io.LimitReader(resp.Body, maxResponseBytes)).Decode(dest)
 	}
 	return nil
 }
 
 func (c *Client) doPost(path string, body any, dest any) error {
+	if err := c.validateBaseURL(); err != nil {
+		return err
+	}
 	u := c.fullURL(path)
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -160,16 +190,19 @@ func (c *Client) doPost(path string, body any, dest any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 		return fmt.Errorf(httpErrorFormat, resp.StatusCode, string(respBody))
 	}
 	if dest != nil {
-		return json.NewDecoder(resp.Body).Decode(dest)
+		return json.NewDecoder(io.LimitReader(resp.Body, maxResponseBytes)).Decode(dest)
 	}
 	return nil
 }
 
 func (c *Client) doGetBytes(path string) ([]byte, error) {
+	if err := c.validateBaseURL(); err != nil {
+		return nil, err
+	}
 	u := c.fullURL(path)
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
@@ -182,10 +215,10 @@ func (c *Client) doGetBytes(path string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 		return nil, fmt.Errorf(httpErrorFormat, resp.StatusCode, string(body))
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 }
 
 func (c *Client) setAuth(req *http.Request) {

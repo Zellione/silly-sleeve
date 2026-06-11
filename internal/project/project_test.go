@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -11,6 +12,22 @@ import (
 
 	"silly-sleeve/internal/compose"
 )
+
+func TestSaveProject_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file mode bits not meaningful on Windows")
+	}
+	dir := t.TempDir()
+	require.NoError(t, SaveProject(dir, sampleManifest(), sampleCharacters()))
+
+	mInfo, err := os.Stat(filepath.Join(dir, manifestFile))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), mInfo.Mode().Perm(), "manifest")
+
+	cInfo, err := os.Stat(filepath.Join(dir, charsDir, chFileName(1)))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), cInfo.Mode().Perm(), "character file")
+}
 
 func sampleManifest() ProjectManifest {
 	return ProjectManifest{

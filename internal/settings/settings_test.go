@@ -3,6 +3,7 @@ package settings
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,23 @@ import (
 
 	"silly-sleeve/internal/prompts"
 )
+
+func TestSave_FilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file mode bits not meaningful on Windows")
+	}
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	require.NoError(t, Save(Settings{Endpoints: []LLMEndpoint{}}))
+
+	cp, err := configPath()
+	require.NoError(t, err)
+	info, err := os.Stat(cp)
+	require.NoError(t, err)
+	// settings.json holds API keys/tokens: owner-only read/write.
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
 
 func TestConfigPath(t *testing.T) {
 	path, err := configPath()

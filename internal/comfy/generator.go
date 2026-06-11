@@ -242,7 +242,7 @@ func fetchImageWithRetry(client *Client, filename, subfolder, imgType string) []
 func saveGeneratedImage(dir, promptID string, index int, data []byte) {
 	stamp := time.Now().UnixMilli()
 	imgPath := filepath.Join(dir, fmt.Sprintf("%s-%d-%d.png", promptID, stamp, index))
-	if err := os.WriteFile(imgPath, data, 0o644); err != nil {
+	if err := os.WriteFile(imgPath, data, 0o600); err != nil {
 		fmt.Printf("[generator] failed to save image: %v\n", err)
 	}
 }

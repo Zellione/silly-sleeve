@@ -31,12 +31,19 @@ type TestResult struct {
 func TestEndpoint(ep LLMEndpoint) TestResult {
 	start := time.Now()
 
+	if err := validateEndpointURL(ep.URL); err != nil {
+		return TestResult{Ok: false, Error: err.Error()}
+	}
+
 	payload := map[string]any{
 		"model":    ep.Model,
 		"messages": []map[string]string{{"role": "user", "content": "hi"}},
 		"max_tokens": 1,
 	}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return TestResult{Ok: false, Error: err.Error()}
+	}
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest("POST", ep.URL+"/chat/completions", bytes.NewReader(body))

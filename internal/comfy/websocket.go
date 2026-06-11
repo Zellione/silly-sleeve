@@ -69,6 +69,10 @@ func (l *WSListener) Connect() error {
 		return fmt.Errorf("dial WebSocket: %w", err)
 	}
 
+	// Bound message size: ComfyUI is potentially untrusted, and ReadMessage
+	// otherwise buffers an entire (possibly huge) frame into memory.
+	conn.SetReadLimit(maxResponseBytes)
+
 	l.conn = conn
 	l.running = true
 

@@ -19,6 +19,10 @@ import (
 
 const manifestFile = "manifest.json"
 
+// maxBundleEntryBytes caps the uncompressed size of any single entry read from
+// a .slv bundle, guarding against decompression bombs in untrusted bundles.
+const maxBundleEntryBytes = 64 << 20 // 64 MiB
+
 // Bundle holds all data to be serialized into a .slv file.
 type Bundle struct {
 	Manifest   project.ProjectManifest `json:"manifest"`
@@ -141,6 +145,9 @@ func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 
 	foundManifest := false
 	for _, f := range r.File {
+		if !safeEntryName(f.Name) {
+			continue
+		}
 		if reader, ok := fileReaders[f.Name]; ok {
 			if err := reader(f); err != nil {
 				return false, fmt.Errorf("read %s: %w", f.Name, err)
@@ -160,6 +167,9 @@ func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 
 func readImageFilesFromBundle(r *zip.ReadCloser, b *Bundle) error {
 	for _, f := range r.File {
+		if !safeEntryName(f.Name) {
+			continue
+		}
 		if f.Name == "images/project.png" {
 			data, err := readBytes(f)
 			if err != nil {
@@ -231,12 +241,7 @@ func writeBytes(zw *zip.Writer, name string, data []byte) error {
 }
 
 func readJSON(f *zip.File, v any) error {
-	rc, err := f.Open()
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-	b, err := io.ReadAll(rc)
+	b, err := readBytes(f)
 	if err != nil {
 		return err
 	}
@@ -249,7 +254,31 @@ func readBytes(f *zip.File) ([]byte, error) {
 		return nil, err
 	}
 	defer rc.Close()
-	return io.ReadAll(rc)
+	return readAllLimited(rc, maxBundleEntryBytes)
+}
+
+// readAllLimited reads from r but fails if the content exceeds limit bytes,
+// preventing a small compressed entry from expanding to exhaust memory.
+func readAllLimited(r io.Reader, limit int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("bundle entry exceeds %d byte limit", limit)
+	}
+	return data, nil
+}
+
+// safeEntryName rejects zip entry names that attempt path traversal or use
+// absolute paths. Entries here are read into memory rather than extracted to
+// disk, but this is defense-in-depth against malicious bundles.
+func safeEntryName(name string) bool {
+	if name == "" || strings.ContainsRune(name, '\\') || filepath.IsAbs(name) {
+		return false
+	}
+	clean := filepath.ToSlash(filepath.Clean(name))
+	return clean != ".." && !strings.HasPrefix(clean, "../") && !strings.HasPrefix(clean, "/")
 }
 
 func isCharacterFile(name string) bool {

@@ -1,6 +1,7 @@
 package compose
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -26,14 +27,14 @@ type generateResponse struct {
 // GenerateBulk sends a bulk prompt to the LLM and returns a Character
 // populated from the JSON response. lockedFields are field IDs that should
 // retain their existing values from the provided character.
-func GenerateBulk(result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
+func GenerateBulk(ctx context.Context, result crawler.CrawlResult, ep llm.LLMEndpoint, lockedFields []string, existing Character) (Character, error) {
 	userPrompt := buildUserPrompt(result)
 
 	if len(lockedFields) > 0 {
 		userPrompt += buildFieldMaskString(lockedFields)
 	}
 
-	content, err := llm.Complete(ep, systemPrompt, userPrompt)
+	content, err := llm.Complete(ctx, ep, systemPrompt, userPrompt)
 	if err != nil {
 		return Character{}, fmt.Errorf("llm complete: %w", err)
 	}
@@ -149,6 +150,7 @@ func truncate(s string, n int) string {
 // character with that field updated. customPrompt is appended to the
 // field-specific instruction. templates provides the system prompt.
 func GenerateField(
+	ctx context.Context,
 	fieldID string,
 	result crawler.CrawlResult,
 	ep llm.LLMEndpoint,
@@ -173,7 +175,7 @@ func GenerateField(
 		sysPrompt = systemPrompt
 	}
 
-	content, err := llm.Complete(ep, sysPrompt, userPrompt)
+	content, err := llm.Complete(ctx, ep, sysPrompt, userPrompt)
 	if err != nil {
 		return existing, fmt.Errorf("llm complete: %w", err)
 	}

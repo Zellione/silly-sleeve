@@ -2,6 +2,7 @@ package llm
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -50,7 +51,7 @@ type chatResponse struct {
 }
 
 // Complete sends a chat completion request and returns the message content.
-func Complete(ep LLMEndpoint, systemPrompt, userPrompt string) (string, error) {
+func Complete(ctx context.Context, ep LLMEndpoint, systemPrompt, userPrompt string) (string, error) {
 	messages := []ChatMessage{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
@@ -71,8 +72,11 @@ func Complete(ep LLMEndpoint, systemPrompt, userPrompt string) (string, error) {
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	client := &http.Client{Timeout: 15 * time.Second}
-	req, err := http.NewRequest("POST", ep.URL+"/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", ep.URL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
 	}

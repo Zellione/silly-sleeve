@@ -36,18 +36,32 @@ func parseWorkflowTemplate(template string) (map[string]any, error) {
 // Generator orchestrates a ComfyUI image generation session:
 // connect WebSocket, queue a prompt, listen for progress/completion, fetch images.
 type Generator struct {
-	client    *Client
-	listener  *WSListener
-	ctx       context.Context
-	promptID  string
+	client   *Client
+	listener *WSListener
+	ctx      context.Context
+	promptID string
 
 	mu           sync.Mutex
 	images       []CompletedImage
 	err          error
 	done         chan struct{}
+	closeOnce    sync.Once
 	progress     int
 	max          int
 	binaryBuffer [][]byte
+}
+
+// markDone records the terminal error (if any) and closes done exactly once,
+// so concurrent OnCompleted/OnError events can never double-close the channel.
+func (g *Generator) markDone(err error) {
+	g.closeOnce.Do(func() {
+		if err != nil {
+			g.mu.Lock()
+			g.err = err
+			g.mu.Unlock()
+		}
+		close(g.done)
+	})
 }
 
 // NewGenerator creates a generation orchestrator.
@@ -102,7 +116,18 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 	g.promptID = resp.PromptID
 	g.mu.Unlock()
 
-	<-g.done
+	// Wait for completion, but also honor context cancellation (e.g. app
+	// shutdown) so the deferred listener Close() can tear down cleanly instead
+	// of blocking forever on a server that never completes.
+	if g.ctx != nil {
+		select {
+		case <-g.done:
+		case <-g.ctx.Done():
+			return g.ctx.Err()
+		}
+	} else {
+		<-g.done
+	}
 
 	g.mu.Lock()
 	err = g.err
@@ -211,17 +236,10 @@ func (g *Generator) OnCompleted(event CompletedEvent) {
 
 	g.mu.Lock()
 	g.images = event.Images
-	emitCompletedAndClose(g, event)
 	g.mu.Unlock()
-}
 
-func emitCompletedAndClose(g *Generator, event CompletedEvent) {
 	emitEvent(g.ctx, "comfy:completed", event)
-	select {
-	case <-g.done:
-	default:
-		close(g.done)
-	}
+	g.markDone(nil)
 }
 
 func fetchImageWithRetry(client *Client, filename, subfolder, imgType string) []byte {
@@ -250,15 +268,7 @@ func saveGeneratedImage(dir, promptID string, index int, data []byte) {
 // OnError is called by WSListener on error events.
 func (g *Generator) OnError(event ErrorEvent) {
 	emitEvent(g.ctx, "comfy:error", event)
-
-	g.mu.Lock()
-	select {
-	case <-g.done:
-	default:
-		g.err = fmt.Errorf("generation error: %s", event.Error)
-		close(g.done)
-	}
-	g.mu.Unlock()
+	g.markDone(fmt.Errorf("generation error: %s", event.Error))
 }
 
 // Images returns the fetched images after completion.

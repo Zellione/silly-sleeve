@@ -1,6 +1,7 @@
 package compose
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -117,7 +118,7 @@ func TestGenerateBulk_Success(t *testing.T) {
 
 	ep := llm.LLMEndpoint{URL: srv.URL, Model: "model"}
 	result := crawler.CrawlResult{Title: "Elara Page"}
-	ch, err := GenerateBulk(result, ep, nil, Character{})
+	ch, err := GenerateBulk(context.Background(), result, ep, nil, Character{})
 
 	require.NoError(t, err)
 	assert.Equal(t, "Elara", ch.Name)
@@ -154,7 +155,7 @@ func TestGenerateBulk_WithLockedFields(t *testing.T) {
 	result := crawler.CrawlResult{Title: "Page"}
 
 	existing := Character{Name: "KeepMe", Epithet: "Original"}
-	ch, err := GenerateBulk(result, ep, []string{"name", "epithet"}, existing)
+	ch, err := GenerateBulk(context.Background(), result, ep, []string{"name", "epithet"}, existing)
 
 	require.NoError(t, err)
 	assert.Equal(t, "KeepMe", ch.Name)
@@ -170,7 +171,7 @@ func TestGenerateBulk_LLMError(t *testing.T) {
 
 	ep := llm.LLMEndpoint{URL: srv.URL, Model: "model"}
 	result := crawler.CrawlResult{Title: "Page"}
-	_, err := GenerateBulk(result, ep, nil, Character{})
+	_, err := GenerateBulk(context.Background(), result, ep, nil, Character{})
 
 	assert.Error(t, err)
 }
@@ -188,7 +189,7 @@ func TestGenerateBulk_InvalidJSON(t *testing.T) {
 
 	ep := llm.LLMEndpoint{URL: srv.URL, Model: "model"}
 	result := crawler.CrawlResult{Title: "Page"}
-	_, err := GenerateBulk(result, ep, nil, Character{})
+	_, err := GenerateBulk(context.Background(), result, ep, nil, Character{})
 
 	assert.Error(t, err)
 }
@@ -211,7 +212,7 @@ func TestGenerateField_Success_Appearance(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["appearance"] = "Describe {{crawl.title}}'s appearance."
 
-	ch, err := GenerateField("appearance", result, ep, "", Character{Name: "Elara"}, tmpl)
+	ch, err := GenerateField(context.Background(), "appearance", result, ep, "", Character{Name: "Elara"}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, "A tall figure with auburn hair.", ch.Appearance)
 	assert.True(t, ch.Dirty)
@@ -226,7 +227,7 @@ func TestGenerateField_Success_WithCustomPrompt(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["personality"] = "Describe {{crawl.title}}'s personality."
 
-	ch, err := GenerateField("personality", result, ep, "Make her very shy.", Character{Name: "Elara"}, tmpl)
+	ch, err := GenerateField(context.Background(), "personality", result, ep, "Make her very shy.", Character{Name: "Elara"}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, "Friendly and warm.", ch.Personality)
 }
@@ -240,7 +241,7 @@ func TestGenerateField_JSONWrapped_ObjectValue(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["appearance"] = "Describe appearance."
 
-	ch, err := GenerateField("appearance", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "appearance", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, "Tall and lean.", ch.Appearance)
 }
@@ -254,7 +255,7 @@ func TestGenerateField_JSONWrapped_CaseInsensitive(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["relationships"] = "Describe relationships."
 
-	ch, err := GenerateField("relationships", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "relationships", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, "Allies with the Harpers.", ch.Relationships)
 }
@@ -268,7 +269,7 @@ func TestGenerateField_JSONWrapped_ArrayToString(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["relationships"] = "Describe."
 
-	ch, err := GenerateField("relationships", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "relationships", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Contains(t, ch.Relationships, "Ally of Harpers")
 	assert.Contains(t, ch.Relationships, "Friend of Elara")
@@ -279,7 +280,7 @@ func TestGenerateField_NoTemplate(t *testing.T) {
 	tmpl := prompts.Defaults()
 	delete(tmpl.FieldPrompts, "name")
 
-	_, err := GenerateField("name", result, llm.LLMEndpoint{}, "", Character{}, tmpl)
+	_, err := GenerateField(context.Background(), "name", result, llm.LLMEndpoint{}, "", Character{}, tmpl)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no template")
 }
@@ -295,7 +296,7 @@ func TestGenerateField_LLMError(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["appearance"] = "Describe."
 
-	ch, err := GenerateField("appearance", result, ep, "", Character{Name: "KeepMe"}, tmpl)
+	ch, err := GenerateField(context.Background(), "appearance", result, ep, "", Character{Name: "KeepMe"}, tmpl)
 	assert.Error(t, err)
 	assert.Equal(t, "KeepMe", ch.Name)
 }
@@ -309,7 +310,7 @@ func TestGenerateField_TagsArray(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["tags"] = "List tags."
 
-	ch, err := GenerateField("tags", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "tags", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"half-elf", "bard", "rogue"}, ch.Tags)
 }
@@ -323,7 +324,7 @@ func TestGenerateField_StatsArray(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["stats"] = "List stats."
 
-	ch, err := GenerateField("stats", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "stats", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Len(t, ch.Stats, 3)
 	assert.Equal(t, StatKV{Key: "STR", Value: "14"}, ch.Stats[0])
@@ -338,7 +339,7 @@ func TestGenerateField_EmptyJSONTextFallback(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["personality"] = "Describe."
 
-	ch, err := GenerateField("personality", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "personality", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.True(t, ch.Dirty)
 }
@@ -352,7 +353,7 @@ func TestGenerateField_EmptyArrayTextFallback(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["backstory"] = "Describe."
 
-	ch, err := GenerateField("backstory", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "backstory", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.True(t, ch.Dirty)
 }
@@ -367,7 +368,7 @@ func TestGenerateField_SystemPromptFromTemplate(t *testing.T) {
 	tmpl.SystemPrompt = "You are a creative assistant."
 	tmpl.FieldPrompts["personality"] = "Describe personality."
 
-	ch, err := GenerateField("personality", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "personality", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, "Cheerful.", ch.Personality)
 }
@@ -381,7 +382,7 @@ func TestGenerateField_QuotesArray(t *testing.T) {
 	tmpl := prompts.Defaults()
 	tmpl.FieldPrompts["quotes"] = "List quotes."
 
-	ch, err := GenerateField("quotes", result, ep, "", Character{}, tmpl)
+	ch, err := GenerateField(context.Background(), "quotes", result, ep, "", Character{}, tmpl)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"Hello there!", "Let's go!"}, ch.Quotes)
 }

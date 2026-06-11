@@ -93,9 +93,14 @@ func (l *WSListener) Close() {
 }
 
 func (l *WSListener) listen() {
-	for l.isRunning() {
-		conn := l.getConn()
-		if conn == nil {
+	for {
+		// Snapshot conn and running together under one lock acquisition so the
+		// loop reads a consistent view even if Close() runs concurrently.
+		l.mu.Lock()
+		conn := l.conn
+		running := l.running
+		l.mu.Unlock()
+		if !running || conn == nil {
 			return
 		}
 
@@ -195,16 +200,4 @@ func (l *WSListener) handleExecutionErrorMessage(data []byte) {
 			Error:    msg.Data.Error,
 		})
 	}
-}
-
-func (l *WSListener) isRunning() bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.running
-}
-
-func (l *WSListener) getConn() *websocket.Conn {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.conn
 }

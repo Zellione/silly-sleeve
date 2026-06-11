@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func TestValidateEndpointURL(t *testing.T) {
 }
 
 func TestComplete_RejectsNonHTTPScheme(t *testing.T) {
-	_, err := Complete(LLMEndpoint{URL: "file:///etc/passwd", Model: "m"}, "sys", "user")
+	_, err := Complete(context.Background(), LLMEndpoint{URL: "file:///etc/passwd", Model: "m"}, "sys", "user")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "http or https")
 }

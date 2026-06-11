@@ -249,7 +249,7 @@ func (a *App) GenerateImagePrompt(charID int, style string) (string, string, err
 		Temperature:  def.Temperature,
 	}
 
-	result, err := llm.Complete(ep, buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
+	result, err := llm.Complete(a.ctx, ep, buildImagePromptSysMsg(target, style), buildImagePromptUserMsg(target))
 	if err != nil {
 		return "", "", fmt.Errorf("generate image prompt: %w", err)
 	}
@@ -545,7 +545,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 		SystemPrompt: def.SystemPrompt,
 	}
 
-	ch, err := compose.GenerateBulk(*crawl, ep, lockedFields, existing)
+	ch, err := compose.GenerateBulk(a.ctx, *crawl, ep, lockedFields, existing)
 	if err != nil {
 		fmt.Println("bulk generate error:", err)
 		return existing
@@ -597,7 +597,7 @@ func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 		SystemPrompt: def.SystemPrompt,
 	}
 
-	ch, err := compose.GenerateField(fieldID, *crawl, ep, customPrompt, existing, templates)
+	ch, err := compose.GenerateField(a.ctx, fieldID, *crawl, ep, customPrompt, existing, templates)
 	if err != nil {
 		fmt.Println("generate field error:", err)
 		return existing

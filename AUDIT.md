@@ -234,15 +234,32 @@ Moved here intentionally: these are the highest-effort, highest-regression-risk
 changes and unlock little that the rest of the plan depends on. Each should be
 its own small increment with tests green at every step.
 
-### 6.1 Decompose the `app.go` god object — highest-leverage, do incrementally
-`App` mixes Wails binding, app state, business logic, IO, and external
-integration. Extract services (each behind an interface for testing), with
-`App` methods reduced to thin delegators so the **Wails binding surface stays
-identical** (the frontend depends on it):
-- **`ComfyUIService`** — `comfyClient()`, all `GetComfy*`, test/generate.
-- **`CharacterGenerator`** — `GenerateCharacterBulk`, `GenerateField`, `GenerateImagePrompt`.
-- **`ProjectManager`** — save/open bundle, export character/lorebook, path pickers.
-The `internal/compose` export extraction (3.6) is the template for one increment.
+### 6.1 Decompose the `app.go` god object — DONE
+`App` mixed Wails binding, app state, business logic, IO, and external
+integration. Extracted three services (one increment each), with `App` methods
+reduced to thin delegators / state-orchestrators so the **Wails binding surface
+stayed byte-identical** (verified: no `frontend/wailsjs/` drift). app.go went
+868 → 625 LOC.
+- ~~**`ComfyUIService`**~~ Done (`comfy_service.go`): `comfyClient`, all
+  `GetComfy*`, workflow-registry CRUD, test/generate. Holds a live
+  `*settings.Settings` (App's field address is stable across `SaveSettings`)
+  and a lazy ctx accessor. +9 tests.
+- ~~**`CharacterGenerator`**~~ Done (`character_generator.go`): `GenerateBulk`,
+  `GenerateField`, `GenerateImagePrompt`. Stateless — App keeps the mutex +
+  character-store orchestration and passes crawl/endpoint/existing-char in.
+  Consolidated the 3× duplicated `settings→llm` endpoint mapping into
+  `toLLMEndpoint`. This is the LLM seam for 6.2. +4 tests.
+- ~~**`ProjectManager`**~~ Done (`project_manager.go`): save/open bundle,
+  crawl-cache resolution, character/lorebook export, path pickers. Stateless —
+  App gathers a `ProjectSnapshot` under lock and applies the loaded bundle out.
+  +6 tests.
+
+Design note: the two state-entangled clusters (CharacterGenerator,
+ProjectManager) were kept **stateless** rather than dragging App's mutex +
+stores into them; App retains the lock/unlock orchestration. Only Comfy (which
+touches just `settings.Comfy`) owns its slice of shared state via a live
+pointer. This keeps locking discipline in one place and the services
+unit-testable.
 
 ### 6.2 Introduce interfaces at network seams
 Define `comfy.ComfyClient` and `llm.Completer` interfaces; inject them so

@@ -10,7 +10,7 @@ jobs:
   lint-go:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
@@ -27,7 +27,7 @@ jobs:
   vuln-go:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
@@ -42,7 +42,7 @@ jobs:
   lint-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -60,7 +60,7 @@ jobs:
     needs: lint-go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
       - uses: actions/setup-go@v5
@@ -86,7 +86,7 @@ jobs:
     needs: lint-frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -114,7 +114,7 @@ jobs:
     needs: [test-go, test-frontend]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'

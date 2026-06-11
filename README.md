@@ -44,16 +44,38 @@ sudo dnf install gtk3-devel webkit2gtk3-devel
 
 **macOS** and **Windows** have no extra system dependencies.
 
+## Install Wails CLI
+
+Requires [Go 1.23+](https://go.dev/doc/install). Install the Wails v2 CLI:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+```
+
+Ensure your Go bin directory is on `PATH` so the `wails` command is found:
+
+```bash
+export PATH="$PATH:$(go env GOPATH)/bin"
+```
+
+Verify the installation and check that all system dependencies are present:
+
+```bash
+wails doctor
+```
+
+> `wails doctor` reports any missing GTK/WebKit libraries (see Prerequisites above) and confirms your environment is ready to build.
+
 ## Tech Stack
 
 - **Frontend:** React 18 + Vite + TypeScript
 - **Desktop bridge:** Wails v2
-- **Backend:** Go 1.22+
+- **Backend:** Go 1.23+
 - **Config / storage:** `os.UserConfigDir()` for settings; `.slv` zip bundles for projects
 
 ## Build & Run
 
-> Requires [Wails CLI](https://wails.io/docs/gettingstarted/installation) and Go 1.22+.
+> Requires the [Wails CLI](#install-wails-cli) and Go 1.23+ (see above).
 
 ### Development (hot-reload)
 

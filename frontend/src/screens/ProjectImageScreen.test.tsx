@@ -6,9 +6,13 @@ import { ToastProvider } from '../components/ToastProvider';
 import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 
 const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
+const mockGetProjectImage = vi.fn().mockResolvedValue([]);
+const mockSaveProjectImage = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
+  GetProjectImage: () => mockGetProjectImage(),
+  SaveProjectImage: (data: number[]) => mockSaveProjectImage(data),
   GetComfySamplers: () => Promise.resolve(['euler', 'dpmpp_2m']),
   GetComfySchedulers: () => Promise.resolve(['karras', 'normal']),
   GetComfyCheckpoints: () => Promise.resolve(['sd_xl_base_1.0.safetensors']),
@@ -341,5 +345,39 @@ describe('ProjectImageScreen', () => {
       expect(screen.getByText(/Stop/)).toBeInTheDocument();
     });
     await user.click(screen.getByText(/Stop/));
+  });
+
+  // ─── Persistence (survives tab switch) ──────────────────
+
+  const PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+  it('loads the saved cover into the canvas on mount', async () => {
+    mockGenerateProjectImage.mockResolvedValue([]);
+    mockGetProjectImage.mockResolvedValue(PNG_BYTES);
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => {
+      expect(mockGetProjectImage).toHaveBeenCalled();
+      const img = screen.getByAltText('cover variant 1') as HTMLImageElement;
+      expect(img.src).toMatch(/^data:image\/png;base64,/);
+    });
+  });
+
+  it('persists the generated cover to the backend on "Use as project image"', async () => {
+    mockGetProjectImage.mockResolvedValue([]);
+    mockGenerateProjectImage.mockResolvedValue([
+      { data: PNG_BYTES, filename: 'c.png', subfolder: '', type: 'output' },
+    ]);
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      const btn = screen.getByText('Use as project image').closest('button');
+      expect(btn).not.toBeDisabled();
+    });
+    await user.click(screen.getByText('Use as project image'));
+    await waitFor(() => {
+      expect(mockSaveProjectImage).toHaveBeenCalledWith(PNG_BYTES);
+    });
   });
 });

@@ -8,6 +8,7 @@ import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
   GetComfyVAEs, GetComfyLoRAs,
+  GetPortrait, SavePortrait,
 } from '../../wailsjs/go/main/App';
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
@@ -15,7 +16,7 @@ import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
-import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
+import { DEFAULT_NEGATIVE_PROMPT, arrayBufferToDataURL, dataURLToBytes } from '../utils/image';
 
 const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
@@ -27,20 +28,24 @@ async function autoFillImagePrompt(
   activeChar: compose.Character | null,
   activeCharId: number,
   promptStyle: string,
+  negPrompt: string,
   setPrompt: (v: string) => void,
   setNegPrompt: (v: string) => void,
 ): Promise<void> {
   if (!activeChar) return;
+  // Auto-fill regenerates the positive prompt from the card, but never clobbers
+  // a negative prompt the user has already customized.
+  const keepNeg = negPrompt.trim().length > 0;
   try {
     const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
     setPrompt(positive);
-    setNegPrompt(negative);
+    if (!keepNeg) setNegPrompt(negative);
   } catch {
     const appearance = activeChar.appearance;
     if (appearance.trim()) {
       setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
     }
-    setNegPrompt(DEFAULT_NEGATIVE_PROMPT);
+    if (!keepNeg) setNegPrompt(DEFAULT_NEGATIVE_PROMPT);
   }
 }
 
@@ -82,6 +87,7 @@ const PortraitScreen: React.FC = () => {
   const [negPrompt, setNegPrompt] = useState('');
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
+  const [savedPortrait, setSavedPortrait] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
@@ -111,8 +117,31 @@ const PortraitScreen: React.FC = () => {
     GetComfyLoRAs().then(setLoras).catch(() => {});
   }, []);
 
+  // Restore the character's saved portrait so it survives leaving and
+  // returning to this screen (each screen fully unmounts on tab switch).
+  // Switching characters re-fetches; a character with no portrait decodes to
+  // null, which also clears any previously shown portrait.
+  useEffect(() => {
+    if (!activeCharId) return;
+    GetPortrait(activeCharId)
+      .then(bytes => setSavedPortrait(arrayBufferToDataURL(bytes) || null))
+      .catch(() => {});
+  }, [activeCharId]);
+
+  const persistPortrait = async (dataUrl: string) => {
+    if (!dataUrl || !activeCharId) return;
+    try {
+      await SavePortrait(activeCharId, dataURLToBytes(dataUrl));
+      setSavedPortrait(dataUrl);
+      toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' });
+    } catch (e) {
+      toast({ kind: 'bad', title: 'Save failed', body: String(e) });
+    }
+  };
+
   const canvasTitle = 'Preview';
-  const showDonePlaceholder = variantImages.length > 0;
+  const previewImage = variantUrl(variantImages, selectedVariant) ?? savedPortrait;
+  const showDonePlaceholder = variantImages.length > 0 || savedPortrait !== null;
 
   return (
     <>
@@ -196,9 +225,9 @@ const PortraitScreen: React.FC = () => {
                 </div>
               }
               donePlaceholder={
-                variantUrl(variantImages, selectedVariant) ? (
+                previewImage ? (
                   <div className="img-placeholder" style={{ background: 'var(--panel-2)', overflow: 'hidden' }}>
-                    <img src={variantImages[selectedVariant]} alt={`variant ${selectedVariant + 1}`}
+                    <img src={previewImage} alt={`variant ${selectedVariant + 1}`}
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   </div>
                 ) : (
@@ -215,7 +244,7 @@ const PortraitScreen: React.FC = () => {
               }
               autoFillButton={
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, setPrompt, setNegPrompt)}>
+                  <button className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt)}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
                   <select className="img-select" value={promptStyle} onChange={e => { setPromptStyle(e.target.value as 'natural' | 'danbooru'); e.target.blur(); }}
@@ -259,7 +288,7 @@ const PortraitScreen: React.FC = () => {
               rerollLabel="Re-roll with these params"
               downloadLabel="Save PNG only"
               useImageLabel="Use as portrait"
-              onUseImage={() => toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' })}
+              onUseImage={() => persistPortrait(variantImages[selectedVariant])}
               useImageDisabled={variantImages.length === 0}
             />
           </div>
@@ -271,7 +300,7 @@ const PortraitScreen: React.FC = () => {
             maxSize="Recommended 832 × 1216 for SillyTavern v2 cards"
             defaultCrop="Center 3:4"
             defaultResize="Fit to 832×1216"
-            onUseImage={() => toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' })}
+            onUseImage={persistPortrait}
           />
         )}
       </div>

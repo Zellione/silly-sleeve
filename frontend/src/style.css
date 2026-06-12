@@ -1345,7 +1345,12 @@ kbd {
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   gap: 18px;
-  height: calc(100vh - 175px);
+  /* Fill the (already height-bounded) page body rather than `calc(100vh - 175px)`:
+     the magic offset under-counted the header stack and pushed the columns past
+     the viewport, forcing the whole detail panel to scroll instead of just its
+     inner `.db` body. 100% adapts to whatever sits above the body. */
+  height: 100%;
+  min-height: 0;
 }
 .lb-list {
   background: var(--panel);
@@ -1846,7 +1851,12 @@ kbd {
   display: grid;
   grid-template-columns: minmax(230px, 270px) minmax(0, 1fr) minmax(230px, 270px);
   gap: 18px;
-  height: calc(100vh - 175px);
+  /* Fill the (already height-bounded) page body rather than `calc(100vh - 175px)`:
+     the magic offset under-counted the header stack and pushed the columns past
+     the viewport, forcing the whole panel to scroll instead of just its inner
+     bodies. 100% adapts to whatever sits above the body. */
+  height: 100%;
+  min-height: 0;
 }
 .proj-cover-shot {
   width: 100%; height: 100%;

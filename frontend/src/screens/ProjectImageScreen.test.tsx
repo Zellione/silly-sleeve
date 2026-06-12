@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ProjectImageScreen from './ProjectImageScreen';
 import { ToastProvider } from '../components/ToastProvider';
+import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 
 const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
 
@@ -266,11 +267,26 @@ describe('ProjectImageScreen', () => {
     await user.click(randBtn);
   });
 
-  it('clicking auto-fill fires handler', async () => {
+  it('clicking auto-fill inserts the default negative prompt', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProjectImageScreen />);
     await waitFor(() => screen.getByText('auto-fill from lorebook'));
     await user.click(screen.getByText('auto-fill from lorebook'));
+    await waitFor(() => {
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
+      expect(values).toContain(DEFAULT_NEGATIVE_PROMPT);
+    });
+  });
+
+  it('auto-fill does not overwrite an existing negative prompt', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    await waitFor(() => screen.getByText('auto-fill from lorebook'));
+    const negField = Array.from(document.querySelectorAll('textarea'))[1];
+    await user.click(negField);
+    await user.type(negField, 'my custom negative');
+    await user.click(screen.getByText('auto-fill from lorebook'));
+    await waitFor(() => expect(negField.value).toBe('my custom negative'));
   });
 
   it('upload mode renders selected file area', async () => {

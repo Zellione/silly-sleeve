@@ -1,3 +1,9 @@
+// Mirrors `defaultNegativePrompt` in image_prompts.go — the fallback inserted
+// whenever auto-fill can't produce a negative prompt of its own, so a generation
+// is never queued with an empty negative field.
+export const DEFAULT_NEGATIVE_PROMPT =
+  'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, blurry, deformed';
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) {

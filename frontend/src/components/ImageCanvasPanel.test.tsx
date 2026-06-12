@@ -120,16 +120,14 @@ describe('ImageCanvasPanel', () => {
     expect(screen.queryByText('auto-fill card')).not.toBeInTheDocument();
   });
 
-  it('applies aspectRatio style when provided', () => {
-    const { container } = render(<ImageCanvasPanel {...baseProps} aspectRatio="16/9" />);
-    const canvas = container.querySelector('.img-canvas');
-    expect(canvas).toHaveStyle({ aspectRatio: '16/9' });
-  });
-
-  it('does not apply aspectRatio style when not provided', () => {
+  it('renders the canvas as a flexible box without an inline aspect-ratio', () => {
+    // The canvas fills available height via CSS flex (so the prompt/button
+    // footer stays visible); it must not pin an inline aspect-ratio that would
+    // size it by width and overflow the column.
     const { container } = render(<ImageCanvasPanel {...baseProps} />);
-    const canvas = container.querySelector('.img-canvas');
-    expect(canvas).toHaveStyle({ aspectRatio: '' });
+    const canvas = container.querySelector('.img-canvas') as HTMLElement;
+    expect(canvas).toBeInTheDocument();
+    expect(canvas.style.aspectRatio).toBe('');
   });
 
   it('shows "Sampling…" in head when generating', () => {

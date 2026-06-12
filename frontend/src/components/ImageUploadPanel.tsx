@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { UploadIcon, ImageIcon, CheckIcon, FolderIcon, DownloadIcon } from '../icons';
+import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime';
+import { ReadImageFile } from '../../wailsjs/go/main/App';
 
 export interface UploadFileInfo {
   name: string;
@@ -49,19 +51,39 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
   const dragCounterRef = useRef(0);
   const uid = useId();
 
-  const processFile = (file: File) => {
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    setUploadFile({ name: file.name, size: `${sizeMB} MB`, dims: '…×…' });
+  const applyImage = useCallback((name: string, sizeBytes: number, dataUrl: string) => {
+    const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(1);
+    setUploadFile({ name, size: `${sizeMB} MB`, dims: '…×…' });
+    setImageData(dataUrl);
+    loadImageDimensions(dataUrl).then(({ width, height }) => {
+      updateUploadFileDims(setUploadFile, width, height);
+    });
+  }, []);
+
+  const processFile = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const url = reader.result as string;
-      setImageData(url);
-      loadImageDimensions(url).then(({ width, height }) => {
-        updateUploadFileDims(setUploadFile, width, height);
-      });
+      if (typeof reader.result === 'string') {
+        applyImage(file.name, file.size, reader.result);
+      }
     };
     reader.readAsDataURL(file);
-  };
+  }, [applyImage]);
+
+  // Native (OS) file drops don't populate HTML5 dataTransfer.files in the Wails
+  // webview, so subscribe to Wails' file-drop bridge (scoped to the dropzone via
+  // --wails-drop-target) and read the dropped path's bytes through the backend.
+  useEffect(() => {
+    OnFileDrop((_x, _y, paths) => {
+      if (!paths || paths.length === 0) return;
+      dragCounterRef.current = 0;
+      setDragging(false);
+      ReadImageFile(paths[0])
+        .then(img => applyImage(img.name, img.size, img.dataUrl))
+        .catch(() => {});
+    }, true);
+    return () => OnFileDropOff();
+  }, [applyImage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     /* v8 ignore start */
@@ -120,7 +142,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
       <button
         type="button"
         className={`img-dropzone${dragging ? ' dragging' : ''}`}
-        style={{ aspectRatio }}
+        style={{ aspectRatio, ['--wails-drop-target' as string]: 'drop' } as React.CSSProperties}
         onDragEnter={/* v8 ignore next */ handleDragEnter}
         onDragOver={e => { e.preventDefault(); }}
         onDragLeave={/* v8 ignore next */ handleDragLeave}

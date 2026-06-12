@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import PortraitScreen from './PortraitScreen';
 import { ToastProvider } from '../components/ToastProvider';
 import { compose } from '../../wailsjs/go/models';
+import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 
 const mockGetCharacters = vi.fn();
 const mockSetActiveCharacter = vi.fn();
@@ -295,12 +296,29 @@ describe('PortraitScreen', () => {
 
   // ─── Interactive tests ──────────────────────────────────
 
-  it('clicking auto-fill fills prompt from appearance', async () => {
+  it('clicking auto-fill fills both positive and negative prompts', async () => {
     const user = userEvent.setup();
     renderWithProviders(<PortraitScreen />);
     await waitFor(() => screen.getByText('auto-fill from card'));
     await user.click(screen.getByText('auto-fill from card'));
-    // Verify the click was handled — the toast or textarea state changed
+    await waitFor(() => {
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
+      expect(values).toContain('a cat');
+      expect(values).toContain('blurry');
+    });
+  });
+
+  it('auto-fill inserts the default negative prompt when generation fails', async () => {
+    mockGenerateImagePrompt.mockRejectedValueOnce(new Error('no endpoint'));
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('auto-fill from card'));
+    await user.click(screen.getByText('auto-fill from card'));
+    await waitFor(() => {
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
+      expect(values).toContain(DEFAULT_NEGATIVE_PROMPT);
+      expect(values.some(v => v.includes('a half-elf woman with auburn hair'))).toBe(true);
+    });
   });
 
   it('can find textarea elements', () => {

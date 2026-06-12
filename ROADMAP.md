@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-07
+> Last updated: 2026-06-12
 
 ## Overview
 
@@ -94,10 +94,13 @@ Goal: Full SillyTavern drop-in experience with portraits and PNG embedding.
 
 ### Milestone B — Production Export
 
-- [ ] **5b.1** PNG CCv3 export engine: `internal/export/png.go` with custom tEXt chunk injection (chara + ccv3)
-- [ ] **5b.2** Export hub screen: character grid picker, lorebook entry list, format picker, embedding options, destination tree preview
-- [ ] **5b.3** Export queue & bulk logic: sequential export with Wails Events progress per character
-- [ ] **5b.4** Tests, quality gate, enable PNG export buttons
+- [x] **5b.1** PNG CCv3 export engine: `internal/cardexport/png.go` with custom tEXt chunk injection (chara + ccv3)
+- [x] **5b.2** Export hub screen: character grid picker, lorebook entry list, format picker, embedding options, destination tree preview
+- [x] **5b.3** Export queue & bulk logic: sequential export with Wails Events progress per character
+- [x] **5b.4** Tests, quality gate, enable PNG export buttons
+
+> Note: the export engine package is named `cardexport` (not `export`) because
+> `export` is a reserved word in TypeScript and breaks the Wails-generated bindings.
 
 ---
 
@@ -117,6 +120,28 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-12
+
+- Started Phase 3B — Production Export (`milestone/5b-production-export`).
+
+#### Completed Milestone B — Production Export
+
+- [x] **5b.1** PNG CCv3 export engine: `internal/cardexport/` package — PNG `tEXt`
+  chunk injection/parsing (CRC32), Character Card v2 (`chara`) + v3 (`ccv3`) JSON
+  builders, lorebook → `character_book` embedding, embedding `Options`, placeholder
+  portrait fallback. 93.8% package coverage.
+- [x] **5b.2** Export hub screen — character grid + lorebook entry pickers (All/None),
+  format picker (png-v2 / png-v3 / json / bundle), embedding option checkboxes,
+  destination folder picker with per-character file tree preview.
+- [x] **5b.3** Backend bindings `ExportCharacterPNG` + `ExportCharactersBulk` with
+  sequential per-character export emitting `export:progress` / `export:complete`
+  Wails events; frontend export queue panel driven by those events.
+- [x] **5b.4** Enabled the PNG export buttons; full lint + test + coverage gate green.
+- Package named `cardexport` (not `export`) to avoid the TypeScript reserved-word
+  collision in the generated Wails bindings.
+- Go: 12 packages, vet + golangci-lint clean, tests pass with `-race`.
+- Frontend: 27 test files, 556 tests, ≥80% coverage.
 
 ### 2026-05-29
 

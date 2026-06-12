@@ -413,9 +413,13 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 @keyframes ep-fade { from { opacity: 0; } to { opacity: 1; } }
 .ep-flyout {
   position: fixed;
-  top: 32px; right: 0; bottom: 24px;
+  /* `inset` (not just top/right/bottom) so left:auto overrides the native
+     <dialog> UA rule `inset-inline-start: 0`, which would otherwise pin the
+     panel to the left. `height: auto` likewise overrides UA `height: fit-content`,
+     which would collapse it to content height. */
+  inset: 32px 0 24px auto;
   width: 480px; max-width: 100vw;
-  max-height: none;
+  height: auto; max-height: none;
   margin: 0; padding: 0;
   color: inherit;
   background: var(--panel);
@@ -634,6 +638,19 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 
 /* ─── Settings screen ───────────────────────────────────── */
 .settings-grid { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
+/* The Prompts tab holds a single editor that should claim the full page height
+   instead of sizing to its content. Scoped to `.fill` so the other settings
+   tabs keep their natural top-aligned, page-scrolling layout. */
+.settings-grid.fill { height: 100%; min-height: 0; align-items: stretch; }
+.settings-grid.fill .settings-content,
+.settings-grid.fill .settings-section,
+.settings-grid.fill .prompt-templates-editor,
+.settings-grid.fill .prompt-editor-body { min-height: 0; }
+.settings-grid.fill .settings-section,
+.settings-grid.fill .prompt-templates-editor,
+.settings-grid.fill .prompt-textarea { flex: 1; }
+.settings-grid.fill .settings-section { display: flex; flex-direction: column; }
+.settings-grid.fill .prompt-field-nav { max-height: none; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; }
 .settings-nav button {
   appearance: none; border: 0; background: transparent;
@@ -864,7 +881,13 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
+  /* Fill the page body and stretch the columns so the preview panel grows with
+     the window instead of sitting at a fixed height with dead space below. The
+     left column's cards keep their natural height (top-aligned within the
+     stretched column). */
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
 }
 .crawl-input {
   background: var(--panel);
@@ -926,7 +949,8 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   border: 1px solid var(--hair);
   border-radius: 8px;
   overflow: hidden;
-  height: 540px;
+  /* Fills the stretched grid cell (was a fixed 540px); the .body scrolls. */
+  min-height: 0;
   display: flex; flex-direction: column;
 }
 .crawl-preview .head {
@@ -1334,7 +1358,12 @@ kbd {
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   gap: 18px;
-  height: calc(100vh - 175px);
+  /* Fill the (already height-bounded) page body rather than `calc(100vh - 175px)`:
+     the magic offset under-counted the header stack and pushed the columns past
+     the viewport, forcing the whole detail panel to scroll instead of just its
+     inner `.db` body. 100% adapts to whatever sits above the body. */
+  height: 100%;
+  min-height: 0;
 }
 .lb-list {
   background: var(--panel);
@@ -1490,7 +1519,11 @@ kbd {
 }
 
 .workflow-editor-card {
-  max-width: 960px; width: calc(100% - 48px); max-height: 80vh;
+  /* Explicit height (not just max-height) so the flex:1 textarea fills the
+     card instead of collapsing to its content — gives the JSON editor real
+     room on large displays while staying capped on short/huge viewports. */
+  width: min(1240px, calc(100% - 48px));
+  height: min(900px, 88vh);
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 8px;
@@ -1584,7 +1617,26 @@ kbd {
   display: grid;
   grid-template-columns: minmax(230px, 270px) minmax(0, 1fr) minmax(230px, 270px);
   gap: 18px;
-  height: calc(100vh - 175px);
+  /* Fill the (already height-bounded) page body rather than `calc(100vh - 175px)`:
+     the magic offset under-counted the header stack — which differs per screen
+     (the portrait screen also has a character strip) — and pushed the columns
+     past the viewport. 100% adapts to whatever sits above the body. */
+  height: 100%;
+  min-height: 0;
+}
+
+/* Narrow windows: the three fixed side columns can't all fit, which otherwise
+   squeezes the center canvas (and its prompts + Generate button) down to 0px.
+   Stack the studio into a single scrolling column instead. */
+@media (max-width: 1100px) {
+  .img-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100%;
+  }
+  .img-grid > .img-col {
+    min-height: 460px;
+  }
 }
 .img-col {
   display: flex; flex-direction: column;
@@ -1675,7 +1727,13 @@ kbd {
 }
 
 .img-canvas {
-  aspect-ratio: 4/3;
+  /* Fill the space left between the column header and the prompt/button footer,
+     and shrink when the window is short, instead of sizing by width × aspect
+     ratio (which made tall portraits ~2000px high and pushed the prompts and
+     Queue button off-screen). The image inside uses object-fit: contain, so it
+     stays correctly proportioned within this flexible box. */
+  flex: 1 1 0;
+  min-height: 120px;
   background: var(--bg);
   border-bottom: 1px solid var(--hair);
   display: grid; place-items: stretch;
@@ -1695,7 +1753,11 @@ kbd {
   height: 100%;
 }
 .img-generating {
-  display: flex; flex-direction: column; align-items: center;
+  /* Fill the canvas and center the spinner both ways (the canvas stretches it
+     via place-items: stretch; without justify-content it pinned to the top). */
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
 }
 .img-progress-disc {
   width: 48px; height: 48px;
@@ -1806,7 +1868,12 @@ kbd {
   display: grid;
   grid-template-columns: minmax(230px, 270px) minmax(0, 1fr) minmax(230px, 270px);
   gap: 18px;
-  height: calc(100vh - 175px);
+  /* Fill the (already height-bounded) page body rather than `calc(100vh - 175px)`:
+     the magic offset under-counted the header stack and pushed the columns past
+     the viewport, forcing the whole panel to scroll instead of just its inner
+     bodies. 100% adapts to whatever sits above the body. */
+  height: 100%;
+  min-height: 0;
 }
 .proj-cover-shot {
   width: 100%; height: 100%;

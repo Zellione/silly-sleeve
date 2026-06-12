@@ -10,6 +10,7 @@ import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
+import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m', scheduler: 'karras' },
@@ -138,7 +139,10 @@ const ProjectImageScreen: React.FC = () => {
               }
               showAutoFill={true}
               autoFillButton={
-                <button className="img-auto-fill" onClick={() => toast({ kind: 'info', title: 'Auto-fill', body: 'Prompt will auto-fill from lorebook context when generation is queued.' })}>
+                <button className="img-auto-fill" onClick={() => {
+                  if (!negPrompt.trim()) setNegPrompt(DEFAULT_NEGATIVE_PROMPT);
+                  toast({ kind: 'info', title: 'Auto-fill', body: 'Positive prompt auto-fills from lorebook context when generation is queued; a default negative prompt has been inserted.' });
+                }}>
                   <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from lorebook
                 </button>
               }

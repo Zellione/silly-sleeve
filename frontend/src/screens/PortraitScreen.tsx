@@ -15,6 +15,7 @@ import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
+import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 
 const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
@@ -39,6 +40,7 @@ async function autoFillImagePrompt(
     if (appearance.trim()) {
       setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
     }
+    setNegPrompt(DEFAULT_NEGATIVE_PROMPT);
   }
 }
 

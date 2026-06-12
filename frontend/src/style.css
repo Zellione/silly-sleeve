@@ -1602,6 +1602,20 @@ kbd {
   height: 100%;
   min-height: 0;
 }
+
+/* Narrow windows: the three fixed side columns can't all fit, which otherwise
+   squeezes the center canvas (and its prompts + Generate button) down to 0px.
+   Stack the studio into a single scrolling column instead. */
+@media (max-width: 1100px) {
+  .img-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100%;
+  }
+  .img-grid > .img-col {
+    min-height: 460px;
+  }
+}
 .img-col {
   display: flex; flex-direction: column;
   background: var(--panel);

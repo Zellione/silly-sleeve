@@ -1731,7 +1731,11 @@ kbd {
   height: 100%;
 }
 .img-generating {
-  display: flex; flex-direction: column; align-items: center;
+  /* Fill the canvas and center the spinner both ways (the canvas stretches it
+     via place-items: stretch; without justify-content it pinned to the top). */
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
 }
 .img-progress-disc {
   width: 48px; height: 48px;

@@ -158,6 +158,10 @@ export function PickSaveBundle() {
   return window['go']['main']['App']['PickSaveBundle']();
 }
 
+export function ReadImageFile(arg1) {
+  return window['go']['main']['App']['ReadImageFile'](arg1);
+}
+
 export function SaveComfyWorkflowTemplate(arg1, arg2) {
   return window['go']['main']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
 }

@@ -25,6 +25,12 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		// Enable native file drag-and-drop: OS file drops do not reach the
+		// webview's HTML5 drop events, so Wails surfaces the dropped file paths
+		// instead (scoped to elements marked --wails-drop-target: drop).
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		Bind: []interface{}{
 			app,
 		},

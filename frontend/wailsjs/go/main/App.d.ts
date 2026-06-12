@@ -89,6 +89,8 @@ export function PickOpenBundle():Promise<string>;
 
 export function PickSaveBundle():Promise<string>;
 
+export function ReadImageFile(arg1:string):Promise<main.DroppedImage>;
+
 export function SaveComfyWorkflowTemplate(arg1:string,arg2:string):Promise<void>;
 
 export function SaveLorebook(arg1:Array<lorebook.Entry>):Promise<void>;

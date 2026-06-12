@@ -41,6 +41,8 @@ Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
   EventsOff: (_eventName: string) => { },
   EventsOffAll: () => { },
   EventsEmit: (_eventName: string, ..._data: any) => { },
+  OnFileDrop: (_callback: (x: number, y: number, paths: string[]) => void, _useDropTarget: boolean) => { },
+  OnFileDropOff: () => { },
   LogPrint: (_message: string) => { },
 };
 

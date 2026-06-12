@@ -399,6 +399,22 @@ export namespace lorebook {
 
 export namespace main {
 	
+	export class DroppedImage {
+	    name: string;
+	    dataUrl: string;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DroppedImage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.dataUrl = source["dataUrl"];
+	        this.size = source["size"];
+	    }
+	}
 	export class ExportResult {
 	    exported: number;
 	    failed: number;

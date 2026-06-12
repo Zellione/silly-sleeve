@@ -62,7 +62,11 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
 
   const processFile = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = () => applyImage(file.name, file.size, reader.result as string);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        applyImage(file.name, file.size, reader.result);
+      }
+    };
     reader.readAsDataURL(file);
   }, [applyImage]);
 

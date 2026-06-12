@@ -302,7 +302,7 @@ describe('PortraitScreen', () => {
     await waitFor(() => screen.getByText('auto-fill from card'));
     await user.click(screen.getByText('auto-fill from card'));
     await waitFor(() => {
-      const values = Array.from(document.querySelectorAll('textarea')).map(t => (t as HTMLTextAreaElement).value);
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
       expect(values).toContain('a cat');
       expect(values).toContain('blurry');
     });
@@ -315,7 +315,7 @@ describe('PortraitScreen', () => {
     await waitFor(() => screen.getByText('auto-fill from card'));
     await user.click(screen.getByText('auto-fill from card'));
     await waitFor(() => {
-      const values = Array.from(document.querySelectorAll('textarea')).map(t => (t as HTMLTextAreaElement).value);
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
       expect(values).toContain(DEFAULT_NEGATIVE_PROMPT);
       expect(values.some(v => v.includes('a half-elf woman with auburn hair'))).toBe(true);
     });

@@ -10,6 +10,12 @@ import (
 	"silly-sleeve/internal/lorebook"
 )
 
+// Wails event names emitted during a bulk export run.
+const (
+	eventExportProgress = "export:progress"
+	eventExportComplete = "export:complete"
+)
+
 // ExportProgress is emitted on the "export:progress" event once per character
 // as a bulk export run advances.
 type ExportProgress struct {
@@ -70,25 +76,25 @@ func (a *App) ExportCharactersBulk(charIDs []int, format string, opts cardexport
 		ch, found := byID[id]
 		if !found {
 			result.Failed++
-			a.emit("export:progress", ExportProgress{Index: i, Total: total, CharID: id, Status: "error", Error: "character not found"})
+			a.emit(eventExportProgress, ExportProgress{Index: i, Total: total, CharID: id, Status: "error", Error: "character not found"})
 			continue
 		}
 
-		a.emit("export:progress", ExportProgress{Index: i, Total: total, CharID: id, Name: ch.Name, Status: "writing"})
+		a.emit(eventExportProgress, ExportProgress{Index: i, Total: total, CharID: id, Name: ch.Name, Status: "writing"})
 
 		path, err := exportOne(ch, entries, format, opts, folderPath)
 		if err != nil {
 			result.Failed++
-			a.emit("export:progress", ExportProgress{Index: i, Total: total, CharID: id, Name: ch.Name, Status: "error", Error: err.Error()})
+			a.emit(eventExportProgress, ExportProgress{Index: i, Total: total, CharID: id, Name: ch.Name, Status: "error", Error: err.Error()})
 			continue
 		}
 
 		result.Exported++
 		result.Paths = append(result.Paths, path)
-		a.emit("export:progress", ExportProgress{Index: i, Total: total, CharID: id, Name: ch.Name, Status: "done", Path: path})
+		a.emit(eventExportProgress, ExportProgress{Index: i, Total: total, CharID: id, Name: ch.Name, Status: "done", Path: path})
 	}
 
-	a.emit("export:complete", result)
+	a.emit(eventExportComplete, result)
 	return result, nil
 }
 

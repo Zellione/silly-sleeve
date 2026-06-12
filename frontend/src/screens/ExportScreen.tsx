@@ -28,6 +28,15 @@ const FORMATS: FormatOption[] = [
 
 type QueueStatus = 'queued' | 'writing' | 'done' | 'error';
 
+const plural = (n: number): string => (n === 1 ? '' : 's');
+
+const QUEUE_STATUS_LABEL: Record<QueueStatus, string> = {
+  queued: 'queued',
+  writing: 'writing…',
+  done: 'done',
+  error: 'failed',
+};
+
 // Split on runs of non-alphanumerics (a single bounded character class — linear,
 // no catastrophic backtracking) then rejoin with dashes. `filter(Boolean)` drops
 // the empty segments that leading/trailing separators produce, so this trims and
@@ -133,7 +142,7 @@ const ExportScreen: React.FC = () => {
     try {
       const res = await ExportCharactersBulk(pickedChars, fmt, opts, destination);
       if (res.failed === 0) {
-        toast({ kind: 'ok', title: 'Export complete', body: `${res.exported} character${res.exported !== 1 ? 's' : ''} written to ${destination}.` });
+        toast({ kind: 'ok', title: 'Export complete', body: `${res.exported} character${plural(res.exported)} written to ${destination}.` });
       } else {
         toast({ kind: 'warn', title: 'Export partial', body: `${res.exported} exported, ${res.failed} failed.` });
       }
@@ -146,11 +155,20 @@ const ExportScreen: React.FC = () => {
 
   const destReady = fmt === 'bundle' || (pickedChars.length > 0 && !!destination);
 
+  let exportLabel: React.ReactNode;
+  if (exporting) {
+    exportLabel = 'Exporting…';
+  } else if (fmt === 'bundle') {
+    exportLabel = <><DownloadIcon size={14} /> Save bundle</>;
+  } else {
+    exportLabel = <><DownloadIcon size={14} /> Export {pickedChars.length} character{plural(pickedChars.length)}</>;
+  }
+
   const treePaths = useMemo(
     () => pickedChars
       .map(id => characters.find(c => c.id === id))
       .filter((c): c is compose.Character => !!c)
-      .map(c => `  ├ ${slugify(c.name)}.${ext}`),
+      .map(c => ({ id: c.id, label: `  ├ ${slugify(c.name)}.${ext}` })),
     [pickedChars, characters, ext],
   );
 
@@ -164,10 +182,7 @@ const ExportScreen: React.FC = () => {
               <BookIcon size={13} /> Export lorebook ({pickedEntries.length})
             </button>
             <button className="btn primary" onClick={handleExport} disabled={exporting || !destReady}>
-              {exporting ? 'Exporting…'
-                : fmt === 'bundle'
-                  ? <><DownloadIcon size={14} /> Save bundle</>
-                  : <><DownloadIcon size={14} /> Export {pickedChars.length} character{pickedChars.length !== 1 ? 's' : ''}</>}
+              {exportLabel}
             </button>
           </>
         } />
@@ -287,19 +302,19 @@ const ExportScreen: React.FC = () => {
                 <div className="col" style={{ gap: 8 }}>
                   <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
                     <input type="checkbox" checked={embedLore} onChange={() => setEmbedLore(v => !v)} style={{ accentColor: 'var(--acc)' }} />
-                    Embed lorebook in each character (CCv3)
+                    <span>Embed lorebook in each character (CCv3)</span>
                   </label>
                   <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
                     <input type="checkbox" checked={scopePerChar} onChange={() => setScopePerChar(v => !v)} style={{ accentColor: 'var(--acc)' }} />
-                    Scope to per-character links
+                    <span>Scope to per-character links</span>
                   </label>
                   <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
                     <input type="checkbox" checked={includeGreetings} onChange={() => setIncludeGreetings(v => !v)} style={{ accentColor: 'var(--acc)' }} />
-                    Include greeting messages
+                    <span>Include greeting messages</span>
                   </label>
                   <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
                     <input type="checkbox" checked={stripMeta} onChange={() => setStripMeta(v => !v)} style={{ accentColor: 'var(--acc)' }} />
-                    Strip generation metadata
+                    <span>Strip generation metadata</span>
                   </label>
                 </div>
               </>
@@ -323,7 +338,7 @@ const ExportScreen: React.FC = () => {
               {treePaths.length > 0 && (
                 <div style={{ marginTop: 10, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--ink-3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span>└─ characters/</span>
-                  {treePaths.map((p, i) => <span key={i}>{p}</span>)}
+                  {treePaths.map(p => <span key={p.id}>{p.label}</span>)}
                 </div>
               )}
             </div>
@@ -362,7 +377,7 @@ const ExportScreen: React.FC = () => {
                         {c?.name || 'Untitled'}
                       </span>
                       <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--ink-3)' }}>
-                        {status === 'done' ? 'done' : status === 'writing' ? 'writing…' : status === 'error' ? 'failed' : 'queued'}
+                        {QUEUE_STATUS_LABEL[status]}
                       </span>
                     </div>
                   );

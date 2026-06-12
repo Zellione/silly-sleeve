@@ -122,7 +122,7 @@ describe('ExportScreen', () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
     await waitFor(() => expect(document.body.textContent).toContain('Destination'));
-    await user.click(document.querySelector('button[title="Browse…"]')!);
+    await user.click(screen.getByTitle('Browse…'));
     await waitFor(() => {
       expect(mockPickExportFolder).toHaveBeenCalled();
       const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;

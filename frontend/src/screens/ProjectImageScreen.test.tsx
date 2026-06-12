@@ -273,7 +273,7 @@ describe('ProjectImageScreen', () => {
     await waitFor(() => screen.getByText('auto-fill from lorebook'));
     await user.click(screen.getByText('auto-fill from lorebook'));
     await waitFor(() => {
-      const values = Array.from(document.querySelectorAll('textarea')).map(t => (t as HTMLTextAreaElement).value);
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
       expect(values).toContain(DEFAULT_NEGATIVE_PROMPT);
     });
   });
@@ -282,7 +282,7 @@ describe('ProjectImageScreen', () => {
     const user = userEvent.setup();
     renderWithProviders(<ProjectImageScreen />);
     await waitFor(() => screen.getByText('auto-fill from lorebook'));
-    const negField = Array.from(document.querySelectorAll('textarea'))[1] as HTMLTextAreaElement;
+    const negField = Array.from(document.querySelectorAll('textarea'))[1];
     await user.click(negField);
     await user.type(negField, 'my custom negative');
     await user.click(screen.getByText('auto-fill from lorebook'));

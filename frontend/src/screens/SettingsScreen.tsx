@@ -899,7 +899,7 @@ const SettingsScreen: React.FC = () => {
       </header>
 
       <div className="ss-page-body scroll">
-        <div className="settings-grid">
+        <div className={`settings-grid${sect === 'prompts' ? ' fill' : ''}`}>
           <nav className="settings-nav">
             {SECTIONS.map(s => (
               <button key={s.id} data-on={sect === s.id ? '1' : '0'} onClick={() => setSect(s.id)}>

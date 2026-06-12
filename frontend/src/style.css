@@ -638,6 +638,19 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 
 /* ─── Settings screen ───────────────────────────────────── */
 .settings-grid { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
+/* The Prompts tab holds a single editor that should claim the full page height
+   instead of sizing to its content. Scoped to `.fill` so the other settings
+   tabs keep their natural top-aligned, page-scrolling layout. */
+.settings-grid.fill { height: 100%; min-height: 0; align-items: stretch; }
+.settings-grid.fill .settings-content,
+.settings-grid.fill .settings-section,
+.settings-grid.fill .prompt-templates-editor,
+.settings-grid.fill .prompt-editor-body { min-height: 0; }
+.settings-grid.fill .settings-section,
+.settings-grid.fill .prompt-templates-editor,
+.settings-grid.fill .prompt-textarea { flex: 1; }
+.settings-grid.fill .settings-section { display: flex; flex-direction: column; }
+.settings-grid.fill .prompt-field-nav { max-height: none; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; }
 .settings-nav button {
   appearance: none; border: 0; background: transparent;
@@ -1506,7 +1519,11 @@ kbd {
 }
 
 .workflow-editor-card {
-  max-width: 960px; width: calc(100% - 48px); max-height: 80vh;
+  /* Explicit height (not just max-height) so the flex:1 textarea fills the
+     card instead of collapsing to its content — gives the JSON editor real
+     room on large displays while staying capped on short/huge viewports. */
+  width: min(1240px, calc(100% - 48px));
+  height: min(900px, 88vh);
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 8px;

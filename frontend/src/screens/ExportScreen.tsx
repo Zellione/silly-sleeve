@@ -28,8 +28,12 @@ const FORMATS: FormatOption[] = [
 
 type QueueStatus = 'queued' | 'writing' | 'done' | 'error';
 
+// Split on runs of non-alphanumerics (a single bounded character class — linear,
+// no catastrophic backtracking) then rejoin with dashes. `filter(Boolean)` drops
+// the empty segments that leading/trailing separators produce, so this trims and
+// collapses dashes without the ReDoS-prone `/^-+|-+$/g` trim regex (S5852).
 const slugify = (name: string): string =>
-  (name || 'character').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'character';
+  (name || 'character').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).join('-') || 'character';
 
 const ExportScreen: React.FC = () => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);

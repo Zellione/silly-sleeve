@@ -97,7 +97,7 @@ export function useImageGeneration({
 
   const allWorkflows = [...workflowDefaults, ...uploadedWorkflows];
 
-  const clearVariants = useCallback(() => setVariantImages([]), []);
+  const clearVariants = useCallback(() => { setVariantImages([]); setSelectedVariant(0); }, []);
   const stop = useCallback(() => setGenerating(false), []);
 
   const runGeneration = useCallback(async (req: GenerationRequest) => {
@@ -109,6 +109,7 @@ export function useImageGeneration({
     setGenerating(true);
     setProgress(0);
     setVariantImages([]);
+    setSelectedVariant(0);
 
     const [width, height] = parseSize(req.size);
     try {

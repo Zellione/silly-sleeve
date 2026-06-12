@@ -16,6 +16,8 @@ const mockGetComfySchedulers = vi.fn().mockResolvedValue(['karras', 'normal']);
 const mockGetComfyCheckpoints = vi.fn().mockResolvedValue(['sd_xl_base_1.0.safetensors']);
 const mockGetComfyVAEs = vi.fn().mockResolvedValue(['sdxl_vae.safetensors']);
 const mockGetComfyLoRAs = vi.fn().mockResolvedValue([]);
+const mockGetPortrait = vi.fn().mockResolvedValue([]);
+const mockSavePortrait = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -28,6 +30,8 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetComfyCheckpoints: () => mockGetComfyCheckpoints(),
   GetComfyVAEs: () => mockGetComfyVAEs(),
   GetComfyLoRAs: () => mockGetComfyLoRAs(),
+  GetPortrait: (charID: number) => mockGetPortrait(charID),
+  SavePortrait: (charID: number, data: number[]) => mockSavePortrait(charID, data),
   GetComfyWorkflows: () => Promise.resolve([]),
   GetComfyWorkflowTemplate: () => Promise.resolve('{"1":{"class_type":"KSampler"}}'),
 }));
@@ -47,6 +51,8 @@ describe('PortraitScreen', () => {
     mockGetCharacters.mockResolvedValue([testChar]);
     mockGetActiveCharacter.mockResolvedValue(testChar);
     mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGetPortrait.mockResolvedValue([]);
+    mockSavePortrait.mockResolvedValue(undefined);
   });
 
   it('renders Generate and Upload tabs', async () => {
@@ -308,6 +314,21 @@ describe('PortraitScreen', () => {
     });
   });
 
+  it('auto-fill does not overwrite an existing negative prompt', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('auto-fill from card'));
+    const negField = Array.from(document.querySelectorAll('textarea'))[1];
+    await user.click(negField);
+    await user.type(negField, 'my custom negative');
+    await user.click(screen.getByText('auto-fill from card'));
+    await waitFor(() => {
+      const values = Array.from(document.querySelectorAll('textarea')).map(t => t.value);
+      expect(values).toContain('a cat');
+    });
+    expect(negField.value).toBe('my custom negative');
+  });
+
   it('auto-fill inserts the default negative prompt when generation fails', async () => {
     mockGenerateImagePrompt.mockRejectedValueOnce(new Error('no endpoint'));
     const user = userEvent.setup();
@@ -387,5 +408,37 @@ describe('PortraitScreen', () => {
       expect(screen.getByText(/Stop/)).toBeInTheDocument();
     });
     await user.click(screen.getByText(/Stop/));
+  });
+
+  // ─── Persistence (survives tab switch) ──────────────────
+
+  const PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+  it('loads the saved portrait into the canvas on mount', async () => {
+    mockGetPortrait.mockResolvedValue(PNG_BYTES);
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => {
+      expect(mockGetPortrait).toHaveBeenCalledWith(1);
+      const img = screen.getByAltText('variant 1') as HTMLImageElement;
+      expect(img.src).toMatch(/^data:image\/png;base64,/);
+    });
+  });
+
+  it('persists the generated portrait to the backend on "Use as portrait"', async () => {
+    mockGeneratePortrait.mockResolvedValue([
+      { data: PNG_BYTES, filename: 'p.png', subfolder: '', type: 'output' },
+    ]);
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      const btn = screen.getByText('Use as portrait').closest('button');
+      expect(btn).not.toBeDisabled();
+    });
+    await user.click(screen.getByText('Use as portrait'));
+    await waitFor(() => {
+      expect(mockSavePortrait).toHaveBeenCalledWith(1, PNG_BYTES);
+    });
   });
 });

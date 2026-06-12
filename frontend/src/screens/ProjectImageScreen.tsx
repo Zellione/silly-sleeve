@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage } from '../../wailsjs/go/main/App';
+import { GenerateProjectImage, GetProjectImage, SaveProjectImage } from '../../wailsjs/go/main/App';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
-import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
+import { DEFAULT_NEGATIVE_PROMPT, arrayBufferToDataURL, dataURLToBytes } from '../utils/image';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m', scheduler: 'karras' },
@@ -28,6 +28,7 @@ const ProjectImageScreen: React.FC = () => {
   const [scheduler, setScheduler] = useState('karras');
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
+  const [savedCover, setSavedCover] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
@@ -42,12 +43,28 @@ const ProjectImageScreen: React.FC = () => {
     initialCheckpoint: PROJECT_IMG_WORKFLOWS[0].model,
   });
 
-  const handleUseAsProjectImage = () => {
-    toast({ kind: 'ok', title: 'Project image set', body: 'Cover art saved and will appear in exports.' });
+  // Restore the saved cover so it survives leaving and returning to this
+  // screen (each screen fully unmounts on tab switch).
+  useEffect(() => {
+    GetProjectImage()
+      .then(bytes => setSavedCover(arrayBufferToDataURL(bytes) || null))
+      .catch(() => {});
+  }, []);
+
+  const persistCover = async (dataUrl: string) => {
+    if (!dataUrl) return;
+    try {
+      await SaveProjectImage(dataURLToBytes(dataUrl));
+      setSavedCover(dataUrl);
+      toast({ kind: 'ok', title: 'Project image set', body: 'Cover art saved and will appear in exports.' });
+    } catch (e) {
+      toast({ kind: 'bad', title: 'Save failed', body: String(e) });
+    }
   };
 
   const canvasTitle = 'Project cover';
-  const showDonePlaceholder = variantImages.length > 0;
+  const previewCover = (variantImages.length > 0 ? variantImages[selectedVariant] : null) ?? savedCover;
+  const showDonePlaceholder = previewCover != null;
 
   return (
     <>
@@ -125,9 +142,9 @@ const ProjectImageScreen: React.FC = () => {
                 </div>
               }
               donePlaceholder={
-                variantImages.length > 0 && variantImages[selectedVariant] ? (
+                previewCover ? (
                   <div className="img-placeholder proj-cover-shot" style={{ overflow: 'hidden' }}>
-                    <img src={variantImages[selectedVariant]} alt={`cover variant ${selectedVariant + 1}`}
+                    <img src={previewCover} alt={`cover variant ${selectedVariant + 1}`}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ) : (
@@ -186,7 +203,7 @@ const ProjectImageScreen: React.FC = () => {
               rerollLabel="Re-roll variants"
               downloadLabel="Save PNG only"
               useImageLabel="Use as project image"
-              onUseImage={handleUseAsProjectImage}
+              onUseImage={() => persistCover(variantImages[selectedVariant])}
               useImageDisabled={variantImages.length === 0}
             />
           </div>
@@ -198,7 +215,7 @@ const ProjectImageScreen: React.FC = () => {
             maxSize="Recommended 1920 × 1080 (16:9) or 1024 × 1024 (square)"
             defaultCrop="Center 16:9"
             defaultResize="Fit to 1920×1080"
-            onUseImage={handleUseAsProjectImage}
+            onUseImage={persistCover}
           />
         )}
       </div>

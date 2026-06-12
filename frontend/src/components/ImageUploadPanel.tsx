@@ -32,7 +32,7 @@ interface ImageUploadPanelProps {
   maxSize: string;
   defaultCrop: string;
   defaultResize: string;
-  onUseImage: () => void;
+  onUseImage: (dataUrl: string) => void;
 }
 
 const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
@@ -142,7 +142,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
       <button
         type="button"
         className={`img-dropzone${dragging ? ' dragging' : ''}`}
-        style={{ aspectRatio, ['--wails-drop-target' as string]: 'drop' } as React.CSSProperties}
+        style={{ ['--wails-drop-target' as string]: 'drop' } as React.CSSProperties}
         onDragEnter={/* v8 ignore next */ handleDragEnter}
         onDragOver={e => { e.preventDefault(); }}
         onDragLeave={/* v8 ignore next */ handleDragLeave}
@@ -188,7 +188,8 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
                 <label htmlFor={`${uid}-resize`}>Resize</label>
                 <select id={`${uid}-resize`} style={{ width: 'auto' }}><option>{defaultResize}</option><option>Original</option></select>
               </div>
-              <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }} onClick={onUseImage}>
+              <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }}
+                onClick={() => { if (imageData) onUseImage(imageData); }}>
                 <CheckIcon size={13} /> Use image
               </button>
               <button className="btn ghost sm" onClick={() => { setUploadFile(null); setImageData(null); }}>

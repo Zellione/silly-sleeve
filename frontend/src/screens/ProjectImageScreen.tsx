@@ -64,7 +64,7 @@ const ProjectImageScreen: React.FC = () => {
 
   const canvasTitle = 'Project cover';
   const previewCover = (variantImages.length > 0 ? variantImages[selectedVariant] : null) ?? savedCover;
-  const showDonePlaceholder = variantImages.length > 0 || savedCover !== null;
+  const showDonePlaceholder = previewCover != null;
 
   return (
     <>

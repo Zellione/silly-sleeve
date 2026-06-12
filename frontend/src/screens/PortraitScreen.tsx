@@ -141,7 +141,7 @@ const PortraitScreen: React.FC = () => {
 
   const canvasTitle = 'Preview';
   const previewImage = variantUrl(variantImages, selectedVariant) ?? savedPortrait;
-  const showDonePlaceholder = variantImages.length > 0 || savedPortrait !== null;
+  const showDonePlaceholder = previewImage !== null;
 
   return (
     <>

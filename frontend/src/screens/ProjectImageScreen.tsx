@@ -10,7 +10,6 @@ import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
-import { aspectFromSize } from '../utils/workflow';
 
 const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, sampler: 'dpmpp_2m', scheduler: 'karras' },
@@ -113,7 +112,6 @@ const ProjectImageScreen: React.FC = () => {
               canvasTitle={canvasTitle}
               workflowSize={workflow.size}
               seed={seed}
-              aspectRatio={aspectFromSize(workflow.size)}
               generating={generating}
               progress={progress}
               steps={steps}

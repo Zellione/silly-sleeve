@@ -868,7 +868,13 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 24px;
-  align-items: start;
+  /* Fill the page body and stretch the columns so the preview panel grows with
+     the window instead of sitting at a fixed height with dead space below. The
+     left column's cards keep their natural height (top-aligned within the
+     stretched column). */
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
 }
 .crawl-input {
   background: var(--panel);
@@ -930,7 +936,8 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   border: 1px solid var(--hair);
   border-radius: 8px;
   overflow: hidden;
-  height: 540px;
+  /* Fills the stretched grid cell (was a fixed 540px); the .body scrolls. */
+  min-height: 0;
   display: flex; flex-direction: column;
 }
 .crawl-preview .head {
@@ -1588,7 +1595,12 @@ kbd {
   display: grid;
   grid-template-columns: minmax(230px, 270px) minmax(0, 1fr) minmax(230px, 270px);
   gap: 18px;
-  height: calc(100vh - 175px);
+  /* Fill the (already height-bounded) page body rather than `calc(100vh - 175px)`:
+     the magic offset under-counted the header stack — which differs per screen
+     (the portrait screen also has a character strip) — and pushed the columns
+     past the viewport. 100% adapts to whatever sits above the body. */
+  height: 100%;
+  min-height: 0;
 }
 .img-col {
   display: flex; flex-direction: column;
@@ -1679,7 +1691,13 @@ kbd {
 }
 
 .img-canvas {
-  aspect-ratio: 4/3;
+  /* Fill the space left between the column header and the prompt/button footer,
+     and shrink when the window is short, instead of sizing by width × aspect
+     ratio (which made tall portraits ~2000px high and pushed the prompts and
+     Queue button off-screen). The image inside uses object-fit: contain, so it
+     stays correctly proportioned within this flexible box. */
+  flex: 1 1 0;
+  min-height: 120px;
   background: var(--bg);
   border-bottom: 1px solid var(--hair);
   display: grid; place-items: stretch;

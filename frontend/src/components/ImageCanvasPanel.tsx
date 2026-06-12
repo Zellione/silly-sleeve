@@ -5,7 +5,6 @@ interface ImageCanvasPanelProps {
   canvasTitle: string;
   workflowSize: string;
   seed: number;
-  aspectRatio?: string;
 
   generating: boolean;
   progress: number;
@@ -28,7 +27,7 @@ interface ImageCanvasPanelProps {
 }
 
 const ImageCanvasPanel: React.FC<ImageCanvasPanelProps> = ({
-  canvasTitle, workflowSize, seed, aspectRatio,
+  canvasTitle, workflowSize, seed,
   generating, progress, steps, showDonePlaceholder,
   idlePlaceholder, donePlaceholder,
   showAutoFill = true, autoFillButton,
@@ -43,7 +42,7 @@ const ImageCanvasPanel: React.FC<ImageCanvasPanelProps> = ({
         <b>{generating ? 'Sampling…' : canvasTitle}</b>
         <span className="img-col-sub">{workflowSize} · seed {seed}</span>
       </div>
-      <div className="img-canvas" style={aspectRatio ? { aspectRatio } : undefined}>
+      <div className="img-canvas">
         {!generating && !showDonePlaceholder && idlePlaceholder}
         {!generating && showDonePlaceholder && donePlaceholder}
         {generating && (

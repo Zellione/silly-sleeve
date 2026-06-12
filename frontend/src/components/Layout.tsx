@@ -3,6 +3,7 @@ import {
   DashboardIcon, GlobeIcon, PenIcon, BookIcon,
   ImageIcon, EyeIcon, DownloadIcon, CogIcon, SunIcon, MoonIcon,
 } from '../icons';
+import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -36,9 +37,23 @@ const SETUP_NAV: NavItem[] = [
 /* ─── Components ────────────────────────────────────────── */
 
 export const TitleBar: React.FC<{ projectName?: string }> = ({ projectName }) => (
-  <div className="ss-title">
+  <div className="ss-title" onDoubleClick={() => WindowToggleMaximise()}>
     <div className="ss-traffic">
-      <i/><i/><i/>
+      <button
+        aria-label="Close"
+        onClick={(e) => { e.stopPropagation(); Quit() }}
+        onDoubleClick={(e) => e.stopPropagation()}
+      />
+      <button
+        aria-label="Minimise"
+        onClick={(e) => { e.stopPropagation(); WindowMinimise() }}
+        onDoubleClick={(e) => e.stopPropagation()}
+      />
+      <button
+        aria-label="Maximise"
+        onClick={(e) => { e.stopPropagation(); WindowToggleMaximise() }}
+        onDoubleClick={(e) => e.stopPropagation()}
+      />
     </div>
     <span className="ss-title-c">
       <b>Silly Sleeve</b> {projectName ? `· ${projectName}` : ''}

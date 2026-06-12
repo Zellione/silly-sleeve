@@ -1,9 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+vi.mock('../../wailsjs/runtime/runtime', () => ({
+  Quit: vi.fn(),
+  WindowMinimise: vi.fn(),
+  WindowToggleMaximise: vi.fn(),
+}));
+
+import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
 import { TitleBar, Sidebar, PageHead, StatusBar, ThemeToggle } from './Layout';
 
 describe('TitleBar', () => {
+  beforeEach(() => {
+    vi.mocked(Quit).mockClear();
+    vi.mocked(WindowMinimise).mockClear();
+    vi.mocked(WindowToggleMaximise).mockClear();
+  });
+
   it('renders app name', () => {
     render(<TitleBar />);
     expect(screen.getByText('Silly Sleeve')).toBeInTheDocument();
@@ -17,6 +30,37 @@ describe('TitleBar', () => {
   it('renders without project name', () => {
     const { container } = render(<TitleBar />);
     expect(container.textContent).not.toContain('·');
+  });
+
+  it('quits the app when the close button is clicked', async () => {
+    render(<TitleBar />);
+    await userEvent.click(screen.getByLabelText('Close'));
+    expect(Quit).toHaveBeenCalledTimes(1);
+    expect(WindowToggleMaximise).not.toHaveBeenCalled();
+  });
+
+  it('minimises the window when the minimise button is clicked', async () => {
+    render(<TitleBar />);
+    await userEvent.click(screen.getByLabelText('Minimise'));
+    expect(WindowMinimise).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles maximise when the maximise button is clicked', async () => {
+    render(<TitleBar />);
+    await userEvent.click(screen.getByLabelText('Maximise'));
+    expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles maximise on title bar double-click', async () => {
+    render(<TitleBar />);
+    await userEvent.dblClick(screen.getByText('Silly Sleeve'));
+    expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not toggle maximise when a traffic button is double-clicked', async () => {
+    render(<TitleBar />);
+    await userEvent.dblClick(screen.getByLabelText('Close'));
+    expect(WindowToggleMaximise).not.toHaveBeenCalled();
   });
 });
 

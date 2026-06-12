@@ -89,7 +89,7 @@ const CrawlerScreen: React.FC = () => {
               <div className="recent">
                 <span className="uplabel" style={{ paddingRight: 4 }}>Recent</span>
                 {RECENT_WIKIS.map(w => (
-                  <span key={w} className="chip" onClick={() => setUrl('https://' + w + '/wiki/')}>{w}</span>
+                  <button key={w} type="button" className="chip" onClick={() => setUrl('https://' + w + '/wiki/')}>{w}</button>
                 ))}
               </div>
               <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>

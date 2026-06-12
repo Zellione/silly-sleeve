@@ -91,13 +91,14 @@ const EndpointFlyout: React.FC<{
         <div className="ep-fly-body scroll">
           {/* URL */}
           <div className="ep-row">
-            <label>
+            <label htmlFor="ep-url-input">
               Base URL
               <small>OpenAI-compatible endpoint — should end in <code>/v1</code>.</small>
             </label>
             <div className="ep-url">
               <span className="ic"><LinkIcon size={12} /></span>
               <input
+                id="ep-url-input"
                 value={draft.url}
                 onChange={e => set('url', e.target.value)}
                 placeholder="https://api.example.com/v1"
@@ -119,10 +120,10 @@ const EndpointFlyout: React.FC<{
 
           {/* Auth */}
           <div className="ep-row">
-            <label>
+            <span className="ep-label">
               Authentication
               <small>Toggle on for hosted endpoints that require an API key.</small>
-            </label>
+            </span>
             <AuthTokenBlock
               enabled={authOn}
               onToggle={toggleAuth}
@@ -136,11 +137,12 @@ const EndpointFlyout: React.FC<{
 
           {/* Model */}
           <div className="ep-row">
-            <label>
+            <label htmlFor="ep-model-input">
               Model
               <small>Identifier passed in the <code>model</code> param.</small>
             </label>
             <input
+              id="ep-model-input"
               className="ep-input"
               value={draft.model}
               onChange={e => set('model', e.target.value)}
@@ -153,12 +155,13 @@ const EndpointFlyout: React.FC<{
 
           {/* Context size */}
           <div className="ep-row">
-            <label>
+            <label htmlFor="ep-ctx-range">
               Context size
               <small>Max tokens the model can hold in one call.</small>
             </label>
             <div className="ep-slider-row">
               <input
+                id="ep-ctx-range"
                 type="range"
                 min={2048}
                 max={262144}
@@ -170,6 +173,7 @@ const EndpointFlyout: React.FC<{
               <input
                 className="ep-num"
                 type="number"
+                aria-label="Context size in tokens"
                 min={512}
                 max={2000000}
                 step={1024}
@@ -194,12 +198,13 @@ const EndpointFlyout: React.FC<{
 
           {/* Temperature */}
           <div className="ep-row">
-            <label>
+            <label htmlFor="ep-temp-range">
               Temperature
               <small>0 deterministic · 2 wild · 0.7–0.9 is the sweet spot for character writing.</small>
             </label>
             <div className="ep-slider-row">
               <input
+                id="ep-temp-range"
                 type="range"
                 min={0}
                 max={2}
@@ -211,6 +216,7 @@ const EndpointFlyout: React.FC<{
               <input
                 className="ep-num"
                 type="number"
+                aria-label="Temperature value"
                 min={0}
                 max={2}
                 step={0.05}
@@ -222,11 +228,12 @@ const EndpointFlyout: React.FC<{
 
           {/* System prompt */}
           <div className="ep-row">
-            <label>
+            <label htmlFor="ep-sysprompt">
               System prompt
               <small>Prepended to every call against this endpoint.</small>
             </label>
             <textarea
+              id="ep-sysprompt"
               className="ep-textarea"
               value={draft.systemPrompt}
               onChange={e => set('systemPrompt', e.target.value)}

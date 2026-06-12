@@ -191,6 +191,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
   const displayName = workflow.name.replace(/\.json$/i, '');
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- backdrop click-to-close is a pointer-only convenience; Escape (onKeyDown) and the Close button cover keyboard users
     <div
       className="workflow-editor-backdrop"
       role="dialog"

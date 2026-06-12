@@ -1804,10 +1804,11 @@ kbd {
 /* upload */
 .img-upload-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 24px;
-  max-width: 1100px;
-  margin: 20px auto 0;
+  /* Fill the height-bounded page body and span its full width, so the dropzone
+     uses the whole canvas and the file/URL column sits flush to the right. */
+  height: 100%;
   min-height: 0;
 }
 .img-dropzone {

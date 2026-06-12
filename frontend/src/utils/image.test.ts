@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrayBufferToDataURL } from './image';
+import { arrayBufferToDataURL, dataURLToBytes } from './image';
 
 function toBase64(bytes: number[]): string {
   return btoa(String.fromCodePoint(...bytes));
@@ -96,5 +96,31 @@ describe('arrayBufferToDataURL', () => {
 
   it('returns empty string for invalid base64', () => {
     expect(arrayBufferToDataURL('!!!not-valid!!!')).toBe('');
+  });
+});
+
+describe('dataURLToBytes', () => {
+  it('returns an empty array for empty input', () => {
+    expect(dataURLToBytes('')).toEqual([]);
+  });
+
+  it('decodes a data URL into its raw bytes', () => {
+    const pngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    const dataUrl = `data:image/png;base64,${toBase64(pngBytes)}`;
+    expect(dataURLToBytes(dataUrl)).toEqual(pngBytes);
+  });
+
+  it('decodes a bare base64 string without a data URL prefix', () => {
+    const jpegBytes = [0xFF, 0xD8, 0xFF, 0xE0];
+    expect(dataURLToBytes(toBase64(jpegBytes))).toEqual(jpegBytes);
+  });
+
+  it('round-trips with arrayBufferToDataURL', () => {
+    const original = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x42, 0x99];
+    expect(dataURLToBytes(arrayBufferToDataURL(original))).toEqual(original);
+  });
+
+  it('returns an empty array for invalid base64', () => {
+    expect(dataURLToBytes('data:image/png;base64,!!!bad!!!')).toEqual([]);
   });
 });

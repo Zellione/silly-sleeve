@@ -54,3 +54,13 @@ export function arrayBufferToDataURL(buffer: number[] | Uint8Array | string): st
   const base64 = bytesToBase64(bytes);
   return `data:${detectMimeType(bytes)};base64,${base64}`;
 }
+
+// Inverse of arrayBufferToDataURL: decodes a `data:<mime>;base64,<payload>` URL
+// (or a bare base64 string) into a plain number[] suitable for passing to the
+// Wails `[]byte` bindings (SavePortrait / SaveProjectImage).
+export function dataURLToBytes(dataUrl: string): number[] {
+  if (!dataUrl) return [];
+  const comma = dataUrl.indexOf(',');
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  return Array.from(decodeBuffer(base64));
+}

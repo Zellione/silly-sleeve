@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import ImageUploadPanel from './ImageUploadPanel';
 
 const mockReadImageFile = vi.fn();
@@ -63,5 +64,15 @@ describe('ImageUploadPanel native file drop', () => {
     const dropCallback = (OnFileDrop as unknown as Mock).mock.calls[0][0];
     dropCallback(0, 0, []);
     expect(mockReadImageFile).not.toHaveBeenCalled();
+  });
+
+  it('passes the dropped image data URL to onUseImage', async () => {
+    const onUseImage = vi.fn();
+    render(<ImageUploadPanel {...baseProps} onUseImage={onUseImage} />);
+    const dropCallback = (OnFileDrop as unknown as Mock).mock.calls[0][0];
+    dropCallback(0, 0, ['/home/user/pics/dropped.png']);
+    await waitFor(() => screen.getByText('Use image'));
+    await userEvent.click(screen.getByText('Use image'));
+    expect(onUseImage).toHaveBeenCalledWith('data:image/png;base64,AAAA');
   });
 });

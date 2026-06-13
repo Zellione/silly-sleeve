@@ -498,6 +498,35 @@ func (a *App) lookupEndpoint(id int) (settings.LLMEndpoint, bool) {
 	return settings.LLMEndpoint{}, false
 }
 
+// GetProjectFieldEndpoints returns a copy of the current project's per-field
+// endpoint overrides (empty, never nil, when none are set).
+func (a *App) GetProjectFieldEndpoints() map[string]int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := make(map[string]int, len(a.fieldEndpoints))
+	for k, v := range a.fieldEndpoints {
+		out[k] = v
+	}
+	return out
+}
+
+// SetProjectFieldEndpoint sets the endpoint override for a single slot on the
+// current project. An endpointID <= 0 clears the override so the slot falls
+// back to the global default, then the default endpoint. Persists on the next
+// bundle save.
+func (a *App) SetProjectFieldEndpoint(slot string, endpointID int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.fieldEndpoints == nil {
+		a.fieldEndpoints = map[string]int{}
+	}
+	if endpointID <= 0 {
+		delete(a.fieldEndpoints, slot)
+		return
+	}
+	a.fieldEndpoints[slot] = endpointID
+}
+
 // PickSaveBundle opens a native save dialog for creating a .slv project bundle.
 func (a *App) PickSaveBundle() (string, error) {
 	return a.project.PickSaveBundle()

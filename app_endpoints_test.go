@@ -43,3 +43,21 @@ func TestEndpointForSlot_DanglingIDFallsThrough(t *testing.T) {
 	}
 	assert.Equal(t, 1, a.endpointForSlot("tags").ID)
 }
+
+func TestSetAndGetProjectFieldEndpoint(t *testing.T) {
+	a := &App{}
+
+	a.SetProjectFieldEndpoint("tags", 5)
+	assert.Equal(t, map[string]int{"tags": 5}, a.GetProjectFieldEndpoints())
+
+	// id <= 0 clears the slot.
+	a.SetProjectFieldEndpoint("tags", 0)
+	assert.Empty(t, a.GetProjectFieldEndpoints())
+}
+
+func TestGetProjectFieldEndpoints_ReturnsCopy(t *testing.T) {
+	a := &App{fieldEndpoints: map[string]int{"bulk": 1}}
+	got := a.GetProjectFieldEndpoints()
+	got["bulk"] = 999 // mutating the returned map must not affect App state
+	assert.Equal(t, 1, a.fieldEndpoints["bulk"])
+}

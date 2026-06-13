@@ -33,6 +33,11 @@
   - `go:S3776` — keep Go cognitive complexity ≤ 15; extract helpers from long
     methods (e.g. App.SaveProjectBundle was split into `existingProjectStatus` +
     `registerInLibrary`).
+  - `go:S4790` (Security Hotspot) — no `crypto/sha1`/`md5`, even for non-crypto
+    filename hashing; use `crypto/sha256`. The gate condition
+    `new_security_hotspots_reviewed` requires 100%, so an unreviewed hotspot
+    fails the gate even when all issue ratings are OK. Prefer fixing the code
+    over marking the hotspot "safe".
 
 ## Tooling gotcha
 - The `rtk` shell wrapper can corrupt the OUTPUT of `npm`/`npx`/`eslint`/`vitest`

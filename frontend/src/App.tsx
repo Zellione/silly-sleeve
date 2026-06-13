@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './style.css';
 import {
   TitleBar, Sidebar, StatusBar, ThemeToggle,
@@ -19,6 +19,7 @@ function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
   const [settingsData, setSettingsData] = useState<settings.Settings | null>(null);
   const [projectPath, setProjectPath] = useState('');
+  const creatingProject = useRef(false);
 
   const handleOpenProject = (path: string) => {
     setProjectPath(path);
@@ -26,12 +27,16 @@ function AppShell() {
   };
 
   const handleNewProject = async () => {
+    if (creatingProject.current) return;
+    creatingProject.current = true;
     try {
       await NewProject();
       setProjectPath('');
       setRoute('crawler');
     } catch (e) {
       logError('App.newProject', e);
+    } finally {
+      creatingProject.current = false;
     }
   };
 

@@ -23,6 +23,15 @@
 - `variantImages[selectedVariant]` — `selectedVariant` is reset to 0 when variants are cleared
   (both `clearVariants` and `runGeneration` in `useImageGeneration.ts` do this).
 
+## Tooling gotcha
+- The `rtk` shell wrapper can corrupt the OUTPUT of `npm`/`npx`/`eslint`/`vitest`
+  (seen: a fake "ESLint config error" / "JSON parse failed" when the real run was
+  clean). When a frontend gate result looks wrong, re-run the DIRECT binaries to get
+  the truth: `cd frontend && ./node_modules/.bin/tsc --noEmit`,
+  `./node_modules/.bin/eslint src --max-warnings 0`, `./node_modules/.bin/vitest run`.
+- `wails generate module` regenerates `frontend/wailsjs/**` from Go (no GTK/CGo
+  needed) — use it after adding/changing App bindings.
+
 ## Testing
 - Go: test files alongside source (`foo_test.go`); use `testify/assert`.
 - Frontend: test files alongside source (`Foo.test.tsx`); use Vitest + Testing Library.

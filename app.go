@@ -475,6 +475,7 @@ func (a *App) PickSaveBundle() (string, error) {
 }
 
 // SaveProjectBundle writes the current project state as a .slv bundle.
+// SaveProjectBundle writes the current project state as a .slv bundle.
 func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
 	chars := make([]compose.Character, len(a.characters))
@@ -501,17 +502,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Unlock()
 
 	// Preserve an existing project's status across re-saves (default draft).
-	snap.Status = "draft"
-	if a.library != nil {
-		if existing, err := a.library.List(); err == nil {
-			for _, e := range existing {
-				if e.Path == filePath && e.Status != "" {
-					snap.Status = e.Status
-					break
-				}
-			}
-		}
-	}
+	snap.Status = a.existingProjectStatus(filePath)
 
 	manifest, err := a.project.SaveBundle(filePath, snap)
 	if err != nil {
@@ -523,12 +514,38 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	active := a.activeCharacterLocked()
 	a.mu.Unlock()
 
-	if a.library != nil {
-		if rerr := a.library.Register(filePath, manifest, active); rerr != nil {
-			fmt.Println("library register error:", rerr)
+	a.registerInLibrary(filePath, manifest, active)
+	return nil
+}
+
+// existingProjectStatus returns the status already recorded for filePath in the
+// library, or "draft" when the project is new or the library is unavailable.
+func (a *App) existingProjectStatus(filePath string) string {
+	const defaultStatus = "draft"
+	if a.library == nil {
+		return defaultStatus
+	}
+	existing, err := a.library.List()
+	if err != nil {
+		return defaultStatus
+	}
+	for _, e := range existing {
+		if e.Path == filePath && e.Status != "" {
+			return e.Status
 		}
 	}
-	return nil
+	return defaultStatus
+}
+
+// registerInLibrary records a saved/opened project in the library index. A
+// registration failure is logged but does not fail the surrounding operation.
+func (a *App) registerInLibrary(filePath string, manifest project.ProjectManifest, active compose.Character) {
+	if a.library == nil {
+		return
+	}
+	if err := a.library.Register(filePath, manifest, active); err != nil {
+		fmt.Println("library register error:", err)
+	}
 }
 
 // PickOpenBundle opens a native file picker for loading a .slv project bundle.
@@ -562,20 +579,10 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	if len(b.Prompts.FieldPrompts) > 0 {
 		a.settings.PromptTemplates = b.Prompts
 	}
+	active := a.activeCharacterLocked()
 	a.mu.Unlock()
 
-	if a.library != nil {
-		var ac compose.Character
-		for _, c := range b.Characters {
-			if c.ID == b.Manifest.ActiveCharID {
-				ac = c
-				break
-			}
-		}
-		if rerr := a.library.Register(filePath, b.Manifest, ac); rerr != nil {
-			fmt.Println("library register error:", rerr)
-		}
-	}
+	a.registerInLibrary(filePath, b.Manifest, active)
 
 	return b.Manifest, nil
 }

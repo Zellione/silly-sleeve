@@ -16,6 +16,9 @@ import { library } from '../../wailsjs/go/models';
 
 type Filter = 'all' | 'draft' | 'ready' | 'archived';
 const STATUSES: Array<'draft' | 'ready' | 'archived'> = ['draft', 'ready', 'archived'];
+const FILTER_LABELS: Record<Filter, string> = {
+  all: 'All', draft: 'Drafts', ready: 'Ready', archived: 'Archived',
+};
 
 export interface DashboardScreenProps {
   onOpenProject: (path: string) => void;
@@ -115,7 +118,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
         <div className="dash-filters">
           {(['all', 'draft', 'ready', 'archived'] as Filter[]).map(f => (
             <button key={f} className="chip" data-on={filter === f ? '1' : '0'} onClick={() => setFilter(f)}>
-              {f === 'all' ? 'All' : f === 'draft' ? 'Drafts' : f === 'ready' ? 'Ready' : 'Archived'}
+              {FILTER_LABELS[f]}
               <span className="count">{count(f)}</span>
             </button>
           ))}
@@ -140,9 +143,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
               <ProjectCard
                 key={p.path}
                 p={p}
-                onOpen={() => void handleOpen(p.path)}
-                onCycleStatus={(ev) => void cycleStatus(p, ev)}
-                onRemove={(ev) => void handleRemove(p, ev)}
+                onOpen={() => handleOpen(p.path)}
+                onCycleStatus={(ev) => cycleStatus(p, ev)}
+                onRemove={(ev) => handleRemove(p, ev)}
               />
             ))}
             <button

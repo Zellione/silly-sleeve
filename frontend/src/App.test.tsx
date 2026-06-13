@@ -19,6 +19,7 @@ vi.mock('../wailsjs/go/main/App', () => ({
   SetActiveCharacter: vi.fn(),
   UpdateCharacter: vi.fn(),
   ListProjects: vi.fn().mockResolvedValue([]),
+  NewProject: vi.fn(),
   GetComfySamplers: vi.fn().mockResolvedValue([]),
   GetComfySchedulers: vi.fn().mockResolvedValue([]),
   GetComfyCheckpoints: vi.fn().mockResolvedValue([]),

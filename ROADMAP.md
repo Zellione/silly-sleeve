@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-12
+> Last updated: 2026-06-13
 
 ## Overview
 
@@ -108,7 +108,7 @@ Goal: Full SillyTavern drop-in experience with portraits and PNG embedding.
 
 Goal: Multi-source, multi-endpoint, and full project management.
 
-- [ ] **6.1** Dashboard: project grid, filter/search, status badges (Draft / Ready / Archived)
+- [x] **6.1** Dashboard: project grid, filter/search, status badges (Draft / Ready / Archived)
 - [ ] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
 - [ ] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [ ] **6.4** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
@@ -120,6 +120,17 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-13
+
+- Started Phase 4 — Power User Features (`milestone/6.1-dashboard`).
+
+#### Completed 6.1 — Project Dashboard
+
+- [x] **6.1** Hybrid project library: `internal/library/` index + thumbnail cache,
+  `LibraryManager`, dashboard bindings (`ListProjects`/`NewProject`/`SetProjectStatus`/
+  `RemoveProject`/`GetProjectThumbnail`), manifest `Status`/`Tags`, rewritten
+  `DashboardScreen` (filter chips, search, status badges, empty state).
 
 ### 2026-06-12
 

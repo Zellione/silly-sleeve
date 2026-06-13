@@ -29,18 +29,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
 
-  const load = useCallback(async () => {
-    try {
-      const list = await ListProjects();
-      setProjects(list ?? []);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast({ kind: 'bad', title: 'Could not load projects', body: msg });
-    }
-  }, [toast]);
-
   useEffect(() => {
-    load();
+    ListProjects()
+      .then(list => setProjects(list ?? []))
+      .catch(() => { /* dashboard shows the empty state on load failure */ });
   }, []);
 
   const count = (s: Filter) => projects.filter(p => s === 'all' || p.status === s).length;

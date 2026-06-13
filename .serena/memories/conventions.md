@@ -23,6 +23,17 @@
 - `variantImages[selectedVariant]` — `selectedVariant` is reset to 0 when variants are cleared
   (both `clearVariants` and `runGeneration` in `useImageGeneration.ts` do this).
 
+## SonarCloud quality gate
+- Project `Zellione_silly-sleeve` is scanned on PRs. Common rules to pre-empt:
+  - `typescript:S3358` — no nested ternaries (extract a lookup map/variable/helper).
+  - `typescript:S3735` — no `void` operator. The eslint config is `tseslint
+    recommended` (NOT type-checked), so `no-floating-promises`/`no-misused-promises`
+    are OFF — a `Promise<void>` arrow is assignable to a `() => void` prop without
+    `void`. Don't add `void` to silence a rule that isn't even enabled.
+  - `go:S3776` — keep Go cognitive complexity ≤ 15; extract helpers from long
+    methods (e.g. App.SaveProjectBundle was split into `existingProjectStatus` +
+    `registerInLibrary`).
+
 ## Tooling gotcha
 - The `rtk` shell wrapper can corrupt the OUTPUT of `npm`/`npx`/`eslint`/`vitest`
   (seen: a fake "ESLint config error" / "JSON parse failed" when the real run was

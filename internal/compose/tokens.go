@@ -41,3 +41,19 @@ func CountWords(text string) int {
 	}
 	return count
 }
+
+// CharacterTokens returns the total token count across a character's
+// free-text fields. Used for the dashboard's per-project token figure.
+func CharacterTokens(ch Character) int {
+	total := 0
+	for _, s := range []string{
+		ch.Name, ch.Epithet, ch.Appearance, ch.Personality,
+		ch.Backstory, ch.Abilities, ch.Relationships,
+	} {
+		total += CountTokens(s)
+	}
+	for _, q := range ch.Quotes {
+		total += CountTokens(q)
+	}
+	return total
+}

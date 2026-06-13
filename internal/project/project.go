@@ -18,14 +18,16 @@ const ManifestVersion = "1"
 
 // ProjectManifest describes a saved project folder.
 type ProjectManifest struct {
-	Version      string    `json:"version"`
-	Name         string    `json:"name"`
-	CreatedAt    string `json:"createdAt"`
-	UpdatedAt    string `json:"updatedAt"`
-	ActiveCharID int       `json:"activeCharId"`
-	SourceURL    string    `json:"sourceUrl"`
-	CrawlTitle   string    `json:"crawlTitle"`
-	ProjectImage []byte    `json:"projectImage"`
+	Version      string   `json:"version"`
+	Name         string   `json:"name"`
+	Status       string   `json:"status,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	CreatedAt    string   `json:"createdAt"`
+	UpdatedAt    string   `json:"updatedAt"`
+	ActiveCharID int      `json:"activeCharId"`
+	SourceURL    string   `json:"sourceUrl"`
+	CrawlTitle   string   `json:"crawlTitle"`
+	ProjectImage []byte   `json:"projectImage"`
 }
 
 const manifestFile = "manifest.json"

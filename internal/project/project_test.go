@@ -250,3 +250,18 @@ func itoa(n int) string {
 	}
 	return s
 }
+
+func TestManifestStatusTagsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	m := ProjectManifest{Name: "X", Status: "ready", Tags: []string{"a", "b"}}
+	if err := SaveProject(dir, m, nil); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadProject(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != "ready" || len(got.Tags) != 2 {
+		t.Fatalf("round-trip lost status/tags: %+v", got)
+	}
+}

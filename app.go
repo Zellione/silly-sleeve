@@ -30,6 +30,7 @@ type App struct {
 	comfy   *ComfyUIService
 	charGen *CharacterGenerator
 	project *ProjectManager
+	library *LibraryManager
 }
 
 // NewApp creates a new App application struct
@@ -68,6 +69,12 @@ func (a *App) startup(ctx context.Context) {
 
 	a.characters = []compose.Character{compose.NewCharacter(1)}
 	a.activeCharID = 1
+
+	if lm, err := NewLibraryManager(); err != nil {
+		fmt.Println("library init error:", err)
+	} else {
+		a.library = lm
+	}
 }
 
 // GetSettings returns the current settings.
@@ -320,6 +327,19 @@ func (a *App) DeleteCharacter(id int) error {
 	return charNotFound(id)
 }
 
+// activeCharacterLocked returns the active character. Caller holds a.mu.
+func (a *App) activeCharacterLocked() compose.Character {
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			return c
+		}
+	}
+	if len(a.characters) > 0 {
+		return a.characters[0]
+	}
+	return compose.NewCharacter(1)
+}
+
 // GetActiveCharacter returns the currently active character.
 func (a *App) GetActiveCharacter() compose.Character {
 	a.mu.Lock()
@@ -480,13 +500,34 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	snap.ProjectImage = projImg
 	a.mu.Unlock()
 
-	if err := a.project.SaveBundle(filePath, snap); err != nil {
+	// Preserve an existing project's status across re-saves (default draft).
+	snap.Status = "draft"
+	if a.library != nil {
+		if existing, err := a.library.List(); err == nil {
+			for _, e := range existing {
+				if e.Path == filePath && e.Status != "" {
+					snap.Status = e.Status
+					break
+				}
+			}
+		}
+	}
+
+	manifest, err := a.project.SaveBundle(filePath, snap)
+	if err != nil {
 		return err
 	}
 
 	a.mu.Lock()
 	a.projectDir = filePath
+	active := a.activeCharacterLocked()
 	a.mu.Unlock()
+
+	if a.library != nil {
+		if rerr := a.library.Register(filePath, manifest, active); rerr != nil {
+			fmt.Println("library register error:", rerr)
+		}
+	}
 	return nil
 }
 
@@ -522,6 +563,19 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 		a.settings.PromptTemplates = b.Prompts
 	}
 	a.mu.Unlock()
+
+	if a.library != nil {
+		var ac compose.Character
+		for _, c := range b.Characters {
+			if c.ID == b.Manifest.ActiveCharID {
+				ac = c
+				break
+			}
+		}
+		if rerr := a.library.Register(filePath, b.Manifest, ac); rerr != nil {
+			fmt.Println("library register error:", rerr)
+		}
+	}
 
 	return b.Manifest, nil
 }

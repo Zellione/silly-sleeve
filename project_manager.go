@@ -24,6 +24,7 @@ type ProjectSnapshot struct {
 	Prompts      prompts.TemplateSet
 	SourceURL    string
 	CrawlTitle   string
+	Status       string
 	CrawlCache   *crawler.CrawlResult
 }
 
@@ -67,7 +68,9 @@ func (p *ProjectManager) PickExportFolder() (string, error) {
 }
 
 // SaveBundle assembles a .slv bundle from a project snapshot and writes it.
-func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) error {
+// It returns the manifest it persisted (name, tags, status) so the caller can
+// register the project in the library index.
+func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (project.ProjectManifest, error) {
 	projectName := "Untitled Project"
 	if len(snap.Characters) > 0 && snap.Characters[0].Name != "Untitled" {
 		projectName = snap.Characters[0].Name
@@ -76,21 +79,40 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) error
 		projectName = snap.CrawlTitle
 	}
 
+	status := snap.Status
+	if status == "" {
+		status = "draft"
+	}
+
+	var tags []string
+	for _, ch := range snap.Characters {
+		if ch.ID == snap.ActiveCharID {
+			tags = append([]string{}, ch.Tags...)
+			break
+		}
+	}
+
+	manifest := project.ProjectManifest{
+		Name:         projectName,
+		Status:       status,
+		Tags:         tags,
+		ActiveCharID: snap.ActiveCharID,
+		SourceURL:    snap.SourceURL,
+		CrawlTitle:   snap.CrawlTitle,
+		ProjectImage: snap.ProjectImage,
+	}
+
 	b := bundle.Bundle{
-		Manifest: project.ProjectManifest{
-			Name:         projectName,
-			ActiveCharID: snap.ActiveCharID,
-			SourceURL:    snap.SourceURL,
-			CrawlTitle:   snap.CrawlTitle,
-			ProjectImage: snap.ProjectImage,
-		},
+		Manifest:   manifest,
 		Characters: snap.Characters,
 		Lorebook:   snap.Lorebook,
 		Prompts:    snap.Prompts,
 		CrawlCache: snap.CrawlCache,
 	}
-
-	return bundle.WriteBundle(filePath, b)
+	if err := bundle.WriteBundle(filePath, b); err != nil {
+		return project.ProjectManifest{}, err
+	}
+	return manifest, nil
 }
 
 // ReadBundle loads a .slv bundle from disk.

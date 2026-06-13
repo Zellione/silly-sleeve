@@ -23,6 +23,20 @@
 - `variantImages[selectedVariant]` — `selectedVariant` is reset to 0 when variants are cleared
   (both `clearVariants` and `runGeneration` in `useImageGeneration.ts` do this).
 
+## Local build & GUI smoke test (this dev machine is NOT headless)
+- The Arch dev box has gtk3 + webkit2gtk-4.1 + a live Wayland session
+  (`DISPLAY=:1`, `WAYLAND_DISPLAY=wayland-1`). So `wails build -clean -tags
+  webkit2_41` links and produces `build/bin/silly-sleeve` (~11 MB), and the app
+  can be LAUNCHED for a real smoke test — don't claim "can't link in headless".
+  (`wails doctor` falsely reports webkit "Not Found" — it probes the legacy 4.0
+  package name; 4.1 is present, hence the `webkit2_41` tag.)
+- Smoke test recipe: run the binary in the background, `grim /tmp/x.png` to
+  screenshot the Wayland output, then `magick` to crop the app window and read it.
+  Kill the process after.
+- `wails build` re-touches `frontend/wailsjs/runtime/*` with NO content change —
+  `git checkout -- frontend/wailsjs/runtime/` to keep the tree clean.
+- `build/bin/**` is gitignored.
+
 ## SonarCloud quality gate
 - Project `Zellione_silly-sleeve` is scanned on PRs. Common rules to pre-empt:
   - `typescript:S3358` — no nested ternaries (extract a lookup map/variable/helper).

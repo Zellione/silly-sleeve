@@ -28,3 +28,8 @@
 - Frontend: test files alongside source (`Foo.test.tsx`); use Vitest + Testing Library.
 - Coverage threshold: ≥80% statements on both Go and frontend.
 - `/* v8 ignore next */` / `/* v8 ignore start/stop */` for untestable browser/Wails paths.
+
+## Workflow
+- Design specs are LOCAL ONLY — never commit them. `docs/superpowers/specs/` is
+  gitignored. Brainstorming writes specs there for local review; they must not
+  enter git history (same policy as `APPROVAL_REQUEST.md`).

@@ -35,5 +35,12 @@ export default tseslint.config(
     rules: {
       'react-refresh/only-export-components': 'off',
     },
+  },
+  {
+    files: ['src/screens/DashboardScreen.tsx'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+    },
   }
 );

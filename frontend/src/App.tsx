@@ -49,7 +49,7 @@ function AppShell() {
 
   const renderScreen = () => {
     switch (route) {
-      case 'dashboard': return <DashboardScreen onProjectOpened={setProjectPath} />;
+      case 'dashboard': return <DashboardScreen onOpenProject={setProjectPath} onNewProject={() => setRoute('crawler')} />;
       case 'crawler': return <CrawlerScreen />;
       case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
@@ -61,7 +61,7 @@ function AppShell() {
       case 'export': return <ExportScreen />;
       case 'settings': return <SettingsScreen />;
       /* v8 ignore next */
-      default: return <DashboardScreen />;
+      default: return <DashboardScreen onOpenProject={setProjectPath} onNewProject={() => setRoute('crawler')} />;
     }
   };
 

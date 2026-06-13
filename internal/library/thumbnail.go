@@ -1,7 +1,7 @@
 package library
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"path/filepath"
@@ -11,8 +11,9 @@ const thumbDir = "thumbnails"
 
 // ThumbRef returns the stable cache filename for a project path. Keyed by the
 // path (not content) so re-saving overwrites the same file with no orphans.
+// SHA-256 here is a non-cryptographic filename hash, not a security primitive.
 func ThumbRef(projectPath string) string {
-	sum := sha1.Sum([]byte(projectPath))
+	sum := sha256.Sum256([]byte(projectPath))
 	return hex.EncodeToString(sum[:]) + ".png"
 }
 

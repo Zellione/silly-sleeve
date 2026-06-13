@@ -122,6 +122,10 @@ export function GetProjectImage() {
   return window['go']['main']['App']['GetProjectImage']();
 }
 
+export function GetProjectThumbnail(arg1) {
+  return window['go']['main']['App']['GetProjectThumbnail'](arg1);
+}
+
 export function GetPromptTemplates() {
   return window['go']['main']['App']['GetPromptTemplates']();
 }
@@ -136,6 +140,14 @@ export function Greet(arg1) {
 
 export function ImportComfyWorkflow(arg1) {
   return window['go']['main']['App']['ImportComfyWorkflow'](arg1);
+}
+
+export function ListProjects() {
+  return window['go']['main']['App']['ListProjects']();
+}
+
+export function NewProject() {
+  return window['go']['main']['App']['NewProject']();
 }
 
 export function OpenProjectBundle(arg1) {
@@ -160,6 +172,10 @@ export function PickSaveBundle() {
 
 export function ReadImageFile(arg1) {
   return window['go']['main']['App']['ReadImageFile'](arg1);
+}
+
+export function RemoveProject(arg1, arg2) {
+  return window['go']['main']['App']['RemoveProject'](arg1, arg2);
 }
 
 export function SaveComfyWorkflowTemplate(arg1, arg2) {
@@ -192,6 +208,10 @@ export function SaveSettings(arg1) {
 
 export function SetActiveCharacter(arg1) {
   return window['go']['main']['App']['SetActiveCharacter'](arg1);
+}
+
+export function SetProjectStatus(arg1, arg2) {
+  return window['go']['main']['App']['SetProjectStatus'](arg1, arg2);
 }
 
 export function TestComfyUIEndpoint(arg1, arg2) {

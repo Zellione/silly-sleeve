@@ -319,6 +319,41 @@ export namespace crawler {
 
 }
 
+export namespace library {
+	
+	export class Entry {
+	    path: string;
+	    name: string;
+	    status: string;
+	    updatedAt: string;
+	    sourceShort: string;
+	    tags: string[];
+	    tokens: number;
+	    hasThumbnail: boolean;
+	    thumbRef: string;
+	    missing: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Entry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.status = source["status"];
+	        this.updatedAt = source["updatedAt"];
+	        this.sourceShort = source["sourceShort"];
+	        this.tags = source["tags"];
+	        this.tokens = source["tokens"];
+	        this.hasThumbnail = source["hasThumbnail"];
+	        this.thumbRef = source["thumbRef"];
+	        this.missing = source["missing"];
+	    }
+	}
+
+}
+
 export namespace llm {
 	
 	export class TestResult {
@@ -439,6 +474,8 @@ export namespace project {
 	export class ProjectManifest {
 	    version: string;
 	    name: string;
+	    status?: string;
+	    tags?: string[];
 	    createdAt: string;
 	    updatedAt: string;
 	    activeCharId: number;
@@ -454,6 +491,8 @@ export namespace project {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
 	        this.name = source["name"];
+	        this.status = source["status"];
+	        this.tags = source["tags"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	        this.activeCharId = source["activeCharId"];

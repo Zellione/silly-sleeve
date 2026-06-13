@@ -26,6 +26,7 @@ type ProjectSnapshot struct {
 	CrawlTitle   string
 	Status       string
 	CrawlCache   *crawler.CrawlResult
+	FieldEndpoints map[string]int
 }
 
 // ProjectManager owns project persistence decomposed out of App: the native
@@ -100,6 +101,7 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		SourceURL:    snap.SourceURL,
 		CrawlTitle:   snap.CrawlTitle,
 		ProjectImage: snap.ProjectImage,
+		FieldEndpoints: snap.FieldEndpoints,
 	}
 
 	b := bundle.Bundle{

@@ -28,6 +28,9 @@ type ProjectManifest struct {
 	SourceURL    string   `json:"sourceUrl"`
 	CrawlTitle   string   `json:"crawlTitle"`
 	ProjectImage []byte   `json:"projectImage"`
+	// FieldEndpoints maps a generation slot ("bulk" or a field id) to an
+	// LLMEndpoint ID, overriding the global default for this project only.
+	FieldEndpoints map[string]int `json:"fieldEndpoints,omitempty"`
 }
 
 const manifestFile = "manifest.json"

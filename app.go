@@ -30,6 +30,7 @@ type App struct {
 	comfy   *ComfyUIService
 	charGen *CharacterGenerator
 	project *ProjectManager
+	library *LibraryManager
 }
 
 // NewApp creates a new App application struct
@@ -68,6 +69,12 @@ func (a *App) startup(ctx context.Context) {
 
 	a.characters = []compose.Character{compose.NewCharacter(1)}
 	a.activeCharID = 1
+
+	if lm, err := NewLibraryManager(); err != nil {
+		fmt.Println("library init error:", err)
+	} else {
+		a.library = lm
+	}
 }
 
 // GetSettings returns the current settings.
@@ -320,6 +327,19 @@ func (a *App) DeleteCharacter(id int) error {
 	return charNotFound(id)
 }
 
+// activeCharacterLocked returns the active character. Caller holds a.mu.
+func (a *App) activeCharacterLocked() compose.Character {
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			return c
+		}
+	}
+	if len(a.characters) > 0 {
+		return a.characters[0]
+	}
+	return compose.NewCharacter(1)
+}
+
 // GetActiveCharacter returns the currently active character.
 func (a *App) GetActiveCharacter() compose.Character {
 	a.mu.Lock()
@@ -455,6 +475,7 @@ func (a *App) PickSaveBundle() (string, error) {
 }
 
 // SaveProjectBundle writes the current project state as a .slv bundle.
+// SaveProjectBundle writes the current project state as a .slv bundle.
 func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
 	chars := make([]compose.Character, len(a.characters))
@@ -480,14 +501,51 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	snap.ProjectImage = projImg
 	a.mu.Unlock()
 
-	if err := a.project.SaveBundle(filePath, snap); err != nil {
+	// Preserve an existing project's status across re-saves (default draft).
+	snap.Status = a.existingProjectStatus(filePath)
+
+	manifest, err := a.project.SaveBundle(filePath, snap)
+	if err != nil {
 		return err
 	}
 
 	a.mu.Lock()
 	a.projectDir = filePath
+	active := a.activeCharacterLocked()
 	a.mu.Unlock()
+
+	a.registerInLibrary(filePath, manifest, active)
 	return nil
+}
+
+// existingProjectStatus returns the status already recorded for filePath in the
+// library, or "draft" when the project is new or the library is unavailable.
+func (a *App) existingProjectStatus(filePath string) string {
+	const defaultStatus = "draft"
+	if a.library == nil {
+		return defaultStatus
+	}
+	existing, err := a.library.List()
+	if err != nil {
+		return defaultStatus
+	}
+	for _, e := range existing {
+		if e.Path == filePath && e.Status != "" {
+			return e.Status
+		}
+	}
+	return defaultStatus
+}
+
+// registerInLibrary records a saved/opened project in the library index. A
+// registration failure is logged but does not fail the surrounding operation.
+func (a *App) registerInLibrary(filePath string, manifest project.ProjectManifest, active compose.Character) {
+	if a.library == nil {
+		return
+	}
+	if err := a.library.Register(filePath, manifest, active); err != nil {
+		fmt.Println("library register error:", err)
+	}
 }
 
 // PickOpenBundle opens a native file picker for loading a .slv project bundle.
@@ -521,7 +579,10 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	if len(b.Prompts.FieldPrompts) > 0 {
 		a.settings.PromptTemplates = b.Prompts
 	}
+	active := a.activeCharacterLocked()
 	a.mu.Unlock()
+
+	a.registerInLibrary(filePath, b.Manifest, active)
 
 	return b.Manifest, nil
 }

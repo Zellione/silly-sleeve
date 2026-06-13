@@ -31,5 +31,8 @@ frontend/package.json.md5
 # Local approval request (never committed)
 APPROVAL_REQUEST.md
 
+# Design specs + implementation plans (local only, never committed)
+docs/superpowers/
+
 # AI session artifacts
 session-*.md

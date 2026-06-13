@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, waitFor } from '@testing-library/react';
 import { ToastProvider } from '../components/ToastProvider';
 import {
   DashboardScreen, CrawlerScreen, EditorScreen, LorebookScreen,
@@ -37,6 +36,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetLorebook: () => mockGetLorebook(),
   SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
   ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
+  ListProjects: vi.fn().mockResolvedValue([]),
   GetComfySamplers: vi.fn().mockResolvedValue([]),
   GetComfySchedulers: vi.fn().mockResolvedValue([]),
   GetComfyCheckpoints: vi.fn().mockResolvedValue([]),
@@ -73,120 +73,6 @@ describe('screens/index', () => {
   });
 
   describe('DashboardScreen', () => {
-    it('renders title', async () => {
-      const { container } = renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(container.textContent).toContain('Your projects');
-      });
-    });
-
-    it('renders Save project and Open project buttons', async () => {
-      const { container } = renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(container.textContent).toContain('Save project');
-        expect(container.textContent).toContain('Open project');
-      });
-    });
-
-    it('saves project when save button clicked', async () => {
-      mockPickSaveBundle.mockResolvedValue('/mock/test-project');
-      mockSaveProjectBundle.mockResolvedValue(undefined);
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Save project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Save project'));
-      await waitFor(() => {
-        expect(mockPickSaveBundle).toHaveBeenCalled();
-      });
-      await waitFor(() => {
-        expect(mockSaveProjectBundle).toHaveBeenCalledWith('/mock/test-project');
-      });
-    });
-
-    it('shows toast on successful save', async () => {
-      mockPickSaveBundle.mockResolvedValue('/mock/test');
-      mockSaveProjectBundle.mockResolvedValue(undefined);
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Save project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Save project'));
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Project saved');
-      });
-    });
-
-    it('shows error toast on save failure', async () => {
-      mockPickSaveBundle.mockRejectedValue(new Error('permission denied'));
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Save project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Save project'));
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Save failed');
-      });
-    });
-
-    it('does not save when folder is empty', async () => {
-      mockPickSaveBundle.mockResolvedValue('');
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Save project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Save project'));
-      await waitFor(() => {
-        expect(mockPickSaveBundle).toHaveBeenCalled();
-        expect(mockSaveProjectBundle).not.toHaveBeenCalled();
-      });
-    });
-
-    it('opens project when open button clicked', async () => {
-      mockPickOpenBundle.mockResolvedValue('/mock/test.slv');
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Open project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Open project'));
-      await waitFor(() => {
-        expect(mockPickOpenBundle).toHaveBeenCalled();
-        expect(mockOpenProjectBundle).toHaveBeenCalled();
-      });
-    });
-
-    it('shows toast on successful open', async () => {
-      mockPickOpenBundle.mockResolvedValue('/mock/test.slv');
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Open project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Open project'));
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Project opened');
-      });
-    });
-
-    it('shows error toast on open failure', async () => {
-      mockPickOpenBundle.mockResolvedValue('/mock/test.slv');
-      mockOpenProjectBundle.mockRejectedValue(new Error('not found'));
-      const user = userEvent.setup();
-      renderWithToast(<DashboardScreen />);
-      await waitFor(() => {
-        expect(screen.getByText('Open project')).toBeInTheDocument();
-      });
-      await user.click(screen.getByText('Open project'));
-      await waitFor(() => {
-        expect(document.body.textContent).toContain('Open failed');
-      });
-    });
-
     it('is a function component', () => {
       expect(typeof DashboardScreen).toBe('function');
     });

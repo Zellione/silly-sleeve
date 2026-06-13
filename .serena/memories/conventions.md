@@ -23,8 +23,52 @@
 - `variantImages[selectedVariant]` — `selectedVariant` is reset to 0 when variants are cleared
   (both `clearVariants` and `runGeneration` in `useImageGeneration.ts` do this).
 
+## Local build & GUI smoke test (this dev machine is NOT headless)
+- The Arch dev box has gtk3 + webkit2gtk-4.1 + a live Wayland session
+  (`DISPLAY=:1`, `WAYLAND_DISPLAY=wayland-1`). So `wails build -clean -tags
+  webkit2_41` links and produces `build/bin/silly-sleeve` (~11 MB), and the app
+  can be LAUNCHED for a real smoke test — don't claim "can't link in headless".
+  (`wails doctor` falsely reports webkit "Not Found" — it probes the legacy 4.0
+  package name; 4.1 is present, hence the `webkit2_41` tag.)
+- Smoke test recipe: run the binary in the background, `grim /tmp/x.png` to
+  screenshot the Wayland output, then `magick` to crop the app window and read it.
+  Kill the process after.
+- `wails build` re-touches `frontend/wailsjs/runtime/*` with NO content change —
+  `git checkout -- frontend/wailsjs/runtime/` to keep the tree clean.
+- `build/bin/**` is gitignored.
+
+## SonarCloud quality gate
+- Project `Zellione_silly-sleeve` is scanned on PRs. Common rules to pre-empt:
+  - `typescript:S3358` — no nested ternaries (extract a lookup map/variable/helper).
+  - `typescript:S3735` — no `void` operator. The eslint config is `tseslint
+    recommended` (NOT type-checked), so `no-floating-promises`/`no-misused-promises`
+    are OFF — a `Promise<void>` arrow is assignable to a `() => void` prop without
+    `void`. Don't add `void` to silence a rule that isn't even enabled.
+  - `go:S3776` — keep Go cognitive complexity ≤ 15; extract helpers from long
+    methods (e.g. App.SaveProjectBundle was split into `existingProjectStatus` +
+    `registerInLibrary`).
+  - `go:S4790` (Security Hotspot) — no `crypto/sha1`/`md5`, even for non-crypto
+    filename hashing; use `crypto/sha256`. The gate condition
+    `new_security_hotspots_reviewed` requires 100%, so an unreviewed hotspot
+    fails the gate even when all issue ratings are OK. Prefer fixing the code
+    over marking the hotspot "safe".
+
+## Tooling gotcha
+- The `rtk` shell wrapper can corrupt the OUTPUT of `npm`/`npx`/`eslint`/`vitest`
+  (seen: a fake "ESLint config error" / "JSON parse failed" when the real run was
+  clean). When a frontend gate result looks wrong, re-run the DIRECT binaries to get
+  the truth: `cd frontend && ./node_modules/.bin/tsc --noEmit`,
+  `./node_modules/.bin/eslint src --max-warnings 0`, `./node_modules/.bin/vitest run`.
+- `wails generate module` regenerates `frontend/wailsjs/**` from Go (no GTK/CGo
+  needed) — use it after adding/changing App bindings.
+
 ## Testing
 - Go: test files alongside source (`foo_test.go`); use `testify/assert`.
 - Frontend: test files alongside source (`Foo.test.tsx`); use Vitest + Testing Library.
 - Coverage threshold: ≥80% statements on both Go and frontend.
 - `/* v8 ignore next */` / `/* v8 ignore start/stop */` for untestable browser/Wails paths.
+
+## Workflow
+- Design specs are LOCAL ONLY — never commit them. `docs/superpowers/specs/` is
+  gitignored. Brainstorming writes specs there for local review; they must not
+  enter git history (same policy as `APPROVAL_REQUEST.md`).

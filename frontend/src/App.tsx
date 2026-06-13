@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './style.css';
 import {
   TitleBar, Sidebar, StatusBar, ThemeToggle,
@@ -11,7 +11,7 @@ import {
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
-import { GetSettings } from '../wailsjs/go/main/App';
+import { GetSettings, NewProject } from '../wailsjs/go/main/App';
 import { settings } from '../wailsjs/go/models';
 import { logError } from './utils/log';
 
@@ -19,6 +19,26 @@ function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
   const [settingsData, setSettingsData] = useState<settings.Settings | null>(null);
   const [projectPath, setProjectPath] = useState('');
+  const creatingProject = useRef(false);
+
+  const handleOpenProject = (path: string) => {
+    setProjectPath(path);
+    setRoute('editor');
+  };
+
+  const handleNewProject = async () => {
+    if (creatingProject.current) return;
+    creatingProject.current = true;
+    try {
+      await NewProject();
+      setProjectPath('');
+      setRoute('crawler');
+    } catch (e) {
+      logError('App.newProject', e);
+    } finally {
+      creatingProject.current = false;
+    }
+  };
 
   useEffect(() => {
     GetSettings().then(s => setSettingsData(s)).catch(e => {
@@ -49,7 +69,7 @@ function AppShell() {
 
   const renderScreen = () => {
     switch (route) {
-      case 'dashboard': return <DashboardScreen onProjectOpened={setProjectPath} />;
+      case 'dashboard': return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
       case 'crawler': return <CrawlerScreen />;
       case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
@@ -61,7 +81,7 @@ function AppShell() {
       case 'export': return <ExportScreen />;
       case 'settings': return <SettingsScreen />;
       /* v8 ignore next */
-      default: return <DashboardScreen />;
+      default: return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
     }
   };
 

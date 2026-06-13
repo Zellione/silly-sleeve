@@ -1,15 +1,9 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import CrawlerScreen from './CrawlerScreen';
 import SettingsScreen from './SettingsScreen';
 import ExportScreen from './ExportScreen';
 import PortraitScreen from './PortraitScreen';
 import ProjectImageScreen from './ProjectImageScreen';
-import { PageHead } from '../components/Layout';
-import { useToast } from '../components/ToastProvider';
-import {
-  SaveIcon, FolderIcon, ArrowIcon,
-} from '../icons';
-import { PickSaveBundle, SaveProjectBundle, PickOpenBundle, OpenProjectBundle } from '../../wailsjs/go/main/App';
 
 const Placeholder: React.FC<{ title: string }> = ({ title }) => (
   <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -20,65 +14,7 @@ const Placeholder: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
-const DashboardScreen: React.FC<{ onProjectOpened?: (path: string) => void }> = ({ onProjectOpened }) => {
-  const { toast } = useToast();
-
-  const handleSaveProject = useCallback(async () => {
-    try {
-      const filePath = await PickSaveBundle();
-      if (!filePath) return;
-      await SaveProjectBundle(filePath);
-      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
-    } catch (e: any) {
-      if (e?.message) {
-        toast({ kind: 'bad', title: 'Save failed', body: e.message });
-      }
-    }
-  }, [toast]);
-
-  const handleOpenProject = useCallback(async () => {
-    try {
-      const filePath = await PickOpenBundle();
-      if (!filePath) return;
-      const manifest = await OpenProjectBundle(filePath);
-      onProjectOpened?.(filePath);
-      toast({ kind: 'ok', title: 'Project opened', body: `Loaded "${manifest.name}".` });
-    } catch (e: any) {
-      if (e?.message && e.message !== 'Cancelled') {
-        toast({ kind: 'bad', title: 'Open failed', body: e.message });
-      }
-    }
-  }, [toast, onProjectOpened]);
-
-  return (
-    <>
-      <PageHead
-        subtitle="Manage your character projects"
-        title={<>Your <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>projects</em></>}
-        actions={
-          <>
-            <button className="btn ghost" onClick={handleOpenProject}>
-              <FolderIcon size={14} /> Open project
-            </button>
-            <button className="btn ghost" onClick={handleSaveProject}>
-              <SaveIcon size={14} /> Save project
-            </button>
-            <button className="btn primary" disabled title="Coming in Phase 2">
-              New project <ArrowIcon size={14} />
-            </button>
-          </>
-        } />
-      <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
-        <div className="col" style={{ alignItems: 'center', gap: 16, textAlign: 'center' }}>
-          <div className="serif-i" style={{ fontSize: 28, color: 'var(--ink-2)' }}>Your projects</div>
-          <div className="uplabel">Save or open a project to get started</div>
-        </div>
-      </div>
-    </>
-  );
-};
-
-export { DashboardScreen };
+export { default as DashboardScreen } from './DashboardScreen';
 export { CrawlerScreen };
 export { default as EditorScreen } from './EditorScreen';
 export { default as LorebookScreen } from './LorebookScreen';

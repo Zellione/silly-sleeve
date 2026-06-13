@@ -29,7 +29,10 @@ func TestProjectManager_SaveAndReadBundle_RoundTrip(t *testing.T) {
 		Lorebook:     []lorebook.Entry{{}},
 		ProjectImage: []byte{1, 2, 3},
 	}
-	require.NoError(t, pm.SaveBundle(path, snap))
+	manifest, err := pm.SaveBundle(path, snap)
+	require.NoError(t, err)
+	assert.Equal(t, "Elara", manifest.Name)
+	assert.Equal(t, "draft", manifest.Status)
 
 	b, err := pm.ReadBundle(path)
 	require.NoError(t, err)
@@ -56,7 +59,9 @@ func TestProjectManager_SaveBundle_ProjectNameDerivation(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			pm := newTestProjectManager()
 			path := filepath.Join(t.TempDir(), "p.slv")
-			require.NoError(t, pm.SaveBundle(path, c.snap))
+			manifest, err := pm.SaveBundle(path, c.snap)
+			require.NoError(t, err)
+			assert.Equal(t, c.wantN, manifest.Name)
 			b, err := pm.ReadBundle(path)
 			require.NoError(t, err)
 			assert.Equal(t, c.wantN, b.Manifest.Name)

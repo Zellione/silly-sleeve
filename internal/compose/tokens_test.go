@@ -60,3 +60,20 @@ func TestCountWords_LongText(t *testing.T) {
 	text := "Mid-height half-elf, mid-twenties in human years."
 	assert.Equal(t, 6, CountWords(text))
 }
+
+func TestCharacterTokens(t *testing.T) {
+	ch := Character{
+		Name:        "Yennefer",
+		Appearance:  "raven hair, violet eyes",
+		Personality: "proud and sharp",
+		Quotes:      []string{"I'll find a way.", ""},
+	}
+	got := CharacterTokens(ch)
+	// Sum of CountTokens over non-empty text fields must be > 0 and
+	// equal to counting the concatenation of those fields.
+	want := CountTokens("Yennefer") + CountTokens("raven hair, violet eyes") +
+		CountTokens("proud and sharp") + CountTokens("I'll find a way.")
+	if got != want {
+		t.Fatalf("CharacterTokens = %d, want %d", got, want)
+	}
+}

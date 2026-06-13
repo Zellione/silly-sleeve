@@ -8,6 +8,7 @@ import {comfy} from '../models';
 import {settings} from '../models';
 import {prompts} from '../models';
 import {lorebook} from '../models';
+import {library} from '../models';
 import {project} from '../models';
 import {llm} from '../models';
 
@@ -71,6 +72,8 @@ export function GetPortrait(arg1:number):Promise<Array<number>>;
 
 export function GetProjectImage():Promise<Array<number>>;
 
+export function GetProjectThumbnail(arg1:string):Promise<Array<number>>;
+
 export function GetPromptTemplates():Promise<prompts.TemplateSet>;
 
 export function GetSettings():Promise<settings.Settings>;
@@ -78,6 +81,10 @@ export function GetSettings():Promise<settings.Settings>;
 export function Greet(arg1:string):Promise<string>;
 
 export function ImportComfyWorkflow(arg1:string):Promise<comfy.ComfyWorkflow>;
+
+export function ListProjects():Promise<Array<library.Entry>>;
+
+export function NewProject():Promise<void>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 
@@ -90,6 +97,8 @@ export function PickOpenBundle():Promise<string>;
 export function PickSaveBundle():Promise<string>;
 
 export function ReadImageFile(arg1:string):Promise<main.DroppedImage>;
+
+export function RemoveProject(arg1:string,arg2:boolean):Promise<void>;
 
 export function SaveComfyWorkflowTemplate(arg1:string,arg2:string):Promise<void>;
 
@@ -106,6 +115,8 @@ export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
+
+export function SetProjectStatus(arg1:string,arg2:string):Promise<void>;
 
 export function TestComfyUIEndpoint(arg1:string,arg2:string):Promise<llm.TestResult>;
 

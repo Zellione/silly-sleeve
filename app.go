@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/comfy"
+	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
-	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/settings"
 )
 
@@ -26,6 +26,7 @@ type App struct {
 	projectDir      string
 	lorebookEntries []lorebook.Entry
 	projectImage    []byte
+	fieldEndpoints  map[string]int
 
 	comfy   *ComfyUIService
 	charGen *CharacterGenerator
@@ -469,6 +470,34 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	return settings.LLMEndpoint{}
 }
 
+// endpointForSlot resolves which LLM endpoint a generation slot ("bulk" or a
+// field id) should use. Precedence: per-project override, then global default,
+// then defaultEndpoint(). A referenced endpoint ID that no longer exists falls
+// through to the next level. Callers must hold a.mu.
+func (a *App) endpointForSlot(slot string) settings.LLMEndpoint {
+	if ep, ok := a.lookupEndpoint(a.fieldEndpoints[slot]); ok {
+		return ep
+	}
+	if ep, ok := a.lookupEndpoint(a.settings.FieldEndpoints[slot]); ok {
+		return ep
+	}
+	return a.defaultEndpoint()
+}
+
+// lookupEndpoint returns the endpoint with the given ID. An id <= 0 (unset) or
+// an unknown ID returns ok=false. Callers must hold a.mu.
+func (a *App) lookupEndpoint(id int) (settings.LLMEndpoint, bool) {
+	if id <= 0 {
+		return settings.LLMEndpoint{}, false
+	}
+	for _, ep := range a.settings.Endpoints {
+		if ep.ID == id {
+			return ep, true
+		}
+	}
+	return settings.LLMEndpoint{}, false
+}
+
 // PickSaveBundle opens a native save dialog for creating a .slv project bundle.
 func (a *App) PickSaveBundle() (string, error) {
 	return a.project.PickSaveBundle()
@@ -683,4 +712,3 @@ func charNotFound(id int) error {
 func workflowNotFound(id string) error {
 	return fmt.Errorf("workflow %q not found", id)
 }
-

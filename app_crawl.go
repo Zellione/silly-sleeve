@@ -8,6 +8,53 @@ import (
 	"silly-sleeve/internal/lorebook"
 )
 
+// CrawlState is the persisted Crawler-screen state: the input parameters, the
+// per-result role assignments, and the crawl set. It keeps the screen intact
+// across tab switches and is saved into / restored from the project bundle.
+type CrawlState struct {
+	URL         string            `json:"url"`
+	FollowLinks int               `json:"followLinks"`
+	Include     map[string]bool   `json:"include"`
+	Selectors   string            `json:"selectors"`
+	Roles       map[string]string `json:"roles"`
+	Set         *crawler.CrawlSet `json:"set"`
+}
+
+// GetCrawlState returns the current Crawler-screen state for restoring the
+// screen after navigation or on project load.
+func (a *App) GetCrawlState() CrawlState {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	st := a.crawlInputs
+	st.Set = a.cachedCrawlSet
+	return st
+}
+
+// SaveCrawlState stores the Crawler-screen input parameters and role
+// assignments. The crawl set itself is owned by CrawlPage/RemoveCrawlResult, so
+// the incoming Set is ignored here.
+func (a *App) SaveCrawlState(s CrawlState) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.crawlInputs = CrawlState{
+		URL:         s.URL,
+		FollowLinks: s.FollowLinks,
+		Include:     s.Include,
+		Selectors:   s.Selectors,
+		Roles:       s.Roles,
+	}
+}
+
+// ClearCrawl empties the crawl list (the set and its role assignments),
+// leaving the input parameters so the user can re-crawl.
+func (a *App) ClearCrawl() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cachedCrawlSet = nil
+	a.cachedCrawl = nil
+	a.crawlInputs.Roles = map[string]string{}
+}
+
 // CrawlAssignment maps a crawled page URL to a target role.
 type CrawlAssignment struct {
 	URL  string `json:"url"`

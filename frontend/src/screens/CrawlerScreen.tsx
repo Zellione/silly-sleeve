@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon, TrashIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
-import { CrawlPage, GetCachedCrawl, RemoveCrawlResult, SendCrawlToProject } from '../../wailsjs/go/main/App';
+import { CrawlPage, GetCrawlState, SaveCrawlState, ClearCrawl, RemoveCrawlResult, SendCrawlToProject, SaveProjectBundle } from '../../wailsjs/go/main/App';
 import { crawler, main } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
 import { Dropdown } from '../components/Dropdown';
@@ -22,7 +22,11 @@ const ROLE_LABELS: Record<RoleValue, string> = {
   skip: 'Skip',
 };
 
-const CrawlerScreen: React.FC = () => {
+interface CrawlerScreenProps {
+  projectPath?: string;
+}
+
+const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
   const [url, setUrl] = useState('https://baldursgate.fandom.com/wiki/Elara_Wynd');
   const [phase, setPhase] = useState<Phase>('idle');
   const [follow, setFollow] = useState(0);
@@ -33,6 +37,9 @@ const CrawlerScreen: React.FC = () => {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [roles, setRoles] = useState<Record<string, RoleValue>>({});
   const [selectors, setSelectors] = useState('');
+  // Gates auto-commit until the backend state has been restored, so the initial
+  // default render can't overwrite a saved crawl before it loads.
+  const [hydrated, setHydrated] = useState(false);
   const { toast } = useToast();
 
   const initializeRoles = useCallback((crawlSet: crawler.CrawlSet) => {
@@ -43,17 +50,40 @@ const CrawlerScreen: React.FC = () => {
     setRoles(newRoles);
   }, []);
 
+  // Restore the screen from backend state on mount (survives tab switches and
+  // project loads). Auto-commit stays disabled until this completes.
   useEffect(() => {
-    GetCachedCrawl().then(r => {
-      if (r) {
-        const crawlSet = new crawler.CrawlSet({ rootUrl: r.url, results: [r] });
-        setSet(crawlSet);
+    GetCrawlState().then(st => {
+      if (st.url) setUrl(st.url);
+      if (st.followLinks) setFollow(st.followLinks);
+      if (st.include && Object.keys(st.include).length > 0) setInclude(st.include);
+      if (st.selectors) setSelectors(st.selectors);
+      const restoredSet = st.set ?? null;
+      const restored = restoredSet?.results ?? [];
+      if (restoredSet && restored.length > 0) {
+        setSet(restoredSet);
         setSelectedIdx(0);
-        initializeRoles(crawlSet);
+        if (st.roles && Object.keys(st.roles).length > 0) {
+          setRoles(st.roles as Record<string, RoleValue>);
+        } else {
+          initializeRoles(restoredSet);
+        }
         setPhase('crawled');
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setHydrated(true));
   }, [initializeRoles]);
+
+  // Auto-commit inputs + role assignments to backend state (debounced) so they
+  // survive navigation and are captured by the next project save.
+  useEffect(() => {
+    if (!hydrated) return undefined;
+    const t = setTimeout(() => {
+      SaveCrawlState(new main.CrawlState({
+        url, followLinks: follow, include, selectors, roles,
+      })).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [hydrated, url, follow, include, selectors, roles]);
 
   const toggleInclude = (k: string) => {
     setInclude(prev => ({ ...prev, [k]: !prev[k] }));
@@ -125,6 +155,34 @@ const CrawlerScreen: React.FC = () => {
     }
   }, [toast]);
 
+  const handleClearAll = useCallback(async () => {
+    try {
+      await ClearCrawl();
+    } catch { /* best-effort; reset the screen regardless */ }
+    setSet(null);
+    setSelectedIdx(0);
+    setRoles({});
+    setPhase('idle');
+  }, []);
+
+  const handleSaveCrawl = useCallback(async () => {
+    // Flush the current crawl state, then write the project to disk now (the
+    // same write auto-save performs on its timer).
+    try {
+      await SaveCrawlState(new main.CrawlState({ url, followLinks: follow, include, selectors, roles }));
+    } catch { /* non-fatal */ }
+    if (!projectPath) {
+      toast({ kind: 'warn', title: 'No project yet', body: 'Save the project first to write the crawl to disk.' });
+      return;
+    }
+    try {
+      await SaveProjectBundle(projectPath);
+      toast({ kind: 'ok', title: 'Crawl saved', body: 'Crawl list and parameters saved to the project.' });
+    } catch {
+      toast({ kind: 'bad', title: 'Save failed', body: 'Could not save the project.' });
+    }
+  }, [projectPath, url, follow, include, selectors, roles, toast]);
+
   const results = set?.results ?? [];
   const selectedResult = results[selectedIdx];
   const wordCount = selectedResult?.wordCount ?? 0;
@@ -138,7 +196,7 @@ const CrawlerScreen: React.FC = () => {
         title={<>Crawl a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>wiki page</em></>}
         actions={
           <>
-            <button className="btn ghost" disabled title="Coming in a later phase">
+            <button className="btn ghost" disabled={results.length === 0} onClick={handleSaveCrawl}>
               <SaveIcon size={14} /> Save crawl
             </button>
             <button
@@ -237,7 +295,17 @@ const CrawlerScreen: React.FC = () => {
 
             {results.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
-                <div className="uplabel" style={{ paddingLeft: 2 }}>Results</div>
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="uplabel" style={{ paddingLeft: 2 }}>Results</span>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={handleClearAll}
+                    style={{ fontSize: 11, padding: '4px 8px' }}
+                  >
+                    <TrashIcon size={12} /> Delete all
+                  </button>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0, overflowY: 'auto' }}>
                   {results.map((r, idx) => (
                     <div

@@ -22,6 +22,7 @@ type App struct {
 	mu              sync.Mutex
 	cachedCrawl     *crawler.CrawlResult
 	cachedCrawlSet  *crawler.CrawlSet
+	crawlInputs     CrawlState
 	characters      []compose.Character
 	activeCharID    int
 	projectDir      string
@@ -568,6 +569,13 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		snap.CrawlCache = a.cachedCrawl
 	}
 	snap.CrawlSet = a.cachedCrawlSet
+	snap.CrawlFollowLinks = a.crawlInputs.FollowLinks
+	snap.CrawlInclude = a.crawlInputs.Include
+	snap.CrawlSelectors = a.crawlInputs.Selectors
+	snap.CrawlRoles = a.crawlInputs.Roles
+	if a.crawlInputs.URL != "" {
+		snap.SourceURL = a.crawlInputs.URL
+	}
 	snap.Prompts = a.settings.PromptTemplates
 	if len(snap.Prompts.FieldPrompts) == 0 {
 		snap.Prompts = prompts.Defaults()
@@ -663,6 +671,14 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 
 	if b.CrawlSet != nil {
 		a.cachedCrawlSet = b.CrawlSet
+	}
+
+	a.crawlInputs = CrawlState{
+		URL:         b.Manifest.SourceURL,
+		FollowLinks: b.Manifest.CrawlFollowLinks,
+		Include:     b.Manifest.CrawlInclude,
+		Selectors:   b.Manifest.CrawlSelectors,
+		Roles:       b.Manifest.CrawlRoles,
 	}
 
 	if len(b.Prompts.FieldPrompts) > 0 {

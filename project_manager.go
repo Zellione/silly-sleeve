@@ -28,6 +28,11 @@ type ProjectSnapshot struct {
 	CrawlCache   *crawler.CrawlResult
 	CrawlSet     *crawler.CrawlSet
 	FieldEndpoints map[string]int
+
+	CrawlFollowLinks int
+	CrawlInclude     map[string]bool
+	CrawlSelectors   string
+	CrawlRoles       map[string]string
 }
 
 // ProjectManager owns project persistence decomposed out of App: the native
@@ -103,6 +108,10 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		CrawlTitle:   snap.CrawlTitle,
 		ProjectImage: snap.ProjectImage,
 		FieldEndpoints: snap.FieldEndpoints,
+		CrawlFollowLinks: snap.CrawlFollowLinks,
+		CrawlInclude:     snap.CrawlInclude,
+		CrawlSelectors:   snap.CrawlSelectors,
+		CrawlRoles:       snap.CrawlRoles,
 	}
 
 	b := bundle.Bundle{

@@ -6,15 +6,21 @@ import { ToastProvider } from '../components/ToastProvider';
 import { crawler } from '../../wailsjs/go/models';
 
 const mockCrawlPage = vi.fn();
-const mockGetCachedCrawl = vi.fn();
+const mockGetCrawlState = vi.fn();
+const mockSaveCrawlState = vi.fn();
+const mockClearCrawl = vi.fn();
 const mockSendCrawlToProject = vi.fn();
 const mockRemoveCrawlResult = vi.fn();
+const mockSaveProjectBundle = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   CrawlPage: (...args: any[]) => mockCrawlPage(...args),
-  GetCachedCrawl: () => mockGetCachedCrawl(),
+  GetCrawlState: () => mockGetCrawlState(),
+  SaveCrawlState: (...args: any[]) => mockSaveCrawlState(...args),
+  ClearCrawl: () => mockClearCrawl(),
   SendCrawlToProject: (...args: any[]) => mockSendCrawlToProject(...args),
   RemoveCrawlResult: (...args: any[]) => mockRemoveCrawlResult(...args),
+  SaveProjectBundle: (...args: any[]) => mockSaveProjectBundle(...args),
 }));
 
 const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
@@ -43,7 +49,10 @@ const renderWithProviders = (ui: React.ReactElement) =>
 describe('CrawlerScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetCachedCrawl.mockResolvedValue(null);
+    mockGetCrawlState.mockResolvedValue({ url: '', followLinks: 0, include: {}, selectors: '', roles: {}, set: null });
+    mockSaveCrawlState.mockResolvedValue(undefined);
+    mockClearCrawl.mockResolvedValue(undefined);
+    mockSaveProjectBundle.mockResolvedValue(undefined);
   });
 
   it('renders URL input with default value', () => {
@@ -486,5 +495,60 @@ describe('CrawlerScreen', () => {
     await waitFor(() => expect(screen.queryByText('Results')).not.toBeInTheDocument());
     expect(screen.getByText('Crawl page')).toBeInTheDocument();
     expect(screen.getByText(/Enter a wiki URL/i)).toBeInTheDocument();
+  });
+
+  it('restores the crawl list and params from backend state on mount', async () => {
+    mockGetCrawlState.mockResolvedValue({
+      url: 'https://w/wiki/Saved',
+      followLinks: 2,
+      include: { infobox: true, quotes: false, trivia: false, gallery: false },
+      selectors: '.foo',
+      roles: { 'https://w/wiki/Saved': 'character', 'https://w/wiki/Hop': 'lorebook' },
+      set: {
+        rootUrl: 'https://w/wiki/Saved',
+        results: [
+          { url: 'https://w/wiki/Saved', title: 'Saved', domain: 'w', depth: 0, wordCount: 10, sections: [], infobox: [], statusCode: 200, latencyMs: 0, isMediaWiki: true },
+          { url: 'https://w/wiki/Hop', title: 'Hop', domain: 'w', depth: 1, wordCount: 5, sections: [], infobox: [], statusCode: 200, latencyMs: 0, isMediaWiki: true },
+        ],
+      },
+    });
+    renderWithProviders(<CrawlerScreen />);
+    // Crawl was not triggered, yet the restored results are present.
+    expect(await screen.findByRole('button', { name: /remove saved/i })).toBeInTheDocument();
+    expect(screen.getByText('Hop')).toBeInTheDocument();
+    expect(mockCrawlPage).not.toHaveBeenCalled();
+    const urlInput = screen.getByPlaceholderText('https://wiki.fandom.com/wiki/Page_name') as HTMLInputElement;
+    expect(urlInput.value).toBe('https://w/wiki/Saved');
+  });
+
+  it('Delete all clears the list via ClearCrawl', async () => {
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await user.click(screen.getByRole('button', { name: /delete all/i }));
+
+    await waitFor(() => expect(mockClearCrawl).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText('Results')).not.toBeInTheDocument());
+  });
+
+  it('Save crawl writes the project bundle when a project path is set', async () => {
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen projectPath="/tmp/p.slv" />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await user.click(screen.getByRole('button', { name: /save crawl/i }));
+
+    await waitFor(() => expect(mockSaveProjectBundle).toHaveBeenCalledWith('/tmp/p.slv'));
   });
 });

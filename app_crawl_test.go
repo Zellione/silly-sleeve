@@ -1,9 +1,11 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
@@ -72,4 +74,73 @@ func TestRemoveCrawlResult_NoSetReturnsEmpty(t *testing.T) {
 	app := NewApp()
 	set := app.RemoveCrawlResult("https://w/wiki/Anything")
 	assert.Empty(t, set.Results)
+}
+
+func TestSaveAndGetCrawlState_RoundTrips(t *testing.T) {
+	app := NewApp()
+	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{{URL: "https://w/wiki/A", Title: "A"}}}
+	app.SaveCrawlState(CrawlState{
+		URL:         "https://w/wiki/A",
+		FollowLinks: 2,
+		Include:     map[string]bool{"infobox": true},
+		Selectors:   ".mw-parser-output > p",
+		Roles:       map[string]string{"https://w/wiki/A": "character"},
+		Set:         &crawler.CrawlSet{Results: []crawler.CrawlResult{{URL: "ignored"}}}, // Set is ignored on save
+	})
+
+	got := app.GetCrawlState()
+	assert.Equal(t, "https://w/wiki/A", got.URL)
+	assert.Equal(t, 2, got.FollowLinks)
+	assert.Equal(t, ".mw-parser-output > p", got.Selectors)
+	assert.Equal(t, "character", got.Roles["https://w/wiki/A"])
+	// Set comes from cachedCrawlSet, not the saved state.
+	assert.NotNil(t, got.Set)
+	assert.Equal(t, "A", got.Set.Results[0].Title)
+}
+
+func TestClearCrawl_EmptiesListKeepsParams(t *testing.T) {
+	app := NewApp()
+	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{{URL: "https://w/wiki/A"}}}
+	app.SaveCrawlState(CrawlState{URL: "https://w/wiki/A", FollowLinks: 2, Roles: map[string]string{"https://w/wiki/A": "lorebook"}})
+
+	app.ClearCrawl()
+
+	got := app.GetCrawlState()
+	assert.Nil(t, got.Set)
+	assert.Empty(t, got.Roles)
+	assert.Equal(t, "https://w/wiki/A", got.URL, "params survive a list clear")
+	assert.Equal(t, 2, got.FollowLinks)
+}
+
+func TestProjectBundle_RestoresCrawlState(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.slv")
+
+	app := NewApp()
+	app.characters = []compose.Character{compose.NewCharacter(1)}
+	app.cachedCrawlSet = &crawler.CrawlSet{
+		RootURL: "https://w/wiki/A",
+		Results: []crawler.CrawlResult{{URL: "https://w/wiki/A", Title: "A"}},
+	}
+	app.SaveCrawlState(CrawlState{
+		URL:         "https://w/wiki/A",
+		FollowLinks: 2,
+		Include:     map[string]bool{"infobox": true},
+		Selectors:   ".sel",
+		Roles:       map[string]string{"https://w/wiki/A": "character"},
+	})
+	require.NoError(t, app.SaveProjectBundle(path))
+
+	reopened := NewApp()
+	_, err := reopened.OpenProjectBundle(path)
+	require.NoError(t, err)
+
+	got := reopened.GetCrawlState()
+	assert.Equal(t, "https://w/wiki/A", got.URL)
+	assert.Equal(t, 2, got.FollowLinks)
+	assert.Equal(t, ".sel", got.Selectors)
+	assert.True(t, got.Include["infobox"])
+	assert.Equal(t, "character", got.Roles["https://w/wiki/A"])
+	require.NotNil(t, got.Set)
+	assert.Equal(t, "A", got.Set.Results[0].Title)
 }

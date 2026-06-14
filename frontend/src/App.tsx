@@ -70,7 +70,7 @@ function AppShell() {
   const renderScreen = () => {
     switch (route) {
       case 'dashboard': return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
-      case 'crawler': return <CrawlerScreen />;
+      case 'crawler': return <CrawlerScreen projectPath={projectPath} />;
       case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
       /* v8 ignore next */

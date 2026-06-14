@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-14
+> Last updated: 2026-06-14 — Phase 4 · 6.4 Font scaling presets in progress.
 
 ## Overview
 
@@ -111,9 +111,10 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **6.1** Dashboard: project grid, filter/search, status badges (Draft / Ready / Archived)
 - [x] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
 - [x] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
-- [ ] **6.4** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
-- [ ] **6.5** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
-- [ ] **6.6** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
+- [~] **6.4** Font scaling presets: choose between pre-defined UI scale levels (Small / Default / Large / Extra Large), persisted across restarts
+- [ ] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
+- [ ] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
+- [ ] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
 
 ---
 
@@ -123,6 +124,10 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ### 2026-06-14
 
+- Started Phase 4 · 6.4 — Font scaling presets (`milestone/6.4-font-scaling`).
+  Inserted as the next milestone; renumbered the previously-pending items
+  (advanced lorebook → 6.5, appearance preferences → 6.6, import existing
+  cards → 6.7).
 - Implemented Phase 4 · 6.3 — Advanced crawler (`milestone/6.3-advanced-crawler`).
 - Implemented Phase 4 · 6.2 — Multi-endpoint LLM management (`milestone/6.2-multi-endpoint`).
 

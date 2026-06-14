@@ -170,10 +170,11 @@ func FetchPageWith(pageURL string, opts FetchOptions) FetchResult {
 	fmt.Printf("[crawler] parsed title=%q contentLen=%d\n", body.Parse.Title, len(body.Parse.Text.Content))
 
 	return FetchResult{
-		Title:     body.Parse.Title,
-		Domain:    domain,
-		RawHTML:   body.Parse.Text.Content,
-		LatencyMs: latency,
+		Title:       body.Parse.Title,
+		Domain:      domain,
+		RawHTML:     body.Parse.Text.Content,
+		LatencyMs:   latency,
+		IsMediaWiki: true,
 	}
 }
 

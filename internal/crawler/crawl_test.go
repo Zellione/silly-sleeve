@@ -1,0 +1,98 @@
+package crawler
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// mediaWikiServer serves an action=parse JSON for known page titles (by the
+// `page` query param), 404 otherwise.
+func mediaWikiServer(t *testing.T, pages map[string]string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		title := r.URL.Query().Get("page")
+		body, ok := pages[title]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(w, `{"parse":{"title":%q,"text":{"*":%q}}}`, title, body)
+	}))
+}
+
+func TestCrawler_NoFollowSingleResult(t *testing.T) {
+	srv := mediaWikiServer(t, map[string]string{
+		"Root": `<div class="mw-parser-output"><p>` + strings.Repeat("word ", 30) + `</p></div>`,
+	})
+	defer srv.Close()
+	c := Crawler{UserAgent: "UA/1", RateLimitMs: 0, MaxPages: 10}
+	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 0})
+	assert.NoError(t, err)
+	assert.Len(t, set.Results, 1)
+	assert.Equal(t, 0, set.Results[0].Depth)
+}
+
+func TestCrawler_OneHopRespectsCap(t *testing.T) {
+	root := `<div class="mw-parser-output"><p>root ` +
+		`<a href="/wiki/A">A</a><a href="/wiki/B">B</a><a href="/wiki/C">C</a></p></div>`
+	srv := mediaWikiServer(t, map[string]string{
+		"Root": root,
+		"A":    `<div class="mw-parser-output"><p>a body</p></div>`,
+		"B":    `<div class="mw-parser-output"><p>b body</p></div>`,
+		"C":    `<div class="mw-parser-output"><p>c body</p></div>`,
+	})
+	defer srv.Close()
+	c := Crawler{UserAgent: "UA/1", RateLimitMs: 0, MaxPages: 2}
+	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	assert.NoError(t, err)
+	assert.Len(t, set.Results, 2) // root + 1 hop, capped at MaxPages
+	assert.Equal(t, 1, set.Results[1].Depth)
+}
+
+func TestCrawler_DedupesAndSkipsFailures(t *testing.T) {
+	root := `<div class="mw-parser-output"><p>` +
+		`<a href="/wiki/A">A</a><a href="/wiki/A">A again</a><a href="/wiki/Missing">M</a></p></div>`
+	srv := mediaWikiServer(t, map[string]string{
+		"Root": root,
+		"A":    `<div class="mw-parser-output"><p>a body</p></div>`,
+		// "Missing" intentionally absent -> 404, must be skipped
+	})
+	defer srv.Close()
+	c := Crawler{UserAgent: "UA/1", RateLimitMs: 0, MaxPages: 10}
+	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	assert.NoError(t, err)
+	urls := []string{}
+	for _, r := range set.Results {
+		urls = append(urls, r.URL)
+	}
+	assert.Contains(t, urls, srv.URL+"/wiki/A")
+	assert.Len(t, set.Results, 2) // root + A only
+}
+
+func TestExtractContent_SelectorPrecedence(t *testing.T) {
+	fr := FetchResult{
+		RawHTML: `<div class="mw-parser-output"><p>hi there</p></div>`,
+	}
+	sections, infobox := extractContent(fr, CrawlOptions{Selectors: []string{".mw-parser-output > p"}})
+	assert.Len(t, sections, 1)
+	assert.Equal(t, "hi there", sections[0].Body)
+	assert.Nil(t, infobox)
+}
+
+func TestCrawler_WaitDelays(t *testing.T) {
+	c := Crawler{RateLimitMs: 40}
+	c.wait() // First call should not delay
+
+	start := time.Now()
+	c.wait() // Second call should delay ~40ms
+	elapsed := time.Since(start)
+
+	// Allow some margin for timing variance, but should be at least 30ms
+	assert.GreaterOrEqual(t, elapsed, 30*time.Millisecond)
+}

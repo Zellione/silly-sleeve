@@ -589,12 +589,12 @@ describe('CrawlerScreen', () => {
       results: [sampleResult],
     }));
     const user = userEvent.setup();
-    renderWithProviders(<CrawlerScreen projectPath="/tmp/p.slv" />);
+    renderWithProviders(<CrawlerScreen projectPath="project.slv" />);
     await user.click(screen.getByText('Crawl page'));
     await screen.findByText('Results');
 
     await user.click(screen.getByRole('button', { name: /save crawl/i }));
 
-    await waitFor(() => expect(mockSaveProjectBundle).toHaveBeenCalledWith('/tmp/p.slv'));
+    await waitFor(() => expect(mockSaveProjectBundle).toHaveBeenCalledWith('project.slv'));
   });
 });

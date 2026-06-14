@@ -194,3 +194,16 @@ func TestFetchPage_DomainExtracted(t *testing.T) {
 	assert.NotEmpty(t, result.Domain)
 	assert.NotEmpty(t, result.Title)
 }
+
+func TestFetchPage_SendsUserAgent(t *testing.T) {
+	var gotUA string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUA = r.Header.Get("User-Agent")
+		w.Write([]byte(`{"parse":{"title":"T","text":{"*":"<p>hi</p>"}}}`))
+	}))
+	defer srv.Close()
+
+	res := FetchPageWith(srv.URL+"/wiki/T", FetchOptions{UserAgent: "UA-test/9"})
+	assert.NoError(t, res.Error)
+	assert.Equal(t, "UA-test/9", gotUA)
+}

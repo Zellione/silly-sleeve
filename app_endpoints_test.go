@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"testing"
 
+	"silly-sleeve/internal/compose"
+	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/prompts"
 	"silly-sleeve/internal/settings"
 
 	"github.com/stretchr/testify/assert"
@@ -60,4 +65,38 @@ func TestGetProjectFieldEndpoints_ReturnsCopy(t *testing.T) {
 	got := a.GetProjectFieldEndpoints()
 	got["bulk"] = 999 // mutating the returned map must not affect App state
 	assert.Equal(t, 1, a.fieldEndpoints["bulk"])
+}
+
+type recordingCompleter struct{ gotURL string }
+
+func (r *recordingCompleter) Complete(_ context.Context, ep llm.LLMEndpoint, _, _ string) (string, error) {
+	r.gotURL = ep.URL
+	return "Generated appearance text.", nil
+}
+
+func TestGenerateField_UsesResolvedEndpoint(t *testing.T) {
+	rec := &recordingCompleter{}
+	a := &App{
+		settings: settings.Settings{
+			Endpoints: []settings.LLMEndpoint{
+				{ID: 1, URL: "http://default", IsDefault: true},
+				{ID: 2, URL: "http://override"},
+			},
+			FieldEndpoints:  map[string]int{"appearance": 2},
+			PromptTemplates: prompts.Defaults(),
+		},
+		cachedCrawl: &crawler.CrawlResult{
+			Title: "Test Character",
+			URL:   "https://example.com/test",
+		},
+		characters:   []compose.Character{compose.NewCharacter(1)},
+		activeCharID: 1,
+	}
+	a.charGen = &CharacterGenerator{
+		ctx:       func() context.Context { return context.Background() },
+		completer: rec,
+	}
+
+	a.GenerateField("appearance", "")
+	assert.Equal(t, "http://override", rec.gotURL)
 }

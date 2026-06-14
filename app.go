@@ -395,7 +395,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	}
 
 	a.mu.Lock()
-	def := a.defaultEndpoint()
+	def := a.endpointForSlot("bulk")
 	a.mu.Unlock()
 
 	ch, err := a.charGen.GenerateBulk(*crawl, def, lockedFields, existing)
@@ -428,7 +428,7 @@ func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 			break
 		}
 	}
-	def := a.defaultEndpoint()
+	def := a.endpointForSlot(fieldID)
 	templates := a.settings.PromptTemplates
 	if len(templates.FieldPrompts) == 0 {
 		templates = prompts.Defaults()
@@ -557,6 +557,11 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	projImg := make([]byte, len(a.projectImage))
 	copy(projImg, a.projectImage)
 	snap.ProjectImage = projImg
+	fe := make(map[string]int, len(a.fieldEndpoints))
+	for k, v := range a.fieldEndpoints {
+		fe[k] = v
+	}
+	snap.FieldEndpoints = fe
 	a.mu.Unlock()
 
 	// Preserve an existing project's status across re-saves (default draft).
@@ -624,6 +629,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.projectDir = filePath
 	a.lorebookEntries = b.Lorebook
 	a.projectImage = b.Manifest.ProjectImage
+	a.fieldEndpoints = b.Manifest.FieldEndpoints
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}

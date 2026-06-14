@@ -59,7 +59,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const openMenu = useCallback(() => {
     if (disabled) return;
-    setActive(selectedIndex >= 0 ? selectedIndex : 0);
+    setActive(Math.max(selectedIndex, 0));
     setOpen(true);
   }, [disabled, selectedIndex]);
 
@@ -83,21 +83,36 @@ export const Dropdown: React.FC<DropdownProps> = ({
   useEffect(() => {
     if (!open) return;
     const onDocPointer = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target;
+      if (target instanceof Node && !rootRef.current?.contains(target)) setOpen(false);
     };
     document.addEventListener('mousedown', onDocPointer);
     return () => document.removeEventListener('mousedown', onDocPointer);
   }, [open]);
 
+  const firstEnabled = () => options.findIndex(o => !o.disabled);
+  const lastEnabled = () => options.reduce((acc, o, i) => (o.disabled ? acc : i), active);
+
   const step = (dir: 1 | -1) => {
     setActive(prev => {
-      let i = prev;
-      for (let n = 0; n < options.length; n++) {
-        i = (i + dir + options.length) % options.length;
-        if (!options[i]?.disabled) return i;
-      }
-      return prev;
+      const n = options.length;
+      const order = Array.from(options.keys(), k => ((prev + dir * (k + 1)) % n + n) % n);
+      return order.find(i => !options[i]?.disabled) ?? prev;
     });
+  };
+
+  const moveActive = (dir: 1 | -1) => {
+    if (open) step(dir);
+    else openMenu();
+  };
+
+  const confirmActive = () => {
+    if (!open) {
+      openMenu();
+      return;
+    }
+    const opt = options[active];
+    if (opt) choose(opt);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -105,33 +120,28 @@ export const Dropdown: React.FC<DropdownProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        if (!open) openMenu();
-        else step(1);
+        moveActive(1);
         break;
       case 'ArrowUp':
         e.preventDefault();
-        if (!open) openMenu();
-        else step(-1);
+        moveActive(-1);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        confirmActive();
         break;
       case 'Home':
         if (open) {
           e.preventDefault();
-          setActive(options.findIndex(o => !o.disabled));
+          setActive(firstEnabled());
         }
         break;
       case 'End':
         if (open) {
           e.preventDefault();
-          for (let i = options.length - 1; i >= 0; i--) {
-            if (!options[i].disabled) { setActive(i); break; }
-          }
+          setActive(lastEnabled());
         }
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        if (!open) openMenu();
-        else if (options[active]) choose(options[active]);
         break;
       case 'Escape':
         if (open) {
@@ -144,6 +154,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
     }
   };
 
+  // The combobox/listbox ARIA roles are intentional: a native <select> is what
+  // we are replacing, because WebKitGTK renders its option popup with an
+  // unthemeable light background. We implement the WAI-ARIA listbox pattern instead.
   return (
     <div className="ss-dropdown" ref={rootRef} style={style}>
       <button

@@ -162,6 +162,14 @@ describe('Dropdown', () => {
     expect(screen.getByRole('listbox')).toBeInTheDocument();
   });
 
+  it('opens with Enter when closed', async () => {
+    const user = userEvent.setup();
+    render(<Dropdown options={opts} value="a" onChange={() => {}} aria-label="Fruit" />);
+    screen.getByRole('combobox').focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+  });
+
   it('ignores unrelated keys', async () => {
     const user = userEvent.setup();
     render(<Dropdown options={opts} value="a" onChange={() => {}} aria-label="Fruit" />);

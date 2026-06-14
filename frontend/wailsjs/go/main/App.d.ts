@@ -124,7 +124,7 @@ export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
-export function SendCrawlToProject(arg1:Array<main.CrawlAssignment>):Promise<main.CrawlSendResult>;
+export function SendCrawlResult(arg1:string,arg2:string,arg3:boolean):Promise<main.SendCrawlOutcome>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
 

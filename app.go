@@ -573,6 +573,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	snap.CrawlInclude = a.crawlInputs.Include
 	snap.CrawlSelectors = a.crawlInputs.Selectors
 	snap.CrawlRoles = a.crawlInputs.Roles
+	snap.CrawlSent = a.crawlInputs.Sent
 	if a.crawlInputs.URL != "" {
 		snap.SourceURL = a.crawlInputs.URL
 	}
@@ -679,6 +680,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 		Include:     b.Manifest.CrawlInclude,
 		Selectors:   b.Manifest.CrawlSelectors,
 		Roles:       b.Manifest.CrawlRoles,
+		Sent:        b.Manifest.CrawlSent,
 	}
 
 	if len(b.Prompts.FieldPrompts) > 0 {

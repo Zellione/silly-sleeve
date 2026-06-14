@@ -478,20 +478,6 @@ export namespace lorebook {
 
 export namespace main {
 	
-	export class CrawlAssignment {
-	    url: string;
-	    role: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new CrawlAssignment(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.url = source["url"];
-	        this.role = source["role"];
-	    }
-	}
 	export class CrawlSendResult {
 	    characters: compose.Character[];
 	    lorebook: lorebook.Entry[];
@@ -532,6 +518,7 @@ export namespace main {
 	    include: Record<string, boolean>;
 	    selectors: string;
 	    roles: Record<string, string>;
+	    sent: Record<string, string>;
 	    set?: crawler.CrawlSet;
 	
 	    static createFrom(source: any = {}) {
@@ -545,6 +532,7 @@ export namespace main {
 	        this.include = source["include"];
 	        this.selectors = source["selectors"];
 	        this.roles = source["roles"];
+	        this.sent = source["sent"];
 	        this.set = this.convertValues(source["set"], crawler.CrawlSet);
 	    }
 	
@@ -598,6 +586,42 @@ export namespace main {
 	        this.paths = source["paths"];
 	    }
 	}
+	export class SendCrawlOutcome {
+	    status: string;
+	    kind: string;
+	    name: string;
+	    result: CrawlSendResult;
+	
+	    static createFrom(source: any = {}) {
+	        return new SendCrawlOutcome(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.result = this.convertValues(source["result"], CrawlSendResult);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
@@ -617,6 +641,7 @@ export namespace project {
 	    crawlInclude?: Record<string, boolean>;
 	    crawlSelectors?: string;
 	    crawlRoles?: Record<string, string>;
+	    crawlSent?: Record<string, string>;
 	    projectImage: number[];
 	    fieldEndpoints?: Record<string, number>;
 	
@@ -639,6 +664,7 @@ export namespace project {
 	        this.crawlInclude = source["crawlInclude"];
 	        this.crawlSelectors = source["crawlSelectors"];
 	        this.crawlRoles = source["crawlRoles"];
+	        this.crawlSent = source["crawlSent"];
 	        this.projectImage = source["projectImage"];
 	        this.fieldEndpoints = source["fieldEndpoints"];
 	    }

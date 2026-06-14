@@ -3,13 +3,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CrawlerScreen from './CrawlerScreen';
 import { ToastProvider } from '../components/ToastProvider';
+import { ConfirmProvider } from '../components/ConfirmDialog';
 import { crawler } from '../../wailsjs/go/models';
 
 const mockCrawlPage = vi.fn();
 const mockGetCrawlState = vi.fn();
 const mockSaveCrawlState = vi.fn();
 const mockClearCrawl = vi.fn();
-const mockSendCrawlToProject = vi.fn();
+const mockSendCrawlResult = vi.fn();
 const mockRemoveCrawlResult = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 
@@ -18,7 +19,7 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   GetCrawlState: () => mockGetCrawlState(),
   SaveCrawlState: (...args: any[]) => mockSaveCrawlState(...args),
   ClearCrawl: () => mockClearCrawl(),
-  SendCrawlToProject: (...args: any[]) => mockSendCrawlToProject(...args),
+  SendCrawlResult: (...args: any[]) => mockSendCrawlResult(...args),
   RemoveCrawlResult: (...args: any[]) => mockRemoveCrawlResult(...args),
   SaveProjectBundle: (...args: any[]) => mockSaveProjectBundle(...args),
 }));
@@ -44,15 +45,16 @@ const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
 });
 
 const renderWithProviders = (ui: React.ReactElement) =>
-  render(<ToastProvider>{ui}</ToastProvider>);
+  render(<ToastProvider><ConfirmProvider>{ui}</ConfirmProvider></ToastProvider>);
 
 describe('CrawlerScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetCrawlState.mockResolvedValue({ url: '', followLinks: 0, include: {}, selectors: '', roles: {}, set: null });
+    mockGetCrawlState.mockResolvedValue({ url: '', followLinks: 0, include: {}, selectors: '', roles: {}, sent: {}, set: null });
     mockSaveCrawlState.mockResolvedValue(undefined);
     mockClearCrawl.mockResolvedValue(undefined);
     mockSaveProjectBundle.mockResolvedValue(undefined);
+    mockSendCrawlResult.mockResolvedValue({ status: 'created', kind: 'character', name: 'A', result: { characters: [], lorebook: [], activeCharId: 1 } });
   });
 
   it('renders URL input with default value', () => {
@@ -84,12 +86,12 @@ describe('CrawlerScreen', () => {
     expect(screen.getByText('Crawl page')).toBeInTheDocument();
   });
 
-  it('disables "Save crawl" and "Send to Compose" buttons', () => {
+  it('disables "Save crawl" when there are no results', () => {
     renderWithProviders(<CrawlerScreen />);
     const saveBtn = screen.getByText('Save crawl').closest('button')!;
     expect(saveBtn).toBeDisabled();
-    const sendBtn = screen.getByText(/Send to project/i).closest('button')!;
-    expect(sendBtn).toBeDisabled();
+    // The bulk "Send to project" button has been removed in favour of per-row sends.
+    expect(screen.queryByText(/Send to project/i)).not.toBeInTheDocument();
   });
 
   it('shows idle preview state', () => {
@@ -409,26 +411,67 @@ describe('CrawlerScreen', () => {
     expect(resultsContainer?.textContent).toContain('B');
   });
 
-  it('sends assignments to the backend', async () => {
-    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
-      rootUrl: 'https://w/wiki/A',
-      results: [
-        new crawler.CrawlResult({
-          url: 'https://w/wiki/A', title: 'A', domain: 'w', depth: 0, wordCount: 100,
-          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
-          isMediaWiki: true,
-        }),
-      ],
-    }));
-    mockSendCrawlToProject.mockResolvedValue({
-      characters: [], lorebook: [], activeCharId: 1,
-    });
+  const singleResultSet = () => new crawler.CrawlSet({
+    rootUrl: 'https://w/wiki/A',
+    results: [
+      new crawler.CrawlResult({
+        url: 'https://w/wiki/A', title: 'A', domain: 'w', depth: 0, wordCount: 100,
+        rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+        isMediaWiki: true,
+      }),
+    ],
+  });
+
+  it('sends a single row to the backend per its dropdown role and marks it sent', async () => {
+    mockCrawlPage.mockResolvedValue(singleResultSet());
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
     await user.click(screen.getByText('Crawl page'));
     await screen.findByText('Results');
-    await user.click(screen.getByRole('button', { name: /send to project/i }));
-    await waitFor(() => expect(mockSendCrawlToProject).toHaveBeenCalled());
+
+    // Row 0 defaults to the character role.
+    await user.click(screen.getByRole('button', { name: /^Send$/i }));
+
+    await waitFor(() => expect(mockSendCrawlResult).toHaveBeenCalledWith('https://w/wiki/A', 'character', false));
+    // The row is marked sent: the button flips to "Re-send".
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Re-send$/i })).toBeInTheDocument());
+  });
+
+  it('prompts to overwrite a duplicate and re-sends with overwrite=true on confirm', async () => {
+    mockCrawlPage.mockResolvedValue(singleResultSet());
+    mockSendCrawlResult
+      .mockResolvedValueOnce({ status: 'needs_confirm', kind: 'character', name: 'A', result: { characters: [], lorebook: [], activeCharId: 0 } })
+      .mockResolvedValueOnce({ status: 'overwritten', kind: 'character', name: 'A', result: { characters: [], lorebook: [], activeCharId: 1 } });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await user.click(screen.getByRole('button', { name: /^Send$/i }));
+
+    // Confirmation dialog appears.
+    const confirmBtn = await screen.findByRole('button', { name: /^Confirm$/i });
+    await user.click(confirmBtn);
+
+    await waitFor(() => expect(mockSendCrawlResult).toHaveBeenNthCalledWith(2, 'https://w/wiki/A', 'character', true));
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Re-send$/i })).toBeInTheDocument());
+  });
+
+  it('does not overwrite when the user cancels the duplicate prompt', async () => {
+    mockCrawlPage.mockResolvedValue(singleResultSet());
+    mockSendCrawlResult.mockResolvedValueOnce({ status: 'needs_confirm', kind: 'character', name: 'A', result: { characters: [], lorebook: [], activeCharId: 0 } });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await user.click(screen.getByRole('button', { name: /^Send$/i }));
+    const cancelBtn = await screen.findByRole('button', { name: /^Cancel$/i });
+    await user.click(cancelBtn);
+
+    // Only the first (probe) call happened; no overwrite, row not marked sent.
+    expect(mockSendCrawlResult).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /^Re-send$/i })).not.toBeInTheDocument();
   });
 
   it('removes a page from the crawled list via RemoveCrawlResult', async () => {
@@ -504,6 +547,7 @@ describe('CrawlerScreen', () => {
       include: { infobox: true, quotes: false, trivia: false, gallery: false },
       selectors: '.foo',
       roles: { 'https://w/wiki/Saved': 'character', 'https://w/wiki/Hop': 'lorebook' },
+      sent: { 'https://w/wiki/Saved': 'character' },
       set: {
         rootUrl: 'https://w/wiki/Saved',
         results: [
@@ -517,6 +561,8 @@ describe('CrawlerScreen', () => {
     expect(await screen.findByRole('button', { name: /remove saved/i })).toBeInTheDocument();
     expect(screen.getByText('Hop')).toBeInTheDocument();
     expect(mockCrawlPage).not.toHaveBeenCalled();
+    // The restored "sent" marker flips that row's button to "Re-send".
+    expect(screen.getByRole('button', { name: /^Re-send$/i })).toBeInTheDocument();
     const urlInput = screen.getByPlaceholderText('https://wiki.fandom.com/wiki/Page_name') as HTMLInputElement;
     expect(urlInput.value).toBe('https://w/wiki/Saved');
   });

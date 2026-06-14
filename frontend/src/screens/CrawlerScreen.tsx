@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
-import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon, TrashIcon } from '../icons';
+import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon, TrashIcon, CheckIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
-import { CrawlPage, GetCrawlState, SaveCrawlState, ClearCrawl, RemoveCrawlResult, SendCrawlToProject, SaveProjectBundle } from '../../wailsjs/go/main/App';
+import { useConfirmDialog } from '../components/ConfirmDialog';
+import { CrawlPage, GetCrawlState, SaveCrawlState, ClearCrawl, RemoveCrawlResult, SendCrawlResult, SaveProjectBundle } from '../../wailsjs/go/main/App';
 import { crawler, main } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
 import { Dropdown } from '../components/Dropdown';
@@ -14,13 +15,17 @@ const RECENT_WIKIS = [
 ];
 
 type Phase = 'idle' | 'fetching' | 'crawled';
-type RoleValue = 'character' | 'lorebook' | 'skip';
+type RoleValue = 'character' | 'lorebook';
 
 const ROLE_LABELS: Record<RoleValue, string> = {
   character: 'Character',
   lorebook: 'Lorebook',
-  skip: 'Skip',
 };
+
+// normalizeRole coerces any stored role (including legacy "skip") to a valid
+// dropdown value, defaulting unknowns to lorebook.
+const normalizeRole = (v: string | undefined): RoleValue =>
+  v === 'character' ? 'character' : 'lorebook';
 
 interface CrawlerScreenProps {
   projectPath?: string;
@@ -36,11 +41,15 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
   const [set, setSet] = useState<crawler.CrawlSet | null>(null);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [roles, setRoles] = useState<Record<string, RoleValue>>({});
+  // sent maps a page URL to the role it was last sent to the project as, so the
+  // list can mark already-sent pages.
+  const [sent, setSent] = useState<Record<string, RoleValue>>({});
   const [selectors, setSelectors] = useState('');
   // Gates auto-commit until the backend state has been restored, so the initial
   // default render can't overwrite a saved crawl before it loads.
   const [hydrated, setHydrated] = useState(false);
   const { toast } = useToast();
+  const { confirm } = useConfirmDialog();
 
   const initializeRoles = useCallback((crawlSet: crawler.CrawlSet) => {
     const newRoles: Record<string, RoleValue> = {};
@@ -64,9 +73,16 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         setSet(restoredSet);
         setSelectedIdx(0);
         if (st.roles && Object.keys(st.roles).length > 0) {
-          setRoles(st.roles as Record<string, RoleValue>);
+          const normalized: Record<string, RoleValue> = {};
+          Object.entries(st.roles).forEach(([k, v]) => { normalized[k] = normalizeRole(v); });
+          setRoles(normalized);
         } else {
           initializeRoles(restoredSet);
+        }
+        if (st.sent && Object.keys(st.sent).length > 0) {
+          const normalizedSent: Record<string, RoleValue> = {};
+          Object.entries(st.sent).forEach(([k, v]) => { normalizedSent[k] = normalizeRole(v); });
+          setSent(normalizedSent);
         }
         setPhase('crawled');
       }
@@ -79,11 +95,11 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     if (!hydrated) return undefined;
     const t = setTimeout(() => {
       SaveCrawlState(new main.CrawlState({
-        url, followLinks: follow, include, selectors, roles,
+        url, followLinks: follow, include, selectors, roles, sent,
       })).catch(() => {});
     }, 400);
     return () => clearTimeout(t);
-  }, [hydrated, url, follow, include, selectors, roles]);
+  }, [hydrated, url, follow, include, selectors, roles, sent]);
 
   const toggleInclude = (k: string) => {
     setInclude(prev => ({ ...prev, [k]: !prev[k] }));
@@ -110,26 +126,28 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     }
   }, [url, follow, include, selectors, toast, initializeRoles]);
 
-  const handleSendToProject = useCallback(async () => {
-    const sendResults = set?.results ?? [];
-    if (sendResults.length === 0) return;
+  const handleSendRow = useCallback(async (pageURL: string, title: string) => {
+    const role = normalizeRole(roles[pageURL]);
     try {
-      const assignments: main.CrawlAssignment[] = sendResults.map(r => ({
-        url: r.url,
-        role: roles[r.url] ?? 'skip',
-      }));
-      await SendCrawlToProject(assignments);
-
-      const characterCount = assignments.filter(a => a.role === 'character').length;
-      const lorebookCount = assignments.filter(a => a.role === 'lorebook').length;
-
-      const body = `${characterCount} character${characterCount === 1 ? '' : 's'}, ${lorebookCount} lorebook ${lorebookCount === 1 ? 'entry' : 'entries'}`;
-
-      toast({ kind: 'ok', title: 'Sent to project', body });
+      let outcome = await SendCrawlResult(pageURL, role, false);
+      if (outcome.status === 'needs_confirm') {
+        const noun = role === 'character' ? `character named "${outcome.name}"` : `lorebook entry from "${outcome.name}"`;
+        const ok = await confirm(`A ${noun} already exists. Overwrite it?`);
+        if (!ok) return;
+        outcome = await SendCrawlResult(pageURL, role, true);
+      }
+      if (outcome.status === 'missing') {
+        toast({ kind: 'bad', title: 'Send failed', body: 'That page is no longer in the crawl.' });
+        return;
+      }
+      setSent(prev => ({ ...prev, [pageURL]: role }));
+      const label = ROLE_LABELS[role];
+      const verb = outcome.status === 'overwritten' ? 'Overwrote' : 'Sent to';
+      toast({ kind: 'ok', title: `${verb} ${label.toLowerCase()}`, body: `"${title}" → ${label}` });
     } catch {
-      toast({ kind: 'bad', title: 'Send failed', body: 'Could not send crawl data to project.' });
+      toast({ kind: 'bad', title: 'Send failed', body: 'Could not send the page to the project.' });
     }
-  }, [set, roles, toast]);
+  }, [roles, confirm, toast]);
 
   const handleRemoveResult = useCallback(async (pageURL: string) => {
     try {
@@ -140,12 +158,18 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         setSet(null);
         setSelectedIdx(0);
         setRoles({});
+        setSent({});
         setPhase('idle');
         return;
       }
       setSet(updated);
       setSelectedIdx(prev => Math.min(prev, nextResults.length - 1));
       setRoles(prev => {
+        const next = { ...prev };
+        delete next[pageURL];
+        return next;
+      });
+      setSent(prev => {
         const next = { ...prev };
         delete next[pageURL];
         return next;
@@ -162,6 +186,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     setSet(null);
     setSelectedIdx(0);
     setRoles({});
+    setSent({});
     setPhase('idle');
   }, []);
 
@@ -169,7 +194,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     // Flush the current crawl state, then write the project to disk now (the
     // same write auto-save performs on its timer).
     try {
-      await SaveCrawlState(new main.CrawlState({ url, followLinks: follow, include, selectors, roles }));
+      await SaveCrawlState(new main.CrawlState({ url, followLinks: follow, include, selectors, roles, sent }));
     } catch { /* non-fatal */ }
     if (!projectPath) {
       toast({ kind: 'warn', title: 'No project yet', body: 'Save the project first to write the crawl to disk.' });
@@ -181,7 +206,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     } catch {
       toast({ kind: 'bad', title: 'Save failed', body: 'Could not save the project.' });
     }
-  }, [projectPath, url, follow, include, selectors, roles, toast]);
+  }, [projectPath, url, follow, include, selectors, roles, sent, toast]);
 
   const results = set?.results ?? [];
   const selectedResult = results[selectedIdx];
@@ -195,18 +220,9 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         subtitle="Pull a source from the wild"
         title={<>Crawl a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>wiki page</em></>}
         actions={
-          <>
-            <button className="btn ghost" disabled={results.length === 0} onClick={handleSaveCrawl}>
-              <SaveIcon size={14} /> Save crawl
-            </button>
-            <button
-              className="btn primary"
-              disabled={phase !== 'crawled' || results.length === 0}
-              onClick={handleSendToProject}
-            >
-              Send to project <ArrowIcon size={14} />
-            </button>
-          </>
+          <button className="btn ghost" disabled={results.length === 0} onClick={handleSaveCrawl}>
+            <SaveIcon size={14} /> Save crawl
+          </button>
         }
       />
       <div className="ss-page-body scroll">
@@ -333,8 +349,21 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
                       }}
                     >
                       <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
                           {r.title}
+                          {sent[r.url] && (
+                            <span
+                              title={`Sent as ${ROLE_LABELS[sent[r.url]]}`}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 3,
+                                fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
+                                color: 'var(--ok, #4caf50)', border: '1px solid var(--ok, #4caf50)',
+                                borderRadius: 3, padding: '1px 5px', flexShrink: 0,
+                              }}
+                            >
+                              <CheckIcon size={9} /> {ROLE_LABELS[sent[r.url]]}
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {r.domain}
@@ -344,17 +373,27 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
                       </div>
                       <div onClick={(e: React.MouseEvent) => e.stopPropagation()} role="none">
                         <Dropdown
-                          value={roles[r.url] ?? 'skip'}
+                          value={normalizeRole(roles[r.url])}
                           onChange={val => setRoles(prev => ({ ...prev, [r.url]: val as RoleValue }))}
                           options={[
                             { value: 'character', label: ROLE_LABELS.character },
                             { value: 'lorebook', label: ROLE_LABELS.lorebook },
-                            { value: 'skip', label: ROLE_LABELS.skip },
                           ]}
                           style={{ width: 120 }}
                           aria-label={`Role for ${r.title}`}
                         />
                       </div>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          handleSendRow(r.url, r.title);
+                        }}
+                        style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0 }}
+                      >
+                        {sent[r.url] ? 'Re-send' : 'Send'} <ArrowIcon size={12} />
+                      </button>
                       <button
                         type="button"
                         className="icon-btn"

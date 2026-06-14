@@ -11,32 +11,78 @@ import (
 	"silly-sleeve/internal/crawler"
 )
 
-func TestSendCrawlToProject_CreatesStubs(t *testing.T) {
+func newSendApp() *App {
 	app := NewApp()
 	app.characters = []compose.Character{compose.NewCharacter(1)} // existing untitled
 	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{
 		{URL: "https://w/wiki/Hero", Title: "Hero", Sections: []crawler.Section{{Body: "hero bio"}}},
 		{URL: "https://w/wiki/Lore", Title: "Lore", Sections: []crawler.Section{{Body: "world lore"}}},
-		{URL: "https://w/wiki/Skip", Title: "Skip"},
 	}}
+	return app
+}
 
-	res := app.SendCrawlToProject([]CrawlAssignment{
-		{URL: "https://w/wiki/Hero", Role: "character"},
-		{URL: "https://w/wiki/Lore", Role: "lorebook"},
-		{URL: "https://w/wiki/Skip", Role: "skip"},
-	})
+func TestSendCrawlResult_CreatesCharacterAndLorebook(t *testing.T) {
+	app := newSendApp()
+
+	ch := app.SendCrawlResult("https://w/wiki/Hero", "character", false)
+	assert.Equal(t, "created", ch.Status)
+	assert.Equal(t, "character", ch.Kind)
 
 	var hero *compose.Character
-	for i := range res.Characters {
-		if res.Characters[i].SourceURL == "https://w/wiki/Hero" {
-			hero = &res.Characters[i]
+	for i := range ch.Result.Characters {
+		if ch.Result.Characters[i].SourceURL == "https://w/wiki/Hero" {
+			hero = &ch.Result.Characters[i]
 		}
 	}
-	assert.NotNil(t, hero)
+	require.NotNil(t, hero)
 	assert.Equal(t, "Hero", hero.Name)
-	assert.Len(t, res.Lorebook, 1)
-	assert.Equal(t, "https://w/wiki/Lore", res.Lorebook[0].SourceURL)
-	assert.Contains(t, res.Lorebook[0].Content, "world lore")
+
+	lb := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false)
+	assert.Equal(t, "created", lb.Status)
+	require.Len(t, lb.Result.Lorebook, 1)
+	assert.Equal(t, "https://w/wiki/Lore", lb.Result.Lorebook[0].SourceURL)
+	assert.Contains(t, lb.Result.Lorebook[0].Content, "world lore")
+}
+
+func TestSendCrawlResult_DuplicateCharacterNeedsConfirmThenOverwrites(t *testing.T) {
+	app := newSendApp()
+
+	first := app.SendCrawlResult("https://w/wiki/Hero", "character", false)
+	require.Equal(t, "created", first.Status)
+	assert.Len(t, first.Result.Characters, 2) // untitled + Hero
+
+	// Same name again -> needs confirmation, no new character appended.
+	dup := app.SendCrawlResult("https://w/wiki/Hero", "character", false)
+	assert.Equal(t, "needs_confirm", dup.Status)
+	assert.Equal(t, "Hero", dup.Name)
+	assert.Empty(t, dup.Result.Characters, "no project state returned until confirmed")
+	assert.Len(t, app.characters, 2, "no duplicate appended")
+
+	// Confirm -> overwrites in place, still no duplicate.
+	ow := app.SendCrawlResult("https://w/wiki/Hero", "character", true)
+	assert.Equal(t, "overwritten", ow.Status)
+	assert.Len(t, ow.Result.Characters, 2)
+}
+
+func TestSendCrawlResult_DuplicateLorebookNeedsConfirmThenOverwrites(t *testing.T) {
+	app := newSendApp()
+
+	require.Equal(t, "created", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false).Status)
+
+	dup := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false)
+	assert.Equal(t, "needs_confirm", dup.Status)
+	assert.Equal(t, "lorebook", dup.Kind)
+	assert.Len(t, app.lorebookEntries, 1, "no duplicate appended")
+
+	ow := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", true)
+	assert.Equal(t, "overwritten", ow.Status)
+	assert.Len(t, ow.Result.Lorebook, 1)
+}
+
+func TestSendCrawlResult_MissingPageOrRole(t *testing.T) {
+	app := newSendApp()
+	assert.Equal(t, "missing", app.SendCrawlResult("https://w/wiki/Nope", "character", false).Status)
+	assert.Equal(t, "missing", app.SendCrawlResult("https://w/wiki/Hero", "bogus", false).Status)
 }
 
 func TestRemoveCrawlResult_DropsPageAndResyncsRoot(t *testing.T) {
@@ -101,13 +147,18 @@ func TestSaveAndGetCrawlState_RoundTrips(t *testing.T) {
 func TestClearCrawl_EmptiesListKeepsParams(t *testing.T) {
 	app := NewApp()
 	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{{URL: "https://w/wiki/A"}}}
-	app.SaveCrawlState(CrawlState{URL: "https://w/wiki/A", FollowLinks: 2, Roles: map[string]string{"https://w/wiki/A": "lorebook"}})
+	app.SaveCrawlState(CrawlState{
+		URL: "https://w/wiki/A", FollowLinks: 2,
+		Roles: map[string]string{"https://w/wiki/A": "lorebook"},
+		Sent:  map[string]string{"https://w/wiki/A": "lorebook"},
+	})
 
 	app.ClearCrawl()
 
 	got := app.GetCrawlState()
 	assert.Nil(t, got.Set)
 	assert.Empty(t, got.Roles)
+	assert.Empty(t, got.Sent)
 	assert.Equal(t, "https://w/wiki/A", got.URL, "params survive a list clear")
 	assert.Equal(t, 2, got.FollowLinks)
 }
@@ -128,6 +179,7 @@ func TestProjectBundle_RestoresCrawlState(t *testing.T) {
 		Include:     map[string]bool{"infobox": true},
 		Selectors:   ".sel",
 		Roles:       map[string]string{"https://w/wiki/A": "character"},
+		Sent:        map[string]string{"https://w/wiki/A": "character"},
 	})
 	require.NoError(t, app.SaveProjectBundle(path))
 
@@ -141,6 +193,7 @@ func TestProjectBundle_RestoresCrawlState(t *testing.T) {
 	assert.Equal(t, ".sel", got.Selectors)
 	assert.True(t, got.Include["infobox"])
 	assert.Equal(t, "character", got.Roles["https://w/wiki/A"])
+	assert.Equal(t, "character", got.Sent["https://w/wiki/A"])
 	require.NotNil(t, got.Set)
 	assert.Equal(t, "A", got.Set.Results[0].Title)
 }

@@ -226,8 +226,8 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
-export function SendCrawlToProject(arg1) {
-  return window['go']['main']['App']['SendCrawlToProject'](arg1);
+export function SendCrawlResult(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SendCrawlResult'](arg1, arg2, arg3);
 }
 
 export function SetActiveCharacter(arg1) {

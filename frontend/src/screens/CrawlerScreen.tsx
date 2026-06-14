@@ -154,7 +154,7 @@ const CrawlerScreen: React.FC = () => {
       <div className="ss-page-body scroll">
         <div className="crawler-grid">
           {/* LEFT — input + options + results */}
-          <div className="col" style={{ gap: 18 }}>
+          <div className="col" style={{ gap: 18, minHeight: 0 }}>
             <div className="crawl-input">
               <div className="uplabel">Source URL</div>
               <div className="url-bar">
@@ -236,9 +236,9 @@ const CrawlerScreen: React.FC = () => {
             </div>
 
             {results.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
                 <div className="uplabel" style={{ paddingLeft: 2 }}>Results</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0, overflowY: 'auto' }}>
                   {results.map((r, idx) => (
                     <div
                       key={r.url}

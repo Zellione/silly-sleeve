@@ -1,6 +1,8 @@
 package crawler
 
 import (
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,7 +32,8 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 		depth       int
 	}
 	queue := []queued{{url: rootURL, depth: 0}}
-	visited := map[string]bool{rootURL: true}
+	visited := map[string]bool{normalizeURL(rootURL): true}
+	seenPages := map[string]bool{}
 	set := CrawlSet{RootURL: rootURL}
 
 	for len(queue) > 0 && len(set.Results) < maxPages {
@@ -41,21 +44,56 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 		if !ok {
 			continue
 		}
+		// Skip pages already collected under a different URL form (e.g. a
+		// MediaWiki redirect/alias resolving to the same page).
+		id := pageIdentity(res)
+		if seenPages[id] {
+			continue
+		}
+		seenPages[id] = true
+
 		res.Depth = item.depth
 		res.ParentURL = item.parent
 		set.Results = append(set.Results, res)
 
 		if item.depth < opts.FollowLinks {
 			for _, link := range SameDomainLinks(raw, item.url) {
-				if visited[link] {
+				key := normalizeURL(link)
+				if visited[key] {
 					continue
 				}
-				visited[link] = true
+				visited[key] = true
 				queue = append(queue, queued{url: link, parent: item.url, depth: item.depth + 1})
 			}
 		}
 	}
 	return set, nil
+}
+
+// pageIdentity returns a key identifying the underlying page so the same page
+// reached via different URL forms is only collected once. A MediaWiki page
+// title is unique per domain, so (domain, title) identifies it; non-wiki pages
+// (empty/duplicate titles) fall back to the normalized URL.
+func pageIdentity(res CrawlResult) string {
+	if res.IsMediaWiki && res.Title != "" {
+		return strings.ToLower(res.Domain + "\x00" + res.Title)
+	}
+	return normalizeURL(res.URL)
+}
+
+// normalizeURL canonicalizes a URL for dedup: it lowercases the host, drops the
+// fragment, and trims a trailing slash from the path.
+func normalizeURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	u.Fragment = ""
+	u.Host = strings.ToLower(u.Host)
+	if len(u.Path) > 1 {
+		u.Path = strings.TrimRight(u.Path, "/")
+	}
+	return u.String()
 }
 
 // fetchOne fetches a single page (rate-limited), runs the extraction-precedence

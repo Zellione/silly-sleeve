@@ -96,3 +96,37 @@ func TestCrawler_WaitDelays(t *testing.T) {
 	// Allow some margin for timing variance, but should be at least 30ms
 	assert.GreaterOrEqual(t, elapsed, 30*time.Millisecond)
 }
+
+
+func TestCrawler_DedupesSamePageReachedViaAlias(t *testing.T) {
+	// Root "Mine" links to an alias URL that the wiki resolves to the same page
+	// (parse.title == "Mine"). The duplicate must not be collected twice.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("page") {
+		case "Mine":
+			fmt.Fprint(w, `{"parse":{"title":"Mine","text":{"*":"<div class=\"mw-parser-output\"><p><a href=\"/wiki/Mine_(alias)\">m</a><a href=\"/wiki/Tatsumi\">t</a></p></div>"}}}`)
+		case "Mine (alias)":
+			fmt.Fprint(w, `{"parse":{"title":"Mine","text":{"*":"<div class=\"mw-parser-output\"><p>dup body</p></div>"}}}`)
+		case "Tatsumi":
+			fmt.Fprint(w, `{"parse":{"title":"Tatsumi","text":{"*":"<div class=\"mw-parser-output\"><p>tatsumi body</p></div>"}}}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	c := Crawler{UserAgent: "UA/1", MaxPages: 10}
+	set, err := c.Crawl(srv.URL+"/wiki/Mine", CrawlOptions{FollowLinks: 1})
+	assert.NoError(t, err)
+
+	mine := 0
+	titles := []string{}
+	for _, r := range set.Results {
+		titles = append(titles, r.Title)
+		if r.Title == "Mine" {
+			mine++
+		}
+	}
+	assert.Equal(t, 1, mine, "the same page reached via an alias must be collected once")
+	assert.Contains(t, titles, "Tatsumi")
+}

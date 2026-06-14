@@ -13,6 +13,7 @@ import {
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
+import { Dropdown } from '../components/Dropdown';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
@@ -188,24 +189,27 @@ const PortraitScreen: React.FC = () => {
               <span className="uplabel">Models</span>
               <div className="img-kv">
                 <label htmlFor="portrait-checkpoint">Checkpoint</label>
-                <select id="portrait-checkpoint" style={{ width: 'auto' }} value={checkpoint}
-                  onChange={e => { setCheckpoint(e.target.value); e.target.blur(); }}>
-                  {checkpointOpts(checkpoints).map(c => (
-                    <option key={c} value={c}>{c.replace(/\.safetensors$/, '')}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="portrait-checkpoint"
+                  aria-label="Checkpoint"
+                  value={checkpoint}
+                  onChange={setCheckpoint}
+                  options={checkpointOpts(checkpoints).map(c => ({ value: c, label: c.replace(/\.safetensors$/, '') }))}
+                />
                 <label htmlFor="portrait-vae">VAE</label>
-                <select id="portrait-vae" style={{ width: 'auto' }}>
-                  {modelOpts(vaes, ['sdxl_vae_fp16_fix', 'baked']).map(v => (
-                    <option key={v} value={v}>{v.replace(/\.safetensors$/, '')}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="portrait-vae"
+                  aria-label="VAE"
+                  defaultValue={modelOpts(vaes, ['sdxl_vae_fp16_fix', 'baked'])[0]}
+                  options={modelOpts(vaes, ['sdxl_vae_fp16_fix', 'baked']).map(v => ({ value: v, label: v.replace(/\.safetensors$/, '') }))}
+                />
                 <label htmlFor="portrait-lora">LoRA</label>
-                <select id="portrait-lora" style={{ width: 'auto' }}>
-                  {modelOpts(loras, ['oil_painting_v3']).map(l => (
-                    <option key={l} value={l}>{l.replace(/\.safetensors$/, '')}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  id="portrait-lora"
+                  aria-label="LoRA"
+                  defaultValue={modelOpts(loras, ['oil_painting_v3'])[0]}
+                  options={modelOpts(loras, ['oil_painting_v3']).map(l => ({ value: l, label: l.replace(/\.safetensors$/, '') }))}
+                />
               </div>
             </GenerationParamsPanel>
 
@@ -247,11 +251,16 @@ const PortraitScreen: React.FC = () => {
                   <button className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt)}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
-                  <select className="img-select" value={promptStyle} onChange={e => { setPromptStyle(e.target.value as 'natural' | 'danbooru'); e.target.blur(); }}
-                    style={{ fontSize: 10, fontFamily: 'var(--f-mono)' }}>
-                    <option value="natural">Natural</option>
-                    <option value="danbooru">Danbooru</option>
-                  </select>
+                  <Dropdown
+                    className="as-mono"
+                    aria-label="Prompt style"
+                    value={promptStyle}
+                    onChange={raw => setPromptStyle(raw as 'natural' | 'danbooru')}
+                    options={[
+                      { value: 'natural', label: 'Natural' },
+                      { value: 'danbooru', label: 'Danbooru' },
+                    ]}
+                  />
                 </div>
               }
               prompt={prompt}

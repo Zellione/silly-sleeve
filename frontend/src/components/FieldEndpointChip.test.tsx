@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { FieldEndpointChip } from './FieldEndpointChip';
 import type { settings } from '../../wailsjs/go/models';
 
@@ -11,26 +12,30 @@ const eps = [
 describe('FieldEndpointChip', () => {
   it('shows the project override as the selected value', () => {
     render(<FieldEndpointChip slot="backstory" label="Backstory" endpoints={eps} globalMap={{}} projectMap={{ backstory: 2 }} onSelect={() => {}} />);
-    expect(screen.getByLabelText('Endpoint for Backstory')).toHaveValue('2');
+    expect(screen.getByRole('combobox', { name: 'Endpoint for Backstory' })).toHaveTextContent('Big model');
   });
 
-  it('calls onSelect with the chosen id', () => {
+  it('calls onSelect with the chosen id', async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(<FieldEndpointChip slot="backstory" label="Backstory" endpoints={eps} globalMap={{}} projectMap={{}} onSelect={onSelect} />);
-    fireEvent.change(screen.getByLabelText('Endpoint for Backstory'), { target: { value: '2' } });
+    await user.click(screen.getByRole('combobox', { name: 'Endpoint for Backstory' }));
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'Big model' }));
     expect(onSelect).toHaveBeenCalledWith('backstory', 2);
   });
 
-  it('calls onSelect with 0 to clear the override', () => {
+  it('calls onSelect with 0 to clear the override', async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     render(<FieldEndpointChip slot="backstory" label="Backstory" endpoints={eps} globalMap={{}} projectMap={{ backstory: 2 }} onSelect={onSelect} />);
-    fireEvent.change(screen.getByLabelText('Endpoint for Backstory'), { target: { value: '0' } });
+    await user.click(screen.getByRole('combobox', { name: 'Endpoint for Backstory' }));
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'Use default' }));
     expect(onSelect).toHaveBeenCalledWith('backstory', 0);
   });
 
   it('reflects the effective source in data-source', () => {
     render(<FieldEndpointChip slot="backstory" label="Backstory" endpoints={eps} globalMap={{ backstory: 2 }} projectMap={{}} onSelect={() => {}} />);
-    expect(screen.getByLabelText('Endpoint for Backstory')).toHaveAttribute('data-source', 'global');
+    expect(screen.getByRole('combobox', { name: 'Endpoint for Backstory' })).toHaveAttribute('data-source', 'global');
   });
 
   it('renders nothing when there are no endpoints', () => {

@@ -651,8 +651,7 @@ describe('SettingsScreen', () => {
       await user.click(screen.getByText('Auto-save'));
 
       await waitFor(() => {
-        const select = screen.getByRole('combobox') as HTMLSelectElement;
-        expect(select.value).toBe('off');
+        expect(screen.getByRole('combobox')).toHaveTextContent('Off');
       });
     });
 
@@ -670,7 +669,8 @@ describe('SettingsScreen', () => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
       });
 
-      await user.selectOptions(screen.getByRole('combobox'), 'onChange');
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('option', { name: 'On change' }));
 
       await waitFor(() => {
         expect(mockSaveSettings).toHaveBeenCalledTimes(1);
@@ -700,7 +700,8 @@ describe('SettingsScreen', () => {
 
       expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
 
-      await user.selectOptions(screen.getByRole('combobox'), 'timed');
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('option', { name: 'Timed' }));
 
       await waitFor(() => {
         const interval = screen.getByRole('spinbutton') as HTMLInputElement;

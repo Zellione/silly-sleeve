@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import { DiceIcon } from '../icons';
+import { Dropdown } from './Dropdown';
 
 export interface WorkflowOption {
   id: string;
@@ -68,13 +69,17 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
             <span>{selectedWorkflow.model} · {selectedWorkflow.size}</span>
           </div>
         </div>
-        <select className="field" value={selectedWorkflow.id} onChange={e => {
-          const w = workflows.find(x => x.id === e.target.value);
-          if (w) onWorkflowChange(w);
-          e.target.blur();
-        }} style={{ fontSize: 12, fontFamily: 'var(--f-mono)' }}>
-          {workflows.map(w => <option key={w.id} value={w.id}>{w.name} — {w.size}</option>)}
-        </select>
+        <Dropdown
+          className="as-mono"
+          style={{ width: '100%' }}
+          aria-label="Workflow"
+          value={selectedWorkflow.id}
+          onChange={raw => {
+            const w = workflows.find(x => x.id === raw);
+            if (w) onWorkflowChange(w);
+          }}
+          options={workflows.map(w => ({ value: w.id, label: `${w.name} — ${w.size}` }))}
+        />
 
         <div className="img-divline" />
         <span className="uplabel">Sampler params</span>
@@ -90,25 +95,34 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
             </>
           )}
           <label htmlFor={`${uid}-sampler`}>Sampler</label>
-          <select id={`${uid}-sampler`} value={sampler} onChange={e => { onSamplerChange(e.target.value); e.target.blur(); }} style={{ width: 'auto' }}>
-            {(samplerList && samplerList.length > 0 ? samplerList : ['dpmpp_2m', 'euler_ancestral', 'euler', 'dpmpp_2m_sde']).map(s => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+          <Dropdown
+            id={`${uid}-sampler`}
+            aria-label="Sampler"
+            value={sampler}
+            onChange={onSamplerChange}
+            options={(samplerList && samplerList.length > 0 ? samplerList : ['dpmpp_2m', 'euler_ancestral', 'euler', 'dpmpp_2m_sde']).map(s => ({ value: s, label: s }))}
+          />
           <label htmlFor={`${uid}-scheduler`}>Scheduler</label>
-          <select id={`${uid}-scheduler`} value={scheduler} onChange={e => { onSchedulerChange(e.target.value); e.target.blur(); }} style={{ width: 'auto' }}>
-            {(schedulerList && schedulerList.length > 0 ? schedulerList : ['karras', 'normal', 'exponential', 'simple']).map(s => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+          <Dropdown
+            id={`${uid}-scheduler`}
+            aria-label="Scheduler"
+            value={scheduler}
+            onChange={onSchedulerChange}
+            options={(schedulerList && schedulerList.length > 0 ? schedulerList : ['karras', 'normal', 'exponential', 'simple']).map(s => ({ value: s, label: s }))}
+          />
           {showAspectSelector && (
             <>
               <label htmlFor={`${uid}-aspect`}>Aspect</label>
-              <select id={`${uid}-aspect`} style={{ width: 'auto' }} defaultValue="banner">
-                <option value="banner">Banner · 16:9</option>
-                <option value="cover">Cover · 3:2</option>
-                <option value="square">Square · 1:1</option>
-              </select>
+              <Dropdown
+                id={`${uid}-aspect`}
+                aria-label="Aspect"
+                defaultValue="banner"
+                options={[
+                  { value: 'banner', label: 'Banner · 16:9' },
+                  { value: 'cover', label: 'Cover · 3:2' },
+                  { value: 'square', label: 'Square · 1:1' },
+                ]}
+              />
             </>
           )}
         </div>

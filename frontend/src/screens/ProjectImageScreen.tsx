@@ -8,6 +8,7 @@ import { GenerateProjectImage, GetProjectImage, SaveProjectImage } from '../../w
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
+import { Dropdown } from '../components/Dropdown';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
 import { DEFAULT_NEGATIVE_PROMPT, arrayBufferToDataURL, dataURLToBytes } from '../utils/image';
@@ -102,12 +103,12 @@ const ProjectImageScreen: React.FC = () => {
             >
               <span className="uplabel">Checkpoint</span>
               <div className="img-kv" style={{ marginBottom: 10 }}>
-                <select id="proj-checkpoint" style={{ width: 'auto' }} value={checkpoint}
-                  onChange={e => { setCheckpoint(e.target.value); e.target.blur(); }}>
-                  {(checkpoints.length > 0 ? checkpoints : [PROJECT_IMG_WORKFLOWS[0].model, PROJECT_IMG_WORKFLOWS[1].model, PROJECT_IMG_WORKFLOWS[2].model]).map(c => (
-                    <option key={c} value={c}>{c.replace(/\.safetensors$/, '')}</option>
-                  ))}
-                </select>
+                <Dropdown
+                  aria-label="Checkpoint"
+                  value={checkpoint}
+                  onChange={setCheckpoint}
+                  options={(checkpoints.length > 0 ? checkpoints : [PROJECT_IMG_WORKFLOWS[0].model, PROJECT_IMG_WORKFLOWS[1].model, PROJECT_IMG_WORKFLOWS[2].model]).map(c => ({ value: c, label: c.replace(/\.safetensors$/, '') }))}
+                />
               </div>
               <span className="uplabel">Use project context</span>
               <div className="col" style={{ gap: 6 }}>

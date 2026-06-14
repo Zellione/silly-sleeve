@@ -10,6 +10,7 @@ import { LLMEndpointCard } from '../components/LLMEndpointCard';
 import { AuthTokenBlock } from '../components/AuthTokenBlock';
 import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
 import { PerFieldDefaults } from '../components/PerFieldDefaults';
+import { Dropdown } from '../components/Dropdown';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -1000,17 +1001,19 @@ const SettingsScreen: React.FC = () => {
                 <div className="settings-form">
                   <div className="form-row">
                     <label htmlFor="auto-save-mode">Mode</label>
-                    <select
+                    <Dropdown
                       id="auto-save-mode"
-                      className="field"
+                      aria-label="Mode"
+                      style={{ width: '100%' }}
                       value={settingsState.autoSaveMode || 'off'}
-                      onChange={e => { handleAutoSaveMode(e.target.value); e.target.blur(); }}
-                    >
-                      <option value="off">Off</option>
-                      <option value="onChange">On change</option>
-                      <option value="onBlur">On blur</option>
-                      <option value="timed">Timed</option>
-                    </select>
+                      onChange={handleAutoSaveMode}
+                      options={[
+                        { value: 'off', label: 'Off' },
+                        { value: 'onChange', label: 'On change' },
+                        { value: 'onBlur', label: 'On blur' },
+                        { value: 'timed', label: 'Timed' },
+                      ]}
+                    />
                   </div>
                   {((settingsState.autoSaveMode || 'off') === 'timed') && (
                     <div className="form-row">

@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastProvider';
 import { CrawlPage, GetCachedCrawl } from '../../wailsjs/go/main/App';
 import { crawler } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
+import { Dropdown } from '../components/Dropdown';
 
 const RECENT_WIKIS = [
   'baldursgate.fandom.com', 'witcher.fandom.com',
@@ -117,11 +118,17 @@ const CrawlerScreen: React.FC = () => {
               <div className="crawl-opt">
                 <div className="row" style={{ justifyContent: 'space-between' }}>
                   <b>Follow links</b>
-                  <select className="field" value={follow} onChange={e => { setFollow(+e.target.value); e.target.blur(); }} style={{ width: 100, padding: '6px 8px', fontSize: 12 }}>
-                    <option value={0}>No</option>
-                    <option value={1}>1 hop</option>
-                    <option value={2}>2 hops</option>
-                  </select>
+                  <Dropdown
+                    aria-label="Follow links"
+                    value={String(follow)}
+                    onChange={raw => setFollow(+raw)}
+                    style={{ width: 100 }}
+                    options={[
+                      { value: '0', label: 'No' },
+                      { value: '1', label: '1 hop' },
+                      { value: '2', label: '2 hops' },
+                    ]}
+                  />
                 </div>
                 <small>Multi-hop support coming in a later phase.</small>
               </div>

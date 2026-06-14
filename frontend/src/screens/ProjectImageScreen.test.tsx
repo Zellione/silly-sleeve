@@ -145,12 +145,15 @@ describe('ProjectImageScreen', () => {
   });
 
   it('lists all workflows', async () => {
+    const user = userEvent.setup();
     renderWithProviders(<ProjectImageScreen />);
     await waitFor(() => {
-      expect(screen.getAllByText(/cover_sdxl_v2/).length).toBeGreaterThan(0);
-      expect(screen.getByText(/flux_banner/)).toBeInTheDocument();
-      expect(screen.getByText(/painterly_square/)).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Workflow' })).toBeInTheDocument();
     });
+    await user.click(screen.getByRole('combobox', { name: 'Workflow' }));
+    expect(screen.getByRole('option', { name: /cover_sdxl_v2/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /flux_banner/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /painterly_square/ })).toBeInTheDocument();
   });
 
   it('renders checkpoint selector', async () => {

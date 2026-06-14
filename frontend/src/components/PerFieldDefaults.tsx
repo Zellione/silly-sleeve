@@ -1,6 +1,7 @@
 import React from 'react';
 import type { settings } from '../../wailsjs/go/models';
 import { SLOTS } from '../utils/fieldEndpoints';
+import { Dropdown } from './Dropdown';
 
 export interface PerFieldDefaultsProps {
   endpoints: settings.LLMEndpoint[];
@@ -27,16 +28,16 @@ export const PerFieldDefaults: React.FC<PerFieldDefaultsProps> = ({ endpoints, v
       {SLOTS.map(slot => (
         <div key={slot.id} className="pfd-row">
           <span className="pfd-label">{slot.label}</span>
-          <select
+          <Dropdown
             aria-label={`Endpoint for ${slot.label}`}
-            value={value[slot.id] ?? 0}
-            onChange={e => setSlot(slot.id, e.target.value)}
-          >
-            <option value={0}>Use default endpoint</option>
-            {endpoints.map(ep => (
-              <option key={ep.id} value={ep.id}>{ep.name}</option>
-            ))}
-          </select>
+            value={String(value[slot.id] ?? 0)}
+            onChange={raw => setSlot(slot.id, raw)}
+            style={{ minWidth: 200 }}
+            options={[
+              { value: '0', label: 'Use default endpoint' },
+              ...endpoints.map(ep => ({ value: String(ep.id), label: ep.name })),
+            ]}
+          />
         </div>
       ))}
     </div>

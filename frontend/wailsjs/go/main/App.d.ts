@@ -14,9 +14,11 @@ import {llm} from '../models';
 
 export function AddCharacter():Promise<compose.Character>;
 
+export function ClearCrawl():Promise<void>;
+
 export function CountTokens(arg1:string):Promise<number>;
 
-export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler.CrawlResult>;
+export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler.CrawlSet>;
 
 export function DeleteCharacter(arg1:number):Promise<void>;
 
@@ -64,6 +66,8 @@ export function GetComfyWorkflowTemplate(arg1:string):Promise<string>;
 
 export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
 
+export function GetCrawlState():Promise<main.CrawlState>;
+
 export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;
 
 export function GetLorebook():Promise<Array<lorebook.Entry>>;
@@ -100,9 +104,13 @@ export function PickSaveBundle():Promise<string>;
 
 export function ReadImageFile(arg1:string):Promise<main.DroppedImage>;
 
+export function RemoveCrawlResult(arg1:string):Promise<crawler.CrawlSet>;
+
 export function RemoveProject(arg1:string,arg2:boolean):Promise<void>;
 
 export function SaveComfyWorkflowTemplate(arg1:string,arg2:string):Promise<void>;
+
+export function SaveCrawlState(arg1:main.CrawlState):Promise<void>;
 
 export function SaveLorebook(arg1:Array<lorebook.Entry>):Promise<void>;
 
@@ -115,6 +123,8 @@ export function SaveProjectImage(arg1:Array<number>):Promise<void>;
 export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
+
+export function SendCrawlResult(arg1:string,arg2:string,arg3:boolean):Promise<main.SendCrawlOutcome>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
 

@@ -747,6 +747,100 @@ describe('SettingsScreen', () => {
     });
   });
 
+  describe('crawler section', () => {
+    beforeEach(() => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({
+        endpoints: [],
+        crawler: settings.CrawlerConfig.createFrom({
+          userAgent: 'SillySleeve/1.0 (+https://github.com/Zellione/silly-sleeve)',
+          rateLimitMs: 1000,
+          maxPages: 10,
+        }),
+      }));
+      mockSaveSettings.mockResolvedValue(undefined);
+    });
+
+    it('renders crawler nav item', async () => {
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Wiki crawler')).toBeInTheDocument();
+    });
+
+    it('shows crawler section when nav item clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('Wiki crawler'));
+      await waitFor(() => {
+        expect(screen.getByText('User-Agent')).toBeInTheDocument();
+      });
+    });
+
+    it('displays crawler settings fields', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+      await user.click(screen.getByText('Wiki crawler'));
+      await waitFor(() => {
+        expect(screen.getByLabelText(/user-agent/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/rate limit/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/max pages/i)).toBeInTheDocument();
+      });
+    });
+
+    it('edits crawler settings and saves user agent / rate limit / max pages', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+      await user.click(screen.getByText('Wiki crawler'));
+      const ua = (await screen.findByLabelText(/user-agent/i)) as HTMLInputElement;
+      expect(ua.value).toBe('SillySleeve/1.0 (+https://github.com/Zellione/silly-sleeve)');
+      // Change user agent - focus, select all, then type
+      await user.click(ua);
+      await user.keyboard('{Control>}a{/Control}');
+      await user.keyboard('MyBot/2');
+      // Change rate limit
+      const rateLimit = screen.getByLabelText(/rate limit/i) as HTMLInputElement;
+      await user.click(rateLimit);
+      await user.keyboard('{Control>}a{/Control}');
+      await user.keyboard('2000');
+      // Change max pages
+      const maxPages = screen.getByLabelText(/max pages/i) as HTMLInputElement;
+      await user.click(maxPages);
+      await user.keyboard('{Control>}a{/Control}');
+      await user.keyboard('50');
+      await user.click(screen.getByText('Save'));
+      await waitFor(() => {
+        expect(mockSaveSettings).toHaveBeenCalledWith(expect.objectContaining({
+          crawler: expect.objectContaining({ userAgent: 'MyBot/2', rateLimitMs: 2000, maxPages: 50 }),
+        }));
+      });
+    });
+
+    it('applies defaults when crawler config is empty', async () => {
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({
+        endpoints: [],
+        crawler: undefined,
+      }));
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+      });
+      await user.click(screen.getByText('Wiki crawler'));
+      const ua = await screen.findByLabelText(/user-agent/i);
+      const rateLimit = screen.getByLabelText(/rate limit/i) as HTMLInputElement;
+      const maxPages = screen.getByLabelText(/max pages/i) as HTMLInputElement;
+      expect((ua as HTMLInputElement).value).toBe('SillySleeve/1.0 (+https://github.com/Zellione/silly-sleeve)');
+      expect(rateLimit.value).toBe('1000');
+      expect(maxPages.value).toBe('10');
+    });
+  });
+
   describe('ComfyUI section', () => {
     beforeEach(() => {
       mockGetSettings.mockResolvedValue(settings.Settings.createFrom({

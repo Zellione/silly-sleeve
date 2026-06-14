@@ -26,7 +26,14 @@ type ProjectSnapshot struct {
 	CrawlTitle   string
 	Status       string
 	CrawlCache   *crawler.CrawlResult
+	CrawlSet     *crawler.CrawlSet
 	FieldEndpoints map[string]int
+
+	CrawlFollowLinks int
+	CrawlInclude     map[string]bool
+	CrawlSelectors   string
+	CrawlRoles       map[string]string
+	CrawlSent        map[string]string
 }
 
 // ProjectManager owns project persistence decomposed out of App: the native
@@ -102,6 +109,11 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		CrawlTitle:   snap.CrawlTitle,
 		ProjectImage: snap.ProjectImage,
 		FieldEndpoints: snap.FieldEndpoints,
+		CrawlFollowLinks: snap.CrawlFollowLinks,
+		CrawlInclude:     snap.CrawlInclude,
+		CrawlSelectors:   snap.CrawlSelectors,
+		CrawlRoles:       snap.CrawlRoles,
+		CrawlSent:        snap.CrawlSent,
 	}
 
 	b := bundle.Bundle{
@@ -110,6 +122,7 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		Lorebook:   snap.Lorebook,
 		Prompts:    snap.Prompts,
 		CrawlCache: snap.CrawlCache,
+		CrawlSet:   snap.CrawlSet,
 	}
 	if err := bundle.WriteBundle(filePath, b); err != nil {
 		return project.ProjectManifest{}, err

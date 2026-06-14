@@ -6,6 +6,10 @@ export function AddCharacter() {
   return window['go']['main']['App']['AddCharacter']();
 }
 
+export function ClearCrawl() {
+  return window['go']['main']['App']['ClearCrawl']();
+}
+
 export function CountTokens(arg1) {
   return window['go']['main']['App']['CountTokens'](arg1);
 }
@@ -106,6 +110,10 @@ export function GetComfyWorkflows() {
   return window['go']['main']['App']['GetComfyWorkflows']();
 }
 
+export function GetCrawlState() {
+  return window['go']['main']['App']['GetCrawlState']();
+}
+
 export function GetDefaultPromptTemplates() {
   return window['go']['main']['App']['GetDefaultPromptTemplates']();
 }
@@ -178,12 +186,20 @@ export function ReadImageFile(arg1) {
   return window['go']['main']['App']['ReadImageFile'](arg1);
 }
 
+export function RemoveCrawlResult(arg1) {
+  return window['go']['main']['App']['RemoveCrawlResult'](arg1);
+}
+
 export function RemoveProject(arg1, arg2) {
   return window['go']['main']['App']['RemoveProject'](arg1, arg2);
 }
 
 export function SaveComfyWorkflowTemplate(arg1, arg2) {
   return window['go']['main']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
+}
+
+export function SaveCrawlState(arg1) {
+  return window['go']['main']['App']['SaveCrawlState'](arg1);
 }
 
 export function SaveLorebook(arg1) {
@@ -208,6 +224,10 @@ export function SavePromptTemplates(arg1) {
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SendCrawlResult(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SendCrawlResult'](arg1, arg2, arg3);
 }
 
 export function SetActiveCharacter(arg1) {

@@ -29,6 +29,7 @@ type Entry struct {
 	ExcludeRecursion bool     `json:"excludeRecursion"`
 	PreventRecursion bool     `json:"preventRecursion"`
 	Characters       []string `json:"characters"`
+	SourceURL        string   `json:"sourceUrl,omitempty"`
 }
 
 // NewEntry creates a new lorebook entry with sensible defaults.

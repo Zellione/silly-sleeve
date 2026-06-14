@@ -21,6 +21,7 @@ type Character struct {
 	Stats         []StatKV  `json:"stats"`
 	Dirty         bool      `json:"dirty"`
 	Portrait      []byte    `json:"portrait"`
+	SourceURL     string    `json:"sourceUrl,omitempty"`
 }
 
 // NewCharacter creates a fresh character with empty fields.

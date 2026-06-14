@@ -33,6 +33,37 @@ type ComfyConfig struct {
 	Workflows       []comfy.ComfyWorkflow `json:"workflows"`
 }
 
+// CrawlerConfig holds global crawler behavior knobs.
+type CrawlerConfig struct {
+	UserAgent   string `json:"userAgent,omitempty"`
+	RateLimitMs int    `json:"rateLimitMs,omitempty"`
+	MaxPages    int    `json:"maxPages,omitempty"`
+}
+
+// DefaultCrawlerConfig returns the built-in crawler defaults.
+func DefaultCrawlerConfig() CrawlerConfig {
+	return CrawlerConfig{
+		UserAgent:   "SillySleeve/1.0 (+https://github.com/Zellione/silly-sleeve)",
+		RateLimitMs: 1000,
+		MaxPages:    10,
+	}
+}
+
+// Normalized returns a copy with zero/empty fields replaced by defaults.
+func (c CrawlerConfig) Normalized() CrawlerConfig {
+	d := DefaultCrawlerConfig()
+	if c.UserAgent == "" {
+		c.UserAgent = d.UserAgent
+	}
+	if c.RateLimitMs <= 0 {
+		c.RateLimitMs = d.RateLimitMs
+	}
+	if c.MaxPages <= 0 {
+		c.MaxPages = d.MaxPages
+	}
+	return c
+}
+
 // Settings is the top-level persisted config.
 type Settings struct {
 	Endpoints        []LLMEndpoint       `json:"endpoints"`
@@ -43,6 +74,7 @@ type Settings struct {
 	// FieldEndpoints maps a generation slot ("bulk" or a field id) to an
 	// LLMEndpoint ID, providing a global default endpoint per slot.
 	FieldEndpoints map[string]int `json:"fieldEndpoints,omitempty"`
+	Crawler        CrawlerConfig  `json:"crawler,omitempty"`
 }
 
 func configPath() (string, error) {

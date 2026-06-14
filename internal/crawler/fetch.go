@@ -73,11 +73,12 @@ func newSafeClient() *http.Client {
 
 // FetchResult holds the raw API response data.
 type FetchResult struct {
-	Title     string
-	Domain    string
-	RawHTML   string
-	LatencyMs int64
-	Error     error
+	Title       string
+	Domain      string
+	RawHTML     string
+	LatencyMs   int64
+	IsMediaWiki bool
+	Error       error
 }
 
 type mediaWikiParseResponse struct {
@@ -89,8 +90,18 @@ type mediaWikiParseResponse struct {
 	} `json:"parse"`
 }
 
-// FetchPage fetches a wiki page via the MediaWiki action=parse API.
+// FetchOptions tunes a single page fetch.
+type FetchOptions struct {
+	UserAgent string
+}
+
+// FetchPage fetches a wiki page with default options (kept for back-compat).
 func FetchPage(pageURL string) FetchResult {
+	return FetchPageWith(pageURL, FetchOptions{})
+}
+
+// FetchPageWith fetches a wiki page via the MediaWiki action=parse API with configurable options.
+func FetchPageWith(pageURL string, opts FetchOptions) FetchResult {
 	start := time.Now()
 
 	u, err := url.Parse(pageURL)
@@ -116,8 +127,15 @@ func FetchPage(pageURL string) FetchResult {
 	}
 
 	client := newSafeClient()
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return FetchResult{Domain: domain, LatencyMs: time.Since(start).Milliseconds(), Error: err}
+	}
+	if opts.UserAgent != "" {
+		req.Header.Set("User-Agent", opts.UserAgent)
+	}
 	fmt.Println("[crawler] GET", apiURL)
-	resp, err := client.Get(apiURL)
+	resp, err := client.Do(req)
 	latency := time.Since(start).Milliseconds()
 	if err != nil {
 		fmt.Println("[crawler] HTTP error:", err)
@@ -152,10 +170,11 @@ func FetchPage(pageURL string) FetchResult {
 	fmt.Printf("[crawler] parsed title=%q contentLen=%d\n", body.Parse.Title, len(body.Parse.Text.Content))
 
 	return FetchResult{
-		Title:     body.Parse.Title,
-		Domain:    domain,
-		RawHTML:   body.Parse.Text.Content,
-		LatencyMs: latency,
+		Title:       body.Parse.Title,
+		Domain:      domain,
+		RawHTML:     body.Parse.Text.Content,
+		LatencyMs:   latency,
+		IsMediaWiki: true,
 	}
 }
 

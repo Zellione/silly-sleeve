@@ -178,6 +178,7 @@ export namespace compose {
 	    stats: StatKV[];
 	    dirty: boolean;
 	    portrait: number[];
+	    sourceUrl?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Character(source);
@@ -198,6 +199,7 @@ export namespace compose {
 	        this.stats = this.convertValues(source["stats"], StatKV);
 	        this.dirty = source["dirty"];
 	        this.portrait = source["portrait"];
+	        this.sourceUrl = source["sourceUrl"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -226,6 +228,7 @@ export namespace crawler {
 	export class CrawlOptions {
 	    followLinks: number;
 	    include: Record<string, boolean>;
+	    selectors?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new CrawlOptions(source);
@@ -235,6 +238,7 @@ export namespace crawler {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.followLinks = source["followLinks"];
 	        this.include = source["include"];
+	        this.selectors = source["selectors"];
 	    }
 	}
 	export class InfoboxEntry {
@@ -279,6 +283,9 @@ export namespace crawler {
 	    wordCount: number;
 	    statusCode: number;
 	    latencyMs: number;
+	    depth: number;
+	    parentUrl?: string;
+	    isMediaWiki: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CrawlResult(source);
@@ -295,6 +302,41 @@ export namespace crawler {
 	        this.wordCount = source["wordCount"];
 	        this.statusCode = source["statusCode"];
 	        this.latencyMs = source["latencyMs"];
+	        this.depth = source["depth"];
+	        this.parentUrl = source["parentUrl"];
+	        this.isMediaWiki = source["isMediaWiki"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CrawlSet {
+	    rootUrl: string;
+	    results: CrawlResult[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CrawlSet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rootUrl = source["rootUrl"];
+	        this.results = this.convertValues(source["results"], CrawlResult);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -399,6 +441,7 @@ export namespace lorebook {
 	    excludeRecursion: boolean;
 	    preventRecursion: boolean;
 	    characters: string[];
+	    sourceUrl?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Entry(source);
@@ -427,6 +470,7 @@ export namespace lorebook {
 	        this.excludeRecursion = source["excludeRecursion"];
 	        this.preventRecursion = source["preventRecursion"];
 	        this.characters = source["characters"];
+	        this.sourceUrl = source["sourceUrl"];
 	    }
 	}
 
@@ -434,6 +478,82 @@ export namespace lorebook {
 
 export namespace main {
 	
+	export class CrawlSendResult {
+	    characters: compose.Character[];
+	    lorebook: lorebook.Entry[];
+	    activeCharId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CrawlSendResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.characters = this.convertValues(source["characters"], compose.Character);
+	        this.lorebook = this.convertValues(source["lorebook"], lorebook.Entry);
+	        this.activeCharId = source["activeCharId"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CrawlState {
+	    url: string;
+	    followLinks: number;
+	    include: Record<string, boolean>;
+	    selectors: string;
+	    roles: Record<string, string>;
+	    sent: Record<string, string>;
+	    set?: crawler.CrawlSet;
+	
+	    static createFrom(source: any = {}) {
+	        return new CrawlState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.followLinks = source["followLinks"];
+	        this.include = source["include"];
+	        this.selectors = source["selectors"];
+	        this.roles = source["roles"];
+	        this.sent = source["sent"];
+	        this.set = this.convertValues(source["set"], crawler.CrawlSet);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DroppedImage {
 	    name: string;
 	    dataUrl: string;
@@ -466,6 +586,42 @@ export namespace main {
 	        this.paths = source["paths"];
 	    }
 	}
+	export class SendCrawlOutcome {
+	    status: string;
+	    kind: string;
+	    name: string;
+	    result: CrawlSendResult;
+	
+	    static createFrom(source: any = {}) {
+	        return new SendCrawlOutcome(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.result = this.convertValues(source["result"], CrawlSendResult);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
@@ -481,6 +637,11 @@ export namespace project {
 	    activeCharId: number;
 	    sourceUrl: string;
 	    crawlTitle: string;
+	    crawlFollowLinks?: number;
+	    crawlInclude?: Record<string, boolean>;
+	    crawlSelectors?: string;
+	    crawlRoles?: Record<string, string>;
+	    crawlSent?: Record<string, string>;
 	    projectImage: number[];
 	    fieldEndpoints?: Record<string, number>;
 	
@@ -499,6 +660,11 @@ export namespace project {
 	        this.activeCharId = source["activeCharId"];
 	        this.sourceUrl = source["sourceUrl"];
 	        this.crawlTitle = source["crawlTitle"];
+	        this.crawlFollowLinks = source["crawlFollowLinks"];
+	        this.crawlInclude = source["crawlInclude"];
+	        this.crawlSelectors = source["crawlSelectors"];
+	        this.crawlRoles = source["crawlRoles"];
+	        this.crawlSent = source["crawlSent"];
 	        this.projectImage = source["projectImage"];
 	        this.fieldEndpoints = source["fieldEndpoints"];
 	    }
@@ -565,6 +731,22 @@ export namespace settings {
 		    return a;
 		}
 	}
+	export class CrawlerConfig {
+	    userAgent?: string;
+	    rateLimitMs?: number;
+	    maxPages?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CrawlerConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.userAgent = source["userAgent"];
+	        this.rateLimitMs = source["rateLimitMs"];
+	        this.maxPages = source["maxPages"];
+	    }
+	}
 	export class LLMEndpoint {
 	    id: number;
 	    name: string;
@@ -602,6 +784,7 @@ export namespace settings {
 	    autoSaveMode?: string;
 	    autoSaveInterval?: number;
 	    fieldEndpoints?: Record<string, number>;
+	    crawler?: CrawlerConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -615,6 +798,7 @@ export namespace settings {
 	        this.autoSaveMode = source["autoSaveMode"];
 	        this.autoSaveInterval = source["autoSaveInterval"];
 	        this.fieldEndpoints = source["fieldEndpoints"];
+	        this.crawler = this.convertValues(source["crawler"], CrawlerConfig);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

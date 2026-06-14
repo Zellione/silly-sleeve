@@ -21,6 +21,8 @@ type App struct {
 	settings        settings.Settings
 	mu              sync.Mutex
 	cachedCrawl     *crawler.CrawlResult
+	cachedCrawlSet  *crawler.CrawlSet
+	crawlInputs     CrawlState
 	characters      []compose.Character
 	activeCharID    int
 	projectDir      string
@@ -227,45 +229,64 @@ func (a *App) ParseComfyWorkflowParams(jsonData string) (comfy.WorkflowParams, e
 	return a.comfy.ParseComfyWorkflowParams(jsonData)
 }
 
-// CrawlPage fetches a wiki page via the MediaWiki API and returns parsed content.
-func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlResult {
-	result := crawler.FetchPage(pageURL)
-	if result.Error != nil {
-		fmt.Println("[app] CrawlPage fetch error:", result.Error)
-		return crawler.CrawlResult{
-			URL:        pageURL,
-			Domain:     result.Domain,
-			StatusCode: 0,
-			LatencyMs:  result.LatencyMs,
+// CrawlPage crawls a wiki page (and optionally followed links) and returns the
+// resulting set.
+func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlSet {
+	a.mu.Lock()
+	cfg := a.settings.Crawler.Normalized()
+	a.mu.Unlock()
+
+	c := crawler.Crawler{UserAgent: cfg.UserAgent, RateLimitMs: cfg.RateLimitMs, MaxPages: cfg.MaxPages}
+	set, err := c.Crawl(pageURL, opts)
+	if err != nil {
+		fmt.Println("[app] CrawlPage error:", err)
+		return crawler.CrawlSet{RootURL: pageURL}
+	}
+
+	a.mu.Lock()
+	a.cachedCrawlSet = &set
+	if len(set.Results) > 0 {
+		root := set.Results[0]
+		a.cachedCrawl = &root
+	}
+	a.mu.Unlock()
+
+	if len(set.Results) > 0 {
+		if err := crawler.SaveCache(set.Results[0]); err != nil {
+			fmt.Println("[app] SaveCache error:", err)
 		}
 	}
-	sections, infobox := crawler.SectionsFromRawHTML(result.RawHTML, opts.Include)
-	cr := crawler.CrawlResult{
-		Title:      result.Title,
-		URL:        pageURL,
-		Domain:     result.Domain,
-		RawHTML:    result.RawHTML,
-		Sections:   sections,
-		Infobox:    infobox,
-		WordCount:  crawler.TotalWordCount(sections, infobox),
-		StatusCode: 200,
-		LatencyMs:  result.LatencyMs,
-	}
-	fmt.Printf("[app] CrawlPage done: title=%q sections=%d infobox=%d words=%d rawHTML=%d\n",
-		cr.Title, len(cr.Sections), len(cr.Infobox), cr.WordCount, len(cr.RawHTML))
-	a.mu.Lock()
-	a.cachedCrawl = &cr
-	a.mu.Unlock()
-	if err := crawler.SaveCache(cr); err != nil {
-		fmt.Println("cache save error:", err)
-	}
-	return cr
+	return set
 }
 
 // GetCachedCrawl returns the previously cached crawl result, if any.
 func (a *App) GetCachedCrawl() *crawler.CrawlResult {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	return a.cachedCrawl
+}
+
+// crawlForActiveCharacterLocked returns the crawl result matching the active
+// character's SourceURL, falling back to the first result then the legacy
+// single cache. Caller holds a.mu.
+func (a *App) crawlForActiveCharacterLocked() *crawler.CrawlResult {
+	var srcURL string
+	for _, c := range a.characters {
+		if c.ID == a.activeCharID {
+			srcURL = c.SourceURL
+			break
+		}
+	}
+	if a.cachedCrawlSet != nil {
+		for i := range a.cachedCrawlSet.Results {
+			if srcURL != "" && a.cachedCrawlSet.Results[i].URL == srcURL {
+				return &a.cachedCrawlSet.Results[i]
+			}
+		}
+		if len(a.cachedCrawlSet.Results) > 0 {
+			return &a.cachedCrawlSet.Results[0]
+		}
+	}
 	return a.cachedCrawl
 }
 
@@ -380,7 +401,7 @@ func (a *App) nextCharID() int {
 // that should not be overwritten.
 func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	a.mu.Lock()
-	crawl := a.cachedCrawl
+	crawl := a.crawlForActiveCharacterLocked()
 	existing := compose.Character{}
 	for _, c := range a.characters {
 		if c.ID == a.activeCharID {
@@ -420,7 +441,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 // GenerateField sends a per-field prompt to the LLM for a single character field.
 func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 	a.mu.Lock()
-	crawl := a.cachedCrawl
+	crawl := a.crawlForActiveCharacterLocked()
 	existing := compose.Character{}
 	for _, c := range a.characters {
 		if c.ID == a.activeCharID {
@@ -547,6 +568,15 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		snap.CrawlTitle = a.cachedCrawl.Title
 		snap.CrawlCache = a.cachedCrawl
 	}
+	snap.CrawlSet = a.cachedCrawlSet
+	snap.CrawlFollowLinks = a.crawlInputs.FollowLinks
+	snap.CrawlInclude = a.crawlInputs.Include
+	snap.CrawlSelectors = a.crawlInputs.Selectors
+	snap.CrawlRoles = a.crawlInputs.Roles
+	snap.CrawlSent = a.crawlInputs.Sent
+	if a.crawlInputs.URL != "" {
+		snap.SourceURL = a.crawlInputs.URL
+	}
 	snap.Prompts = a.settings.PromptTemplates
 	if len(snap.Prompts.FieldPrompts) == 0 {
 		snap.Prompts = prompts.Defaults()
@@ -638,6 +668,19 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 
 	if resolved := a.project.ResolveCrawlCache(b); resolved != nil {
 		a.cachedCrawl = resolved
+	}
+
+	if b.CrawlSet != nil {
+		a.cachedCrawlSet = b.CrawlSet
+	}
+
+	a.crawlInputs = CrawlState{
+		URL:         b.Manifest.SourceURL,
+		FollowLinks: b.Manifest.CrawlFollowLinks,
+		Include:     b.Manifest.CrawlInclude,
+		Selectors:   b.Manifest.CrawlSelectors,
+		Roles:       b.Manifest.CrawlRoles,
+		Sent:        b.Manifest.CrawlSent,
 	}
 
 	if len(b.Prompts.FieldPrompts) > 0 {

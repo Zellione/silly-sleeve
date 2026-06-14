@@ -27,6 +27,13 @@ type ProjectManifest struct {
 	ActiveCharID int      `json:"activeCharId"`
 	SourceURL    string   `json:"sourceUrl"`
 	CrawlTitle   string   `json:"crawlTitle"`
+	// Crawler-screen parameters + per-result role assignments, persisted so the
+	// crawl list and its settings survive save/load. SourceURL holds the URL.
+	CrawlFollowLinks int               `json:"crawlFollowLinks,omitempty"`
+	CrawlInclude     map[string]bool   `json:"crawlInclude,omitempty"`
+	CrawlSelectors   string            `json:"crawlSelectors,omitempty"`
+	CrawlRoles       map[string]string `json:"crawlRoles,omitempty"`
+	CrawlSent        map[string]string `json:"crawlSent,omitempty"`
 	ProjectImage []byte   `json:"projectImage"`
 	// FieldEndpoints maps a generation slot ("bulk" or a field id) to an
 	// LLMEndpoint ID, overriding the global default for this project only.

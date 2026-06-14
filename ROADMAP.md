@@ -110,7 +110,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 - [x] **6.1** Dashboard: project grid, filter/search, status badges (Draft / Ready / Archived)
 - [x] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
-- [ ] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
+- [~] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [ ] **6.4** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
 - [ ] **6.5** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
 - [ ] **6.6** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
@@ -123,6 +123,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ### 2026-06-14
 
+- Started Phase 4 · 6.3 — Advanced crawler (`milestone/6.3-advanced-crawler`).
 - Implemented Phase 4 · 6.2 — Multi-endpoint LLM management (`milestone/6.2-multi-endpoint`).
 
 #### Completed 6.2 — Multi-endpoint LLM management + per-field override

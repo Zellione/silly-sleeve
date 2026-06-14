@@ -9,6 +9,7 @@ import { useConfirmDialog } from '../components/ConfirmDialog';
 import { LLMEndpointCard } from '../components/LLMEndpointCard';
 import { AuthTokenBlock } from '../components/AuthTokenBlock';
 import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
+import { PerFieldDefaults } from '../components/PerFieldDefaults';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -828,6 +829,11 @@ const SettingsScreen: React.FC = () => {
     setMoreOpen(null);
   };
 
+  const setFieldDefaults = (map: Record<string, number>) => {
+    if (!settingsState) return;
+    persist(settings.Settings.createFrom({ ...settingsState, fieldEndpoints: map }));
+  };
+
   const addNew = () => {
     const newId = settingsState ? Math.max(...settingsState.endpoints.map(e => e.id), 0) + 1 : 1;
     setEditing({
@@ -954,6 +960,21 @@ const SettingsScreen: React.FC = () => {
                     <PlusIcon size={14} /> Add endpoint
                   </button>
                 </div>
+
+                {settingsState && settingsState.endpoints.length > 0 && (
+                  <div className="settings-block" style={{ marginTop: 18 }}>
+                    <h3>Per-field defaults</h3>
+                    <p className="desc">
+                      The default endpoint is used for every slot unless you pick another here.
+                      Projects can override these per field in the editor.
+                    </p>
+                    <PerFieldDefaults
+                      endpoints={settingsState.endpoints}
+                      value={settingsState.fieldEndpoints || {}}
+                      onChange={setFieldDefaults}
+                    />
+                  </div>
+                )}
 
                 <GenerationDefaultsForm />
               </div>

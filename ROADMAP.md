@@ -110,7 +110,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 - [x] **6.1** Dashboard: project grid, filter/search, status badges (Draft / Ready / Archived)
 - [x] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
-- [~] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
+- [x] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [ ] **6.4** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
 - [ ] **6.5** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
 - [ ] **6.6** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
@@ -123,8 +123,41 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ### 2026-06-14
 
-- Started Phase 4 · 6.3 — Advanced crawler (`milestone/6.3-advanced-crawler`).
+- Implemented Phase 4 · 6.3 — Advanced crawler (`milestone/6.3-advanced-crawler`).
 - Implemented Phase 4 · 6.2 — Multi-endpoint LLM management (`milestone/6.2-multi-endpoint`).
+
+#### Completed 6.3 — Advanced crawler
+
+- [x] **6.3** Multi-result crawl pipeline: the crawler now follows same-domain
+  links (1/2-hop), supports custom CSS selectors and a non-Fandom readable
+  fallback, sends a configurable User-Agent, and rate-limits requests. Each
+  crawled page is its own result; the user assigns a role (Character / Lorebook
+  / Skip) per result and "Send to project" creates stubs that remember their
+  origin page, so generation later runs from each entity's own source.
+  - Dependencies: added `github.com/PuerkitoBio/goquery` and
+    `github.com/go-shiori/go-readability` (CSS selector engine + readable
+    extraction).
+  - Backend (`internal/crawler/`): `CrawlSet` + `CrawlResult.{Depth,ParentURL,
+    IsMediaWiki}` + `CrawlOptions.Selectors`; `FetchPageWith`/`FetchOptions`
+    (User-Agent); `FetchReadable` readable fallback; `SectionsFromSelectors`
+    and `SameDomainLinks` (goquery); `Crawler.Crawl` bounded BFS with a
+    delay-based rate limiter, depth + `MaxPages` cap, dedupe, and skip-on-error.
+    Extraction precedence: custom selectors → MediaWiki native → readable.
+  - App: `CrawlPage` now returns a `CrawlSet`; `cachedCrawlSet`;
+    `SendCrawlToProject` (CrawlAssignment → character/lorebook stubs);
+    `crawlForActiveCharacterLocked` resolves generation source by the active
+    character's `SourceURL` (precedence: SourceURL match → first result → legacy
+    cache). `compose.Character` and `lorebook.Entry` gained `SourceURL`.
+  - Settings: global `CrawlerConfig{UserAgent, RateLimitMs, MaxPages}` with a
+    Crawler section in the Settings screen.
+  - Bundle: `CrawlSet` persisted as `crawl_set.json`; legacy `crawl_cache.json`
+    upgraded into a one-result set on open (backward compatible).
+  - Frontend: rewritten Crawler screen (custom selectors field, multi-result
+    list with per-result role control, preview follows selection, "Send to
+    project").
+  - Quality gate green: go vet + golangci-lint clean; 537 Go tests (`-race`),
+    83.6% total coverage (crawler package ~91%); 623 frontend tests, 84.19%
+    line coverage; `wails build -clean -tags webkit2_41` links.
 
 #### Completed 6.2 — Multi-endpoint LLM management + per-field override
 

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/comfy"
+	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
-	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/settings"
 )
 
@@ -26,6 +26,7 @@ type App struct {
 	projectDir      string
 	lorebookEntries []lorebook.Entry
 	projectImage    []byte
+	fieldEndpoints  map[string]int
 
 	comfy   *ComfyUIService
 	charGen *CharacterGenerator
@@ -394,7 +395,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	}
 
 	a.mu.Lock()
-	def := a.defaultEndpoint()
+	def := a.endpointForSlot("bulk")
 	a.mu.Unlock()
 
 	ch, err := a.charGen.GenerateBulk(*crawl, def, lockedFields, existing)
@@ -427,7 +428,7 @@ func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 			break
 		}
 	}
-	def := a.defaultEndpoint()
+	def := a.endpointForSlot(fieldID)
 	templates := a.settings.PromptTemplates
 	if len(templates.FieldPrompts) == 0 {
 		templates = prompts.Defaults()
@@ -469,6 +470,63 @@ func (a *App) defaultEndpoint() settings.LLMEndpoint {
 	return settings.LLMEndpoint{}
 }
 
+// endpointForSlot resolves which LLM endpoint a generation slot ("bulk" or a
+// field id) should use. Precedence: per-project override, then global default,
+// then defaultEndpoint(). A referenced endpoint ID that no longer exists falls
+// through to the next level. Callers must hold a.mu.
+func (a *App) endpointForSlot(slot string) settings.LLMEndpoint {
+	if ep, ok := a.lookupEndpoint(a.fieldEndpoints[slot]); ok {
+		return ep
+	}
+	if ep, ok := a.lookupEndpoint(a.settings.FieldEndpoints[slot]); ok {
+		return ep
+	}
+	return a.defaultEndpoint()
+}
+
+// lookupEndpoint returns the endpoint with the given ID. An id <= 0 (unset) or
+// an unknown ID returns ok=false. Callers must hold a.mu.
+func (a *App) lookupEndpoint(id int) (settings.LLMEndpoint, bool) {
+	if id <= 0 {
+		return settings.LLMEndpoint{}, false
+	}
+	for _, ep := range a.settings.Endpoints {
+		if ep.ID == id {
+			return ep, true
+		}
+	}
+	return settings.LLMEndpoint{}, false
+}
+
+// GetProjectFieldEndpoints returns a copy of the current project's per-field
+// endpoint overrides (empty, never nil, when none are set).
+func (a *App) GetProjectFieldEndpoints() map[string]int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := make(map[string]int, len(a.fieldEndpoints))
+	for k, v := range a.fieldEndpoints {
+		out[k] = v
+	}
+	return out
+}
+
+// SetProjectFieldEndpoint sets the endpoint override for a single slot on the
+// current project. An endpointID <= 0 clears the override so the slot falls
+// back to the global default, then the default endpoint. Persists on the next
+// bundle save.
+func (a *App) SetProjectFieldEndpoint(slot string, endpointID int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.fieldEndpoints == nil {
+		a.fieldEndpoints = map[string]int{}
+	}
+	if endpointID <= 0 {
+		delete(a.fieldEndpoints, slot)
+		return
+	}
+	a.fieldEndpoints[slot] = endpointID
+}
+
 // PickSaveBundle opens a native save dialog for creating a .slv project bundle.
 func (a *App) PickSaveBundle() (string, error) {
 	return a.project.PickSaveBundle()
@@ -499,6 +557,11 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	projImg := make([]byte, len(a.projectImage))
 	copy(projImg, a.projectImage)
 	snap.ProjectImage = projImg
+	fe := make(map[string]int, len(a.fieldEndpoints))
+	for k, v := range a.fieldEndpoints {
+		fe[k] = v
+	}
+	snap.FieldEndpoints = fe
 	a.mu.Unlock()
 
 	// Preserve an existing project's status across re-saves (default draft).
@@ -566,6 +629,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.projectDir = filePath
 	a.lorebookEntries = b.Lorebook
 	a.projectImage = b.Manifest.ProjectImage
+	a.fieldEndpoints = b.Manifest.FieldEndpoints
 
 	if len(a.characters) == 0 {
 		a.characters = []compose.Character{compose.NewCharacter(1)}
@@ -683,4 +747,3 @@ func charNotFound(id int) error {
 func workflowNotFound(id string) error {
 	return fmt.Errorf("workflow %q not found", id)
 }
-

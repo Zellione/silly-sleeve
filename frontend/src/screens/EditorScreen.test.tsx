@@ -43,6 +43,8 @@ const mockGenerateCharacterBulk = vi.fn();
 const mockPickSaveBundle = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 const mockGetSettings = vi.fn();
+const mockGetProjectFieldEndpoints = vi.fn();
+const mockSetProjectFieldEndpoint = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -57,6 +59,8 @@ vi.mock('../../wailsjs/go/main/App', () => ({
   PickSaveBundle: () => mockPickSaveBundle(),
   SaveProjectBundle: (p: any) => mockSaveProjectBundle(p),
   GetSettings: () => mockGetSettings(),
+  GetProjectFieldEndpoints: () => mockGetProjectFieldEndpoints(),
+  SetProjectFieldEndpoint: (slot: any, id: any) => mockSetProjectFieldEndpoint(slot, id),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -76,7 +80,9 @@ describe('EditorScreen', () => {
     mockSetActiveCharacter.mockResolvedValue(undefined);
     mockGenerateField.mockResolvedValue(mockCharacter);
     mockGenerateCharacterBulk.mockResolvedValue(mockCharacter);
-    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'off' });
+    mockGetSettings.mockResolvedValue({ endpoints: [], fieldEndpoints: {}, autoSaveMode: 'off' });
+    mockGetProjectFieldEndpoints.mockResolvedValue({});
+    mockSetProjectFieldEndpoint.mockResolvedValue(undefined);
   });
 
   it('renders the PageHead with step 2 and character name', async () => {

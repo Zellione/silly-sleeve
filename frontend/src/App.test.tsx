@@ -34,6 +34,8 @@ vi.mock('../wailsjs/go/main/App', () => ({
   GetProjectImage: vi.fn().mockResolvedValue([]),
   SaveProjectImage: vi.fn().mockResolvedValue(undefined),
   GetComfyWorkflows: vi.fn().mockResolvedValue([]),
+  GetProjectFieldEndpoints: vi.fn().mockResolvedValue({}),
+  SetProjectFieldEndpoint: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('./style.css', () => ({}));

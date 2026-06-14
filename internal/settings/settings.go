@@ -40,6 +40,9 @@ type Settings struct {
 	PromptTemplates  prompts.TemplateSet `json:"promptTemplates,omitempty"`
 	AutoSaveMode     string              `json:"autoSaveMode,omitempty"`
 	AutoSaveInterval int                 `json:"autoSaveInterval,omitempty"`
+	// FieldEndpoints maps a generation slot ("bulk" or a field id) to an
+	// LLMEndpoint ID, providing a global default endpoint per slot.
+	FieldEndpoints map[string]int `json:"fieldEndpoints,omitempty"`
 }
 
 func configPath() (string, error) {

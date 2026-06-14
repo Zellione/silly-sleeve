@@ -51,7 +51,7 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('MyEP')).toBeInTheDocument();
+      expect(screen.getAllByText('MyEP').length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByText('gpt-4')).toBeInTheDocument();
   });
@@ -99,7 +99,7 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('EditMe')).toBeInTheDocument();
+      expect(screen.getAllByText('EditMe').length).toBeGreaterThanOrEqual(1);
     });
 
     const editButton = screen.getByText('Edit');
@@ -277,7 +277,7 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('CardTest')).toBeInTheDocument();
+      expect(screen.getAllByText('CardTest').length).toBeGreaterThanOrEqual(1);
     });
 
     // Find the card's "Test" button (not the flyout one, but flyout isn't open)
@@ -303,10 +303,10 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('WillDelete')).toBeInTheDocument();
+      expect(screen.getAllByText('WillDelete').length).toBeGreaterThanOrEqual(1);
     });
 
-    const epCard = screen.getByText('WillDelete').closest('.endpoint-card')!;
+    const epCard = screen.getAllByText('WillDelete')[0].closest('.endpoint-card')!;
     const moreButton = epCard.querySelector('.ep-more-wrap button') as HTMLElement;
     await user.click(moreButton);
 
@@ -331,10 +331,10 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('Original')).toBeInTheDocument();
+      expect(screen.getAllByText('Original').length).toBeGreaterThanOrEqual(1);
     });
 
-    const epCard = screen.getByText('Original').closest('.endpoint-card')!;
+    const epCard = screen.getAllByText('Original')[0].closest('.endpoint-card')!;
     const moreButton = epCard.querySelector('.ep-more-wrap button') as HTMLElement;
     await user.click(moreButton);
 
@@ -361,10 +361,10 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('NotDefault')).toBeInTheDocument();
+      expect(screen.getAllByText('NotDefault').length).toBeGreaterThanOrEqual(1);
     });
 
-    const epCard = screen.getByText('NotDefault').closest('.endpoint-card')!;
+    const epCard = screen.getAllByText('NotDefault')[0].closest('.endpoint-card')!;
     const moreButton = epCard.querySelector('.ep-more-wrap button') as HTMLElement;
     await user.click(moreButton);
 
@@ -388,10 +388,10 @@ describe('SettingsScreen', () => {
     renderWithProviders(<SettingsScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('EscTest')).toBeInTheDocument();
+      expect(screen.getAllByText('EscTest').length).toBeGreaterThanOrEqual(1);
     });
 
-    const epCard = screen.getByText('EscTest').closest('.endpoint-card')!;
+    const epCard = screen.getAllByText('EscTest')[0].closest('.endpoint-card')!;
     const moreButton = epCard.querySelector('.ep-more-wrap button') as HTMLElement;
     await user.click(moreButton);
 
@@ -651,8 +651,7 @@ describe('SettingsScreen', () => {
       await user.click(screen.getByText('Auto-save'));
 
       await waitFor(() => {
-        const select = screen.getByRole('combobox') as HTMLSelectElement;
-        expect(select.value).toBe('off');
+        expect(screen.getByRole('combobox')).toHaveTextContent('Off');
       });
     });
 
@@ -670,7 +669,8 @@ describe('SettingsScreen', () => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
       });
 
-      await user.selectOptions(screen.getByRole('combobox'), 'onChange');
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('option', { name: 'On change' }));
 
       await waitFor(() => {
         expect(mockSaveSettings).toHaveBeenCalledTimes(1);
@@ -700,13 +700,42 @@ describe('SettingsScreen', () => {
 
       expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
 
-      await user.selectOptions(screen.getByRole('combobox'), 'timed');
+      await user.click(screen.getByRole('combobox'));
+      await user.click(screen.getByRole('option', { name: 'Timed' }));
 
       await waitFor(() => {
         const interval = screen.getByRole('spinbutton') as HTMLInputElement;
         expect(interval.value).toBe('30');
       });
     });
+  });
+
+  it('generates correct id=1 for first endpoint added to empty list', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    mockSaveSettings.mockResolvedValue(undefined);
+
+    renderWithProviders(<SettingsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Add endpoint'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Create')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Create'));
+
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+    });
+
+    const savedSettings = mockSaveSettings.mock.calls[0][0] as settings.Settings;
+    expect(savedSettings.endpoints.length).toBe(1);
+    expect(savedSettings.endpoints[0].id).toBe(1);
   });
 
   it('falls back to empty settings on error', async () => {

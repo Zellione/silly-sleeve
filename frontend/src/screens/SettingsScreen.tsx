@@ -9,6 +9,8 @@ import { useConfirmDialog } from '../components/ConfirmDialog';
 import { LLMEndpointCard } from '../components/LLMEndpointCard';
 import { AuthTokenBlock } from '../components/AuthTokenBlock';
 import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
+import { PerFieldDefaults } from '../components/PerFieldDefaults';
+import { Dropdown } from '../components/Dropdown';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -821,15 +823,23 @@ const SettingsScreen: React.FC = () => {
 
   const duplicateEndpoint = (e: settings.LLMEndpoint) => {
     if (!settingsState) return;
-    const newId = Math.max(...settingsState.endpoints.map(x => x.id), 0) + 1;
+    const newId = nextEndpointId(settingsState.endpoints);
     const copy = { ...e, id: newId, name: e.name + ' (copy)', isDefault: false, ok: false };
     const next = settings.Settings.createFrom({ ...settingsState, endpoints: [...settingsState.endpoints, copy] });
     persist(next);
     setMoreOpen(null);
   };
 
+  const setFieldDefaults = (map: Record<string, number>) => {
+    if (!settingsState) return;
+    persist(settings.Settings.createFrom({ ...settingsState, fieldEndpoints: map }));
+  };
+
+  const nextEndpointId = (eps: settings.LLMEndpoint[]) =>
+    eps.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+
   const addNew = () => {
-    const newId = settingsState ? Math.max(...settingsState.endpoints.map(e => e.id), 0) + 1 : 1;
+    const newId = nextEndpointId(settingsState?.endpoints ?? []);
     setEditing({
       id: newId,
       name: 'New endpoint',
@@ -955,6 +965,21 @@ const SettingsScreen: React.FC = () => {
                   </button>
                 </div>
 
+                {settingsState && settingsState.endpoints.length > 0 && (
+                  <div className="settings-block" style={{ marginTop: 18 }}>
+                    <h3>Per-field defaults</h3>
+                    <p className="desc">
+                      The default endpoint is used for every slot unless you pick another here.
+                      Projects can override these per field in the editor.
+                    </p>
+                    <PerFieldDefaults
+                      endpoints={settingsState.endpoints}
+                      value={settingsState.fieldEndpoints || {}}
+                      onChange={setFieldDefaults}
+                    />
+                  </div>
+                )}
+
                 <GenerationDefaultsForm />
               </div>
             )}
@@ -976,17 +1001,19 @@ const SettingsScreen: React.FC = () => {
                 <div className="settings-form">
                   <div className="form-row">
                     <label htmlFor="auto-save-mode">Mode</label>
-                    <select
+                    <Dropdown
                       id="auto-save-mode"
-                      className="field"
+                      aria-label="Mode"
+                      style={{ width: '100%' }}
                       value={settingsState.autoSaveMode || 'off'}
-                      onChange={e => { handleAutoSaveMode(e.target.value); e.target.blur(); }}
-                    >
-                      <option value="off">Off</option>
-                      <option value="onChange">On change</option>
-                      <option value="onBlur">On blur</option>
-                      <option value="timed">Timed</option>
-                    </select>
+                      onChange={handleAutoSaveMode}
+                      options={[
+                        { value: 'off', label: 'Off' },
+                        { value: 'onChange', label: 'On change' },
+                        { value: 'onBlur', label: 'On blur' },
+                        { value: 'timed', label: 'Timed' },
+                      ]}
+                    />
                   </div>
                   {((settingsState.autoSaveMode || 'off') === 'timed') && (
                     <div className="form-row">

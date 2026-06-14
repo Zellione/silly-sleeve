@@ -112,3 +112,19 @@ func TestProjectManager_ExportLorebook(t *testing.T) {
 	assert.Equal(t, filepath.Join(dir, "world_info.json"), filepath.Clean(path))
 	assert.FileExists(t, path)
 }
+
+func TestSaveBundle_RoundTripsFieldEndpoints(t *testing.T) {
+	pm := newTestProjectManager()
+	path := filepath.Join(t.TempDir(), "p.slv")
+	snap := ProjectSnapshot{
+		Characters:     []compose.Character{{ID: 1, Name: "Elara"}},
+		ActiveCharID:   1,
+		FieldEndpoints: map[string]int{"bulk": 2, "tags": 3},
+	}
+	_, err := pm.SaveBundle(path, snap)
+	require.NoError(t, err)
+
+	b, err := pm.ReadBundle(path)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{"bulk": 2, "tags": 3}, b.Manifest.FieldEndpoints)
+}

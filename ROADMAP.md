@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-13
+> Last updated: 2026-06-14
 
 ## Overview
 
@@ -109,7 +109,7 @@ Goal: Full SillyTavern drop-in experience with portraits and PNG embedding.
 Goal: Multi-source, multi-endpoint, and full project management.
 
 - [x] **6.1** Dashboard: project grid, filter/search, status badges (Draft / Ready / Archived)
-- [ ] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
+- [x] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
 - [ ] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [ ] **6.4** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
 - [ ] **6.5** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
@@ -120,6 +120,34 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-14
+
+- Implemented Phase 4 · 6.2 — Multi-endpoint LLM management (`milestone/6.2-multi-endpoint`).
+
+#### Completed 6.2 — Multi-endpoint LLM management + per-field override
+
+- [x] **6.2** Per-field (and bulk) LLM endpoint overrides on top of the existing
+  endpoint management. Two-level resolution: a global slot→endpoint map in
+  `settings.json` and a per-project override map in the `.slv` manifest.
+  - Backend: `FieldEndpoints map[string]int` on `Settings`, `ProjectManifest`,
+    and `ProjectSnapshot`; `App.endpointForSlot` resolver (precedence
+    project → global → default endpoint, dangling IDs fall through);
+    `GenerateCharacterBulk`/`GenerateField` routed through it (image-prompt
+    generation intentionally left on the default endpoint); bindings
+    `GetProjectFieldEndpoints` / `SetProjectFieldEndpoint`; overrides hydrate on
+    bundle open and persist on save.
+  - Frontend: shared `utils/fieldEndpoints` (slot list + `resolveEndpoint`
+    helper mirroring the Go precedence), a Settings "Per-field defaults" table,
+    and an inline `FieldEndpointChip` on each editor field card plus the bulk
+    control showing the effective endpoint and its source.
+  - Hardening: empty-list endpoint-id generation (`nextEndpointId`) and
+    overflow-menu accessibility (`role="menu"`/`menuitem`, labelled trigger) on
+    the endpoint card.
+  - Quality gate green: go vet + golangci-lint clean; 516 Go tests (`-race`),
+    root package 89.4% with the new resolver/bindings at 100%; 598 frontend
+    tests, 83.25% line coverage with the new modules at 100%;
+    `wails build -clean -tags webkit2_41` links.
 
 ### 2026-06-13
 

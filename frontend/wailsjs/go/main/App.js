@@ -118,6 +118,10 @@ export function GetPortrait(arg1) {
   return window['go']['main']['App']['GetPortrait'](arg1);
 }
 
+export function GetProjectFieldEndpoints() {
+  return window['go']['main']['App']['GetProjectFieldEndpoints']();
+}
+
 export function GetProjectImage() {
   return window['go']['main']['App']['GetProjectImage']();
 }
@@ -208,6 +212,10 @@ export function SaveSettings(arg1) {
 
 export function SetActiveCharacter(arg1) {
   return window['go']['main']['App']['SetActiveCharacter'](arg1);
+}
+
+export function SetProjectFieldEndpoint(arg1, arg2) {
+  return window['go']['main']['App']['SetProjectFieldEndpoint'](arg1, arg2);
 }
 
 export function SetProjectStatus(arg1, arg2) {

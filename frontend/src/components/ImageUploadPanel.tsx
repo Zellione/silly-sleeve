@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { UploadIcon, ImageIcon, CheckIcon, FolderIcon, DownloadIcon } from '../icons';
 import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime';
 import { ReadImageFile } from '../../wailsjs/go/main/App';
+import { Dropdown } from './Dropdown';
 
 export interface UploadFileInfo {
   name: string;
@@ -184,9 +185,19 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
               <div className="img-divline" />
               <div className="img-kv">
                 <label htmlFor={`${uid}-crop`}>Crop</label>
-                <select id={`${uid}-crop`} style={{ width: 'auto' }}><option>{defaultCrop}</option><option>None</option></select>
+                <Dropdown
+                  id={`${uid}-crop`}
+                  aria-label="Crop"
+                  defaultValue={defaultCrop}
+                  options={[{ value: defaultCrop, label: defaultCrop }, { value: 'None', label: 'None' }]}
+                />
                 <label htmlFor={`${uid}-resize`}>Resize</label>
-                <select id={`${uid}-resize`} style={{ width: 'auto' }}><option>{defaultResize}</option><option>Original</option></select>
+                <Dropdown
+                  id={`${uid}-resize`}
+                  aria-label="Resize"
+                  defaultValue={defaultResize}
+                  options={[{ value: defaultResize, label: defaultResize }, { value: 'Original', label: 'Original' }]}
+                />
               </div>
               <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }}
                 onClick={() => { if (imageData) onUseImage(imageData); }}>

@@ -165,6 +165,10 @@ export const ThemeToggle: React.FC = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    // Set the root's used color-scheme directly so WebKitGTK themes native
+    // controls (e.g. <select> option popups) to match — a dynamically applied
+    // CSS color-scheme does not reliably re-theme the native popup widget.
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
     localStorage.setItem('ss-theme', dark ? 'dark' : 'light');
   }, [dark]);
 

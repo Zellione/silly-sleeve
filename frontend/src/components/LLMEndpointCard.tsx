@@ -54,6 +54,9 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
           className="btn icon ghost"
           style={{ width: 28, height: 28 }}
           data-on={menuOpen ? '1' : '0'}
+          aria-label="More actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           onClick={ev => {
             ev.stopPropagation();
             onToggleMenu();
@@ -62,19 +65,19 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
           <MoreIcon size={14} />
         </button>
         {menuOpen && (
-          <div className="ep-more-menu">
-            <button className="ep-more-item" disabled={e.isDefault} onClick={onSetDefault}>
+          <div className="ep-more-menu" role="menu">
+            <button className="ep-more-item" role="menuitem" disabled={e.isDefault} onClick={onSetDefault}>
               <CheckIcon size={13} /> Set as default
               {e.isDefault && <span className="hint">current</span>}
             </button>
-            <button className="ep-more-item" onClick={onDuplicate}>
+            <button className="ep-more-item" role="menuitem" onClick={onDuplicate}>
               <CopyIcon size={13} /> Duplicate
             </button>
-            <button className="ep-more-item" onClick={onExportConfig}>
+            <button className="ep-more-item" role="menuitem" onClick={onExportConfig}>
               <DownloadIcon size={13} /> Export config
             </button>
             <div className="ep-more-sep" />
-            <button className="ep-more-item danger" onClick={onDelete}>
+            <button className="ep-more-item danger" role="menuitem" onClick={onDelete}>
               <TrashIcon size={13} /> Delete endpoint
             </button>
           </div>

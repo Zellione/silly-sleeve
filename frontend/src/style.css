@@ -23,9 +23,15 @@
   --ok: oklch(0.62 0.14 150);
   --warn: oklch(0.72 0.16 80);
   --bad: oklch(0.58 0.18 25);
+
+  /* Render native controls (select popups, scrollbars, etc.) light by default. */
+  color-scheme: light;
 }
 
 [data-theme="dark"] {
+  /* Switch native controls to dark so <select> option popups aren't white. */
+  color-scheme: dark;
+
   --bg: #15120e;
   --panel: #1c1813;
   --panel-2: #221d17;
@@ -2080,3 +2086,81 @@ kbd {
 }
 .empty h2 { font: 400 38px/1.05 var(--f-display); font-style: italic; margin: 0; max-width: 480px; }
 .empty p { max-width: 460px; color: var(--ink-3); line-height: 1.55; margin: 0; }
+
+.per-field-defaults { display: flex; flex-direction: column; gap: 6px; }
+.pfd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pfd-label { font: 500 12px/1 var(--f-sans); color: var(--ink-2); }
+.pfd-row select {
+  appearance: none;
+  padding: 5px 8px;
+  font: 12px/1 var(--f-mono);
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--ink);
+}
+.pfd-row select:focus { outline: none; border-color: var(--acc); }
+.field-endpoint-chip {
+  font: 500 10px/1 var(--f-mono); color: var(--ink-3);
+  background: var(--panel); border: 1px solid var(--hair); border-radius: 4px;
+  padding: 3px 6px; cursor: pointer;
+}
+.field-endpoint-chip[data-source="project"] { color: var(--acc); border-color: var(--acc-line); }
+
+/* ─── Dropdown (custom <select> replacement) ──────────────────────────
+   WebKitGTK renders native <select> option popups with its own light
+   theming that ignores CSS/color-scheme, so dropdowns are real DOM. */
+.ss-dropdown { position: relative; display: inline-flex; vertical-align: middle; }
+.ss-dropdown.is-block { display: flex; width: 100%; }
+.ss-dropdown-trigger {
+  appearance: none;
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  font: 12px/1.2 var(--f-sans);
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .12s;
+}
+.ss-dropdown-trigger:focus-visible { outline: none; border-color: var(--acc); }
+.ss-dropdown-trigger[aria-expanded="true"] { border-color: var(--acc); }
+.ss-dropdown-trigger:disabled { opacity: .5; cursor: not-allowed; }
+.ss-dropdown-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-dropdown-caret {
+  flex: none; width: 0; height: 0;
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-top: 5px solid currentColor; opacity: .55;
+}
+.ss-dropdown-list {
+  position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; min-width: 100%;
+  margin: 0; padding: 4px; list-style: none;
+  background: var(--panel); border: 1px solid var(--hair-strong); border-radius: 6px;
+  box-shadow: var(--shadow);
+  max-height: 260px; overflow-y: auto;
+}
+.ss-dropdown-option {
+  padding: 6px 8px; border-radius: 4px; cursor: pointer;
+  font: 12px/1.3 var(--f-sans); color: var(--ink-2); white-space: nowrap;
+}
+.ss-dropdown-option.is-active { background: var(--acc-soft); color: var(--ink); }
+.ss-dropdown-option[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.ss-dropdown-option[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
+
+/* Image-generation panels use a monospace, narrower control. */
+.img-kv .ss-dropdown { max-width: 140px; }
+.img-kv .ss-dropdown-trigger { font-family: var(--f-mono); padding: 4px 7px; }
+.img-kv .ss-dropdown-option { font-family: var(--f-mono); }
+.ss-dropdown-trigger.as-mono { font-family: var(--f-mono); }
+.ss-dropdown.has-mono .ss-dropdown-option { font-family: var(--f-mono); }
+
+/* Compact chip variant (field-endpoint picker). */
+.ss-dropdown-trigger.as-chip {
+  padding: 3px 6px; gap: 6px;
+  font: 500 10px/1.2 var(--f-mono); color: var(--ink-3);
+  background: var(--panel);
+}
+.ss-dropdown-trigger.as-chip[data-source="project"] { color: var(--acc); border-color: var(--acc-line); }

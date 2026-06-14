@@ -12,15 +12,17 @@ import {
   SetActiveCharacter, GetCachedCrawl,
   GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
+  GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint,
 } from '../../wailsjs/go/main/App';
 import { SectionContent } from '../components/SectionContent';
 import { TagsInput } from '../components/TagsInput';
+import { FieldEndpointChip } from '../components/FieldEndpointChip';
 import { logError } from '../utils/log';
 import {
   FIELDS, type FieldSpec, type FieldState, type FieldValue,
   wordCountLabel, useFieldEditor,
 } from '../components/useFieldEditor';
-import { compose, crawler } from '../../wailsjs/go/models';
+import { compose, crawler, settings } from '../../wailsjs/go/models';
 
 const StatsField: React.FC<{
   value: compose.StatKV[]; onChange: (v: compose.StatKV[]) => void; locked: boolean;
@@ -58,7 +60,11 @@ const FieldCard: React.FC<{
   onPatch: (p: Partial<FieldState>) => void;
   onReroll: () => void;
   onBlur: () => void;
-}> = ({ field, idx, st, tokenCount, onChange, onPatch, onReroll, onBlur }) => {
+  endpoints: settings.LLMEndpoint[];
+  globalMap: Record<string, number>;
+  projectMap: Record<string, number>;
+  onSelectEndpoint: (slot: string, id: number) => void;
+}> = ({ field, idx, st, tokenCount, onChange, onPatch, onReroll, onBlur, endpoints, globalMap, projectMap, onSelectEndpoint }) => {
   if (!st) return null;
   const displayCount = wordCountLabel(st.value, field.type);
 
@@ -74,6 +80,14 @@ const FieldCard: React.FC<{
         <h4>{field.label}</h4>
         <span className="req" data-r={field.required ? '1' : '0'}>{field.required ? 'required' : 'optional'}</span>
         <span className="grow" />
+        <FieldEndpointChip
+          slot={field.id}
+          label={field.label}
+          endpoints={endpoints}
+          globalMap={globalMap}
+          projectMap={projectMap}
+          onSelect={onSelectEndpoint}
+        />
         <div className="tools">
           <button className="tool" title="Custom reroll prompt"
             data-active={st.showPrompt ? '1' : '0'}
@@ -227,6 +241,9 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeChar, setActiveChar] = useState<compose.Character | null>(null);
   const [crawl, setCrawl] = useState<crawler.CrawlResult | null>(null);
+  const [endpoints, setEndpoints] = useState<settings.LLMEndpoint[]>([]);
+  const [globalMap, setGlobalMap] = useState<Record<string, number>>({});
+  const [projectMap, setProjectMap] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   const flushActiveCharRef = useRef<() => Promise<compose.Character | null>>(
@@ -277,6 +294,14 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       }
     }).catch(e => logError('EditorScreen.loadCharacters', e));
     GetCachedCrawl().then(r => { if (r) setCrawl(r); }).catch(e => logError('EditorScreen.loadCachedCrawl', e));
+  }, []);
+
+  useEffect(() => {
+    GetSettings().then(s => {
+      setEndpoints(s.endpoints || []);
+      setGlobalMap(s.fieldEndpoints || {});
+    }).catch(() => {});
+    GetProjectFieldEndpoints().then(setProjectMap).catch(() => {});
   }, []);
 
   const flushActiveCharacter = useCallback(async (): Promise<compose.Character | null> => {
@@ -405,6 +430,15 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     }
   }, [fields, activeChar, patchField, applyGenerated, toast, refreshCharacters]);
 
+  const selectFieldEndpoint = useCallback((slot: string, id: number) => {
+    SetProjectFieldEndpoint(slot, id);
+    setProjectMap(prev => {
+      const next = { ...prev };
+      if (id <= 0) delete next[slot]; else next[slot] = id;
+      return next;
+    });
+  }, []);
+
   if (!activeChar || !ready) {
     return (
       <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -497,8 +531,20 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
                 onPatch={p => patchField(f.id, p)}
                 onReroll={() => handleFieldReroll(f.id)}
                 onBlur={autoSaveBlur}
+                endpoints={endpoints}
+                globalMap={globalMap}
+                projectMap={projectMap}
+                onSelectEndpoint={selectFieldEndpoint}
               />
             ))}
+            <FieldEndpointChip
+              slot="bulk"
+              label="Bulk generation"
+              endpoints={endpoints}
+              globalMap={globalMap}
+              projectMap={projectMap}
+              onSelect={selectFieldEndpoint}
+            />
             <div className="row" style={{ justifyContent: 'space-between', padding: '12px 4px', color: 'var(--ink-3)' }}>
               <span className="uplabel">{dirtyCount} fields modified · {totalTokens} tokens estimated</span>
               <span className="uplabel">

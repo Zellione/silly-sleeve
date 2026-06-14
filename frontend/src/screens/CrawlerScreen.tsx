@@ -2,8 +2,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
-import { CrawlPage, GetCachedCrawl } from '../../wailsjs/go/main/App';
-import { crawler } from '../../wailsjs/go/models';
+import { CrawlPage, GetCachedCrawl, SendCrawlToProject } from '../../wailsjs/go/main/App';
+import { crawler, main } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
 import { Dropdown } from '../components/Dropdown';
 
@@ -14,6 +14,13 @@ const RECENT_WIKIS = [
 ];
 
 type Phase = 'idle' | 'fetching' | 'crawled';
+type RoleValue = 'character' | 'lorebook' | 'skip';
+
+const ROLE_LABELS: Record<RoleValue, string> = {
+  character: 'Character',
+  lorebook: 'Lorebook',
+  skip: 'Skip',
+};
 
 const CrawlerScreen: React.FC = () => {
   const [url, setUrl] = useState('https://baldursgate.fandom.com/wiki/Elara_Wynd');
@@ -22,17 +29,31 @@ const CrawlerScreen: React.FC = () => {
   const [include, setInclude] = useState<Record<string, boolean>>({
     infobox: true, quotes: true, trivia: false, gallery: false,
   });
-  const [result, setResult] = useState<crawler.CrawlResult | null>(null);
+  const [set, setSet] = useState<crawler.CrawlSet | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [roles, setRoles] = useState<Record<string, RoleValue>>({});
+  const [selectors, setSelectors] = useState('');
   const { toast } = useToast();
+
+  const initializeRoles = useCallback((crawlSet: crawler.CrawlSet) => {
+    const newRoles: Record<string, RoleValue> = {};
+    crawlSet.results.forEach((result, idx) => {
+      newRoles[result.url] = idx === 0 ? 'character' : 'lorebook';
+    });
+    setRoles(newRoles);
+  }, []);
 
   useEffect(() => {
     GetCachedCrawl().then(r => {
       if (r) {
-        setResult(r);
+        const crawlSet = new crawler.CrawlSet({ rootUrl: r.url, results: [r] });
+        setSet(crawlSet);
+        setSelectedIdx(0);
+        initializeRoles(crawlSet);
         setPhase('crawled');
       }
     }).catch(() => {});
-  }, []);
+  }, [initializeRoles]);
 
   const toggleInclude = (k: string) => {
     setInclude(prev => ({ ...prev, [k]: !prev[k] }));
@@ -42,18 +63,46 @@ const CrawlerScreen: React.FC = () => {
     if (!url.trim()) return;
     setPhase('fetching');
     try {
-      const opts = new crawler.CrawlOptions({ followLinks: follow, include });
+      const selectorArray = selectors.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+      const opts = new crawler.CrawlOptions({
+        followLinks: follow,
+        include,
+        selectors: selectorArray.length > 0 ? selectorArray : undefined,
+      });
       const res = await CrawlPage(url, opts);
-      setResult(res);
+      setSet(res);
+      setSelectedIdx(0);
+      initializeRoles(res);
       setPhase('crawled');
     } catch {
       setPhase('idle');
       toast({ kind: 'bad', title: 'Crawl failed', body: 'Could not reach the wiki. Check the URL and try again.' });
     }
-  }, [url, follow, include, toast]);
+  }, [url, follow, include, selectors, toast, initializeRoles]);
 
-  const wordCount = result?.wordCount ?? 0;
-  const sectionCount = result?.sections?.length ?? 0;
+  const handleSendToProject = useCallback(async () => {
+    if (!set) return;
+    try {
+      const assignments: main.CrawlAssignment[] = set.results.map(r => ({
+        url: r.url,
+        role: roles[r.url] ?? 'skip',
+      }));
+      await SendCrawlToProject(assignments);
+
+      const characterCount = assignments.filter(a => a.role === 'character').length;
+      const lorebookCount = assignments.filter(a => a.role === 'lorebook').length;
+
+      const body = `${characterCount} character${characterCount === 1 ? '' : 's'}, ${lorebookCount} lorebook ${lorebookCount === 1 ? 'entry' : 'entries'}`;
+
+      toast({ kind: 'ok', title: 'Sent to project', body });
+    } catch {
+      toast({ kind: 'bad', title: 'Send failed', body: 'Could not send crawl data to project.' });
+    }
+  }, [set, roles, toast]);
+
+  const selectedResult = set?.results[selectedIdx];
+  const wordCount = selectedResult?.wordCount ?? 0;
+  const sectionCount = selectedResult?.sections?.length ?? 0;
 
   return (
     <>
@@ -66,15 +115,19 @@ const CrawlerScreen: React.FC = () => {
             <button className="btn ghost" disabled title="Coming in a later phase">
               <SaveIcon size={14} /> Save crawl
             </button>
-            <button className="btn primary" disabled={phase !== 'crawled'} title="Coming in a later phase">
-              Send to Compose <ArrowIcon size={14} />
+            <button
+              className="btn primary"
+              disabled={phase !== 'crawled' || !set || set.results.length === 0}
+              onClick={handleSendToProject}
+            >
+              Send to project <ArrowIcon size={14} />
             </button>
           </>
         }
       />
       <div className="ss-page-body scroll">
         <div className="crawler-grid">
-          {/* LEFT — input + options */}
+          {/* LEFT — input + options + results */}
           <div className="col" style={{ gap: 18 }}>
             <div className="crawl-input">
               <div className="uplabel">Source URL</div>
@@ -143,7 +196,76 @@ const CrawlerScreen: React.FC = () => {
                   ))}
                 </div>
               </div>
+              <div className="crawl-opt" style={{ gridColumn: '1 / -1' }}>
+                <b>Custom selectors <span style={{ color: 'var(--ink-3)', fontWeight: 400, fontSize: 11, fontFamily: 'var(--f-mono)', marginLeft: 6 }}>advanced</span></b>
+                <input
+                  className="field"
+                  value={selectors}
+                  onChange={e => setSelectors(e.target.value)}
+                  style={{ fontFamily: 'var(--f-mono)', fontSize: '11.5px' }}
+                  placeholder=".mw-parser-output > p, .mw-parser-output > h2"
+                />
+                <small>Defaults to the MediaWiki body. Override to pin specific sections.</small>
+              </div>
             </div>
+
+            {set && set.results.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="uplabel" style={{ paddingLeft: 2 }}>Results</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                  {set.results.map((r, idx) => (
+                    <div
+                      key={r.url}
+                      data-on={idx === selectedIdx || null}
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        border: '1px solid var(--ink-5)',
+                        borderRadius: 4,
+                        background: 'var(--surface-1)',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onClick={() => setSelectedIdx(idx)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e: React.KeyboardEvent) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setSelectedIdx(idx);
+                        }
+                      }}
+                    >
+                      <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+                        <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {r.title}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {r.domain}
+                          {r.depth > 0 && <span style={{ marginLeft: 8 }}>hop {r.depth}</span>}
+                          {r.wordCount > 0 && <span style={{ marginLeft: 8 }}>{r.wordCount} words</span>}
+                        </div>
+                      </div>
+                      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} role="none">
+                        <Dropdown
+                          value={roles[r.url] ?? 'skip'}
+                          onChange={val => setRoles(prev => ({ ...prev, [r.url]: val as RoleValue }))}
+                          options={[
+                            { value: 'character', label: ROLE_LABELS.character },
+                            { value: 'lorebook', label: ROLE_LABELS.lorebook },
+                            { value: 'skip', label: ROLE_LABELS.skip },
+                          ]}
+                          style={{ width: 120 }}
+                          aria-label={`Role for ${r.title}`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* RIGHT — preview */}
@@ -151,8 +273,8 @@ const CrawlerScreen: React.FC = () => {
             <div className="head">
               {phase === 'fetching' ? (
                 <><span className="dot warn" /> <b>Fetching…</b><span style={{ flex: 1 }} /></>
-              ) : result ? (
-                <><span className="dot ok" /> <b>{result.title}</b><span> · {result.domain}</span><span style={{ flex: 1 }} /><span>{wordCount.toLocaleString()} words · {sectionCount} sections</span></>
+              ) : selectedResult ? (
+                <><span className="dot ok" /> <b>{selectedResult.title}</b><span> · {selectedResult.domain}</span><span style={{ flex: 1 }} /><span>{wordCount.toLocaleString()} words · {sectionCount} sections</span></>
               ) : (
                 <><span className="dot idle" /> <b>No page crawled</b><span style={{ flex: 1 }} /></>
               )}
@@ -169,12 +291,12 @@ const CrawlerScreen: React.FC = () => {
                   <div className="shimmer" style={{ height: 13 }} />
                   <div className="shimmer" style={{ height: 13, width: '85%' }} />
                 </div>
-              ) : result ? (
+              ) : selectedResult ? (
                 <>
-                   {result.infobox && result.infobox.length > 0 && (
+                   {selectedResult.infobox && selectedResult.infobox.length > 0 && (
                      <dl className="infobox">
-                       {result.infobox.map((entry, i) => {
-                         const showSection = entry.section && (i === 0 || result.infobox[i - 1].section !== entry.section);
+                       {selectedResult.infobox.map((entry, i) => {
+                         const showSection = entry.section && (i === 0 || selectedResult.infobox[i - 1].section !== entry.section);
                          return (
                            <React.Fragment key={i}>
                              {showSection && <div className="infobox-section">{entry.section}</div>}
@@ -192,8 +314,8 @@ const CrawlerScreen: React.FC = () => {
                        })}
                      </dl>
                    )}
-                    {result.sections && <SectionContent sections={result.sections} />}
-                    {result && (!result.sections || result.sections.length === 0) && (
+                    {selectedResult.sections && <SectionContent sections={selectedResult.sections} />}
+                    {selectedResult && (!selectedResult.sections || selectedResult.sections.length === 0) && (
                       <div className="col" style={{alignItems:'center', padding:'30px 16px', gap:8, textAlign:'center'}}>
                         <span style={{color:'var(--ink-2)', fontSize:13}}>No content extracted from this page.</span>
                         <span style={{color:'var(--ink-3)', fontSize:11}}>The wiki page may not exist, be empty, or contain no parseable content.</span>
@@ -208,9 +330,9 @@ const CrawlerScreen: React.FC = () => {
             </div>
             <div className="foot">
               <span className="meta">
-                  <span>Status · {result ? (result.statusCode || 'ERR') : '…'}</span>
-                <span>Latency · {result ? result.latencyMs + ' ms' : '…'}</span>
-                <span>Cache · {result ? 'warm' : 'cold'}</span>
+                  <span>Status · {selectedResult ? (selectedResult.statusCode || 'ERR') : '…'}</span>
+                <span>Latency · {selectedResult ? selectedResult.latencyMs + ' ms' : '…'}</span>
+                <span>Cache · {selectedResult ? 'warm' : 'cold'}</span>
               </span>
               <span style={{ flex: 1 }} />
               <span className="meta">~{Math.round(wordCount * 1.7).toLocaleString()} tokens</span>

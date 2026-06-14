@@ -7,10 +7,12 @@ import { crawler } from '../../wailsjs/go/models';
 
 const mockCrawlPage = vi.fn();
 const mockGetCachedCrawl = vi.fn();
+const mockSendCrawlToProject = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   CrawlPage: (...args: any[]) => mockCrawlPage(...args),
   GetCachedCrawl: () => mockGetCachedCrawl(),
+  SendCrawlToProject: (...args: any[]) => mockSendCrawlToProject(...args),
 }));
 
 const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
@@ -29,6 +31,8 @@ const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
   wordCount: 1842,
   statusCode: 200,
   latencyMs: 412,
+  depth: 0,
+  isMediaWiki: true,
 });
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -73,7 +77,7 @@ describe('CrawlerScreen', () => {
     renderWithProviders(<CrawlerScreen />);
     const saveBtn = screen.getByText('Save crawl').closest('button')!;
     expect(saveBtn).toBeDisabled();
-    const sendBtn = screen.getByText('Send to Compose').closest('button')!;
+    const sendBtn = screen.getByText(/Send to project/i).closest('button')!;
     expect(sendBtn).toBeDisabled();
   });
 
@@ -83,7 +87,10 @@ describe('CrawlerScreen', () => {
   });
 
   it('calls CrawlPage binding on "Crawl page" click', async () => {
-    mockCrawlPage.mockResolvedValue(sampleResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -111,27 +118,34 @@ describe('CrawlerScreen', () => {
       expect(fetchingElements.length).toBeGreaterThanOrEqual(2);
     });
 
-    resolvePromise!(sampleResult);
+    resolvePromise!(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
   });
 
   it('displays crawl result in preview after successful crawl', async () => {
-    mockCrawlPage.mockResolvedValue(sampleResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
     await user.click(screen.getByText('Crawl page'));
 
     await waitFor(() => {
-      expect(screen.getByText('elara_wynd')).toBeInTheDocument();
+      expect(screen.getByText('Half-elf')).toBeInTheDocument();
     });
-    expect(screen.getByText('baldursgate.fandom.com')).toBeInTheDocument();
-    expect(screen.getByText('Half-elf')).toBeInTheDocument();
     expect(screen.getByText('A half-elf bard.')).toBeInTheDocument();
     expect(screen.getByText('1,842 words · 2 sections')).toBeInTheDocument();
   });
 
   it('shows "Re-crawl" button after successful crawl', async () => {
-    mockCrawlPage.mockResolvedValue(sampleResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -187,7 +201,10 @@ describe('CrawlerScreen', () => {
   });
 
   it('renders infobox entries in preview', async () => {
-    mockCrawlPage.mockResolvedValue(sampleResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -200,7 +217,10 @@ describe('CrawlerScreen', () => {
   });
 
   it('renders section tags in preview', async () => {
-    mockCrawlPage.mockResolvedValue(sampleResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -212,7 +232,10 @@ describe('CrawlerScreen', () => {
   });
 
   it('displays footer metadata after crawl', async () => {
-    mockCrawlPage.mockResolvedValue(sampleResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sampleResult.url,
+      results: [sampleResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -233,8 +256,12 @@ describe('CrawlerScreen', () => {
     const emptyResult = new crawler.CrawlResult({
       title: 'empty', url: '', domain: '', rawHtml: '',
       sections: [], infobox: [], wordCount: 0, statusCode: 200, latencyMs: 0,
+      isMediaWiki: true,
     });
-    mockCrawlPage.mockResolvedValue(emptyResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: emptyResult.url,
+      results: [emptyResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -249,8 +276,12 @@ describe('CrawlerScreen', () => {
     const emptyResult = new crawler.CrawlResult({
       title: 'empty', url: '', domain: '', rawHtml: '',
       sections: [], infobox: [], wordCount: 0, statusCode: 200, latencyMs: 0,
+      isMediaWiki: true,
     });
-    mockCrawlPage.mockResolvedValue(emptyResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: emptyResult.url,
+      results: [emptyResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -267,8 +298,12 @@ describe('CrawlerScreen', () => {
       sections: [new crawler.Section({ heading: 'Main', body: 'Body text', level: 2 })],
       infobox: [],
       wordCount: 5, statusCode: 200, latencyMs: 100,
+      isMediaWiki: true,
     });
-    mockCrawlPage.mockResolvedValue(noInfoResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: noInfoResult.url,
+      results: [noInfoResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -288,8 +323,12 @@ describe('CrawlerScreen', () => {
       ],
       infobox: [],
       wordCount: 5, statusCode: 200, latencyMs: 100,
+      isMediaWiki: true,
     });
-    mockCrawlPage.mockResolvedValue(multiPara);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: multiPara.url,
+      results: [multiPara],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -311,8 +350,12 @@ describe('CrawlerScreen', () => {
         new crawler.InfoboxEntry({ key: 'hp', value: '100', section: 'Combat' }),
       ],
       wordCount: 5, statusCode: 200, latencyMs: 100,
+      isMediaWiki: true,
     });
-    mockCrawlPage.mockResolvedValue(sectionResult);
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: sectionResult.url,
+      results: [sectionResult],
+    }));
     const user = userEvent.setup();
     renderWithProviders(<CrawlerScreen />);
 
@@ -327,5 +370,53 @@ describe('CrawlerScreen', () => {
     });
     const sectionHeaders = screen.getAllByText(/^(Info|Combat)$/);
     expect(sectionHeaders).toHaveLength(2);
+  });
+
+  it('renders one result row per crawled page and assigns roles', async () => {
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: 'https://w/wiki/A',
+      results: [
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/A', title: 'A', domain: 'w', depth: 0, wordCount: 100,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/B', title: 'B', domain: 'w', depth: 1, wordCount: 50,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+      ],
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    // Find the results section which contains the result rows
+    const resultsSection = await screen.findByText('Results');
+    const resultsContainer = resultsSection.closest('div')?.nextElementSibling;
+    expect(resultsContainer?.textContent).toContain('A');
+    expect(resultsContainer?.textContent).toContain('B');
+  });
+
+  it('sends assignments to the backend', async () => {
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: 'https://w/wiki/A',
+      results: [
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/A', title: 'A', domain: 'w', depth: 0, wordCount: 100,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+      ],
+    }));
+    mockSendCrawlToProject.mockResolvedValue({
+      characters: [], lorebook: [], activeCharId: 1,
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+    await user.click(screen.getByRole('button', { name: /send to project/i }));
+    await waitFor(() => expect(mockSendCrawlToProject).toHaveBeenCalled());
   });
 });

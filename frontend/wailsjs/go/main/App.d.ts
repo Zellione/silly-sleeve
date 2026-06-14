@@ -16,7 +16,7 @@ export function AddCharacter():Promise<compose.Character>;
 
 export function CountTokens(arg1:string):Promise<number>;
 
-export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler.CrawlResult>;
+export function CrawlPage(arg1:string,arg2:crawler.CrawlOptions):Promise<crawler.CrawlSet>;
 
 export function DeleteCharacter(arg1:number):Promise<void>;
 
@@ -115,6 +115,8 @@ export function SaveProjectImage(arg1:Array<number>):Promise<void>;
 export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
+
+export function SendCrawlToProject(arg1:Array<main.CrawlAssignment>):Promise<main.CrawlSendResult>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
 

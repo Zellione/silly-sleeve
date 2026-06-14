@@ -210,6 +210,10 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
+export function SendCrawlToProject(arg1) {
+  return window['go']['main']['App']['SendCrawlToProject'](arg1);
+}
+
 export function SetActiveCharacter(arg1) {
   return window['go']['main']['App']['SetActiveCharacter'](arg1);
 }

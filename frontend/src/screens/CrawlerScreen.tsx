@@ -213,6 +213,73 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
   const wordCount = selectedResult?.wordCount ?? 0;
   const sectionCount = selectedResult?.sections?.length ?? 0;
 
+  const renderPreviewHead = () => {
+    if (phase === 'fetching') {
+      return <><span className="dot warn" /> <b>Fetching…</b><span style={{ flex: 1 }} /></>;
+    }
+    if (selectedResult) {
+      return <><span className="dot ok" /> <b>{selectedResult.title}</b><span> · {selectedResult.domain}</span><span style={{ flex: 1 }} /><span>{wordCount.toLocaleString()} words · {sectionCount} sections</span></>;
+    }
+    return <><span className="dot idle" /> <b>No page crawled</b><span style={{ flex: 1 }} /></>;
+  };
+
+  const renderPreviewBody = () => {
+    if (phase === 'fetching') {
+      return (
+        <div className="col" style={{ gap: 10 }}>
+          <div className="shimmer" style={{ height: 22, width: '40%' }} />
+          <div className="shimmer" style={{ height: 13 }} />
+          <div className="shimmer" style={{ height: 13, width: '90%' }} />
+          <div className="shimmer" style={{ height: 13, width: '80%' }} />
+          <div className="shimmer" style={{ height: 13, width: '95%' }} />
+          <div className="shimmer" style={{ height: 80, marginTop: 16 }} />
+          <div className="shimmer" style={{ height: 13 }} />
+          <div className="shimmer" style={{ height: 13, width: '85%' }} />
+        </div>
+      );
+    }
+    if (!selectedResult) {
+      return (
+        <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>
+          <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>Enter a wiki URL and click "Crawl page" to begin.</span>
+        </div>
+      );
+    }
+    const hasSections = selectedResult.sections && selectedResult.sections.length > 0;
+    return (
+      <>
+        {selectedResult.infobox && selectedResult.infobox.length > 0 && (
+          <dl className="infobox">
+            {selectedResult.infobox.map((entry, i) => {
+              const showSection = entry.section && (i === 0 || selectedResult.infobox[i - 1].section !== entry.section);
+              return (
+                <React.Fragment key={i}>
+                  {showSection && <div className="infobox-section">{entry.section}</div>}
+                  <dt>{entry.key}</dt>
+                  <dd>
+                    {entry.value.split('\n').map((line, j) => (
+                      <React.Fragment key={j}>
+                        {j > 0 && <br />}
+                        {line}
+                      </React.Fragment>
+                    ))}
+                  </dd>
+                </React.Fragment>
+              );
+            })}
+          </dl>
+        )}
+        {hasSections && <SectionContent sections={selectedResult.sections} />}
+        {!hasSections && (
+          <div className="col" style={{ alignItems: 'center', padding: '30px 16px', gap: 8, textAlign: 'center' }}>
+            <span style={{ color: 'var(--ink-2)', fontSize: 13 }}>No content extracted from this page.</span>
+            <span style={{ color: 'var(--ink-3)', fontSize: 11 }}>The wiki page may not exist, be empty, or contain no parseable content.</span>
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <>
       <PageHead
@@ -335,21 +402,21 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
                         border: '1px solid var(--ink-5)',
                         borderRadius: 4,
                         background: 'var(--surface-1)',
-                        cursor: 'pointer',
                         fontSize: 12,
                         transition: 'all 0.15s ease',
                       }}
-                      onClick={() => setSelectedIdx(idx)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e: React.KeyboardEvent) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          setSelectedIdx(idx);
-                        }
-                      }}
                     >
-                      <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedIdx(idx)}
+                        aria-pressed={idx === selectedIdx}
+                        aria-label={`Preview ${r.title}`}
+                        style={{
+                          flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer',
+                          background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit',
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {r.title}
                           {sent[r.url] && (
                             <span
@@ -364,32 +431,27 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
                               <CheckIcon size={9} /> {ROLE_LABELS[sent[r.url]]}
                             </span>
                           )}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        </span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {r.domain}
                           {r.depth > 0 && <span style={{ marginLeft: 8 }}>hop {r.depth}</span>}
                           {r.wordCount > 0 && <span style={{ marginLeft: 8 }}>{r.wordCount} words</span>}
-                        </div>
-                      </div>
-                      <div onClick={(e: React.MouseEvent) => e.stopPropagation()} role="none">
-                        <Dropdown
-                          value={normalizeRole(roles[r.url])}
-                          onChange={val => setRoles(prev => ({ ...prev, [r.url]: val as RoleValue }))}
-                          options={[
-                            { value: 'character', label: ROLE_LABELS.character },
-                            { value: 'lorebook', label: ROLE_LABELS.lorebook },
-                          ]}
-                          style={{ width: 120 }}
-                          aria-label={`Role for ${r.title}`}
-                        />
-                      </div>
+                        </span>
+                      </button>
+                      <Dropdown
+                        value={normalizeRole(roles[r.url])}
+                        onChange={val => setRoles(prev => ({ ...prev, [r.url]: val as RoleValue }))}
+                        options={[
+                          { value: 'character', label: ROLE_LABELS.character },
+                          { value: 'lorebook', label: ROLE_LABELS.lorebook },
+                        ]}
+                        style={{ width: 120 }}
+                        aria-label={`Role for ${r.title}`}
+                      />
                       <button
                         type="button"
                         className="btn ghost"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          handleSendRow(r.url, r.title);
-                        }}
+                        onClick={() => handleSendRow(r.url, r.title)}
                         style={{ fontSize: 11, padding: '4px 10px', flexShrink: 0 }}
                       >
                         {sent[r.url] ? 'Re-send' : 'Send'} <ArrowIcon size={12} />
@@ -399,10 +461,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
                         className="icon-btn"
                         aria-label={`Remove ${r.title}`}
                         title="Remove from crawl"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          handleRemoveResult(r.url);
-                        }}
+                        onClick={() => handleRemoveResult(r.url)}
                         style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}
                       >
                         <TrashIcon size={14} />
@@ -417,62 +476,10 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
           {/* RIGHT — preview */}
           <div className="crawl-preview">
             <div className="head">
-              {phase === 'fetching' ? (
-                <><span className="dot warn" /> <b>Fetching…</b><span style={{ flex: 1 }} /></>
-              ) : selectedResult ? (
-                <><span className="dot ok" /> <b>{selectedResult.title}</b><span> · {selectedResult.domain}</span><span style={{ flex: 1 }} /><span>{wordCount.toLocaleString()} words · {sectionCount} sections</span></>
-              ) : (
-                <><span className="dot idle" /> <b>No page crawled</b><span style={{ flex: 1 }} /></>
-              )}
+              {renderPreviewHead()}
             </div>
             <div className="body scroll">
-              {phase === 'fetching' ? (
-                <div className="col" style={{ gap: 10 }}>
-                  <div className="shimmer" style={{ height: 22, width: '40%' }} />
-                  <div className="shimmer" style={{ height: 13 }} />
-                  <div className="shimmer" style={{ height: 13, width: '90%' }} />
-                  <div className="shimmer" style={{ height: 13, width: '80%' }} />
-                  <div className="shimmer" style={{ height: 13, width: '95%' }} />
-                  <div className="shimmer" style={{ height: 80, marginTop: 16 }} />
-                  <div className="shimmer" style={{ height: 13 }} />
-                  <div className="shimmer" style={{ height: 13, width: '85%' }} />
-                </div>
-              ) : selectedResult ? (
-                <>
-                   {selectedResult.infobox && selectedResult.infobox.length > 0 && (
-                     <dl className="infobox">
-                       {selectedResult.infobox.map((entry, i) => {
-                         const showSection = entry.section && (i === 0 || selectedResult.infobox[i - 1].section !== entry.section);
-                         return (
-                           <React.Fragment key={i}>
-                             {showSection && <div className="infobox-section">{entry.section}</div>}
-                             <dt>{entry.key}</dt>
-                              <dd>
-                                {entry.value.split('\n').map((line, j) => (
-                                  <React.Fragment key={j}>
-                                    {j > 0 && <br />}
-                                    {line}
-                                  </React.Fragment>
-                                ))}
-                              </dd>
-                           </React.Fragment>
-                         );
-                       })}
-                     </dl>
-                   )}
-                    {selectedResult.sections && <SectionContent sections={selectedResult.sections} />}
-                    {selectedResult && (!selectedResult.sections || selectedResult.sections.length === 0) && (
-                      <div className="col" style={{alignItems:'center', padding:'30px 16px', gap:8, textAlign:'center'}}>
-                        <span style={{color:'var(--ink-2)', fontSize:13}}>No content extracted from this page.</span>
-                        <span style={{color:'var(--ink-3)', fontSize:11}}>The wiki page may not exist, be empty, or contain no parseable content.</span>
-                      </div>
-                    )}
-                </>
-              ) : (
-                <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>
-                  <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>Enter a wiki URL and click "Crawl page" to begin.</span>
-                </div>
-              )}
+              {renderPreviewBody()}
             </div>
             <div className="foot">
               <span className="meta">

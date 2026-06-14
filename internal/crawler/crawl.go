@@ -35,11 +35,7 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 	if opts.FollowLinks >= 2 {
 		linksPerPage = max(maxPages/opts.FollowLinks, 2)
 	}
-	type queued struct {
-		url, parent string
-		depth       int
-	}
-	queue := []queued{{url: rootURL, depth: 0}}
+	queue := []queuedPage{{url: rootURL, depth: 0}}
 	visited := map[string]bool{normalizeURL(rootURL): true}
 	seenPages := map[string]bool{}
 	set := CrawlSet{RootURL: rootURL}
@@ -49,38 +45,56 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 		queue = queue[1:]
 
 		res, raw, ok := c.fetchOne(item.url, opts)
-		if !ok {
+		if !ok || !claimPage(seenPages, res) {
 			continue
 		}
-		// Skip pages already collected under a different URL form (e.g. a
-		// MediaWiki redirect/alias resolving to the same page).
-		id := pageIdentity(res)
-		if seenPages[id] {
-			continue
-		}
-		seenPages[id] = true
 
 		res.Depth = item.depth
 		res.ParentURL = item.parent
 		set.Results = append(set.Results, res)
 
 		if item.depth < opts.FollowLinks {
-			enqueued := 0
-			for _, link := range SameDomainLinks(raw, item.url) {
-				if enqueued >= linksPerPage {
-					break
-				}
-				key := normalizeURL(link)
-				if visited[key] {
-					continue
-				}
-				visited[key] = true
-				queue = append(queue, queued{url: link, parent: item.url, depth: item.depth + 1})
-				enqueued++
-			}
+			queue = appendChildLinks(queue, raw, item, visited, linksPerPage)
 		}
 	}
 	return set, nil
+}
+
+// queuedPage is a page awaiting fetch in the breadth-first queue.
+type queuedPage struct {
+	url, parent string
+	depth       int
+}
+
+// claimPage records res as seen and reports whether it is new. A page already
+// collected under a different URL form (e.g. a MediaWiki redirect/alias
+// resolving to the same page) is rejected.
+func claimPage(seenPages map[string]bool, res CrawlResult) bool {
+	id := pageIdentity(res)
+	if seenPages[id] {
+		return false
+	}
+	seenPages[id] = true
+	return true
+}
+
+// appendChildLinks enqueues up to linksPerPage not-yet-visited same-domain
+// links found in raw, marking them visited, and returns the extended queue.
+func appendChildLinks(queue []queuedPage, raw string, item queuedPage, visited map[string]bool, linksPerPage int) []queuedPage {
+	enqueued := 0
+	for _, link := range SameDomainLinks(raw, item.url) {
+		if enqueued >= linksPerPage {
+			break
+		}
+		key := normalizeURL(link)
+		if visited[key] {
+			continue
+		}
+		visited[key] = true
+		queue = append(queue, queuedPage{url: link, parent: item.url, depth: item.depth + 1})
+		enqueued++
+	}
+	return queue
 }
 
 // pageIdentity returns a key identifying the underlying page so the same page

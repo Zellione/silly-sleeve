@@ -8,11 +8,13 @@ import { crawler } from '../../wailsjs/go/models';
 const mockCrawlPage = vi.fn();
 const mockGetCachedCrawl = vi.fn();
 const mockSendCrawlToProject = vi.fn();
+const mockRemoveCrawlResult = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   CrawlPage: (...args: any[]) => mockCrawlPage(...args),
   GetCachedCrawl: () => mockGetCachedCrawl(),
   SendCrawlToProject: (...args: any[]) => mockSendCrawlToProject(...args),
+  RemoveCrawlResult: (...args: any[]) => mockRemoveCrawlResult(...args),
 }));
 
 const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
@@ -418,5 +420,71 @@ describe('CrawlerScreen', () => {
     await screen.findByText('Results');
     await user.click(screen.getByRole('button', { name: /send to project/i }));
     await waitFor(() => expect(mockSendCrawlToProject).toHaveBeenCalled());
+  });
+
+  it('removes a page from the crawled list via RemoveCrawlResult', async () => {
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: 'https://w/wiki/A',
+      results: [
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/A', title: 'Alpha', domain: 'w', depth: 0, wordCount: 100,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/B', title: 'Beta', domain: 'w', depth: 1, wordCount: 50,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+      ],
+    }));
+    // Backend returns the set with Beta removed.
+    mockRemoveCrawlResult.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: 'https://w/wiki/A',
+      results: [
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/A', title: 'Alpha', domain: 'w', depth: 0, wordCount: 100,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+      ],
+    }));
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Beta');
+
+    await user.click(screen.getByRole('button', { name: /remove beta/i }));
+
+    await waitFor(() => expect(mockRemoveCrawlResult).toHaveBeenCalledWith('https://w/wiki/B'));
+    await waitFor(() => expect(screen.queryByText('Beta')).not.toBeInTheDocument());
+    // Alpha remains (shown in both the result row and the preview header).
+    expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0);
+  });
+
+  it('removing the only crawled page resets to the empty state without crashing', async () => {
+    mockCrawlPage.mockResolvedValue(new crawler.CrawlSet({
+      rootUrl: 'https://w/wiki/Only',
+      results: [
+        new crawler.CrawlResult({
+          url: 'https://w/wiki/Only', title: 'OnlyPage', domain: 'w', depth: 0, wordCount: 10,
+          rawHtml: '', sections: [], infobox: [], statusCode: 200, latencyMs: 0,
+          isMediaWiki: true,
+        }),
+      ],
+    }));
+    // Backend returns an empty set (nil Results serialises to null over the bridge).
+    mockRemoveCrawlResult.mockResolvedValue({ rootUrl: 'https://w/wiki/Only', results: null });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    const removeBtn = await screen.findByRole('button', { name: /remove onlypage/i });
+
+    await user.click(removeBtn);
+
+    // No crash: the empty state and the idle "Crawl page" button are shown again.
+    await waitFor(() => expect(screen.queryByText('Results')).not.toBeInTheDocument());
+    expect(screen.getByText('Crawl page')).toBeInTheDocument();
+    expect(screen.getByText(/Enter a wiki URL/i)).toBeInTheDocument();
   });
 });

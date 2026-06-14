@@ -36,3 +36,40 @@ func TestSendCrawlToProject_CreatesStubs(t *testing.T) {
 	assert.Equal(t, "https://w/wiki/Lore", res.Lorebook[0].SourceURL)
 	assert.Contains(t, res.Lorebook[0].Content, "world lore")
 }
+
+func TestRemoveCrawlResult_DropsPageAndResyncsRoot(t *testing.T) {
+	app := NewApp()
+	app.cachedCrawlSet = &crawler.CrawlSet{
+		RootURL: "https://w/wiki/Root",
+		Results: []crawler.CrawlResult{
+			{URL: "https://w/wiki/Root", Title: "Root"},
+			{URL: "https://w/wiki/B", Title: "B"},
+		},
+	}
+	app.cachedCrawl = &crawler.CrawlResult{URL: "https://w/wiki/Root", Title: "Root"}
+
+	set := app.RemoveCrawlResult("https://w/wiki/Root")
+	assert.Len(t, set.Results, 1)
+	assert.Equal(t, "https://w/wiki/B", set.Results[0].URL)
+	// legacy single cache re-synced to the new root.
+	assert.NotNil(t, app.cachedCrawl)
+	assert.Equal(t, "https://w/wiki/B", app.cachedCrawl.URL)
+}
+
+func TestRemoveCrawlResult_LastPageClearsCache(t *testing.T) {
+	app := NewApp()
+	app.cachedCrawlSet = &crawler.CrawlSet{
+		Results: []crawler.CrawlResult{{URL: "https://w/wiki/Only", Title: "Only"}},
+	}
+	app.cachedCrawl = &crawler.CrawlResult{URL: "https://w/wiki/Only"}
+
+	set := app.RemoveCrawlResult("https://w/wiki/Only")
+	assert.Empty(t, set.Results)
+	assert.Nil(t, app.cachedCrawl)
+}
+
+func TestRemoveCrawlResult_NoSetReturnsEmpty(t *testing.T) {
+	app := NewApp()
+	set := app.RemoveCrawlResult("https://w/wiki/Anything")
+	assert.Empty(t, set.Results)
+}

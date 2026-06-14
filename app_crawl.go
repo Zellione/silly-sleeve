@@ -94,3 +94,31 @@ func crawlPlainText(res crawler.CrawlResult) string {
 	}
 	return strings.Join(b, "\n\n")
 }
+
+
+// RemoveCrawlResult removes the crawled page with the given URL from the cached
+// crawl set and returns the updated set. The legacy single-result cache is kept
+// in sync with the new root (or cleared when the set becomes empty).
+func (a *App) RemoveCrawlResult(pageURL string) crawler.CrawlSet {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cachedCrawlSet == nil {
+		return crawler.CrawlSet{}
+	}
+
+	filtered := make([]crawler.CrawlResult, 0, len(a.cachedCrawlSet.Results))
+	for _, r := range a.cachedCrawlSet.Results {
+		if r.URL != pageURL {
+			filtered = append(filtered, r)
+		}
+	}
+	a.cachedCrawlSet.Results = filtered
+
+	if len(filtered) > 0 {
+		root := filtered[0]
+		a.cachedCrawl = &root
+	} else {
+		a.cachedCrawl = nil
+	}
+	return *a.cachedCrawlSet
+}

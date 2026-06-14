@@ -178,6 +178,10 @@ export function ReadImageFile(arg1) {
   return window['go']['main']['App']['ReadImageFile'](arg1);
 }
 
+export function RemoveCrawlResult(arg1) {
+  return window['go']['main']['App']['RemoveCrawlResult'](arg1);
+}
+
 export function RemoveProject(arg1, arg2) {
   return window['go']['main']['App']['RemoveProject'](arg1, arg2);
 }

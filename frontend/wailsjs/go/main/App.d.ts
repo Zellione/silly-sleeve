@@ -100,6 +100,8 @@ export function PickSaveBundle():Promise<string>;
 
 export function ReadImageFile(arg1:string):Promise<main.DroppedImage>;
 
+export function RemoveCrawlResult(arg1:string):Promise<crawler.CrawlSet>;
+
 export function RemoveProject(arg1:string,arg2:boolean):Promise<void>;
 
 export function SaveComfyWorkflowTemplate(arg1:string,arg2:string):Promise<void>;

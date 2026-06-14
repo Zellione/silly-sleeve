@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
-import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon } from '../icons';
+import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon, TrashIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
-import { CrawlPage, GetCachedCrawl, SendCrawlToProject } from '../../wailsjs/go/main/App';
+import { CrawlPage, GetCachedCrawl, RemoveCrawlResult, SendCrawlToProject } from '../../wailsjs/go/main/App';
 import { crawler, main } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
 import { Dropdown } from '../components/Dropdown';
@@ -81,9 +81,10 @@ const CrawlerScreen: React.FC = () => {
   }, [url, follow, include, selectors, toast, initializeRoles]);
 
   const handleSendToProject = useCallback(async () => {
-    if (!set) return;
+    const sendResults = set?.results ?? [];
+    if (sendResults.length === 0) return;
     try {
-      const assignments: main.CrawlAssignment[] = set.results.map(r => ({
+      const assignments: main.CrawlAssignment[] = sendResults.map(r => ({
         url: r.url,
         role: roles[r.url] ?? 'skip',
       }));
@@ -100,7 +101,32 @@ const CrawlerScreen: React.FC = () => {
     }
   }, [set, roles, toast]);
 
-  const selectedResult = set?.results[selectedIdx];
+  const handleRemoveResult = useCallback(async (pageURL: string) => {
+    try {
+      const updated = await RemoveCrawlResult(pageURL);
+      const nextResults = updated.results ?? [];
+      if (nextResults.length === 0) {
+        // Removed the last page — reset to the empty state.
+        setSet(null);
+        setSelectedIdx(0);
+        setRoles({});
+        setPhase('idle');
+        return;
+      }
+      setSet(updated);
+      setSelectedIdx(prev => Math.min(prev, nextResults.length - 1));
+      setRoles(prev => {
+        const next = { ...prev };
+        delete next[pageURL];
+        return next;
+      });
+    } catch {
+      toast({ kind: 'bad', title: 'Remove failed', body: 'Could not remove the page from the crawl.' });
+    }
+  }, [toast]);
+
+  const results = set?.results ?? [];
+  const selectedResult = results[selectedIdx];
   const wordCount = selectedResult?.wordCount ?? 0;
   const sectionCount = selectedResult?.sections?.length ?? 0;
 
@@ -117,7 +143,7 @@ const CrawlerScreen: React.FC = () => {
             </button>
             <button
               className="btn primary"
-              disabled={phase !== 'crawled' || !set || set.results.length === 0}
+              disabled={phase !== 'crawled' || results.length === 0}
               onClick={handleSendToProject}
             >
               Send to project <ArrowIcon size={14} />
@@ -209,11 +235,11 @@ const CrawlerScreen: React.FC = () => {
               </div>
             </div>
 
-            {set && set.results.length > 0 && (
+            {results.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="uplabel" style={{ paddingLeft: 2 }}>Results</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
-                  {set.results.map((r, idx) => (
+                  {results.map((r, idx) => (
                     <div
                       key={r.url}
                       data-on={idx === selectedIdx || null}
@@ -261,6 +287,19 @@ const CrawlerScreen: React.FC = () => {
                           aria-label={`Role for ${r.title}`}
                         />
                       </div>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label={`Remove ${r.title}`}
+                        title="Remove from crawl"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          handleRemoveResult(r.url);
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', color: 'var(--ink-3)' }}
+                      >
+                        <TrashIcon size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>

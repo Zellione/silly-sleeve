@@ -237,3 +237,17 @@ func TestSave_RoundtripPromptTemplates(t *testing.T) {
 	assert.Equal(t, "custom system prompt", loaded.PromptTemplates.SystemPrompt)
 	assert.Equal(t, "custom name prompt", loaded.PromptTemplates.FieldPrompts["name"])
 }
+
+func TestDefaultCrawlerConfig(t *testing.T) {
+	c := DefaultCrawlerConfig()
+	assert.Contains(t, c.UserAgent, "SillySleeve")
+	assert.Equal(t, 1000, c.RateLimitMs)
+	assert.Equal(t, 10, c.MaxPages)
+}
+
+func TestCrawlerConfig_NormalizeFillsZeroes(t *testing.T) {
+	c := CrawlerConfig{}.Normalized()
+	assert.Equal(t, DefaultCrawlerConfig().UserAgent, c.UserAgent)
+	assert.Equal(t, 1000, c.RateLimitMs)
+	assert.Equal(t, 10, c.MaxPages)
+}

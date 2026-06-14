@@ -986,4 +986,34 @@ describe('SettingsScreen', () => {
       expect(screen.queryByText('Server URL')).not.toBeInTheDocument();
     });
   });
+
+  describe('appearance section', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+      localStorage.clear();
+      document.documentElement.style.zoom = '';
+    });
+
+    it('renders the appearance nav item', async () => {
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => {
+        expect(screen.getByText('Appearance')).toBeInTheDocument();
+      });
+    });
+
+    it('shows the font scale control when selected', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SettingsScreen />);
+      await waitFor(() => screen.getByText('Add endpoint'));
+
+      await user.click(screen.getByText('Appearance'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('radiogroup', { name: 'Font scale' })).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole('radio', { name: /Extra Large/ }));
+      expect(localStorage.getItem('ss-font-scale')).toBe('xl');
+    });
+  });
 });

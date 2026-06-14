@@ -130,3 +130,38 @@ func TestCrawler_DedupesSamePageReachedViaAlias(t *testing.T) {
 	assert.Equal(t, 1, mine, "the same page reached via an alias must be collected once")
 	assert.Contains(t, titles, "Tatsumi")
 }
+
+
+func TestCrawler_TwoHopReachesDepth2(t *testing.T) {
+	// Chain: Root -> A (hop 1) -> B (hop 2).
+	srv := mediaWikiServer(t, map[string]string{
+		"Root": `<div class="mw-parser-output"><p><a href="/wiki/A">a</a></p></div>`,
+		"A":    `<div class="mw-parser-output"><p><a href="/wiki/B">b</a></p></div>`,
+		"B":    `<div class="mw-parser-output"><p>b body</p></div>`,
+	})
+	defer srv.Close()
+
+	depthOf := func(set CrawlSet, title string) (int, bool) {
+		for _, r := range set.Results {
+			if r.Title == title {
+				return r.Depth, true
+			}
+		}
+		return 0, false
+	}
+
+	// 1 hop: B (depth 2) must NOT be collected.
+	c := Crawler{UserAgent: "UA/1", MaxPages: 50}
+	oneHop, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	assert.NoError(t, err)
+	_, hasB1 := depthOf(oneHop, "B")
+	assert.False(t, hasB1, "B is 2 hops away; must be absent with FollowLinks=1")
+
+	// 2 hops: B must be collected at depth 2.
+	c2 := Crawler{UserAgent: "UA/1", MaxPages: 50}
+	twoHop, err := c2.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 2})
+	assert.NoError(t, err)
+	dB, hasB2 := depthOf(twoHop, "B")
+	assert.True(t, hasB2, "B must be reached with FollowLinks=2")
+	assert.Equal(t, 2, dB)
+}

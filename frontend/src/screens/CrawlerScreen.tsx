@@ -209,7 +209,7 @@ const CrawlerScreen: React.FC = () => {
                     ]}
                   />
                 </div>
-                <small>Multi-hop support coming in a later phase.</small>
+                <small>Follows same-domain links breadth-first, bounded by Max pages (Settings → Crawler). Raise it to reach deeper hops.</small>
               </div>
               <div className="crawl-opt">
                 <b>Include</b>

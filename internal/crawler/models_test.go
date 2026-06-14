@@ -105,3 +105,21 @@ func TestSection_ZeroValue(t *testing.T) {
 	assert.Empty(t, s.Body)
 	assert.Equal(t, 0, s.Level)
 }
+
+func TestCrawlSet_RootResult(t *testing.T) {
+	set := CrawlSet{
+		RootURL: "https://w.fandom.com/wiki/A",
+		Results: []CrawlResult{
+			{URL: "https://w.fandom.com/wiki/A", Depth: 0},
+			{URL: "https://w.fandom.com/wiki/B", Depth: 1, ParentURL: "https://w.fandom.com/wiki/A"},
+		},
+	}
+	assert.Len(t, set.Results, 2)
+	assert.Equal(t, 0, set.Results[0].Depth)
+	assert.Equal(t, "https://w.fandom.com/wiki/A", set.Results[1].ParentURL)
+}
+
+func TestCrawlOptions_Selectors(t *testing.T) {
+	opts := CrawlOptions{Selectors: []string{".mw-parser-output > p"}}
+	assert.Equal(t, []string{".mw-parser-output > p"}, opts.Selectors)
+}

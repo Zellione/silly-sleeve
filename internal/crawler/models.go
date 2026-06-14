@@ -4,6 +4,7 @@ package crawler
 type CrawlOptions struct {
 	FollowLinks int              `json:"followLinks"`
 	Include     map[string]bool  `json:"include"`
+	Selectors   []string         `json:"selectors,omitempty"`
 }
 
 // Section represents a parsed heading + body pair.
@@ -31,4 +32,13 @@ type CrawlResult struct {
 	WordCount  int            `json:"wordCount"`
 	StatusCode int            `json:"statusCode"`
 	LatencyMs  int64          `json:"latencyMs"`
+	Depth      int            `json:"depth"`
+	ParentURL  string         `json:"parentUrl,omitempty"`
+	IsMediaWiki bool          `json:"isMediaWiki"`
+}
+
+// CrawlSet is the full result of a crawl: the root page plus any followed pages.
+type CrawlSet struct {
+	RootURL string        `json:"rootUrl"`
+	Results []CrawlResult `json:"results"`
 }

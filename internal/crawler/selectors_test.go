@@ -22,3 +22,17 @@ func TestSectionsFromSelectors_EmptyOnNoMatch(t *testing.T) {
 	secs := SectionsFromSelectors(`<p>x</p>`, []string{".nope"})
 	assert.Empty(t, secs)
 }
+
+func TestSameDomainLinks(t *testing.T) {
+	html := `<div class="mw-parser-output">
+		<p><a href="/wiki/Alpha">Alpha</a> and <a href="/wiki/Beta">Beta</a></p>
+		<p><a href="https://other.com/wiki/X">External</a></p>
+		<p><a href="/wiki/Alpha">dup</a></p>
+		<p><a href="/wiki/Special:Random">special</a></p>
+	</div>`
+	links := SameDomainLinks(html, "https://w.fandom.com/wiki/Root")
+	assert.Equal(t, []string{
+		"https://w.fandom.com/wiki/Alpha",
+		"https://w.fandom.com/wiki/Beta",
+	}, links)
+}

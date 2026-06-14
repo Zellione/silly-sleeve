@@ -73,11 +73,12 @@ func newSafeClient() *http.Client {
 
 // FetchResult holds the raw API response data.
 type FetchResult struct {
-	Title     string
-	Domain    string
-	RawHTML   string
-	LatencyMs int64
-	Error     error
+	Title       string
+	Domain      string
+	RawHTML     string
+	LatencyMs   int64
+	IsMediaWiki bool
+	Error       error
 }
 
 type mediaWikiParseResponse struct {

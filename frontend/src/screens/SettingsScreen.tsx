@@ -11,6 +11,7 @@ import { AuthTokenBlock } from '../components/AuthTokenBlock';
 import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
 import { PerFieldDefaults } from '../components/PerFieldDefaults';
 import { Dropdown } from '../components/Dropdown';
+import { FontScaleControl } from '../components/FontScaleControl';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -23,6 +24,7 @@ const SECTIONS = [
   { id: 'prompts', label: 'Prompts' },
   { id: 'auto-save', label: 'Auto-save' },
   { id: 'crawler', label: 'Wiki crawler' },
+  { id: 'appearance', label: 'Appearance' },
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'about', label: 'About' },
 ];
@@ -1137,7 +1139,23 @@ const SettingsScreen: React.FC = () => {
               <CrawlerSettings settingsState={settingsState} persist={persist} />
             )}
 
-            {(sect !== 'llm' && sect !== 'comfy' && sect !== 'prompts' && sect !== 'auto-save' && sect !== 'crawler') && (
+            {sect === 'appearance' && (
+              <div className="settings-section">
+                <h3>Appearance</h3>
+                <p className="desc">
+                  Scale the entire interface up or down. Your choice is saved and
+                  re-applied automatically the next time you open Silly Sleeve.
+                </p>
+                <div className="settings-form">
+                  <div className="form-row">
+                    <span className="form-label">Font scale</span>
+                    <FontScaleControl />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(sect !== 'llm' && sect !== 'comfy' && sect !== 'prompts' && sect !== 'auto-save' && sect !== 'crawler' && sect !== 'appearance') && (
               <div className="settings-section">
                 <h3>{SECTIONS.find(s => s.id === sect)?.label}</h3>
                 <p className="desc">Coming in a later phase.</p>

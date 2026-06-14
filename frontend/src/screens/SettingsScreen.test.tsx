@@ -709,6 +709,34 @@ describe('SettingsScreen', () => {
     });
   });
 
+  it('generates correct id=1 for first endpoint added to empty list', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    mockSaveSettings.mockResolvedValue(undefined);
+
+    renderWithProviders(<SettingsScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Add endpoint')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Add endpoint'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Create')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Create'));
+
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+    });
+
+    const savedSettings = mockSaveSettings.mock.calls[0][0] as settings.Settings;
+    expect(savedSettings.endpoints.length).toBe(1);
+    expect(savedSettings.endpoints[0].id).toBe(1);
+  });
+
   it('falls back to empty settings on error', async () => {
     mockGetSettings.mockRejectedValue(new Error('fail'));
     renderWithProviders(<SettingsScreen />);

@@ -822,7 +822,7 @@ const SettingsScreen: React.FC = () => {
 
   const duplicateEndpoint = (e: settings.LLMEndpoint) => {
     if (!settingsState) return;
-    const newId = Math.max(...settingsState.endpoints.map(x => x.id), 0) + 1;
+    const newId = nextEndpointId(settingsState.endpoints);
     const copy = { ...e, id: newId, name: e.name + ' (copy)', isDefault: false, ok: false };
     const next = settings.Settings.createFrom({ ...settingsState, endpoints: [...settingsState.endpoints, copy] });
     persist(next);
@@ -834,8 +834,11 @@ const SettingsScreen: React.FC = () => {
     persist(settings.Settings.createFrom({ ...settingsState, fieldEndpoints: map }));
   };
 
+  const nextEndpointId = (eps: settings.LLMEndpoint[]) =>
+    eps.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+
   const addNew = () => {
-    const newId = settingsState ? Math.max(...settingsState.endpoints.map(e => e.id), 0) + 1 : 1;
+    const newId = nextEndpointId(settingsState?.endpoints ?? []);
     setEditing({
       id: newId,
       name: 'New endpoint',

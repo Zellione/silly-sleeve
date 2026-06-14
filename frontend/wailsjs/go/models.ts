@@ -482,6 +482,7 @@ export namespace project {
 	    sourceUrl: string;
 	    crawlTitle: string;
 	    projectImage: number[];
+	    fieldEndpoints?: Record<string, number>;
 	
 	    static createFrom(source: any = {}) {
 	        return new ProjectManifest(source);
@@ -499,6 +500,7 @@ export namespace project {
 	        this.sourceUrl = source["sourceUrl"];
 	        this.crawlTitle = source["crawlTitle"];
 	        this.projectImage = source["projectImage"];
+	        this.fieldEndpoints = source["fieldEndpoints"];
 	    }
 	}
 
@@ -599,6 +601,7 @@ export namespace settings {
 	    promptTemplates?: prompts.TemplateSet;
 	    autoSaveMode?: string;
 	    autoSaveInterval?: number;
+	    fieldEndpoints?: Record<string, number>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -611,6 +614,7 @@ export namespace settings {
 	        this.promptTemplates = this.convertValues(source["promptTemplates"], prompts.TemplateSet);
 	        this.autoSaveMode = source["autoSaveMode"];
 	        this.autoSaveInterval = source["autoSaveInterval"];
+	        this.fieldEndpoints = source["fieldEndpoints"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

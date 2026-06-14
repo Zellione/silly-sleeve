@@ -70,6 +70,8 @@ export function GetLorebook():Promise<Array<lorebook.Entry>>;
 
 export function GetPortrait(arg1:number):Promise<Array<number>>;
 
+export function GetProjectFieldEndpoints():Promise<Record<string, number>>;
+
 export function GetProjectImage():Promise<Array<number>>;
 
 export function GetProjectThumbnail(arg1:string):Promise<Array<number>>;
@@ -115,6 +117,8 @@ export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
+
+export function SetProjectFieldEndpoint(arg1:string,arg2:number):Promise<void>;
 
 export function SetProjectStatus(arg1:string,arg2:string):Promise<void>;
 

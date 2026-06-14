@@ -1,6 +1,7 @@
 package lorebook
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -66,4 +67,12 @@ func TestExportWorldInfo_Empty(t *testing.T) {
 
 	assert.Contains(t, string(data), `"entries"`)
 	assert.Contains(t, string(data), "{}")
+}
+
+func TestEntry_SourceURLPersists(t *testing.T) {
+	e := Entry{UID: 1, SourceURL: "https://w.fandom.com/wiki/B"}
+	data, _ := json.Marshal(e)
+	var back Entry
+	assert.NoError(t, json.Unmarshal(data, &back))
+	assert.Equal(t, "https://w.fandom.com/wiki/B", back.SourceURL)
 }

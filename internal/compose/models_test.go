@@ -1,6 +1,7 @@
 package compose
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,4 +61,13 @@ func TestFieldType(t *testing.T) {
 	assert.Equal(t, "text", FieldType("personality"))
 	assert.Equal(t, "quotes", FieldType("quotes"))
 	assert.Equal(t, "stats", FieldType("stats"))
+}
+
+func TestCharacter_SourceURLPersists(t *testing.T) {
+	ch := NewCharacter(1)
+	ch.SourceURL = "https://w.fandom.com/wiki/A"
+	data, _ := json.Marshal(ch)
+	var back Character
+	assert.NoError(t, json.Unmarshal(data, &back))
+	assert.Equal(t, "https://w.fandom.com/wiki/A", back.SourceURL)
 }

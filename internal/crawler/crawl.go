@@ -27,6 +27,14 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 	if maxPages <= 0 {
 		maxPages = 1
 	}
+	// linksPerPage bounds how many new links each page contributes. For a single
+	// hop we follow everything (breadth), but for multi-hop crawls we cap the
+	// fan-out so the page budget isn't consumed entirely by hop-1 links before
+	// any deeper hop is reached.
+	linksPerPage := maxPages
+	if opts.FollowLinks >= 2 {
+		linksPerPage = max(maxPages/opts.FollowLinks, 2)
+	}
 	type queued struct {
 		url, parent string
 		depth       int
@@ -57,13 +65,18 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 		set.Results = append(set.Results, res)
 
 		if item.depth < opts.FollowLinks {
+			enqueued := 0
 			for _, link := range SameDomainLinks(raw, item.url) {
+				if enqueued >= linksPerPage {
+					break
+				}
 				key := normalizeURL(link)
 				if visited[key] {
 					continue
 				}
 				visited[key] = true
 				queue = append(queue, queued{url: link, parent: item.url, depth: item.depth + 1})
+				enqueued++
 			}
 		}
 	}

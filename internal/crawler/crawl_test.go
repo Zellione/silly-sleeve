@@ -165,3 +165,45 @@ func TestCrawler_TwoHopReachesDepth2(t *testing.T) {
 	assert.True(t, hasB2, "B must be reached with FollowLinks=2")
 	assert.Equal(t, 2, dB)
 }
+
+
+func TestCrawler_TwoHopFanoutReachesDepth2OnDenseRoot(t *testing.T) {
+	// Root links to MORE pages than the cap. Pure breadth-first would fill the
+	// budget with hop-1 and never reach hop-2; the per-page fan-out cap must
+	// reserve room so depth-2 pages are still collected.
+	srv := mediaWikiServer(t, map[string]string{
+		"Root": `<div class="mw-parser-output"><p>` +
+			`<a href="/wiki/A">A</a><a href="/wiki/B">B</a><a href="/wiki/C">C</a>` +
+			`<a href="/wiki/D">D</a><a href="/wiki/E">E</a><a href="/wiki/F">F</a></p></div>`,
+		"A":  `<div class="mw-parser-output"><p><a href="/wiki/A1">A1</a></p></div>`,
+		"B":  `<div class="mw-parser-output"><p><a href="/wiki/B1">B1</a></p></div>`,
+		"C":  `<div class="mw-parser-output"><p><a href="/wiki/C1">C1</a></p></div>`,
+		"D":  `<div class="mw-parser-output"><p>d body</p></div>`,
+		"E":  `<div class="mw-parser-output"><p>e body</p></div>`,
+		"F":  `<div class="mw-parser-output"><p>f body</p></div>`,
+		"A1": `<div class="mw-parser-output"><p>a1 body</p></div>`,
+		"B1": `<div class="mw-parser-output"><p>b1 body</p></div>`,
+		"C1": `<div class="mw-parser-output"><p>c1 body</p></div>`,
+	})
+	defer srv.Close()
+
+	c := Crawler{UserAgent: "UA/1", MaxPages: 6}
+	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 2})
+	assert.NoError(t, err)
+
+	byDepth := map[int]int{}
+	for _, r := range set.Results {
+		byDepth[r.Depth]++
+	}
+	assert.Equal(t, 1, byDepth[0], "exactly one root")
+	assert.Greater(t, byDepth[2], 0, "depth-2 pages must be reached despite a dense root")
+
+	// 1-hop keeps full breadth (no fan-out cap): all reachable hop-1 within cap.
+	c1 := Crawler{UserAgent: "UA/1", MaxPages: 6}
+	oneHop, err := c1.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	assert.NoError(t, err)
+	for _, r := range oneHop.Results {
+		assert.LessOrEqual(t, r.Depth, 1)
+	}
+	assert.Len(t, oneHop.Results, 6, "1-hop fills the cap with root + hop-1 breadth")
+}

@@ -22,6 +22,7 @@ func (a *App) NewProject() {
 	a.lorebookEntries = nil
 	a.projectImage = nil
 	a.cachedCrawl = nil
+	a.cachedCrawlSet = nil
 	a.projectDir = ""
 }
 

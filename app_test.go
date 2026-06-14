@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -158,22 +159,22 @@ func TestCrawlPage_Success(t *testing.T) {
 	app := NewApp()
 	result := app.CrawlPage(srv.URL+"/wiki/Test_Page", crawler.CrawlOptions{})
 
-	assert.Equal(t, "Test_Page", result.Title)
-	assert.Equal(t, srv.URL+"/wiki/Test_Page", result.URL)
-	assert.NotEmpty(t, result.Domain)
-	assert.Contains(t, result.RawHTML, "Hello world from wiki")
-	assert.Equal(t, 200, result.StatusCode)
-	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
-	assert.GreaterOrEqual(t, result.WordCount, 0)
+	assert.Len(t, result.Results, 1)
+	assert.Equal(t, "Test_Page", result.Results[0].Title)
+	assert.Equal(t, srv.URL+"/wiki/Test_Page", result.Results[0].URL)
+	assert.NotEmpty(t, result.Results[0].Domain)
+	assert.Contains(t, result.Results[0].RawHTML, "Hello world from wiki")
+	assert.Equal(t, 200, result.Results[0].StatusCode)
+	assert.GreaterOrEqual(t, result.Results[0].LatencyMs, int64(0))
+	assert.GreaterOrEqual(t, result.Results[0].WordCount, 0)
 }
 
 func TestCrawlPage_Error(t *testing.T) {
 	app := NewApp()
 	result := app.CrawlPage("://invalid", crawler.CrawlOptions{})
 
-	assert.Equal(t, "://invalid", result.URL)
-	assert.Zero(t, result.StatusCode)
-	assert.GreaterOrEqual(t, result.LatencyMs, int64(0))
+	assert.Empty(t, result.Results)
+	assert.Equal(t, "://invalid", result.RootURL)
 }
 
 func TestCrawlPage_HTTPError(t *testing.T) {
@@ -185,8 +186,7 @@ func TestCrawlPage_HTTPError(t *testing.T) {
 	app := NewApp()
 	result := app.CrawlPage(srv.URL+"/wiki/Test", crawler.CrawlOptions{})
 
-	assert.Zero(t, result.StatusCode)
-	assert.NotEmpty(t, result.Domain)
+	assert.Empty(t, result.Results)
 }
 
 func TestGetCachedCrawl_NilByDefault(t *testing.T) {
@@ -210,7 +210,8 @@ func TestCrawlPage_CachesResult(t *testing.T) {
 	app := NewApp()
 	result := app.CrawlPage(srv.URL+"/wiki/CacheTest", crawler.CrawlOptions{})
 
-	assert.Equal(t, "CacheTest", result.Title)
+	assert.Len(t, result.Results, 1)
+	assert.Equal(t, "CacheTest", result.Results[0].Title)
 
 	cached := app.GetCachedCrawl()
 	require.NotNil(t, cached)
@@ -260,6 +261,34 @@ func TestGetCachedCrawl_ReturnsNilForFailedCrawl(t *testing.T) {
 	app := NewApp()
 	app.CrawlPage("://invalid", crawler.CrawlOptions{})
 	assert.Nil(t, app.GetCachedCrawl())
+}
+
+func TestCrawlPage_ReturnsSet(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		title := r.URL.Query().Get("page")
+		fmt.Fprintf(w, `{"parse":{"title":%q,"text":{"*":"<div class=\"mw-parser-output\"><p>body words here</p></div>"}}}`, title)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	set := app.CrawlPage(srv.URL+"/wiki/Test_Page", crawler.CrawlOptions{FollowLinks: 0})
+	assert.Len(t, set.Results, 1)
+	assert.Equal(t, set.Results[0].URL, app.cachedCrawlSet.Results[0].URL)
+}
+
+func TestCrawlForActiveCharacter_ResolvesBySourceURL(t *testing.T) {
+	app := NewApp()
+	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{
+		{URL: "https://w/wiki/A", Title: "A"},
+		{URL: "https://w/wiki/B", Title: "B"},
+	}}
+	app.characters = []compose.Character{{ID: 1, SourceURL: "https://w/wiki/B"}}
+	app.activeCharID = 1
+	app.mu.Lock()
+	got := app.crawlForActiveCharacterLocked()
+	app.mu.Unlock()
+	assert.NotNil(t, got)
+	assert.Equal(t, "B", got.Title)
 }
 
 func TestCharacters_InitialState(t *testing.T) {

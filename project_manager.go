@@ -26,6 +26,7 @@ type ProjectSnapshot struct {
 	CrawlTitle   string
 	Status       string
 	CrawlCache   *crawler.CrawlResult
+	CrawlSet     *crawler.CrawlSet
 	FieldEndpoints map[string]int
 }
 
@@ -110,6 +111,7 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		Lorebook:   snap.Lorebook,
 		Prompts:    snap.Prompts,
 		CrawlCache: snap.CrawlCache,
+		CrawlSet:   snap.CrawlSet,
 	}
 	if err := bundle.WriteBundle(filePath, b); err != nil {
 		return project.ProjectManifest{}, err

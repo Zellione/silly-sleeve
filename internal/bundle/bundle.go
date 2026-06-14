@@ -30,6 +30,7 @@ type Bundle struct {
 	Lorebook   []lorebook.Entry        `json:"lorebook"`
 	Prompts    prompts.TemplateSet     `json:"prompts"`
 	CrawlCache *crawler.CrawlResult    `json:"crawlCache"`
+	CrawlSet   *crawler.CrawlSet       `json:"crawlSet"`
 }
 
 // WriteBundle serializes a project bundle as a .slv zip file.
@@ -64,6 +65,11 @@ func WriteBundle(filePath string, b Bundle) error {
 	}
 	if b.CrawlCache != nil {
 		if err := writeJSON(zw, "crawl_cache.json", b.CrawlCache); err != nil {
+			return err
+		}
+	}
+	if b.CrawlSet != nil {
+		if err := writeJSON(zw, "crawl_set.json", b.CrawlSet); err != nil {
 			return err
 		}
 	}
@@ -132,6 +138,13 @@ func ReadBundle(filePath string) (Bundle, error) {
 		return Bundle{}, err
 	}
 
+	if b.CrawlSet == nil && b.CrawlCache != nil {
+		b.CrawlSet = &crawler.CrawlSet{
+			RootURL: b.CrawlCache.URL,
+			Results: []crawler.CrawlResult{*b.CrawlCache},
+		}
+	}
+
 	return b, nil
 }
 
@@ -141,6 +154,7 @@ func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts) },
 		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
 		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, b) },
+		"crawl_set.json":   func(f *zip.File) error { return readCrawlSet(f, b) },
 	}
 
 	foundManifest := false
@@ -206,6 +220,15 @@ func readCrawlCache(f *zip.File, b *Bundle) error {
 		return err
 	}
 	b.CrawlCache = &cc
+	return nil
+}
+
+func readCrawlSet(f *zip.File, b *Bundle) error {
+	var cs crawler.CrawlSet
+	if err := readJSON(f, &cs); err != nil {
+		return err
+	}
+	b.CrawlSet = &cs
 	return nil
 }
 

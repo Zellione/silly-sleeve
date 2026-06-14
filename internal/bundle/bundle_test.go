@@ -506,3 +506,32 @@ func TestPortraitIDFromName(t *testing.T) {
 	_, err = portraitIDFromName("images/project.png")
 	assert.Error(t, err)
 }
+
+func TestBundle_CrawlSetRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "p.slv")
+	set := &crawler.CrawlSet{RootURL: "https://w/wiki/A", Results: []crawler.CrawlResult{{URL: "https://w/wiki/A", Title: "A"}}}
+	assert.NoError(t, WriteBundle(path, Bundle{
+		Manifest:   project.ProjectManifest{Name: "P"},
+		Characters: []compose.Character{compose.NewCharacter(1)},
+		CrawlSet:   set,
+	}))
+	b, err := ReadBundle(path)
+	assert.NoError(t, err)
+	assert.NotNil(t, b.CrawlSet)
+	assert.Equal(t, "A", b.CrawlSet.Results[0].Title)
+}
+
+func TestBundle_LegacyCrawlCacheUpgrades(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy.slv")
+	assert.NoError(t, WriteBundle(path, Bundle{
+		Manifest:   project.ProjectManifest{Name: "P"},
+		Characters: []compose.Character{compose.NewCharacter(1)},
+		CrawlCache: &crawler.CrawlResult{URL: "https://w/wiki/Old", Title: "Old"},
+	}))
+	b, err := ReadBundle(path)
+	assert.NoError(t, err)
+	assert.NotNil(t, b.CrawlSet)
+	assert.Equal(t, "Old", b.CrawlSet.Results[0].Title)
+}

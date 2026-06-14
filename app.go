@@ -567,6 +567,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		snap.CrawlTitle = a.cachedCrawl.Title
 		snap.CrawlCache = a.cachedCrawl
 	}
+	snap.CrawlSet = a.cachedCrawlSet
 	snap.Prompts = a.settings.PromptTemplates
 	if len(snap.Prompts.FieldPrompts) == 0 {
 		snap.Prompts = prompts.Defaults()
@@ -658,6 +659,10 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 
 	if resolved := a.project.ResolveCrawlCache(b); resolved != nil {
 		a.cachedCrawl = resolved
+	}
+
+	if b.CrawlSet != nil {
+		a.cachedCrawlSet = b.CrawlSet
 	}
 
 	if len(b.Prompts.FieldPrompts) > 0 {

@@ -89,4 +89,13 @@ describe('LLMEndpointCard', () => {
     renderCard({ endpoint: makeEndpoint({ isDefault: true }), menuOpen: true });
     expect(screen.getByText(/Set as default/).closest('button')).toBeDisabled();
   });
+
+  describe('a11y', () => {
+    it('labels the overflow menu trigger and exposes a menu role when open', () => {
+      renderCard({ menuOpen: true });
+      expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThan(0);
+    });
+  });
 });

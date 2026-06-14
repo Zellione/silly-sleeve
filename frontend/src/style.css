@@ -2080,3 +2080,13 @@ kbd {
 }
 .empty h2 { font: 400 38px/1.05 var(--f-display); font-style: italic; margin: 0; max-width: 480px; }
 .empty p { max-width: 460px; color: var(--ink-3); line-height: 1.55; margin: 0; }
+
+.per-field-defaults { display: flex; flex-direction: column; gap: 6px; }
+.pfd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pfd-label { font: 500 12px/1 var(--f-sans); color: var(--ink-2); }
+.field-endpoint-chip {
+  font: 500 10px/1 var(--f-mono); color: var(--ink-3);
+  background: var(--panel); border: 1px solid var(--hair); border-radius: 4px;
+  padding: 3px 6px; cursor: pointer;
+}
+.field-endpoint-chip[data-source="project"] { color: var(--acc); border-color: var(--acc-line); }

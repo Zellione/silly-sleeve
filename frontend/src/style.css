@@ -1507,6 +1507,13 @@ kbd {
 .prob-bar .val::after { content: "%"; color: var(--ink-3); margin-left: 1px; }
 .lb-meta-bar { display: flex; align-items: center; gap: 12px; padding: 9px 14px; background: var(--panel-2); border-top: 1px solid var(--hair); font: 500 10.5px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); }
 .lb-meta-bar b { color: var(--ink-2); font-weight: 600; }
+.lb-scope { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-scope-chip {
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--hair); background: var(--bg); color: var(--ink-2);
+}
+.lb-scope-chip[data-on='1'] { border-color: var(--acc); background: var(--acc-soft); color: var(--acc); }
+.lb-scope-empty, .lb-scope-note { font-size: 11px; color: var(--ink-3); }
 
 /* ─── Confirm dialog ────────────────────────────────────── */
 

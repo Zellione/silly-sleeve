@@ -5,9 +5,9 @@ import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder } from '../../wailsjs/go/main/App';
+import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters } from '../../wailsjs/go/main/App';
 import { TagsInput } from '../components/TagsInput';
-import { lorebook } from '../../wailsjs/go/models';
+import { lorebook, compose } from '../../wailsjs/go/models';
 
 const POSITIONS = [
   { i: 0, name: 'Before Char Defs', hint: 'Top of context — system frame' },
@@ -67,8 +67,9 @@ const ToggleRow: React.FC<{ label: string; hint: string; value: boolean; onChang
 
 const LbDetail: React.FC<{
   entry: lorebook.Entry | null;
+  characters: compose.Character[];
   onChange: (e: lorebook.Entry) => void;
-}> = ({ entry, onChange }) => {
+}> = ({ entry, characters, onChange }) => {
   if (!entry) return (
     <div className="lb-detail" style={{display:'grid', placeItems:'center', color:'var(--ink-3)'}}>
       <div className="col" style={{alignItems:'center', textAlign:'center', gap:8}}>
@@ -165,6 +166,31 @@ const LbDetail: React.FC<{
           )}
         </div>
 
+        {/* === SCOPE === */}
+        <div className="lb-sect">
+          <div className="lb-sect-h"><h4>Character scope</h4><hr/></div>
+          <div className="lb-row">
+            <span>Applies to<small>No selection = global (all characters).</small></span>
+            <div className="lb-scope">
+              {characters.length === 0 && <span className="lb-scope-empty">No characters in project.</span>}
+              {characters.map(c => {
+                const id = String(c.id);
+                const on = (entry.characters || []).includes(id);
+                return (
+                  <button key={c.id} type="button" className="lb-scope-chip" data-on={on ? '1' : '0'}
+                          onClick={() => set('characters',
+                            on ? (entry.characters || []).filter(x => x !== id)
+                               : [...(entry.characters || []), id])}>
+                    {c.name || `#${c.id}`}
+                  </button>
+                );
+              })}
+            </div>
+            {(entry.characters || []).length === 0 && characters.length > 0 &&
+              <small className="lb-scope-note">Global · all characters</small>}
+          </div>
+        </div>
+
         {/* === ACTIVATION === */}
         <div className="lb-sect">
           <div className="lb-sect-h"><h4>Activation</h4><hr/></div>
@@ -247,6 +273,7 @@ const LorebookScreen: React.FC = () => {
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [characters, setCharacters] = useState<compose.Character[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -258,6 +285,10 @@ const LorebookScreen: React.FC = () => {
       setLoaded(true);
     });
   }, [toast]);
+
+  useEffect(() => {
+    GetCharacters().then(cs => setCharacters(cs || [])).catch(() => setCharacters([]));
+  }, []);
 
   const persist = useCallback((es: lorebook.Entry[]) => {
     setEntries(es);
@@ -416,7 +447,7 @@ const LorebookScreen: React.FC = () => {
           </div>
 
           {/* RIGHT — detail */}
-          <LbDetail entry={selected} onChange={updateSelected}/>
+          <LbDetail entry={selected} characters={characters} onChange={updateSelected}/>
         </div>
       </div>
     </>

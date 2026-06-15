@@ -8,12 +8,16 @@ const mockGetLorebook = vi.fn();
 const mockSaveLorebook = vi.fn();
 const mockExportLorebook = vi.fn();
 const mockPickExportFolder = vi.fn();
+const mockGetCharacters = vi.fn();
+const mockImportLorebook = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetLorebook: () => mockGetLorebook(),
   SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
   ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
   PickExportFolder: () => mockPickExportFolder(),
+  GetCharacters: () => mockGetCharacters(),
+  ImportLorebook: () => mockImportLorebook(),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
@@ -25,6 +29,11 @@ describe('LorebookScreen', () => {
     mockGetLorebook.mockResolvedValue([]);
     mockSaveLorebook.mockResolvedValue(undefined);
     mockPickExportFolder.mockResolvedValue('');
+    mockGetCharacters.mockResolvedValue([
+      { id: 7, name: 'Aria' },
+      { id: 8, name: 'Bram' },
+    ]);
+    mockImportLorebook.mockResolvedValue([]);
   });
 
   it('renders after loading', async () => {
@@ -222,6 +231,21 @@ describe('LorebookScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Position in context')).toBeInTheDocument();
       expect(screen.getAllByText('Before Char Defs').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('scopes an entry to a character via a chip and persists the id string', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'E', key: [], characters: [] },
+    ]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('E')).toBeInTheDocument());
+    await user.click(screen.getByText('E'));
+    await user.click(screen.getByRole('button', { name: /Aria/ }));
+    await waitFor(() => {
+      const last = mockSaveLorebook.mock.calls.at(-1)![0][0];
+      expect(last.characters).toEqual(['7']);
     });
   });
 });

@@ -271,4 +271,44 @@ describe('LorebookScreen', () => {
       expect(byUid[1]).toBe(980);
     });
   });
+
+  it('imports and merges, remapping UIDs onto existing entries', async () => {
+    mockGetLorebook.mockResolvedValue([{ uid: 0, comment: 'Existing', key: [] }]);
+    mockImportLorebook.mockResolvedValue([{ uid: 0, comment: 'Imported', key: [] }]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('Existing')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await user.click(await screen.findByRole('button', { name: /^Merge/i }));
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; comment: string }>;
+      expect(saved).toHaveLength(2);
+      expect(saved[1]).toMatchObject({ uid: 1, comment: 'Imported' });
+    });
+  });
+
+  it('imports and replaces, renumbering from zero', async () => {
+    mockGetLorebook.mockResolvedValue([{ uid: 0, comment: 'Existing', key: [] }]);
+    mockImportLorebook.mockResolvedValue([{ uid: 9, comment: 'Imported', key: [] }]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('Existing')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await user.click(await screen.findByRole('button', { name: /^Replace/i }));
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; comment: string }>;
+      expect(saved).toEqual([expect.objectContaining({ uid: 0, comment: 'Imported' })]);
+    });
+  });
+
+  it('does nothing when import is cancelled or empty', async () => {
+    mockImportLorebook.mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('New entry')).toBeInTheDocument());
+    mockSaveLorebook.mockClear();
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Merge/i })).toBeNull());
+    expect(mockSaveLorebook).not.toHaveBeenCalled();
+  });
 });

@@ -5,9 +5,9 @@ import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters } from '../../wailsjs/go/main/App';
+import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/main/App';
 import { TagsInput } from '../components/TagsInput';
-import { reorderByDrag } from '../utils/lorebook';
+import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';
 
 const POSITIONS = [
@@ -276,6 +276,7 @@ const LorebookScreen: React.FC = () => {
   const [loaded, setLoaded] = useState(false);
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [dragUid, setDragUid] = useState<number | null>(null);
+  const [pendingImport, setPendingImport] = useState<lorebook.Entry[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -379,6 +380,32 @@ const LorebookScreen: React.FC = () => {
     }
   }, [toast]);
 
+  const handleImport = useCallback(async () => {
+    try {
+      const imported = await ImportLorebook();
+      if (!imported || imported.length === 0) {
+        if (imported && imported.length === 0) {
+          toast({ kind: 'info', title: 'Nothing imported', body: 'No entries found in that file.' });
+        }
+        return;
+      }
+      setPendingImport(imported);
+    } catch (e: any) {
+      toast({ kind: 'bad', title: 'Import failed', body: e?.message || 'Could not read that file.' });
+    }
+  }, [toast]);
+
+  const applyImport = (mode: 'merge' | 'replace') => {
+    if (!pendingImport) return;
+    const next = mode === 'merge'
+      ? [...entries, ...remapForMerge(entries, pendingImport)]
+      : renumberFromZero(pendingImport);
+    persist(next);
+    setSelectedUid(next.length ? next[mode === 'merge' ? entries.length : 0].uid : null);
+    setPendingImport(null);
+    toast({ kind: 'ok', title: 'Lorebook imported', body: `${pendingImport.length} entr${pendingImport.length === 1 ? 'y' : 'ies'} ${mode === 'merge' ? 'merged' : 'loaded'}.` });
+  };
+
   if (!loaded) {
     return (
       <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
@@ -395,7 +422,10 @@ const LorebookScreen: React.FC = () => {
       <PageHead step={3} subtitle="Build the world around them"
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
         actions={
+          <>
+            <button className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
             <button className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
+          </>
         } />
       <div className="ss-page-body scroll">
         <div className="lb-grid">
@@ -465,6 +495,19 @@ const LorebookScreen: React.FC = () => {
           <LbDetail entry={selected} characters={characters} onChange={updateSelected}/>
         </div>
       </div>
+      {pendingImport && (
+        <div className="lb-import-overlay" role="dialog" aria-label="Import lorebook">
+          <div className="lb-import-card">
+            <h3>Import {pendingImport.length} entr{pendingImport.length === 1 ? 'y' : 'ies'}</h3>
+            <p>Merge into the current {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}, or replace them?</p>
+            <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={() => setPendingImport(null)}>Cancel</button>
+              <button className="btn ghost" onClick={() => applyImport('replace')}>Replace all</button>
+              <button className="btn primary" onClick={() => applyImport('merge')}>Merge</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

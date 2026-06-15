@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
@@ -293,11 +293,14 @@ const LorebookScreen: React.FC = () => {
     GetCharacters().then(cs => setCharacters(cs || [])).catch(() => setCharacters([]));
   }, []);
 
+  // Drive the native <dialog> modal state from pendingImport. showModal() gives
+  // us the top-layer backdrop, focus management, and native Escape-to-close.
+  const importDialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    if (!pendingImport) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPendingImport(null); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    const dlg = importDialogRef.current;
+    if (!dlg) return;
+    if (pendingImport && !dlg.open) dlg.showModal();
+    else if (!pendingImport && dlg.open) dlg.close();
   }, [pendingImport]);
 
   const persist = useCallback((es: lorebook.Entry[]) => {
@@ -410,7 +413,8 @@ const LorebookScreen: React.FC = () => {
       ? [...entries, ...remapForMerge(entries, pendingImport)]
       : renumberFromZero(pendingImport);
     persist(next);
-    setSelectedUid(next.length ? next[mode === 'merge' ? entries.length : 0].uid : null);
+    const firstImportedIdx = mode === 'merge' ? entries.length : 0;
+    setSelectedUid(next.length ? next[firstImportedIdx].uid : null);
     setPendingImport(null);
     toast({ kind: 'ok', title: 'Lorebook imported', body: `${pendingImport.length} entr${pendingImport.length === 1 ? 'y' : 'ies'} ${mode === 'merge' ? 'merged' : 'loaded'}.` });
   };
@@ -504,9 +508,13 @@ const LorebookScreen: React.FC = () => {
           <LbDetail entry={selected} characters={characters} onChange={updateSelected}/>
         </div>
       </div>
-      {pendingImport && (
-        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-        <div className="lb-import-overlay" role="dialog" aria-label="Import lorebook" onClick={e => { if (e.target === e.currentTarget) setPendingImport(null); }}>
+      <dialog
+        ref={importDialogRef}
+        className="lb-import-dialog"
+        aria-label="Import lorebook"
+        onCancel={e => { e.preventDefault(); setPendingImport(null); }}
+      >
+        {pendingImport && (
           <div className="lb-import-card">
             <h3>Import {pendingImport.length} entr{pendingImport.length === 1 ? 'y' : 'ies'}</h3>
             <p>Merge into the current {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}, or replace them?</p>
@@ -516,8 +524,8 @@ const LorebookScreen: React.FC = () => {
               <button className="btn primary" onClick={() => applyImport('merge')}>Merge</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </dialog>
     </>
   );
 };

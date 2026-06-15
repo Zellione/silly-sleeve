@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"silly-sleeve/internal/comfy"
@@ -742,6 +743,24 @@ func (a *App) ExportLorebook(folderPath string) (string, error) {
 	a.mu.Unlock()
 
 	return a.project.ExportLorebook(entries, folderPath)
+}
+
+// ImportLorebook opens a file dialog, reads a lorebook JSON file, and returns
+// the parsed entries WITHOUT mutating app state. Merge/replace is decided by the
+// frontend. A cancelled dialog returns (nil, nil).
+func (a *App) ImportLorebook() ([]lorebook.Entry, error) {
+	path, err := a.project.PickLorebookFile()
+	if err != nil {
+		return nil, err
+	}
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read lorebook file: %w", err)
+	}
+	return lorebook.ParseWorldInfo(data)
 }
 
 // GetPortrait returns the portrait bytes for a character.

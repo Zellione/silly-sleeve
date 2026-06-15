@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LorebookScreen from './LorebookScreen';
 import { ToastProvider } from '../components/ToastProvider';
@@ -246,6 +246,29 @@ describe('LorebookScreen', () => {
     await waitFor(() => {
       const last = mockSaveLorebook.mock.calls.at(-1)![0][0];
       expect(last.characters).toEqual(['7']);
+    });
+  });
+
+  it('reorders entries on drop and persists gapped order', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'A', key: [], order: 300 },
+      { uid: 1, comment: 'B', key: [], order: 200 },
+      { uid: 2, comment: 'C', key: [], order: 100 },
+    ]);
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('C')).toBeInTheDocument());
+    const rows = screen.getAllByRole('button').filter(b => b.classList.contains('lb-entry'));
+    const dt = { setData: vi.fn(), getData: vi.fn(), dropEffect: '', effectAllowed: '' };
+    // rows render order-desc: [A(0), B(1), C(2)]; drag C onto A
+    fireEvent.dragStart(rows[2], { dataTransfer: dt });
+    fireEvent.dragOver(rows[0], { dataTransfer: dt });
+    fireEvent.drop(rows[0], { dataTransfer: dt });
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; order: number }>;
+      const byUid = Object.fromEntries(saved.map(e => [e.uid, e.order]));
+      expect(byUid[2]).toBe(1000);
+      expect(byUid[0]).toBe(990);
+      expect(byUid[1]).toBe(980);
     });
   });
 });

@@ -7,6 +7,7 @@ import {
 } from '../icons';
 import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters } from '../../wailsjs/go/main/App';
 import { TagsInput } from '../components/TagsInput';
+import { reorderByDrag } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';
 
 const POSITIONS = [
@@ -274,6 +275,7 @@ const LorebookScreen: React.FC = () => {
   const [search, setSearch] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [characters, setCharacters] = useState<compose.Character[]>([]);
+  const [dragUid, setDragUid] = useState<number | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -356,6 +358,14 @@ const LorebookScreen: React.FC = () => {
     setSelectedUid(copy.uid);
   };
 
+  const dragEnabled = !search; // reorder only meaningful over the full, unfiltered list
+
+  const handleDrop = (targetUid: number) => {
+    if (dragUid == null || dragUid === targetUid) { setDragUid(null); return; }
+    persist(reorderByDrag(entries, dragUid, targetUid));
+    setDragUid(null);
+  };
+
   const handleExport = useCallback(async () => {
     try {
       const folder = await PickExportFolder();
@@ -409,6 +419,11 @@ const LorebookScreen: React.FC = () => {
                 <button key={e.uid} className="lb-entry"
                         data-on={selectedUid === e.uid ? '1' : '0'}
                         data-disabled={e.disable ? '1' : '0'}
+                        draggable={dragEnabled}
+                        onDragStart={() => setDragUid(e.uid)}
+                        onDragOver={ev => { if (dragEnabled) ev.preventDefault(); }}
+                        onDrop={ev => { ev.preventDefault(); handleDrop(e.uid); }}
+                        data-drag={dragUid === e.uid ? '1' : '0'}
                         onClick={() => setSelectedUid(e.uid)}>
                   <span className="grip"><MoreIcon size={12}/></span>
                   <span className="uid">{String(e.uid || 0).padStart(2, '0')}</span>

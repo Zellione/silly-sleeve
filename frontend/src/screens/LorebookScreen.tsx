@@ -293,6 +293,13 @@ const LorebookScreen: React.FC = () => {
     GetCharacters().then(cs => setCharacters(cs || [])).catch(() => setCharacters([]));
   }, []);
 
+  useEffect(() => {
+    if (!pendingImport) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPendingImport(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [pendingImport]);
+
   const persist = useCallback((es: lorebook.Entry[]) => {
     setEntries(es);
     SaveLorebook(es).catch(() => {
@@ -383,8 +390,10 @@ const LorebookScreen: React.FC = () => {
   const handleImport = useCallback(async () => {
     try {
       const imported = await ImportLorebook();
+      // Empty array = a file with no entries (inform the user). null/undefined = the
+      // user cancelled the dialog (stay silent).
       if (!imported || imported.length === 0) {
-        if (imported && imported.length === 0) {
+        if (imported?.length === 0) {
           toast({ kind: 'info', title: 'Nothing imported', body: 'No entries found in that file.' });
         }
         return;
@@ -496,7 +505,8 @@ const LorebookScreen: React.FC = () => {
         </div>
       </div>
       {pendingImport && (
-        <div className="lb-import-overlay" role="dialog" aria-label="Import lorebook">
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
+        <div className="lb-import-overlay" role="dialog" aria-label="Import lorebook" onClick={e => { if (e.target === e.currentTarget) setPendingImport(null); }}>
           <div className="lb-import-card">
             <h3>Import {pendingImport.length} entr{pendingImport.length === 1 ? 'y' : 'ies'}</h3>
             <p>Merge into the current {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}, or replace them?</p>

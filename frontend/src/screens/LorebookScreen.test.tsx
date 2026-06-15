@@ -311,4 +311,14 @@ describe('LorebookScreen', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: /^Merge/i })).toBeNull());
     expect(mockSaveLorebook).not.toHaveBeenCalled();
   });
+
+  it('shows an error toast when import fails', async () => {
+    mockImportLorebook.mockRejectedValue(new Error('file unreadable'));
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('New entry')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await waitFor(() => expect(screen.getByText('Import failed')).toBeInTheDocument());
+    expect(mockSaveLorebook).not.toHaveBeenCalled();
+  });
 });

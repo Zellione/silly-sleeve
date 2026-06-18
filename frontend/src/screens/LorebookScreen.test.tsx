@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LorebookScreen from './LorebookScreen';
 import { ToastProvider } from '../components/ToastProvider';
@@ -8,12 +8,16 @@ const mockGetLorebook = vi.fn();
 const mockSaveLorebook = vi.fn();
 const mockExportLorebook = vi.fn();
 const mockPickExportFolder = vi.fn();
+const mockGetCharacters = vi.fn();
+const mockImportLorebook = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetLorebook: () => mockGetLorebook(),
   SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
   ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
   PickExportFolder: () => mockPickExportFolder(),
+  GetCharacters: () => mockGetCharacters(),
+  ImportLorebook: () => mockImportLorebook(),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
@@ -25,6 +29,11 @@ describe('LorebookScreen', () => {
     mockGetLorebook.mockResolvedValue([]);
     mockSaveLorebook.mockResolvedValue(undefined);
     mockPickExportFolder.mockResolvedValue('');
+    mockGetCharacters.mockResolvedValue([
+      { id: 7, name: 'Aria' },
+      { id: 8, name: 'Bram' },
+    ]);
+    mockImportLorebook.mockResolvedValue([]);
   });
 
   it('renders after loading', async () => {
@@ -223,5 +232,93 @@ describe('LorebookScreen', () => {
       expect(screen.getByText('Position in context')).toBeInTheDocument();
       expect(screen.getAllByText('Before Char Defs').length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it('scopes an entry to a character via a chip and persists the id string', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'E', key: [], characters: [] },
+    ]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('E')).toBeInTheDocument());
+    await user.click(screen.getByText('E'));
+    await user.click(screen.getByRole('button', { name: /Aria/ }));
+    await waitFor(() => {
+      const last = mockSaveLorebook.mock.calls.at(-1)![0][0];
+      expect(last.characters).toEqual(['7']);
+    });
+  });
+
+  it('reorders entries on drop and persists gapped order', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'A', key: [], order: 300 },
+      { uid: 1, comment: 'B', key: [], order: 200 },
+      { uid: 2, comment: 'C', key: [], order: 100 },
+    ]);
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('C')).toBeInTheDocument());
+    const rows = screen.getAllByRole('button').filter(b => b.classList.contains('lb-entry'));
+    const dt = { setData: vi.fn(), getData: vi.fn(), dropEffect: '', effectAllowed: '' };
+    // rows render order-desc: [A(0), B(1), C(2)]; drag C onto A
+    fireEvent.dragStart(rows[2], { dataTransfer: dt });
+    fireEvent.dragOver(rows[0], { dataTransfer: dt });
+    fireEvent.drop(rows[0], { dataTransfer: dt });
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; order: number }>;
+      const byUid = Object.fromEntries(saved.map(e => [e.uid, e.order]));
+      expect(byUid[2]).toBe(1000);
+      expect(byUid[0]).toBe(990);
+      expect(byUid[1]).toBe(980);
+    });
+  });
+
+  it('imports and merges, remapping UIDs onto existing entries', async () => {
+    mockGetLorebook.mockResolvedValue([{ uid: 0, comment: 'Existing', key: [] }]);
+    mockImportLorebook.mockResolvedValue([{ uid: 0, comment: 'Imported', key: [] }]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('Existing')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await user.click(await screen.findByRole('button', { name: /^Merge/i }));
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; comment: string }>;
+      expect(saved).toHaveLength(2);
+      expect(saved[1]).toMatchObject({ uid: 1, comment: 'Imported' });
+    });
+  });
+
+  it('imports and replaces, renumbering from zero', async () => {
+    mockGetLorebook.mockResolvedValue([{ uid: 0, comment: 'Existing', key: [] }]);
+    mockImportLorebook.mockResolvedValue([{ uid: 9, comment: 'Imported', key: [] }]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('Existing')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await user.click(await screen.findByRole('button', { name: /^Replace/i }));
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; comment: string }>;
+      expect(saved).toEqual([expect.objectContaining({ uid: 0, comment: 'Imported' })]);
+    });
+  });
+
+  it('does nothing when import is cancelled or empty', async () => {
+    mockImportLorebook.mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('New entry')).toBeInTheDocument());
+    mockSaveLorebook.mockClear();
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Merge/i })).toBeNull());
+    expect(mockSaveLorebook).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast when import fails', async () => {
+    mockImportLorebook.mockRejectedValue(new Error('file unreadable'));
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('New entry')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    await waitFor(() => expect(screen.getByText('Import failed')).toBeInTheDocument());
+    expect(mockSaveLorebook).not.toHaveBeenCalled();
   });
 });

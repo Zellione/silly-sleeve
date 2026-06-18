@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-14 — Phase 4 · 6.4 Font scaling presets complete.
+> Last updated: 2026-06-15 — Phase 4 · 6.5 Advanced lorebook complete.
 
 ## Overview
 
@@ -112,7 +112,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **6.2** Multi-endpoint LLM management: list, add/edit/duplicate/delete/test, default endpoint, per-field override
 - [x] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [x] **6.4** Font scaling presets: choose between pre-defined UI scale levels (Small / Default / Large / Extra Large), persisted across restarts
-- [ ] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
+- [x] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
 - [ ] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
 - [ ] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
 
@@ -121,6 +121,40 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-15
+
+- Implemented Phase 4 · 6.5 — Advanced lorebook (`milestone/6.5-advanced-lorebook`).
+
+#### Completed 6.5 — Advanced lorebook
+
+- [x] **6.5** Per-character scoping, drag reorder, and SillyTavern `.json` import
+  layered onto the existing lorebook editor. Selective logic and probability
+  sliders were already present in the UI from Phase 2 (4.5); export-time
+  per-character scoping was already wired in `internal/cardexport`
+  (`filterEntries`, keyed on the character ID string) — so this milestone added
+  the remaining authoring surface plus import.
+  - Backend (`internal/lorebook/import.go`): `ParseWorldInfo([]byte) ([]Entry,
+    error)` accepts three shapes — World Info object map (`{"entries":{"<uid>":
+    {…}}}`), `entries` array, and a bare top-level array — returning entries
+    sorted ascending by UID; empty/unrecognized input yields an empty slice,
+    only malformed JSON errors.
+  - App/dialog: `ProjectManager.PickLorebookFile` (native `.json` open dialog)
+    and the `ImportLorebook` binding, which reads the chosen file and delegates
+    to `ParseWorldInfo` without mutating app state (merge/replace is decided in
+    the frontend; cancel returns nil).
+  - Frontend helpers (`frontend/src/utils/lorebook.ts`): pure `reorderByDrag`
+    (reassigns `order` with gaps — 1000, 990, 980… — so SillyTavern insertion
+    priority matches visual order), `remapForMerge`, and `renumberFromZero`.
+  - Frontend UI (`LorebookScreen.tsx`): a "Character scope" chip row in the
+    entry editor (none selected = global / all characters; stores character ID
+    strings), native HTML5 drag-to-reorder of the entry list (disabled while a
+    search filter is active), and an "Import .json" flow with a merge-vs-replace
+    confirm modal (Escape / backdrop to cancel).
+  - Quality gate green: go vet + golangci-lint clean; 554 Go tests (`-race`),
+    lorebook package 90.9% / root 89.3%; frontend lint + `tsc --noEmit` clean;
+    653 frontend tests, 85.49% line coverage (new `lorebook.ts` at 100%);
+    `wails build -clean -tags webkit2_41` links.
 
 ### 2026-06-14
 

@@ -88,6 +88,8 @@ export function Greet(arg1:string):Promise<string>;
 
 export function ImportComfyWorkflow(arg1:string):Promise<comfy.ComfyWorkflow>;
 
+export function ImportLorebook():Promise<Array<lorebook.Entry>>;
+
 export function ListProjects():Promise<Array<library.Entry>>;
 
 export function NewProject():Promise<void>;

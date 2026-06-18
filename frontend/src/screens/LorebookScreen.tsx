@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder } from '../../wailsjs/go/main/App';
+import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/main/App';
 import { TagsInput } from '../components/TagsInput';
-import { lorebook } from '../../wailsjs/go/models';
+import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
+import { lorebook, compose } from '../../wailsjs/go/models';
 
 const POSITIONS = [
   { i: 0, name: 'Before Char Defs', hint: 'Top of context — system frame' },
@@ -67,8 +68,9 @@ const ToggleRow: React.FC<{ label: string; hint: string; value: boolean; onChang
 
 const LbDetail: React.FC<{
   entry: lorebook.Entry | null;
+  characters: compose.Character[];
   onChange: (e: lorebook.Entry) => void;
-}> = ({ entry, onChange }) => {
+}> = ({ entry, characters, onChange }) => {
   if (!entry) return (
     <div className="lb-detail" style={{display:'grid', placeItems:'center', color:'var(--ink-3)'}}>
       <div className="col" style={{alignItems:'center', textAlign:'center', gap:8}}>
@@ -165,6 +167,31 @@ const LbDetail: React.FC<{
           )}
         </div>
 
+        {/* === SCOPE === */}
+        <div className="lb-sect">
+          <div className="lb-sect-h"><h4>Character scope</h4><hr/></div>
+          <div className="lb-row">
+            <span>Applies to<small>No selection = global (all characters).</small></span>
+            <div className="lb-scope">
+              {characters.length === 0 && <span className="lb-scope-empty">No characters in project.</span>}
+              {characters.map(c => {
+                const id = String(c.id);
+                const on = (entry.characters || []).includes(id);
+                return (
+                  <button key={c.id} type="button" className="lb-scope-chip" data-on={on ? '1' : '0'}
+                          onClick={() => set('characters',
+                            on ? (entry.characters || []).filter(x => x !== id)
+                               : [...(entry.characters || []), id])}>
+                    {c.name || `#${c.id}`}
+                  </button>
+                );
+              })}
+            </div>
+            {(entry.characters || []).length === 0 && characters.length > 0 &&
+              <small className="lb-scope-note">Global · all characters</small>}
+          </div>
+        </div>
+
         {/* === ACTIVATION === */}
         <div className="lb-sect">
           <div className="lb-sect-h"><h4>Activation</h4><hr/></div>
@@ -247,6 +274,9 @@ const LorebookScreen: React.FC = () => {
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [characters, setCharacters] = useState<compose.Character[]>([]);
+  const [dragUid, setDragUid] = useState<number | null>(null);
+  const [pendingImport, setPendingImport] = useState<lorebook.Entry[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -258,6 +288,20 @@ const LorebookScreen: React.FC = () => {
       setLoaded(true);
     });
   }, [toast]);
+
+  useEffect(() => {
+    GetCharacters().then(cs => setCharacters(cs || [])).catch(() => setCharacters([]));
+  }, []);
+
+  // Drive the native <dialog> modal state from pendingImport. showModal() gives
+  // us the top-layer backdrop, focus management, and native Escape-to-close.
+  const importDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = importDialogRef.current;
+    if (!dlg) return;
+    if (pendingImport && !dlg.open) dlg.showModal();
+    else if (!pendingImport && dlg.open) dlg.close();
+  }, [pendingImport]);
 
   const persist = useCallback((es: lorebook.Entry[]) => {
     setEntries(es);
@@ -325,6 +369,14 @@ const LorebookScreen: React.FC = () => {
     setSelectedUid(copy.uid);
   };
 
+  const dragEnabled = !search; // reorder only meaningful over the full, unfiltered list
+
+  const handleDrop = (targetUid: number) => {
+    if (dragUid == null || dragUid === targetUid) { setDragUid(null); return; }
+    persist(reorderByDrag(entries, dragUid, targetUid));
+    setDragUid(null);
+  };
+
   const handleExport = useCallback(async () => {
     try {
       const folder = await PickExportFolder();
@@ -337,6 +389,35 @@ const LorebookScreen: React.FC = () => {
       }
     }
   }, [toast]);
+
+  const handleImport = useCallback(async () => {
+    try {
+      const imported = await ImportLorebook();
+      // Empty array = a file with no entries (inform the user). null/undefined = the
+      // user cancelled the dialog (stay silent).
+      if (!imported || imported.length === 0) {
+        if (imported?.length === 0) {
+          toast({ kind: 'info', title: 'Nothing imported', body: 'No entries found in that file.' });
+        }
+        return;
+      }
+      setPendingImport(imported);
+    } catch (e: any) {
+      toast({ kind: 'bad', title: 'Import failed', body: e?.message || 'Could not read that file.' });
+    }
+  }, [toast]);
+
+  const applyImport = (mode: 'merge' | 'replace') => {
+    if (!pendingImport) return;
+    const next = mode === 'merge'
+      ? [...entries, ...remapForMerge(entries, pendingImport)]
+      : renumberFromZero(pendingImport);
+    persist(next);
+    const firstImportedIdx = mode === 'merge' ? entries.length : 0;
+    setSelectedUid(next.length ? next[firstImportedIdx].uid : null);
+    setPendingImport(null);
+    toast({ kind: 'ok', title: 'Lorebook imported', body: `${pendingImport.length} entr${pendingImport.length === 1 ? 'y' : 'ies'} ${mode === 'merge' ? 'merged' : 'loaded'}.` });
+  };
 
   if (!loaded) {
     return (
@@ -354,7 +435,10 @@ const LorebookScreen: React.FC = () => {
       <PageHead step={3} subtitle="Build the world around them"
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
         actions={
+          <>
+            <button className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
             <button className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
+          </>
         } />
       <div className="ss-page-body scroll">
         <div className="lb-grid">
@@ -378,6 +462,11 @@ const LorebookScreen: React.FC = () => {
                 <button key={e.uid} className="lb-entry"
                         data-on={selectedUid === e.uid ? '1' : '0'}
                         data-disabled={e.disable ? '1' : '0'}
+                        draggable={dragEnabled}
+                        onDragStart={() => setDragUid(e.uid)}
+                        onDragOver={ev => { if (dragEnabled) ev.preventDefault(); }}
+                        onDrop={ev => { ev.preventDefault(); handleDrop(e.uid); }}
+                        data-drag={dragUid === e.uid ? '1' : '0'}
                         onClick={() => setSelectedUid(e.uid)}>
                   <span className="grip"><MoreIcon size={12}/></span>
                   <span className="uid">{String(e.uid || 0).padStart(2, '0')}</span>
@@ -416,9 +505,27 @@ const LorebookScreen: React.FC = () => {
           </div>
 
           {/* RIGHT — detail */}
-          <LbDetail entry={selected} onChange={updateSelected}/>
+          <LbDetail entry={selected} characters={characters} onChange={updateSelected}/>
         </div>
       </div>
+      <dialog
+        ref={importDialogRef}
+        className="lb-import-dialog"
+        aria-label="Import lorebook"
+        onCancel={e => { e.preventDefault(); setPendingImport(null); }}
+      >
+        {pendingImport && (
+          <div className="lb-import-card">
+            <h3>Import {pendingImport.length} entr{pendingImport.length === 1 ? 'y' : 'ies'}</h3>
+            <p>Merge into the current {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}, or replace them?</p>
+            <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={() => setPendingImport(null)}>Cancel</button>
+              <button className="btn ghost" onClick={() => applyImport('replace')}>Replace all</button>
+              <button className="btn primary" onClick={() => applyImport('merge')}>Merge</button>
+            </div>
+          </div>
+        )}
+      </dialog>
     </>
   );
 };

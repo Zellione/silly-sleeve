@@ -154,6 +154,10 @@ export function ImportComfyWorkflow(arg1) {
   return window['go']['main']['App']['ImportComfyWorkflow'](arg1);
 }
 
+export function ImportLorebook() {
+  return window['go']['main']['App']['ImportLorebook']();
+}
+
 export function ListProjects() {
   return window['go']['main']['App']['ListProjects']();
 }

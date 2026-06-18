@@ -68,6 +68,16 @@ func (p *ProjectManager) PickOpenBundle() (string, error) {
 	})
 }
 
+// PickLorebookFile opens a native file picker for importing a lorebook JSON.
+func (p *ProjectManager) PickLorebookFile() (string, error) {
+	return runtime.OpenFileDialog(p.ctx(), runtime.OpenDialogOptions{
+		Title: "Import lorebook JSON",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Lorebook JSON (*.json)", Pattern: "*.json"},
+		},
+	})
+}
+
 // PickExportFolder opens a native folder picker for exporting characters.
 func (p *ProjectManager) PickExportFolder() (string, error) {
 	return runtime.OpenDirectoryDialog(p.ctx(), runtime.OpenDialogOptions{

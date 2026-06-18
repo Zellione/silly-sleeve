@@ -1434,6 +1434,8 @@ kbd {
 .lb-entry:hover { background: var(--bg); border-color: var(--hair); }
 .lb-entry[data-on="1"] { background: var(--bg); border-color: var(--hair-strong); box-shadow: inset 3px 0 0 var(--acc); }
 .lb-entry[data-disabled="1"] { opacity: 0.45; }
+.lb-entry[draggable='true'] .grip { cursor: grab; }
+.lb-entry[data-drag='1'] { opacity: 0.5; }
 .lb-entry .grip { color: var(--ink-3); cursor: grab; opacity: 0.4; }
 .lb-entry .uid { font: 600 9.5px/1 var(--f-mono); color: var(--ink-3); letter-spacing: 0.08em; text-align: right; padding-right: 4px; border-right: 1px solid var(--hair); }
 .lb-entry .body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -1507,6 +1509,13 @@ kbd {
 .prob-bar .val::after { content: "%"; color: var(--ink-3); margin-left: 1px; }
 .lb-meta-bar { display: flex; align-items: center; gap: 12px; padding: 9px 14px; background: var(--panel-2); border-top: 1px solid var(--hair); font: 500 10.5px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); }
 .lb-meta-bar b { color: var(--ink-2); font-weight: 600; }
+.lb-scope { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-scope-chip {
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--hair); background: var(--bg); color: var(--ink-2);
+}
+.lb-scope-chip[data-on='1'] { border-color: var(--acc); background: var(--acc-soft); color: var(--acc); }
+.lb-scope-empty, .lb-scope-note { font-size: 11px; color: var(--ink-3); }
 
 /* ─── Confirm dialog ────────────────────────────────────── */
 
@@ -2184,3 +2193,17 @@ kbd {
   background: var(--panel);
 }
 .ss-dropdown-trigger.as-chip[data-source="project"] { color: var(--acc); border-color: var(--acc-line); }
+
+/* ─── Lorebook import modal ──────────────────────────── */
+
+.lb-import-dialog[open] {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  max-width: 100vw; max-height: 100vh; margin: 0; padding: 0; border: 0;
+  display: grid; place-items: center;
+  background: color-mix(in oklch, var(--bg) 60%, transparent);
+}
+.lb-import-dialog::backdrop { background: transparent; }
+.lb-import-card {
+  background: var(--panel); border: 1px solid var(--hair); border-radius: 12px;
+  padding: 20px; width: min(420px, 90vw); display: flex; flex-direction: column; gap: 12px;
+}

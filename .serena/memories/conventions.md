@@ -4,6 +4,13 @@
 - All Wails-exposed methods are on the `App` struct (app.go + app_*.go).
   Thin wrappers only — delegate to `internal/` for logic.
 - Error values returned from App methods surface as JS promise rejections.
+- Go `nil` slices cross the Wails bridge as JS `null`; empty slices `[]T{}` cross as `[]`.
+  App methods that return slice results must never return `nil` for "no data" — always
+  return `[]T{}` so the frontend can distinguish "no results" from "user cancelled"
+  (null is the cancel sentinel). `GetLorebook()` enforces this; any new slice-returning
+  method must do the same.
+- New lorebook entries (e.g. from crawl) must always initialise `Characters: []string{}`
+  — never omit the field (omission yields `nil`, which crosses the bridge as `null`).
 - `[]byte` image data travels as `number[]` across the Wails bridge.
 - Config stored via `internal/settings` (os.UserConfigDir); project data via bundle ZIP.
 
@@ -19,9 +26,33 @@
   Kinds: `'ok'` | `'warn'` | `'bad'`.
 - Active tab state: `data-on` attribute (truthy = active).
 - CSS custom properties: `var(--acc)`, `var(--ink-2)`, `var(--panel-2)`, etc. — never hardcode colours.
+- **Drag-and-drop in the WebKitGTK webview**: do NOT use HTML5 DnD (`draggable` +
+  drag/drop events). WebKitGTK does not fire HTML5 drag events reliably — not even with
+  `-webkit-user-drag: element` (tried, insufficient), and `<button>` form controls suppress
+  it further. Use **pointer events** instead: `onPointerDown` on a drag handle sets the
+  active id, window-level `pointermove`/`pointerup` listeners track/commit, and
+  `document.elementFromPoint(x,y).closest('[data-uid]')` resolves the hovered target.
+  See the reorder logic in `LorebookScreen.tsx` (`.lb-entry` rows, `.grip` handle).
+  Test it in jsdom by stubbing `document.elementFromPoint` (undefined there — assign it,
+  don't `vi.spyOn`) and firing `pointerDown`/`pointerMove(window)`/`pointerUp(window)`.
 - Image data URLs → backend: use `dataURLToBytes` from `utils/image.ts` (returns `number[]`).
 - `variantImages[selectedVariant]` — `selectedVariant` is reset to 0 when variants are cleared
   (both `clearVariants` and `runGeneration` in `useImageGeneration.ts` do this).
+
+## Persistence model
+- `SaveLorebook` is **in-memory only** (Go struct field). It does NOT write to disk.
+- `SaveProjectBundle(path)` writes the entire project (characters + lorebook + crawl state)
+  to the `.slv` ZIP on disk.
+- Screens that mutate lorebook/character data must call `SaveProjectBundle` (debounced, 2 s)
+  when a `projectPath` is known — otherwise changes are lost on app restart.
+  `EditorScreen` uses `useAutoSave`; `LorebookScreen` debounces its own bundle save via a
+  `bundleSaveDelay` prop (default 2000 ms, pass 0 in tests).
+- Pattern for injectable debounce delay in screens that auto-save:
+  ```tsx
+  const MyScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number }> =
+    ({ projectPath = '', bundleSaveDelay = 2000 }) => { ... }
+  ```
+  Pass `bundleSaveDelay={0}` in tests to avoid fake-timer complexity.
 
 ## Local build & GUI smoke test (this dev machine is NOT headless)
 - The Arch dev box has gtk3 + webkit2gtk-4.1 + a live Wayland session
@@ -67,6 +98,10 @@
 - Frontend: test files alongside source (`Foo.test.tsx`); use Vitest + Testing Library.
 - Coverage threshold: ≥80% statements on both Go and frontend.
 - `/* v8 ignore next */` / `/* v8 ignore start/stop */` for untestable browser/Wails paths.
+- Avoid `vi.useFakeTimers()` inside individual test bodies — timer state leaks into
+  subsequent tests even with `vi.useRealTimers()` at the end. Use a nested `describe`
+  with `beforeEach`/`afterEach` hooks instead. Prefer injectable delays (see Persistence
+  model above) over fake timers whenever possible.
 
 ## Workflow
 - Design specs are LOCAL ONLY — never commit them. `docs/superpowers/specs/` is

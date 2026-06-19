@@ -5,7 +5,7 @@ import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/main/App';
+import { GetLorebook, SaveLorebook, SaveProjectBundle, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/main/App';
 import { TagsInput } from '../components/TagsInput';
 import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';
@@ -269,15 +269,18 @@ function positionLabel(e: lorebook.Entry): string {
   return `P${e.position || 0}`;
 }
 
-const LorebookScreen: React.FC = () => {
+const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number }> = ({ projectPath = '', bundleSaveDelay = 2000 }) => {
   const [entries, setEntries] = useState<lorebook.Entry[]>([]);
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [dragUid, setDragUid] = useState<number | null>(null);
+  const [overUid, setOverUid] = useState<number | null>(null);
+  const overUidRef = useRef<number | null>(null);
   const [pendingImport, setPendingImport] = useState<lorebook.Entry[] | null>(null);
   const { toast } = useToast();
+  const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     GetLorebook().then(es => {
@@ -303,12 +306,22 @@ const LorebookScreen: React.FC = () => {
     else if (!pendingImport && dlg.open) dlg.close();
   }, [pendingImport]);
 
+  useEffect(() => () => { if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current); }, []);
+
   const persist = useCallback((es: lorebook.Entry[]) => {
     setEntries(es);
     SaveLorebook(es).catch(() => {
       toast({ kind: 'bad', title: 'Save failed', body: 'Could not persist lorebook.' });
     });
-  }, [toast]);
+    if (projectPath) {
+      if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current);
+      bundleSaveTimer.current = setTimeout(() => {
+        SaveProjectBundle(projectPath).catch(e => {
+          console.error('Lorebook bundle save failed:', e);
+        });
+      }, bundleSaveDelay);
+    }
+  }, [toast, projectPath, bundleSaveDelay]);
 
   const filtered = entries.filter(e =>
     !search ||
@@ -371,11 +384,34 @@ const LorebookScreen: React.FC = () => {
 
   const dragEnabled = !search; // reorder only meaningful over the full, unfiltered list
 
-  const handleDrop = (targetUid: number) => {
-    if (dragUid == null || dragUid === targetUid) { setDragUid(null); return; }
-    persist(reorderByDrag(entries, dragUid, targetUid));
-    setDragUid(null);
-  };
+  // Pointer-driven reorder. WebKitGTK (the Wails Linux webview) does not fire HTML5
+  // drag events reliably, so we track the drag with pointer events instead and
+  // resolve the hovered row via elementFromPoint. The `.grip` starts the drag.
+  useEffect(() => {
+    if (dragUid == null) return;
+    const onMove = (ev: PointerEvent) => {
+      const row = document.elementFromPoint(ev.clientX, ev.clientY)
+        ?.closest<HTMLElement>('.lb-entry[data-uid]');
+      const uid = row?.dataset.uid != null ? Number(row.dataset.uid) : null;
+      overUidRef.current = uid;
+      setOverUid(uid);
+    };
+    const onUp = () => {
+      const target = overUidRef.current;
+      if (target != null && target !== dragUid) {
+        persist(reorderByDrag(entries, dragUid, target));
+      }
+      overUidRef.current = null;
+      setOverUid(null);
+      setDragUid(null);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [dragUid, entries, persist]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -460,15 +496,19 @@ const LorebookScreen: React.FC = () => {
             <div className="lb-entries scroll">
               {filtered.sort((a, b) => (b.order || 0) - (a.order || 0)).map(e => (
                 <button key={e.uid} className="lb-entry"
+                        data-uid={e.uid}
                         data-on={selectedUid === e.uid ? '1' : '0'}
                         data-disabled={e.disable ? '1' : '0'}
-                        draggable={dragEnabled}
-                        onDragStart={() => setDragUid(e.uid)}
-                        onDragOver={ev => { if (dragEnabled) ev.preventDefault(); }}
-                        onDrop={ev => { ev.preventDefault(); handleDrop(e.uid); }}
                         data-drag={dragUid === e.uid ? '1' : '0'}
+                        data-over={dragUid != null && overUid === e.uid && overUid !== dragUid ? '1' : '0'}
                         onClick={() => setSelectedUid(e.uid)}>
-                  <span className="grip"><MoreIcon size={12}/></span>
+                  <span className="grip"
+                        onPointerDown={ev => {
+                          if (!dragEnabled) return;
+                          ev.preventDefault();
+                          ev.stopPropagation();
+                          setDragUid(e.uid);
+                        }}><MoreIcon size={12}/></span>
                   <span className="uid">{String(e.uid || 0).padStart(2, '0')}</span>
                   <div className="body">
                     <b>{e.comment || 'Untitled'}</b>

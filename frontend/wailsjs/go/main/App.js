@@ -110,6 +110,10 @@ export function GetComfyWorkflows() {
   return window['go']['main']['App']['GetComfyWorkflows']();
 }
 
+export function GetCrawlForCharacter(arg1) {
+  return window['go']['main']['App']['GetCrawlForCharacter'](arg1);
+}
+
 export function GetCrawlState() {
   return window['go']['main']['App']['GetCrawlState']();
 }

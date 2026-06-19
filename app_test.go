@@ -913,6 +913,32 @@ func TestOpenProjectBundle_WithLorebook(t *testing.T) {
 	assert.Equal(t, "Entry1", app.lorebookEntries[0].Comment)
 }
 
+func TestLorebookCharactersRoundtrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	app.startup(context.Background())
+
+	app.SaveLorebook([]lorebook.Entry{
+		{UID: 0, Comment: "Scoped", Characters: []string{"1", "2"}},
+	})
+
+	got := app.GetLorebook()
+	assert.Equal(t, []string{"1", "2"}, got[0].Characters, "in-memory characters")
+
+	filePath := tmpDir + "/scope.slv"
+	require.NoError(t, app.SaveProjectBundle(filePath))
+
+	app2 := NewApp()
+	app2.startup(context.Background())
+	_, err := app2.OpenProjectBundle(filePath)
+	require.NoError(t, err)
+
+	loaded := app2.GetLorebook()
+	require.Len(t, loaded, 1)
+	assert.Equal(t, []string{"1", "2"}, loaded[0].Characters, "characters after bundle round-trip")
+}
+
 func TestOpenProjectBundle_WithPrompts(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)

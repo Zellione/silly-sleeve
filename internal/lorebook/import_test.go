@@ -41,6 +41,23 @@ func TestParseWorldInfo_EmptyInput(t *testing.T) {
 	for _, in := range [][]byte{nil, []byte("   "), []byte(`{"entries":{}}`), []byte(`{}`)} {
 		entries, err := ParseWorldInfo(in)
 		require.NoError(t, err)
+		assert.NotNil(t, entries, "expected empty slice, not nil (nil becomes null in JS and is treated as user-cancelled)")
+		assert.Empty(t, entries)
+	}
+}
+
+func TestParseWorldInfo_WrongFormat(t *testing.T) {
+	// Valid JSON that is not a lorebook (no recognised entries field) must return an
+	// empty slice — not nil — so the frontend shows "No entries found" instead of
+	// treating it as user-cancelled.
+	for _, in := range [][]byte{
+		[]byte(`{"name":"Alice","description":"a character card"}`),
+		[]byte(`{"entries":null}`),
+		[]byte(`{"entries":"string instead of array"}`),
+	} {
+		entries, err := ParseWorldInfo(in)
+		require.NoError(t, err)
+		assert.NotNil(t, entries)
 		assert.Empty(t, entries)
 	}
 }

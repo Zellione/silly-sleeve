@@ -6,6 +6,7 @@ import { ToastProvider } from '../components/ToastProvider';
 
 const mockGetLorebook = vi.fn();
 const mockSaveLorebook = vi.fn();
+const mockSaveProjectBundle = vi.fn();
 const mockExportLorebook = vi.fn();
 const mockPickExportFolder = vi.fn();
 const mockGetCharacters = vi.fn();
@@ -14,6 +15,7 @@ const mockImportLorebook = vi.fn();
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetLorebook: () => mockGetLorebook(),
   SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
+  SaveProjectBundle: (...args: unknown[]) => mockSaveProjectBundle(...args),
   ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
   PickExportFolder: () => mockPickExportFolder(),
   GetCharacters: () => mockGetCharacters(),
@@ -23,11 +25,25 @@ vi.mock('../../wailsjs/go/main/App', () => ({
 const renderWithToast = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
 
+// Reorder uses pointer events (not HTML5 DnD): press the source row's grip, move
+// the pointer over the target row (resolved via elementFromPoint), then release.
+const dragRow = (sourceRow: HTMLElement, targetRow: HTMLElement) => {
+  fireEvent.pointerDown(sourceRow.querySelector('.grip')!);
+  // jsdom has no layout, so elementFromPoint is undefined — stub it to point at
+  // the target row for the duration of the drag.
+  const orig = document.elementFromPoint;
+  document.elementFromPoint = () => targetRow;
+  fireEvent.pointerMove(window, { clientX: 5, clientY: 5 });
+  fireEvent.pointerUp(window);
+  document.elementFromPoint = orig;
+};
+
 describe('LorebookScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetLorebook.mockResolvedValue([]);
     mockSaveLorebook.mockResolvedValue(undefined);
+    mockSaveProjectBundle.mockResolvedValue(undefined);
     mockPickExportFolder.mockResolvedValue('');
     mockGetCharacters.mockResolvedValue([
       { id: 7, name: 'Aria' },
@@ -249,6 +265,64 @@ describe('LorebookScreen', () => {
     });
   });
 
+  it('calls SaveProjectBundle after scope change when projectPath is set', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'E', key: [], characters: [] },
+    ]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen projectPath="/project/test.slv" bundleSaveDelay={0} />);
+    await waitFor(() => expect(screen.getByText('E')).toBeInTheDocument());
+    await user.click(screen.getByText('E'));
+    await user.click(screen.getByRole('button', { name: /Aria/ }));
+    await waitFor(() => {
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/project/test.slv');
+    });
+  });
+
+  it('does not call SaveProjectBundle when no projectPath is set', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'E', key: [], characters: [] },
+    ]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen bundleSaveDelay={0} />);
+    await waitFor(() => expect(screen.getByText('E')).toBeInTheDocument());
+    await user.click(screen.getByText('E'));
+    await user.click(screen.getByRole('button', { name: /Aria/ }));
+    await waitFor(() => expect(mockSaveLorebook).toHaveBeenCalled());
+    expect(mockSaveProjectBundle).not.toHaveBeenCalled();
+  });
+
+  it('scopes entry when characters field is null (Go nil slice)', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'E', key: [], characters: null },
+    ]);
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('E')).toBeInTheDocument());
+    await user.click(screen.getByText('E'));
+    await user.click(screen.getByRole('button', { name: /Aria/ }));
+    await waitFor(() => {
+      const last = mockSaveLorebook.mock.calls.at(-1)![0][0];
+      expect(last.characters).toEqual(['7']);
+    });
+  });
+
+  it('preserves existing character scope after drag-to-reorder', async () => {
+    mockGetLorebook.mockResolvedValue([
+      { uid: 0, comment: 'A', key: [], order: 300, characters: ['7'] },
+      { uid: 1, comment: 'B', key: [], order: 200, characters: [] },
+    ]);
+    renderWithToast(<LorebookScreen />);
+    await waitFor(() => expect(screen.getByText('A')).toBeInTheDocument());
+    const rows = screen.getAllByRole('button').filter(b => b.classList.contains('lb-entry'));
+    dragRow(rows[1], rows[0]); // drag B onto A
+    await waitFor(() => {
+      const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; characters: string[] }>;
+      const byUid = Object.fromEntries(saved.map(e => [e.uid, e.characters]));
+      expect(byUid[0]).toEqual(['7']);
+    });
+  });
+
   it('reorders entries on drop and persists gapped order', async () => {
     mockGetLorebook.mockResolvedValue([
       { uid: 0, comment: 'A', key: [], order: 300 },
@@ -258,11 +332,8 @@ describe('LorebookScreen', () => {
     renderWithToast(<LorebookScreen />);
     await waitFor(() => expect(screen.getByText('C')).toBeInTheDocument());
     const rows = screen.getAllByRole('button').filter(b => b.classList.contains('lb-entry'));
-    const dt = { setData: vi.fn(), getData: vi.fn(), dropEffect: '', effectAllowed: '' };
     // rows render order-desc: [A(0), B(1), C(2)]; drag C onto A
-    fireEvent.dragStart(rows[2], { dataTransfer: dt });
-    fireEvent.dragOver(rows[0], { dataTransfer: dt });
-    fireEvent.drop(rows[0], { dataTransfer: dt });
+    dragRow(rows[2], rows[0]);
     await waitFor(() => {
       const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; order: number }>;
       const byUid = Object.fromEntries(saved.map(e => [e.uid, e.order]));

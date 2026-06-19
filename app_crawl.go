@@ -183,11 +183,12 @@ func (a *App) appendLorebookFromCrawl(res crawler.CrawlResult) {
 		}
 	}
 	a.lorebookEntries = append(a.lorebookEntries, lorebook.Entry{
-		UID:       uid,
-		Comment:   res.Title,
-		Content:   crawlPlainText(res),
-		Key:       []string{},
-		SourceURL: res.URL,
+		UID:        uid,
+		Comment:    res.Title,
+		Content:    crawlPlainText(res),
+		Key:        []string{},
+		Characters: []string{},
+		SourceURL:  res.URL,
 	})
 }
 

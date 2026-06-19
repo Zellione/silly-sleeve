@@ -271,13 +271,24 @@ func (a *App) GetCachedCrawl() *crawler.CrawlResult {
 // character's SourceURL, falling back to the first result then the legacy
 // single cache. Caller holds a.mu.
 func (a *App) crawlForActiveCharacterLocked() *crawler.CrawlResult {
-	var srcURL string
+	return a.crawlForSourceURLLocked(a.sourceURLForCharLocked(a.activeCharID))
+}
+
+// sourceURLForCharLocked returns the SourceURL of the character with the given
+// ID, or "" if there is no such character. Caller holds a.mu.
+func (a *App) sourceURLForCharLocked(id int) string {
 	for _, c := range a.characters {
-		if c.ID == a.activeCharID {
-			srcURL = c.SourceURL
-			break
+		if c.ID == id {
+			return c.SourceURL
 		}
 	}
+	return ""
+}
+
+// crawlForSourceURLLocked returns the crawl result whose page matches srcURL,
+// falling back to the first result then the legacy single cache. Caller holds
+// a.mu.
+func (a *App) crawlForSourceURLLocked(srcURL string) *crawler.CrawlResult {
 	if a.cachedCrawlSet != nil {
 		for i := range a.cachedCrawlSet.Results {
 			if srcURL != "" && a.cachedCrawlSet.Results[i].URL == srcURL {
@@ -289,6 +300,16 @@ func (a *App) crawlForActiveCharacterLocked() *crawler.CrawlResult {
 		}
 	}
 	return a.cachedCrawl
+}
+
+// GetCrawlForCharacter returns the crawl result the given character was sent
+// from (matched by its SourceURL), so the editor's source panel tracks the
+// active character instead of always showing the first crawled page. Falls back
+// to the first result then the legacy single cache when there is no match.
+func (a *App) GetCrawlForCharacter(id int) *crawler.CrawlResult {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.crawlForSourceURLLocked(a.sourceURLForCharLocked(id))
 }
 
 // Greet returns a greeting for the given name
@@ -402,23 +423,24 @@ func (a *App) nextCharID() int {
 // that should not be overwritten.
 func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 	a.mu.Lock()
+	// Capture the target character up front so a mid-flight character switch (the
+	// LLM call below runs with the lock released) can't redirect the result onto
+	// whichever character happens to be active when generation completes.
+	targetID := a.activeCharID
 	crawl := a.crawlForActiveCharacterLocked()
 	existing := compose.Character{}
 	for _, c := range a.characters {
-		if c.ID == a.activeCharID {
+		if c.ID == targetID {
 			existing = c
 			break
 		}
 	}
+	def := a.endpointForSlot("bulk")
 	a.mu.Unlock()
 
 	if crawl == nil {
 		return existing
 	}
-
-	a.mu.Lock()
-	def := a.endpointForSlot("bulk")
-	a.mu.Unlock()
 
 	ch, err := a.charGen.GenerateBulk(*crawl, def, lockedFields, existing)
 	if err != nil {
@@ -428,7 +450,7 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 
 	a.mu.Lock()
 	for i, c := range a.characters {
-		if c.ID == a.activeCharID {
+		if c.ID == targetID {
 			ch.ID = c.ID
 			a.characters[i] = ch
 			break
@@ -442,10 +464,14 @@ func (a *App) GenerateCharacterBulk(lockedFields []string) compose.Character {
 // GenerateField sends a per-field prompt to the LLM for a single character field.
 func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 	a.mu.Lock()
+	// Capture the target character up front so a mid-flight character switch (the
+	// LLM call below runs with the lock released) can't redirect the result onto
+	// whichever character happens to be active when generation completes.
+	targetID := a.activeCharID
 	crawl := a.crawlForActiveCharacterLocked()
 	existing := compose.Character{}
 	for _, c := range a.characters {
-		if c.ID == a.activeCharID {
+		if c.ID == targetID {
 			existing = c
 			break
 		}
@@ -469,7 +495,7 @@ func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 
 	a.mu.Lock()
 	for i, c := range a.characters {
-		if c.ID == a.activeCharID {
+		if c.ID == targetID {
 			ch.ID = c.ID
 			a.characters[i] = ch
 			break
@@ -554,7 +580,6 @@ func (a *App) PickSaveBundle() (string, error) {
 	return a.project.PickSaveBundle()
 }
 
-// SaveProjectBundle writes the current project state as a .slv bundle.
 // SaveProjectBundle writes the current project state as a .slv bundle.
 func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
@@ -725,6 +750,9 @@ func (a *App) ExportCharacter(charID int, folderPath string) (string, error) {
 func (a *App) GetLorebook() []lorebook.Entry {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.lorebookEntries == nil {
+		return []lorebook.Entry{}
+	}
 	return a.lorebookEntries
 }
 

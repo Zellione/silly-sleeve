@@ -44,6 +44,35 @@ func TestSendCrawlResult_CreatesCharacterAndLorebook(t *testing.T) {
 	assert.Contains(t, lb.Result.Lorebook[0].Content, "world lore")
 }
 
+func TestGetCrawlForCharacter_TracksRequestedCharacterSource(t *testing.T) {
+	app := newSendApp()
+
+	// Send two distinct pages as separate characters; each gets its own SourceURL.
+	require.Equal(t, "created", app.SendCrawlResult("https://w/wiki/Hero", "character", false).Status)
+	require.Equal(t, "created", app.SendCrawlResult("https://w/wiki/Lore", "character", false).Status)
+
+	var hero, lore compose.Character
+	for _, c := range app.characters {
+		switch c.SourceURL {
+		case "https://w/wiki/Hero":
+			hero = c
+		case "https://w/wiki/Lore":
+			lore = c
+		}
+	}
+	require.NotZero(t, hero.ID)
+	require.NotZero(t, lore.ID)
+
+	// The source panel must follow the requested character, not always the root.
+	gotHero := app.GetCrawlForCharacter(hero.ID)
+	require.NotNil(t, gotHero)
+	assert.Equal(t, "Hero", gotHero.Title)
+
+	gotLore := app.GetCrawlForCharacter(lore.ID)
+	require.NotNil(t, gotLore)
+	assert.Equal(t, "Lore", gotLore.Title)
+}
+
 func TestSendCrawlResult_DuplicateCharacterNeedsConfirmThenOverwrites(t *testing.T) {
 	app := newSendApp()
 

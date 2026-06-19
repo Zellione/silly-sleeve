@@ -134,6 +134,49 @@ func TestCharacterGenerator_GenerateBulk_WithFakeCompleter(t *testing.T) {
 	assert.Equal(t, 1, fake.calls)
 }
 
+func TestGenerateField_TargetsCharacterActiveAtStart(t *testing.T) {
+	app := NewApp()
+	app.characters = []compose.Character{
+		{ID: 1, Name: "Mine", SourceURL: "https://w/wiki/Mine"},
+		{ID: 2, Name: "Tatsumi", SourceURL: "https://w/wiki/Tatsumi"},
+	}
+	app.activeCharID = 1
+	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{
+		{URL: "https://w/wiki/Mine", Title: "Mine", Sections: []crawler.Section{{Body: "mine bio"}}},
+		{URL: "https://w/wiki/Tatsumi", Title: "Tatsumi", Sections: []crawler.Section{{Body: "tatsumi bio"}}},
+	}}
+	app.settings = settings.Settings{Endpoints: []settings.LLMEndpoint{{ID: 1, URL: "http://unused", IsDefault: true}}}
+
+	// The completer switches the active character mid-flight, simulating the user
+	// clicking another character while the LLM call is still running.
+	app.charGen = &CharacterGenerator{
+		ctx: func() context.Context { return context.Background() },
+		completer: llm.CompleterFunc(func(_ context.Context, _ llm.LLMEndpoint, _, _ string) (string, error) {
+			app.SetActiveCharacter(2)
+			return "Petite frame with pink twin-tails.", nil
+		}),
+	}
+
+	got := app.GenerateField("appearance", "")
+
+	// The result must belong to the character active when the reroll started
+	// (Mine), not the one switched to mid-flight (Tatsumi).
+	assert.Equal(t, 1, got.ID)
+	assert.Contains(t, got.Appearance, "pink twin-tails")
+
+	var mine, tatsumi compose.Character
+	for _, c := range app.characters {
+		switch c.ID {
+		case 1:
+			mine = c
+		case 2:
+			tatsumi = c
+		}
+	}
+	assert.Contains(t, mine.Appearance, "pink twin-tails", "the originally-active character got the field")
+	assert.Empty(t, tatsumi.Appearance, "the switched-to character must be untouched")
+}
+
 func TestCharacterGenerator_GenerateImagePrompt_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

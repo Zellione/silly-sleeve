@@ -19,7 +19,7 @@ import (
 func ParseWorldInfo(data []byte) ([]Entry, error) {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
-		return nil, nil
+		return []Entry{}, nil
 	}
 
 	var entries []Entry
@@ -36,6 +36,9 @@ func ParseWorldInfo(data []byte) ([]Entry, error) {
 			return nil, fmt.Errorf("parse lorebook document: %w", err)
 		}
 		entries = parseEntriesField(doc.Entries)
+		if entries == nil {
+			entries = []Entry{}
+		}
 	}
 
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].UID < entries[j].UID })

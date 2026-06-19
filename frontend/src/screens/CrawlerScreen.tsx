@@ -294,8 +294,8 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
       />
       <div className="ss-page-body scroll">
         <div className="crawler-grid">
-          {/* LEFT — input + options + results */}
-          <div className="col" style={{ gap: 18, minHeight: 0 }}>
+          {/* LEFT — input + options + results (whole column scrolls as one) */}
+          <div className="col crawl-left">
             <div className="crawl-input">
               <div className="uplabel">Source URL</div>
               <div className="url-bar">
@@ -377,7 +377,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
             </div>
 
             {results.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="uplabel" style={{ paddingLeft: 2 }}>Results</span>
                   <button
@@ -389,7 +389,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
                     <TrashIcon size={12} /> Delete all
                   </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {results.map((r, idx) => (
                     <div
                       key={r.url}

@@ -74,7 +74,7 @@ function AppShell() {
       case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
       /* v8 ignore next */
-      case 'lorebook': return <LorebookScreen />;
+      case 'lorebook': return <LorebookScreen projectPath={projectPath} />;
       case 'projectImage': return <ProjectImageScreen />;
       case 'image': return <PortraitScreen />;
       case 'preview': return <PreviewScreen />;

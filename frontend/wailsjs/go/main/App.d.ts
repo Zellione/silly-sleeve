@@ -66,6 +66,8 @@ export function GetComfyWorkflowTemplate(arg1:string):Promise<string>;
 
 export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
 
+export function GetCrawlForCharacter(arg1:number):Promise<crawler.CrawlResult>;
+
 export function GetCrawlState():Promise<main.CrawlState>;
 
 export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;

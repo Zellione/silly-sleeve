@@ -32,11 +32,12 @@ const mockCrawlResult = {
 };
 
 const mockGetCharacters = vi.fn();
+const mockGetActiveCharacter = vi.fn();
 const mockAddCharacter = vi.fn();
 const mockUpdateCharacter = vi.fn();
 const mockDeleteCharacter = vi.fn();
 const mockSetActiveCharacter = vi.fn();
-const mockGetCachedCrawl = vi.fn();
+const mockGetCrawlForCharacter = vi.fn();
 const mockCountTokens = vi.fn();
 const mockGenerateField = vi.fn();
 const mockGenerateCharacterBulk = vi.fn();
@@ -48,11 +49,12 @@ const mockSetProjectFieldEndpoint = vi.fn();
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   GetCharacters: () => mockGetCharacters(),
+  GetActiveCharacter: () => mockGetActiveCharacter(),
   AddCharacter: () => mockAddCharacter(),
   UpdateCharacter: (c: any) => mockUpdateCharacter(c),
   DeleteCharacter: (id: any) => mockDeleteCharacter(id),
   SetActiveCharacter: (id: any) => mockSetActiveCharacter(id),
-  GetCachedCrawl: () => mockGetCachedCrawl(),
+  GetCrawlForCharacter: (id: any) => mockGetCrawlForCharacter(id),
   CountTokens: (t: any) => mockCountTokens(t),
   GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
   GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
@@ -73,7 +75,8 @@ describe('EditorScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCharacters.mockResolvedValue([mockCharacter]);
-    mockGetCachedCrawl.mockResolvedValue(mockCrawlResult);
+    mockGetActiveCharacter.mockResolvedValue(mockCharacter);
+    mockGetCrawlForCharacter.mockResolvedValue(mockCrawlResult);
     mockCountTokens.mockResolvedValue(10);
     mockUpdateCharacter.mockResolvedValue(undefined);
     mockDeleteCharacter.mockResolvedValue(undefined);
@@ -186,6 +189,67 @@ describe('EditorScreen', () => {
     });
   });
 
+  it('opens on the backend active character, not the first', async () => {
+    const second = compose.Character.createFrom({ id: 2, name: 'Tatsumi', epithet: '', tags: [], quotes: [''], stats: [] });
+    mockGetCharacters.mockResolvedValue([mockCharacter, second]);
+    mockGetActiveCharacter.mockResolvedValue(second);
+
+    renderEditor();
+
+    await waitFor(() => {
+      // PageHead title reads "Compose <first word of active name>".
+      expect(screen.getAllByText('Tatsumi').length).toBeGreaterThanOrEqual(1);
+    });
+    expect(mockSetActiveCharacter).toHaveBeenCalledWith(2);
+  });
+
+  it('loads the source for the active character', async () => {
+    const second = compose.Character.createFrom({ id: 2, name: 'Tatsumi', epithet: '', tags: [], quotes: [''], stats: [] });
+    const secondCrawl = { ...mockCrawlResult, title: 'tatsumi_page' };
+    mockGetCharacters.mockResolvedValue([mockCharacter, second]);
+    mockGetActiveCharacter.mockResolvedValue(second);
+    mockGetCrawlForCharacter.mockImplementation((id: number) =>
+      Promise.resolve(id === 2 ? secondCrawl : mockCrawlResult));
+
+    renderEditor();
+
+    await waitFor(() => {
+      expect(screen.getByText(/tatsumi_page/)).toBeInTheDocument();
+    });
+    expect(mockGetCrawlForCharacter).toHaveBeenCalledWith(2);
+    expect(screen.queryByText(/elara_wynd/)).not.toBeInTheDocument();
+  });
+
+  it('does not apply a mid-reroll result after switching characters', async () => {
+    const second = compose.Character.createFrom({ id: 2, name: 'Tatsumi', epithet: '', tags: [], appearance: 'Tatsumi look', quotes: [''], stats: [] });
+    mockGetCharacters.mockResolvedValue([mockCharacter, second]);
+    mockGetActiveCharacter.mockResolvedValue(mockCharacter);
+
+    let resolveField: (c: unknown) => void = () => {};
+    mockGenerateField.mockReturnValue(new Promise(res => { resolveField = res; }));
+
+    const user = userEvent.setup();
+    renderEditor();
+
+    await waitFor(() => expect(screen.getByText('The Lark')).toBeInTheDocument());
+
+    // Start a reroll of the Appearance field (index 3) on the active character.
+    await user.click(screen.getAllByTitle('Re-roll this field')[3]);
+
+    // Switch to Tatsumi while the reroll is still in flight.
+    await user.click(screen.getByText('Tatsumi'));
+    await waitFor(() => expect(mockSetActiveCharacter).toHaveBeenCalledWith(2));
+
+    // The reroll resolves with the original character's result.
+    resolveField(compose.Character.createFrom({ ...mockCharacter, appearance: 'HIJACKED' }));
+
+    // The result must not leak into the now-active character's view.
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Tatsumi look')).toBeInTheDocument();
+    });
+    expect(screen.queryByDisplayValue('HIJACKED')).not.toBeInTheDocument();
+  });
+
   it('renders tags as chips', async () => {
     renderEditor();
     await waitFor(() => {
@@ -258,7 +322,7 @@ describe('EditorScreen', () => {
   });
 
   it('shows source panel fallback when no crawl', async () => {
-    mockGetCachedCrawl.mockResolvedValue(null);
+    mockGetCrawlForCharacter.mockResolvedValue(null);
     renderEditor();
     await waitFor(() => {
       expect(screen.getByText(/No source crawled/)).toBeInTheDocument();

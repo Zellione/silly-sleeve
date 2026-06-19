@@ -8,8 +8,8 @@ import {
   CheckIcon, TrashIcon, DiceIcon, GlobeIcon, FolderIcon,
 } from '../icons';
 import {
-  GetCharacters, AddCharacter, UpdateCharacter, DeleteCharacter,
-  SetActiveCharacter, GetCachedCrawl,
+  GetCharacters, GetActiveCharacter, AddCharacter, UpdateCharacter, DeleteCharacter,
+  SetActiveCharacter, GetCrawlForCharacter,
   GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
   GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint,
@@ -285,16 +285,27 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   }, []);
 
   useEffect(() => {
-    GetCharacters().then(async (chars) => {
+    Promise.all([GetCharacters(), GetActiveCharacter()]).then(async ([chars, active]) => {
       setCharacters(chars);
       if (chars.length > 0) {
-        const ch = chars[0];
+        // Honor the backend's active character (e.g. the page just sent from the
+        // Crawler), falling back to the first when none is set.
+        const ch = chars.find(c => c.id === active.id) ?? chars[0];
         setActiveChar(ch);
         await SetActiveCharacter(ch.id);
       }
     }).catch(e => logError('EditorScreen.loadCharacters', e));
-    GetCachedCrawl().then(r => { if (r) setCrawl(r); }).catch(e => logError('EditorScreen.loadCachedCrawl', e));
   }, []);
+
+  // Load the source page the active character was sent from, refreshing whenever
+  // the active character changes so the source panel never shows a stale page.
+  useEffect(() => {
+    const id = activeChar?.id;
+    if (!id) return;
+    GetCrawlForCharacter(id)
+      .then(r => setCrawl(r ?? null))
+      .catch(e => logError('EditorScreen.loadCrawlForCharacter', e));
+  }, [activeChar?.id]);
 
   useEffect(() => {
     GetSettings().then(s => {
@@ -319,6 +330,12 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   }, [flushActiveCharacter]);
 
   const activeId = activeChar?.id ?? 0;
+
+  // Mirror the active character id into a ref so async generation handlers can
+  // detect a mid-flight character switch and avoid applying a result to (or
+  // hijacking the view of) the character the user navigated to.
+  const activeIdRef = useRef(activeId);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
 
   const loadActive = useCallback(async (id: number) => {
     const chars = await refreshCharacters();
@@ -383,12 +400,16 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
 
   const handleCompose = useCallback(async () => {
     if (!activeChar) return;
+    const targetId = activeChar.id;
     const locked = lockedIds();
     patchAll({ rolling: true }, st => !st.locked);
 
     try {
       const ch = await GenerateCharacterBulk(locked);
       await refreshCharacters();
+      // The user switched characters mid-compose: the backend already wrote the
+      // result to the original character, so don't apply it to the current view.
+      if (activeIdRef.current !== targetId) return;
       setActiveChar(ch);
 
       for (const f of FIELDS) {
@@ -400,7 +421,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       }
       toast({ kind: 'ok', title: 'Composed', body: `"${ch.name}" generated from ${locked.length > 0 ? (FIELDS.length - locked.length) + ' of ' + FIELDS.length : 'all'} fields.` });
     } catch (e: any) {
-      patchAll({ rolling: false });
+      if (activeIdRef.current === targetId) patchAll({ rolling: false });
       toast({ kind: 'bad', title: 'Compose failed', body: e?.message || 'Could not reach the LLM endpoint.' });
     }
   }, [activeChar, fields, lockedIds, patchAll, patchField, applyGenerated, toast, refreshCharacters]);
@@ -408,6 +429,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   const handleFieldReroll = useCallback(async (fieldID: string) => {
     const st = fields[fieldID];
     if (!st || !activeChar) return;
+    const targetId = activeChar.id;
     const customPrompt = st.prompt || '';
 
     patchField(fieldID, { rolling: true });
@@ -415,6 +437,9 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     try {
       const ch = await GenerateField(fieldID, customPrompt);
       await refreshCharacters();
+      // The user switched characters mid-reroll: the backend already wrote the
+      // result to the original character, so don't apply it to the current view.
+      if (activeIdRef.current !== targetId) return;
       setActiveChar(ch);
       const spec = FIELDS.find(x => x.id === fieldID);
       if (spec) {
@@ -425,7 +450,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       const label = spec?.label || fieldID;
       toast({ kind: 'ok', title: `${label} rerolled`, body: 'Field updated from LLM.' });
     } catch (e: any) {
-      patchField(fieldID, { rolling: false });
+      if (activeIdRef.current === targetId) patchField(fieldID, { rolling: false });
       toast({ kind: 'bad', title: 'Reroll failed', body: e?.message || 'Could not reach the LLM endpoint.' });
     }
   }, [fields, activeChar, patchField, applyGenerated, toast, refreshCharacters]);

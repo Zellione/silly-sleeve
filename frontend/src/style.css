@@ -2248,3 +2248,6 @@ kbd {
 [data-sidebar="rail"] .ss-nav-num { display: none; }
 [data-sidebar="rail"] .ss-nav-item { justify-content: center; }
 [data-sidebar="rail"] .ss-brand { justify-content: center; }
+
+/* Sidebar style picker (Settings → Appearance) */
+.sidebar-style-control { display: flex; flex-wrap: wrap; gap: 8px; }

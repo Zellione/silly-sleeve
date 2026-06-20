@@ -17,7 +17,7 @@ export function getStoredStepBadges(): boolean {
 
 /** Applies the given visibility to the document root and persists the choice. */
 export function applyStepBadges(on: boolean): void {
-  document.documentElement.setAttribute('data-step-badges', on ? '1' : '0');
+  document.documentElement.dataset.stepBadges = on ? '1' : '0';
   localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
 }
 

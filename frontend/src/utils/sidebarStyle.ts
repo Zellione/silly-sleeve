@@ -28,7 +28,7 @@ export function getStoredSidebarStyle(): string {
 /** Applies the given style to the document root and persists the choice. */
 export function applySidebarStyle(id: string): void {
   const valid = SIDEBAR_STYLES.some(s => s.id === id) ? id : DEFAULT_SIDEBAR_STYLE;
-  document.documentElement.setAttribute('data-sidebar', valid);
+  document.documentElement.dataset.sidebar = valid;
   localStorage.setItem(STORAGE_KEY, valid);
 }
 

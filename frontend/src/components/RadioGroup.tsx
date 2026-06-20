@@ -43,7 +43,7 @@ export function RadioGroup<T extends RadioGroupOption>({
   renderOption,
   getOptionStyle,
   getOptionLabel,
-}: RadioGroupProps<T>) {
+}: Readonly<RadioGroupProps<T>>) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const hasSelection = options.some(o => o.id === value);
 

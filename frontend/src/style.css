@@ -2237,3 +2237,14 @@ kbd {
 }
 .accent-swatch:hover { transform: translateY(-1px); }
 .accent-swatch[data-on="1"] { border-color: var(--ink); }
+
+/* Sidebar width tiers (Settings → Appearance) */
+[data-sidebar="wide"] .ss-main { grid-template-columns: 260px 1fr; }
+[data-sidebar="wide"] .ss-nav-item { padding-top: 9px; padding-bottom: 9px; }
+[data-sidebar="rail"] .ss-main { grid-template-columns: 64px 1fr; }
+[data-sidebar="rail"] .ss-brand-text,
+[data-sidebar="rail"] .ss-nav-sect,
+[data-sidebar="rail"] .ss-nav-item span,
+[data-sidebar="rail"] .ss-nav-num { display: none; }
+[data-sidebar="rail"] .ss-nav-item { justify-content: center; }
+[data-sidebar="rail"] .ss-brand { justify-content: center; }

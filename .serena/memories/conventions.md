@@ -104,6 +104,8 @@
   model above) over fake timers whenever possible.
 
 ## Workflow
+- USER PREFERENCE: always `git add` newly-created/updated `.serena/memories/**` files
+  and include them in the milestone commit/PR (they are tracked in this repo).
 - Design specs are LOCAL ONLY — never commit them. `docs/superpowers/specs/` is
   gitignored. Brainstorming writes specs there for local review; they must not
   enter git history (same policy as `APPROVAL_REQUEST.md`).

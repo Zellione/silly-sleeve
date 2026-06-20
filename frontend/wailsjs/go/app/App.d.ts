@@ -3,7 +3,7 @@
 import {compose} from '../models';
 import {crawler} from '../models';
 import {cardexport} from '../models';
-import {main} from '../models';
+import {app} from '../models';
 import {comfy} from '../models';
 import {settings} from '../models';
 import {prompts} from '../models';
@@ -28,7 +28,7 @@ export function ExportCharacter(arg1:number,arg2:string):Promise<string>;
 
 export function ExportCharacterPNG(arg1:number,arg2:string,arg3:cardexport.Options,arg4:string):Promise<string>;
 
-export function ExportCharactersBulk(arg1:Array<number>,arg2:string,arg3:cardexport.Options,arg4:string):Promise<main.ExportResult>;
+export function ExportCharactersBulk(arg1:Array<number>,arg2:string,arg3:cardexport.Options,arg4:string):Promise<app.ExportResult>;
 
 export function ExportLorebook(arg1:string):Promise<string>;
 
@@ -68,7 +68,7 @@ export function GetComfyWorkflows():Promise<Array<comfy.ComfyWorkflow>>;
 
 export function GetCrawlForCharacter(arg1:number):Promise<crawler.CrawlResult>;
 
-export function GetCrawlState():Promise<main.CrawlState>;
+export function GetCrawlState():Promise<app.CrawlState>;
 
 export function GetDefaultPromptTemplates():Promise<prompts.TemplateSet>;
 
@@ -106,7 +106,7 @@ export function PickOpenBundle():Promise<string>;
 
 export function PickSaveBundle():Promise<string>;
 
-export function ReadImageFile(arg1:string):Promise<main.DroppedImage>;
+export function ReadImageFile(arg1:string):Promise<app.DroppedImage>;
 
 export function RemoveCrawlResult(arg1:string):Promise<crawler.CrawlSet>;
 
@@ -114,7 +114,7 @@ export function RemoveProject(arg1:string,arg2:boolean):Promise<void>;
 
 export function SaveComfyWorkflowTemplate(arg1:string,arg2:string):Promise<void>;
 
-export function SaveCrawlState(arg1:main.CrawlState):Promise<void>;
+export function SaveCrawlState(arg1:app.CrawlState):Promise<void>;
 
 export function SaveLorebook(arg1:Array<lorebook.Entry>):Promise<void>;
 
@@ -128,7 +128,7 @@ export function SavePromptTemplates(arg1:prompts.TemplateSet):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
-export function SendCrawlResult(arg1:string,arg2:string,arg3:boolean):Promise<main.SendCrawlOutcome>;
+export function SendCrawlResult(arg1:string,arg2:string,arg3:boolean):Promise<app.SendCrawlOutcome>;
 
 export function SetActiveCharacter(arg1:number):Promise<void>;
 

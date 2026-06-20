@@ -13,7 +13,7 @@ const mockPickExportFolder = vi.fn();
 const mockPickSaveBundle = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetLorebook: () => mockGetLorebook(),
   ExportCharactersBulk: (ids: number[], fmt: string, opts: unknown, dest: string) =>

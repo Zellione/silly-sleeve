@@ -6,7 +6,7 @@ import { settings } from '../wailsjs/go/models';
 
 const mockGetSettings = vi.fn();
 
-vi.mock('../wailsjs/go/main/App', () => ({
+vi.mock('../wailsjs/go/app/App', () => ({
   GetSettings: () => mockGetSettings(),
   SaveSettings: vi.fn(),
   TestLLMEndpoint: vi.fn(),

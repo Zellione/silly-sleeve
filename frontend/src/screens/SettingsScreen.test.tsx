@@ -12,7 +12,7 @@ const mockGetPromptTemplates = vi.fn();
 const mockGetDefaultPromptTemplates = vi.fn();
 const mockSavePromptTemplates = vi.fn();
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   GetSettings: () => mockGetSettings(),
   SaveSettings: (...args: any[]) => mockSaveSettings(...args),
   TestLLMEndpoint: (...args: any[]) => mockTestLLMEndpoint(...args),

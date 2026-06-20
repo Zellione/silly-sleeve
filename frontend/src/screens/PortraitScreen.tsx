@@ -9,7 +9,7 @@ import {
   GeneratePortrait, GenerateImagePrompt,
   GetComfyVAEs, GetComfyLoRAs,
   GetPortrait, SavePortrait,
-} from '../../wailsjs/go/main/App';
+} from '../../wailsjs/go/app/App';
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';

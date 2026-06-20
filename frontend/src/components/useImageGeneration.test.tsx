@@ -12,7 +12,7 @@ const mockGetCheckpoints = vi.fn();
 const mockGetWorkflows = vi.fn();
 const mockGetTemplate = vi.fn();
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   GetComfySamplers: () => mockGetSamplers(),
   GetComfySchedulers: () => mockGetSchedulers(),
   GetComfyCheckpoints: () => mockGetCheckpoints(),

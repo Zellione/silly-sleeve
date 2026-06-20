@@ -3,8 +3,8 @@ import { PageHead } from '../components/Layout';
 import { GlobeIcon, LinkIcon, RerollIcon, SaveIcon, ArrowIcon, TrashIcon, CheckIcon } from '../icons';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
-import { CrawlPage, GetCrawlState, SaveCrawlState, ClearCrawl, RemoveCrawlResult, SendCrawlResult, SaveProjectBundle } from '../../wailsjs/go/main/App';
-import { crawler, main } from '../../wailsjs/go/models';
+import { CrawlPage, GetCrawlState, SaveCrawlState, ClearCrawl, RemoveCrawlResult, SendCrawlResult, SaveProjectBundle } from '../../wailsjs/go/app/App';
+import { crawler, app } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
 import { Dropdown } from '../components/Dropdown';
 
@@ -94,7 +94,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
   useEffect(() => {
     if (!hydrated) return undefined;
     const t = setTimeout(() => {
-      SaveCrawlState(new main.CrawlState({
+      SaveCrawlState(new app.CrawlState({
         url, followLinks: follow, include, selectors, roles, sent,
       })).catch(() => {});
     }, 400);
@@ -194,7 +194,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     // Flush the current crawl state, then write the project to disk now (the
     // same write auto-save performs on its timer).
     try {
-      await SaveCrawlState(new main.CrawlState({ url, followLinks: follow, include, selectors, roles, sent }));
+      await SaveCrawlState(new app.CrawlState({ url, followLinks: follow, include, selectors, roles, sent }));
     } catch { /* non-fatal */ }
     if (!projectPath) {
       toast({ kind: 'warn', title: 'No project yet', body: 'Save the project first to write the crawl to disk.' });

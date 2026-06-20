@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import ImageUploadPanel from './ImageUploadPanel';
 
 const mockReadImageFile = vi.fn();
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   ReadImageFile: (path: string) => mockReadImageFile(path),
 }));
 

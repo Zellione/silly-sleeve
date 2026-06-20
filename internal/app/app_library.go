@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"silly-sleeve/internal/compose"

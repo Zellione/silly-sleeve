@@ -1,3 +1,152 @@
+export namespace app {
+	
+	export class CrawlSendResult {
+	    characters: compose.Character[];
+	    lorebook: lorebook.Entry[];
+	    activeCharId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CrawlSendResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.characters = this.convertValues(source["characters"], compose.Character);
+	        this.lorebook = this.convertValues(source["lorebook"], lorebook.Entry);
+	        this.activeCharId = source["activeCharId"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CrawlState {
+	    url: string;
+	    followLinks: number;
+	    include: Record<string, boolean>;
+	    selectors: string;
+	    roles: Record<string, string>;
+	    sent: Record<string, string>;
+	    set?: crawler.CrawlSet;
+	
+	    static createFrom(source: any = {}) {
+	        return new CrawlState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.followLinks = source["followLinks"];
+	        this.include = source["include"];
+	        this.selectors = source["selectors"];
+	        this.roles = source["roles"];
+	        this.sent = source["sent"];
+	        this.set = this.convertValues(source["set"], crawler.CrawlSet);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DroppedImage {
+	    name: string;
+	    dataUrl: string;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DroppedImage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.dataUrl = source["dataUrl"];
+	        this.size = source["size"];
+	    }
+	}
+	export class ExportResult {
+	    exported: number;
+	    failed: number;
+	    paths: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.exported = source["exported"];
+	        this.failed = source["failed"];
+	        this.paths = source["paths"];
+	    }
+	}
+	export class SendCrawlOutcome {
+	    status: string;
+	    kind: string;
+	    name: string;
+	    result: CrawlSendResult;
+	
+	    static createFrom(source: any = {}) {
+	        return new SendCrawlOutcome(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.result = this.convertValues(source["result"], CrawlSendResult);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace cardexport {
 	
 	export class Options {
@@ -472,155 +621,6 @@ export namespace lorebook {
 	        this.characters = source["characters"];
 	        this.sourceUrl = source["sourceUrl"];
 	    }
-	}
-
-}
-
-export namespace main {
-	
-	export class CrawlSendResult {
-	    characters: compose.Character[];
-	    lorebook: lorebook.Entry[];
-	    activeCharId: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new CrawlSendResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.characters = this.convertValues(source["characters"], compose.Character);
-	        this.lorebook = this.convertValues(source["lorebook"], lorebook.Entry);
-	        this.activeCharId = source["activeCharId"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class CrawlState {
-	    url: string;
-	    followLinks: number;
-	    include: Record<string, boolean>;
-	    selectors: string;
-	    roles: Record<string, string>;
-	    sent: Record<string, string>;
-	    set?: crawler.CrawlSet;
-	
-	    static createFrom(source: any = {}) {
-	        return new CrawlState(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.url = source["url"];
-	        this.followLinks = source["followLinks"];
-	        this.include = source["include"];
-	        this.selectors = source["selectors"];
-	        this.roles = source["roles"];
-	        this.sent = source["sent"];
-	        this.set = this.convertValues(source["set"], crawler.CrawlSet);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class DroppedImage {
-	    name: string;
-	    dataUrl: string;
-	    size: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new DroppedImage(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.dataUrl = source["dataUrl"];
-	        this.size = source["size"];
-	    }
-	}
-	export class ExportResult {
-	    exported: number;
-	    failed: number;
-	    paths: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new ExportResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.exported = source["exported"];
-	        this.failed = source["failed"];
-	        this.paths = source["paths"];
-	    }
-	}
-	export class SendCrawlOutcome {
-	    status: string;
-	    kind: string;
-	    name: string;
-	    result: CrawlSendResult;
-	
-	    static createFrom(source: any = {}) {
-	        return new SendCrawlOutcome(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.status = source["status"];
-	        this.kind = source["kind"];
-	        this.name = source["name"];
-	        this.result = this.convertValues(source["result"], CrawlSendResult);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }

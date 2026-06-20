@@ -7,7 +7,7 @@ import {
 import {
   GetCharacters, GetLorebook, ExportCharactersBulk, ExportLorebook,
   PickExportFolder, PickSaveBundle, SaveProjectBundle,
-} from '../../wailsjs/go/main/App';
+} from '../../wailsjs/go/app/App';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import { compose, lorebook, cardexport } from '../../wailsjs/go/models';
 

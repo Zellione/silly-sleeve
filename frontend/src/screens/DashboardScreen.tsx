@@ -11,7 +11,7 @@ import { arrayBufferToDataURL } from '../utils/image';
 import {
   ListProjects, SetProjectStatus, RemoveProject,
   GetProjectThumbnail, PickOpenBundle, OpenProjectBundle,
-} from '../../wailsjs/go/main/App';
+} from '../../wailsjs/go/app/App';
 import { library } from '../../wailsjs/go/models';
 
 type Filter = 'all' | 'draft' | 'ready' | 'archived';

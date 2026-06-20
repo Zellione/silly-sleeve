@@ -9,7 +9,7 @@ const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
 const mockGetProjectImage = vi.fn().mockResolvedValue([]);
 const mockSaveProjectImage = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
   GetProjectImage: () => mockGetProjectImage(),
   SaveProjectImage: (data: number[]) => mockSaveProjectImage(data),

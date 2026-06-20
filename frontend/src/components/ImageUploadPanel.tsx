@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { UploadIcon, ImageIcon, CheckIcon, FolderIcon, DownloadIcon } from '../icons';
 import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime';
-import { ReadImageFile } from '../../wailsjs/go/main/App';
+import { ReadImageFile } from '../../wailsjs/go/app/App';
 import { Dropdown } from './Dropdown';
 
 export interface UploadFileInfo {

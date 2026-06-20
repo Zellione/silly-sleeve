@@ -5,7 +5,7 @@ import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, SaveProjectBundle, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/main/App';
+import { GetLorebook, SaveLorebook, SaveProjectBundle, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/app/App';
 import { TagsInput } from '../components/TagsInput';
 import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';

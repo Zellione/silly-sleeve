@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { CountTokens } from '../../wailsjs/go/main/App';
+import { CountTokens } from '../../wailsjs/go/app/App';
 import { compose } from '../../wailsjs/go/models';
 
 export interface FieldSpec {

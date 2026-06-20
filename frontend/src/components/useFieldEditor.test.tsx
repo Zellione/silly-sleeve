@@ -5,7 +5,7 @@ import { useFieldEditor } from './useFieldEditor';
 import { compose } from '../../wailsjs/go/models';
 
 const mockCountTokens = vi.fn();
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   CountTokens: (t: string) => mockCountTokens(t),
 }));
 

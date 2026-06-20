@@ -11,7 +11,7 @@ import {
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
-import { GetSettings, NewProject } from '../wailsjs/go/main/App';
+import { GetSettings, NewProject } from '../wailsjs/go/app/App';
 import { settings } from '../wailsjs/go/models';
 import { logError } from './utils/log';
 

@@ -47,7 +47,7 @@ const mockGetSettings = vi.fn();
 const mockGetProjectFieldEndpoints = vi.fn();
 const mockSetProjectFieldEndpoint = vi.fn();
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetActiveCharacter: () => mockGetActiveCharacter(),
   AddCharacter: () => mockAddCharacter(),

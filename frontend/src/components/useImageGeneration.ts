@@ -3,7 +3,7 @@ import { useToast } from './ToastProvider';
 import {
   GetComfySamplers, GetComfySchedulers, GetComfyCheckpoints,
   GetComfyWorkflows, GetComfyWorkflowTemplate,
-} from '../../wailsjs/go/main/App';
+} from '../../wailsjs/go/app/App';
 import { comfy } from '../../wailsjs/go/models';
 import type { WorkflowOption } from './GenerationParamsPanel';
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';

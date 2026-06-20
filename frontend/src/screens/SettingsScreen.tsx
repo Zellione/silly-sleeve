@@ -12,7 +12,7 @@ import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
 import { PerFieldDefaults } from '../components/PerFieldDefaults';
 import { Dropdown } from '../components/Dropdown';
 import { FontScaleControl } from '../components/FontScaleControl';
-import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/main/App';
+import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/app/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
 

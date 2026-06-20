@@ -19,7 +19,7 @@ const mockGetComfyLoRAs = vi.fn().mockResolvedValue([]);
 const mockGetPortrait = vi.fn().mockResolvedValue([]);
 const mockSavePortrait = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
   SetActiveCharacter: (id: number) => mockSetActiveCharacter(id),
   GetActiveCharacter: () => mockGetActiveCharacter(),

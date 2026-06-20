@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -79,6 +79,13 @@ func (a *App) startup(ctx context.Context) {
 	} else {
 		a.library = lm
 	}
+}
+
+// Startup exposes the unexported lifecycle hook to the main package for
+// wiring into Wails' OnStartup. It is a package-level function (not a method
+// on App) so it is not picked up as a bound, frontend-callable method.
+func Startup(a *App) func(context.Context) {
+	return a.startup
 }
 
 // GetSettings returns the current settings.

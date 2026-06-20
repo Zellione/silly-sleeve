@@ -14,7 +14,7 @@ const mockSendCrawlResult = vi.fn();
 const mockRemoveCrawlResult = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 
-vi.mock('../../wailsjs/go/main/App', () => ({
+vi.mock('../../wailsjs/go/app/App', () => ({
   CrawlPage: (...args: any[]) => mockCrawlPage(...args),
   GetCrawlState: () => mockGetCrawlState(),
   SaveCrawlState: (...args: any[]) => mockSaveCrawlState(...args),

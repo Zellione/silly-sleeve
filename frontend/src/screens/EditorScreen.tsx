@@ -13,7 +13,7 @@ import {
   GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
   GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint,
-} from '../../wailsjs/go/main/App';
+} from '../../wailsjs/go/app/App';
 import { SectionContent } from '../components/SectionContent';
 import { TagsInput } from '../components/TagsInput';
 import { FieldEndpointChip } from '../components/FieldEndpointChip';

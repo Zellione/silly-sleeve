@@ -2251,3 +2251,7 @@ kbd {
 
 /* Sidebar style picker (Settings → Appearance) */
 .sidebar-style-control { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Step badges visibility (Settings → Appearance) */
+[data-step-badges="0"] .ss-nav-num,
+[data-step-badges="0"] .step-pill { display: none; }

@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-15 — Phase 4 · 6.5 Advanced lorebook complete.
+> Last updated: 2026-06-20 — Phase 4 · 6.6 Appearance preferences in progress.
 
 ## Overview
 
@@ -113,7 +113,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [x] **6.4** Font scaling presets: choose between pre-defined UI scale levels (Small / Default / Large / Extra Large), persisted across restarts
 - [x] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
-- [ ] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
+- [~] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
 - [ ] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
 
 ---
@@ -121,6 +121,10 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-20
+
+- Started Phase 4 · 6.6 — Appearance preferences (`milestone/6.6-appearance-prefs`).
 
 ### 2026-06-15
 

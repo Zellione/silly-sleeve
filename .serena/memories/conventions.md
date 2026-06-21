@@ -66,14 +66,17 @@
   Kill the process after.
 - `wails build` re-touches `frontend/wailsjs/runtime/*` with NO content change —
   `git checkout -- frontend/wailsjs/runtime/` discards an incidental mtime touch.
-- The `runtime/{package.json,runtime.d.ts,runtime.js}` files are now tracked at
-  `0644` (commit da03505). They had been `0755`; with `core.fileMode=true` and
-  `umask 022` the local toolchain keeps rewriting them at `0644`, so the stale
-  `0755` produced a RECURRING mode-change diff (`100755 => 100644`). The fix was
-  to normalize the repo to `0644` via `git update-index --chmod=-x <files>` (a
-  pure mode change, zero content), NOT to `git checkout` it away each time — that
-  only treated the symptom. If a `100755 => 100644` mode diff ever reappears on
-  these (e.g. a contributor reintroduces the exec bit), commit the `0644` form.
+- **The `runtime/{package.json,runtime.d.ts,runtime.js}` files MUST be tracked at
+  `0755`.** `wails generate module` (and `wails build`/`dev`, same asset writer)
+  deterministically writes them with the exec bit set (verified: chmod 644 →
+  `wails generate module` → 755). With `core.fileMode=true` that means the repo
+  mode has to be `0755` or every Wails run shows a phantom `100644 => 100755`
+  mode diff. DO NOT "normalize" these to `0644` — an earlier attempt to do that
+  (commit da03505, merged in PR #40) was BACKWARDS: it made the repo fight the
+  generator and produced a permanent reverse diff, fixed again by PR restoring
+  `0755`. The 644 state that occasionally appears in the working tree is a one-off
+  anomaly (a stray chmod), not the toolchain's output — `git checkout --` it away,
+  do not commit it.
 - `build/bin/**` is gitignored.
 
 ## SonarCloud quality gate

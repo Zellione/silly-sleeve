@@ -78,6 +78,12 @@
   - `go:S3776` — keep Go cognitive complexity ≤ 15; extract helpers from long
     methods (e.g. App.SaveProjectBundle was split into `existingProjectStatus` +
     `registerInLibrary`).
+  - `typescript:S7761` — prefer `el.dataset.fooBar = v` over
+    `el.setAttribute('data-foo-bar', v)` (camelCase ↔ kebab-case; same DOM
+    attribute, so `getAttribute('data-foo-bar')` assertions still pass). Use
+    `dataset` in the client-side prefs utils (sidebarStyle/stepBadges).
+  - `typescript:S6759` — type a React component's props param as
+    `Readonly<Props>` (e.g. `function C({...}: Readonly<CProps>)`).
   - `go:S4790` (Security Hotspot) — no `crypto/sha1`/`md5`, even for non-crypto
     filename hashing; use `crypto/sha256`. The gate condition
     `new_security_hotspots_reviewed` requires 100%, so an unreviewed hotspot

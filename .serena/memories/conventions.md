@@ -65,7 +65,15 @@
   screenshot the Wayland output, then `magick` to crop the app window and read it.
   Kill the process after.
 - `wails build` re-touches `frontend/wailsjs/runtime/*` with NO content change —
-  `git checkout -- frontend/wailsjs/runtime/` to keep the tree clean.
+  `git checkout -- frontend/wailsjs/runtime/` discards an incidental mtime touch.
+- The `runtime/{package.json,runtime.d.ts,runtime.js}` files are now tracked at
+  `0644` (commit da03505). They had been `0755`; with `core.fileMode=true` and
+  `umask 022` the local toolchain keeps rewriting them at `0644`, so the stale
+  `0755` produced a RECURRING mode-change diff (`100755 => 100644`). The fix was
+  to normalize the repo to `0644` via `git update-index --chmod=-x <files>` (a
+  pure mode change, zero content), NOT to `git checkout` it away each time — that
+  only treated the symptom. If a `100755 => 100644` mode diff ever reappears on
+  these (e.g. a contributor reintroduces the exec bit), commit the `0644` form.
 - `build/bin/**` is gitignored.
 
 ## SonarCloud quality gate

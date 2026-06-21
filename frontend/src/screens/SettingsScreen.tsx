@@ -12,6 +12,9 @@ import { GenerationDefaultsForm } from '../components/GenerationDefaultsForm';
 import { PerFieldDefaults } from '../components/PerFieldDefaults';
 import { Dropdown } from '../components/Dropdown';
 import { FontScaleControl } from '../components/FontScaleControl';
+import { AccentControl } from '../components/AccentControl';
+import { SidebarStyleControl } from '../components/SidebarStyleControl';
+import { StepBadgesControl } from '../components/StepBadgesControl';
 import { GetSettings, SaveSettings, TestLLMEndpoint, GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates, ParseComfyWorkflowParams } from '../../wailsjs/go/app/App';
 import { settings, prompts, comfy } from '../../wailsjs/go/models';
 import WorkflowEditor from '../components/WorkflowEditor';
@@ -1150,6 +1153,18 @@ const SettingsScreen: React.FC = () => {
                   <div className="form-row">
                     <span className="form-label">Font scale</span>
                     <FontScaleControl />
+                  </div>
+                  <div className="form-row">
+                    <span className="form-label">Accent color</span>
+                    <AccentControl />
+                  </div>
+                  <div className="form-row">
+                    <span className="form-label">Sidebar style</span>
+                    <SidebarStyleControl />
+                  </div>
+                  <div className="form-row">
+                    <span className="form-label">Step badges</span>
+                    <StepBadgesControl />
                   </div>
                 </div>
               </div>

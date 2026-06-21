@@ -15,10 +15,13 @@
   --hair-strong: #1c181355;
   --shadow: 0 1px 0 #fff8 inset, 0 4px 18px -8px #1c18131f;
 
-  --acc: oklch(0.66 0.18 38);
+  --acc-l: 0.66;
+  --acc-c: 0.18;
+  --acc-h: 38;
+  --acc: oklch(var(--acc-l) var(--acc-c) var(--acc-h));
   --acc-fg: #fff;
-  --acc-soft: oklch(0.66 0.18 38 / 0.12);
-  --acc-line: oklch(0.66 0.18 38 / 0.4);
+  --acc-soft: oklch(var(--acc-l) var(--acc-c) var(--acc-h) / 0.12);
+  --acc-line: oklch(var(--acc-l) var(--acc-c) var(--acc-h) / 0.4);
 
   --ok: oklch(0.62 0.14 150);
   --warn: oklch(0.72 0.16 80);
@@ -41,7 +44,7 @@
   --hair: #ede4d31a;
   --hair-strong: #ede4d340;
   --shadow: 0 1px 0 #ede4d30a inset, 0 6px 24px -10px #0008;
-  --acc-soft: oklch(0.66 0.18 38 / 0.18);
+  --acc-soft: oklch(var(--acc-l) var(--acc-c) var(--acc-h) / 0.18);
 }
 
 * { box-sizing: border-box; }
@@ -2221,3 +2224,34 @@ kbd {
   background: var(--panel); border: 1px solid var(--hair); border-radius: 12px;
   padding: 20px; width: min(420px, 90vw); display: flex; flex-direction: column; gap: 12px;
 }
+
+/* Accent picker (Settings → Appearance) */
+.accent-control { display: flex; flex-wrap: wrap; gap: 8px; }
+.accent-swatch {
+  width: 30px; height: 30px;
+  border: 2px solid var(--hair);
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+  transition: border-color .15s, transform .12s;
+}
+.accent-swatch:hover { transform: translateY(-1px); }
+.accent-swatch[data-on="1"] { border-color: var(--ink); }
+
+/* Sidebar width tiers (Settings → Appearance) */
+[data-sidebar="wide"] .ss-main { grid-template-columns: 260px 1fr; }
+[data-sidebar="wide"] .ss-nav-item { padding-top: 9px; padding-bottom: 9px; }
+[data-sidebar="rail"] .ss-main { grid-template-columns: 64px 1fr; }
+[data-sidebar="rail"] .ss-brand-text,
+[data-sidebar="rail"] .ss-nav-sect,
+[data-sidebar="rail"] .ss-nav-item span,
+[data-sidebar="rail"] .ss-nav-num { display: none; }
+[data-sidebar="rail"] .ss-nav-item { justify-content: center; }
+[data-sidebar="rail"] .ss-brand { justify-content: center; }
+
+/* Sidebar style picker (Settings → Appearance) */
+.sidebar-style-control { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Step badges visibility (Settings → Appearance) */
+[data-step-badges="0"] .ss-nav-num,
+[data-step-badges="0"] .step-pill { display: none; }

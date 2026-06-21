@@ -65,7 +65,15 @@
   screenshot the Wayland output, then `magick` to crop the app window and read it.
   Kill the process after.
 - `wails build` re-touches `frontend/wailsjs/runtime/*` with NO content change —
-  `git checkout -- frontend/wailsjs/runtime/` to keep the tree clean.
+  `git checkout -- frontend/wailsjs/runtime/` discards an incidental mtime touch.
+- The `runtime/{package.json,runtime.d.ts,runtime.js}` files are now tracked at
+  `0644` (commit da03505). They had been `0755`; with `core.fileMode=true` and
+  `umask 022` the local toolchain keeps rewriting them at `0644`, so the stale
+  `0755` produced a RECURRING mode-change diff (`100755 => 100644`). The fix was
+  to normalize the repo to `0644` via `git update-index --chmod=-x <files>` (a
+  pure mode change, zero content), NOT to `git checkout` it away each time — that
+  only treated the symptom. If a `100755 => 100644` mode diff ever reappears on
+  these (e.g. a contributor reintroduces the exec bit), commit the `0644` form.
 - `build/bin/**` is gitignored.
 
 ## SonarCloud quality gate
@@ -78,6 +86,12 @@
   - `go:S3776` — keep Go cognitive complexity ≤ 15; extract helpers from long
     methods (e.g. App.SaveProjectBundle was split into `existingProjectStatus` +
     `registerInLibrary`).
+  - `typescript:S7761` — prefer `el.dataset.fooBar = v` over
+    `el.setAttribute('data-foo-bar', v)` (camelCase ↔ kebab-case; same DOM
+    attribute, so `getAttribute('data-foo-bar')` assertions still pass). Use
+    `dataset` in the client-side prefs utils (sidebarStyle/stepBadges).
+  - `typescript:S6759` — type a React component's props param as
+    `Readonly<Props>` (e.g. `function C({...}: Readonly<CProps>)`).
   - `go:S4790` (Security Hotspot) — no `crypto/sha1`/`md5`, even for non-crypto
     filename hashing; use `crypto/sha256`. The gate condition
     `new_security_hotspots_reviewed` requires 100%, so an unreviewed hotspot
@@ -104,6 +118,8 @@
   model above) over fake timers whenever possible.
 
 ## Workflow
+- USER PREFERENCE: always `git add` newly-created/updated `.serena/memories/**` files
+  and include them in the milestone commit/PR (they are tracked in this repo).
 - Design specs are LOCAL ONLY — never commit them. `docs/superpowers/specs/` is
   gitignored. Brainstorming writes specs there for local review; they must not
   enter git history (same policy as `APPROVAL_REQUEST.md`).

@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-15 — Phase 4 · 6.5 Advanced lorebook complete.
+> Last updated: 2026-06-20 — Phase 4 · 6.6 Appearance preferences complete.
 
 ## Overview
 
@@ -113,7 +113,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **6.3** Advanced crawler: follow links (1-hop / 2-hop), custom CSS selectors, non-Fandom fallback, rate limit, user agent
 - [x] **6.4** Font scaling presets: choose between pre-defined UI scale levels (Small / Default / Large / Extra Large), persisted across restarts
 - [x] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
-- [ ] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
+- [x] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
 - [ ] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
 
 ---
@@ -121,6 +121,31 @@ Goal: Multi-source, multi-endpoint, and full project management.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-20
+
+- Implemented Phase 4 · 6.6 — Appearance preferences (`milestone/6.6-appearance-prefs`).
+
+#### Completed 6.6 — Appearance preferences
+
+- [x] **6.6** Accent color picker (6 curated oklch presets, persisted to
+  `ss-accent`; `style.css` accent vars now derive from `--acc-l`/`--acc-c`/`--acc-h`),
+  sidebar style tiers (rail / compact / wide via `data-sidebar` on the document
+  root overriding the `.ss-main` grid template, persisted to `ss-sidebar`), and a
+  step-badges on/off toggle (CSS-only via `data-step-badges`, hides `.ss-nav-num`
+  + `.step-pill`, persisted to `ss-step-badges`). Frontend-only, mirroring the
+  theme/font-scale client-side prefs pattern; controls live in the Settings →
+  Appearance section and re-apply on startup in `main.tsx`.
+  - New utils: `accent.ts`, `sidebarStyle.ts`, `stepBadges.ts` (+ tests).
+  - New components: `AccentControl`, `SidebarStyleControl`, `StepBadgesControl`
+    (+ tests).
+  - A code review of the radiogroup pattern prompted a shared accessible
+    `RadioGroup` component (roving tabindex + Arrow/Home/End keys); `AccentControl`,
+    `SidebarStyleControl`, and the existing `FontScaleControl` were retrofitted onto
+    it. `StepBadgesControl` is a `role="switch"` toggle.
+  - Quality gate green: go vet + golangci-lint clean; 558 Go tests (`-race`);
+    eslint + `tsc --noEmit` clean; 703 frontend tests, 84.4% statements / 86.5%
+    line coverage; `wails build -clean -tags webkit2_41` links.
 
 ### 2026-06-15
 

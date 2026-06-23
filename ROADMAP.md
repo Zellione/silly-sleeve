@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-23 — Phase 4 · 6.7 Import existing cards in progress.
+> Last updated: 2026-06-23 — Phase 4 · 6.7 Import existing cards complete.
 
 ## Overview
 
@@ -114,7 +114,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **6.4** Font scaling presets: choose between pre-defined UI scale levels (Small / Default / Large / Extra Large), persisted across restarts
 - [x] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
 - [x] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
-- [~] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
+- [x] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
 
 ---
 
@@ -124,15 +124,44 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ### 2026-06-23
 
-- Started Phase 4 · 6.7 — Import existing cards (`milestone/6.7-import-cards`).
-  Design approved and written to
-  `docs/superpowers/specs/2026-06-23-import-existing-cards-design.md`. New
-  `internal/cardimport/` package will parse SillyTavern PNG v2/v3 (`tEXt` chunks,
-  base64 with raw-JSON fallback, reusing `cardexport.ReadTextChunks`) and JSON
-  (v1/v2/v3), reverse-map the markdown description via a `### ` heading parser
-  (whole-description→Backstory fallback), and add the result as a new character in
-  the current project — merging any embedded `character_book` into the lorebook.
-  Entry point: an "Import card" button on the Editor character strip.
+- Implemented Phase 4 · 6.7 — Import existing cards (`milestone/6.7-import-cards`).
+  This completes Phase 4.
+
+#### Completed 6.7 — Import existing cards
+
+- [x] **6.7** Parse an existing SillyTavern character card (PNG v2/v3 or JSON
+  v1/v2/v3) back into the current project as a new character, merging any embedded
+  `character_book` into the lorebook. Inverse of `internal/cardexport`.
+  - New package `internal/cardimport/` (named `cardimport`, not `import` — TS
+    reserved word, same reason `cardexport` exists). `parse.go`:
+    `ParseCard([]byte)` auto-detects PNG vs JSON; PNG reuses
+    `cardexport.ReadTextChunks`, prefers the `ccv3` chunk over `chara`, and
+    base64-decodes the value with a raw-JSON fallback (the PNG bytes become the
+    portrait); JSON detects the spec wrapper (`chara_card_v3`/`v2`) or a bare v1
+    object. `mapcard.go`: `ToCharacter` reverses the lossy export — a `### `
+    heading parser routes Appearance/Personality/Backstory/Abilities/Relationships/
+    Stats back to their fields (with a whole-description→Backstory fallback when no
+    recognized headings exist), `parseStats` reverses the `- **k**: v` rendering,
+    quotes rebuild from `first_mes` + `{{char}}:` lines + `alternate_greetings`, and
+    `character_book` entries convert to `lorebook.Entry` (`enabled`→`disable`,
+    position string→int). Empty input yields the same `[{"",""}]`/`[""]` sentinels
+    `compose.NewCharacter` uses, keeping imported and freshly-created characters
+    consistent.
+  - App: `ProjectManager.PickCardFile` (native `*.png;*.json` dialog) and
+    `App.ImportCard() (*ImportCardResult, error)` — opens the dialog, appends the
+    mapped character with a fresh ID, sets it active, and merges lorebook entries
+    with UIDs renumbered from `lorebook.NextUID`; a cancelled dialog is a no-op.
+    The post-dialog work is factored into `importCardData` for testing.
+  - Frontend: an "Import card" button on the Editor character strip
+    (`EditorScreen.tsx`) calls `ImportCard`, refreshes + selects the imported
+    character, and toasts `Imported "{name}" (+N lore entries)`.
+  - Quality gate green: go vet + golangci-lint clean; Go tests pass with `-race`
+    (`cardimport` 91.5%, app 88.5%, all packages ≥80%); `tsc --noEmit` + eslint
+    clean; 705 frontend tests, 84.4% statements / 86.5% line coverage;
+    `wails build -clean -tags webkit2_41` links.
+  - Known lossy edges (documented): `mes_example`'s `<START>`/`{{user}}:` wrapper,
+    exact stat whitespace, and `scenario` (always empty on export) do not
+    round-trip.
 
 ### 2026-06-20
 

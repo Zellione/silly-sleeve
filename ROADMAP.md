@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-20 — Phase 4 · 6.6 Appearance preferences complete.
+> Last updated: 2026-06-23 — Phase 4 · 6.7 Import existing cards in progress.
 
 ## Overview
 
@@ -114,13 +114,25 @@ Goal: Multi-source, multi-endpoint, and full project management.
 - [x] **6.4** Font scaling presets: choose between pre-defined UI scale levels (Small / Default / Large / Extra Large), persisted across restarts
 - [x] **6.5** Advanced lorebook: per-character scoping, selective logic, probability sliders, drag reorder, import existing `.json`
 - [x] **6.6** Appearance preferences: accent color picker, sidebar style (rail / compact / wide), step badges toggle
-- [ ] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
+- [~] **6.7** Import existing cards: parse SillyTavern PNG v2/v3 or JSON back into a project
 
 ---
 
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-06-23
+
+- Started Phase 4 · 6.7 — Import existing cards (`milestone/6.7-import-cards`).
+  Design approved and written to
+  `docs/superpowers/specs/2026-06-23-import-existing-cards-design.md`. New
+  `internal/cardimport/` package will parse SillyTavern PNG v2/v3 (`tEXt` chunks,
+  base64 with raw-JSON fallback, reusing `cardexport.ReadTextChunks`) and JSON
+  (v1/v2/v3), reverse-map the markdown description via a `### ` heading parser
+  (whole-description→Backstory fallback), and add the result as a new character in
+  the current project — merging any embedded `character_book` into the lorebook.
+  Entry point: an "Import card" button on the Editor character strip.
 
 ### 2026-06-20
 

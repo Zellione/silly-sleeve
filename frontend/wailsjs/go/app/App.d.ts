@@ -88,6 +88,8 @@ export function GetSettings():Promise<settings.Settings>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function ImportCard():Promise<app.ImportCardResult>;
+
 export function ImportComfyWorkflow(arg1:string):Promise<comfy.ComfyWorkflow>;
 
 export function ImportLorebook():Promise<Array<lorebook.Entry>>;

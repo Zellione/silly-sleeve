@@ -154,6 +154,10 @@ export function Greet(arg1) {
   return window['go']['app']['App']['Greet'](arg1);
 }
 
+export function ImportCard() {
+  return window['go']['app']['App']['ImportCard']();
+}
+
 export function ImportComfyWorkflow(arg1) {
   return window['go']['app']['App']['ImportComfyWorkflow'](arg1);
 }

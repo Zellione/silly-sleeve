@@ -17,16 +17,16 @@ import (
 // ProjectSnapshot is the project state captured (under App's lock) for
 // serialization into a .slv bundle.
 type ProjectSnapshot struct {
-	Characters   []compose.Character
-	ActiveCharID int
-	Lorebook     []lorebook.Entry
-	ProjectImage []byte
-	Prompts      prompts.TemplateSet
-	SourceURL    string
-	CrawlTitle   string
-	Status       string
-	CrawlCache   *crawler.CrawlResult
-	CrawlSet     *crawler.CrawlSet
+	Characters     []compose.Character
+	ActiveCharID   int
+	Lorebook       []lorebook.Entry
+	ProjectImage   []byte
+	Prompts        prompts.TemplateSet
+	SourceURL      string
+	CrawlTitle     string
+	Status         string
+	CrawlCache     *crawler.CrawlResult
+	CrawlSet       *crawler.CrawlSet
 	FieldEndpoints map[string]int
 
 	CrawlFollowLinks int
@@ -78,6 +78,16 @@ func (p *ProjectManager) PickLorebookFile() (string, error) {
 	})
 }
 
+// PickCardFile opens a native file picker for importing a SillyTavern card.
+func (p *ProjectManager) PickCardFile() (string, error) {
+	return runtime.OpenFileDialog(p.ctx(), runtime.OpenDialogOptions{
+		Title: "Import character card",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Character Card (*.png;*.json)", Pattern: "*.png;*.json"},
+		},
+	})
+}
+
 // PickExportFolder opens a native folder picker for exporting characters.
 func (p *ProjectManager) PickExportFolder() (string, error) {
 	return runtime.OpenDirectoryDialog(p.ctx(), runtime.OpenDialogOptions{
@@ -111,14 +121,14 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 	}
 
 	manifest := project.ProjectManifest{
-		Name:         projectName,
-		Status:       status,
-		Tags:         tags,
-		ActiveCharID: snap.ActiveCharID,
-		SourceURL:    snap.SourceURL,
-		CrawlTitle:   snap.CrawlTitle,
-		ProjectImage: snap.ProjectImage,
-		FieldEndpoints: snap.FieldEndpoints,
+		Name:             projectName,
+		Status:           status,
+		Tags:             tags,
+		ActiveCharID:     snap.ActiveCharID,
+		SourceURL:        snap.SourceURL,
+		CrawlTitle:       snap.CrawlTitle,
+		ProjectImage:     snap.ProjectImage,
+		FieldEndpoints:   snap.FieldEndpoints,
 		CrawlFollowLinks: snap.CrawlFollowLinks,
 		CrawlInclude:     snap.CrawlInclude,
 		CrawlSelectors:   snap.CrawlSelectors,

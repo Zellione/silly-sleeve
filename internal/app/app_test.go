@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"silly-sleeve/internal/bundle"
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
-	"silly-sleeve/internal/bundle"
 	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
@@ -707,6 +707,48 @@ func mustMarshal(t *testing.T, v any) string {
 	return string(b)
 }
 
+// buildV2WithBook constructs a v2 character card JSON with an embedded lorebook entry.
+func buildV2WithBook(t *testing.T, name string, enabled *bool) []byte {
+	t.Helper()
+	en := true
+	if enabled != nil {
+		en = *enabled
+	}
+	doc := fmt.Sprintf(`{"spec":"chara_card_v2","spec_version":"2.0","data":{`+
+		`"name":%q,"description":"### Backstory\nx",`+
+		`"character_book":{"entries":[{"keys":["k"],"content":"c","enabled":%t,"insertion_order":10}]}}}`,
+		name, en)
+	return []byte(doc)
+}
+
+func TestImportCardData_AddsCharacterAndLore(t *testing.T) {
+	a := NewApp()
+	before := len(a.GetCharacters())
+
+	enabled := true
+	raw := buildV2WithBook(t, "Imported", &enabled)
+	res, err := a.importCardData(raw)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, "Imported", res.Character.Name)
+	assert.Equal(t, 1, res.ImportedEntries)
+	assert.Len(t, a.GetCharacters(), before+1)
+	assert.Equal(t, res.Character.ID, a.activeCharID)
+	assert.Len(t, a.GetLorebook(), 1)
+}
+
+func TestImportCardData_RenumbersLoreUID(t *testing.T) {
+	a := NewApp()
+	a.SaveLorebook([]lorebook.Entry{{UID: 5, Comment: "existing"}})
+	enabled := true
+	raw := buildV2WithBook(t, "X", &enabled)
+	_, err := a.importCardData(raw)
+	require.NoError(t, err)
+	got := a.GetLorebook()
+	require.Len(t, got, 2)
+	assert.Equal(t, 6, got[1].UID)
+}
+
 /* ── Prompt templates ────────────────────────────────── */
 
 func TestGetDefaultPromptTemplates_ReturnsDefaults(t *testing.T) {
@@ -978,10 +1020,10 @@ func TestOpenProjectBundle_RestoresCrawlFromBundle(t *testing.T) {
 	filePath := tmpDir + "/crawl-bundle.slv"
 	err := bundle.WriteBundle(filePath, bundle.Bundle{
 		Manifest: project.ProjectManifest{
-			Name:       "CrawlTest",
+			Name:         "CrawlTest",
 			ActiveCharID: 1,
-			SourceURL:  "https://wiki.test/Elara",
-			CrawlTitle: "Elara_Wiki",
+			SourceURL:    "https://wiki.test/Elara",
+			CrawlTitle:   "Elara_Wiki",
 		},
 		Characters: []compose.Character{{ID: 1, Name: "Elara"}},
 		Prompts:    prompts.Defaults(),
@@ -1015,9 +1057,9 @@ func TestOpenProjectBundle_RestoresCrawlFromDisk(t *testing.T) {
 	filePath := tmpDir + "/disk-bundle.slv"
 	err := bundle.WriteBundle(filePath, bundle.Bundle{
 		Manifest: project.ProjectManifest{
-			Name:        "DiskTest",
+			Name:         "DiskTest",
 			ActiveCharID: 1,
-			CrawlTitle:  "DiskCrawl",
+			CrawlTitle:   "DiskCrawl",
 		},
 		Characters: []compose.Character{{ID: 1, Name: "Test"}},
 		Prompts:    prompts.Defaults(),

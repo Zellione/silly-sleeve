@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"silly-sleeve/internal/cardimport"
 	"silly-sleeve/internal/comfy"
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
@@ -796,6 +797,54 @@ func (a *App) ImportLorebook() ([]lorebook.Entry, error) {
 		return nil, fmt.Errorf("read lorebook file: %w", err)
 	}
 	return lorebook.ParseWorldInfo(data)
+}
+
+// ImportCardResult is returned by ImportCard after a successful import.
+type ImportCardResult struct {
+	Character       compose.Character `json:"character"`
+	ImportedEntries int               `json:"importedEntries"`
+}
+
+// ImportCard opens a file dialog, parses a SillyTavern card (PNG v2/v3 or JSON),
+// adds it as a new character in the current project, and merges any embedded
+// character_book entries into the lorebook. A cancelled dialog returns (nil, nil).
+func (a *App) ImportCard() (*ImportCardResult, error) {
+	path, err := a.project.PickCardFile()
+	if err != nil {
+		return nil, err
+	}
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read card file: %w", err)
+	}
+	return a.importCardData(data)
+}
+
+// importCardData parses card bytes, appends the character, and merges lorebook
+// entries with renumbered UIDs. Split out from ImportCard so it is testable
+// without the native dialog.
+func (a *App) importCardData(data []byte) (*ImportCardResult, error) {
+	parsed, err := cardimport.ParseCard(data)
+	if err != nil {
+		return nil, err
+	}
+	ch, entries := cardimport.ToCharacter(parsed)
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	ch.ID = a.nextCharID()
+	a.characters = append(a.characters, ch)
+	a.activeCharID = ch.ID
+
+	base := lorebook.NextUID(a.lorebookEntries)
+	for i := range entries {
+		entries[i].UID = base + i
+		a.lorebookEntries = append(a.lorebookEntries, entries[i])
+	}
+	return &ImportCardResult{Character: ch, ImportedEntries: len(entries)}, nil
 }
 
 // GetPortrait returns the portrait bytes for a character.

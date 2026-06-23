@@ -46,6 +46,7 @@ const mockSaveProjectBundle = vi.fn();
 const mockGetSettings = vi.fn();
 const mockGetProjectFieldEndpoints = vi.fn();
 const mockSetProjectFieldEndpoint = vi.fn();
+const mockImportCard = vi.fn();
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -63,6 +64,7 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   GetSettings: () => mockGetSettings(),
   GetProjectFieldEndpoints: () => mockGetProjectFieldEndpoints(),
   SetProjectFieldEndpoint: (slot: any, id: any) => mockSetProjectFieldEndpoint(slot, id),
+  ImportCard: () => mockImportCard(),
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -552,5 +554,70 @@ describe('EditorScreen', () => {
     const updated = mockUpdateCharacter.mock.calls[0][0] as compose.Character;
     expect(updated.name).toBe('Modified Name');
     expect(callOrder).toContain('update');
+  });
+
+  it('imports a card and toasts on success', async () => {
+    const importedChar = compose.Character.createFrom({
+      id: 2,
+      name: 'Pix',
+      epithet: '',
+      tags: [],
+      appearance: '',
+      personality: '',
+      backstory: '',
+      abilities: '',
+      relationships: '',
+      quotes: [''],
+      stats: [],
+      dirty: false,
+    });
+    mockImportCard.mockResolvedValue({
+      character: importedChar,
+      importedEntries: 3,
+    });
+    mockGetCharacters.mockResolvedValueOnce([mockCharacter]).mockResolvedValueOnce([mockCharacter, importedChar]);
+
+    const user = userEvent.setup();
+    renderEditor();
+
+    await waitFor(() => {
+      expect(screen.getByText('Add character')).toBeInTheDocument();
+    });
+
+    const importBtn = screen.getByRole('button', { name: /import card/i });
+    expect(importBtn).toBeInTheDocument();
+
+    await user.click(importBtn);
+
+    await waitFor(() => {
+      expect(mockImportCard).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Imported "Pix"/)).toBeInTheDocument();
+      expect(screen.getByText(/\+3 lore entries/)).toBeInTheDocument();
+    });
+  });
+
+  it('is a no-op when the dialog is cancelled', async () => {
+    mockImportCard.mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    renderEditor();
+
+    await waitFor(() => {
+      expect(screen.getByText('Add character')).toBeInTheDocument();
+    });
+
+    const importBtn = screen.getByRole('button', { name: /import card/i });
+    await user.click(importBtn);
+
+    await waitFor(() => {
+      expect(mockImportCard).toHaveBeenCalled();
+    });
+
+    // Assert no error toast and character count unchanged
+    expect(screen.queryByText(/Import failed/)).not.toBeInTheDocument();
+    expect(screen.getByText('Characters · 1')).toBeInTheDocument();
   });
 });

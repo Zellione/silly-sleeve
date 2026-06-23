@@ -6,8 +6,10 @@ package cardimport
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"silly-sleeve/internal/cardexport"
 )
 
 // ParsedCard is the normalized intermediate between a raw card and a character.
@@ -116,5 +118,37 @@ func parseJSON(data []byte) (*ParsedCard, error) {
 var pngSignature = []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
 
 func parsePNG(data []byte) (*ParsedCard, error) {
-	return nil, fmt.Errorf("png import not yet implemented")
+	chunks, err := cardexport.ReadTextChunks(data)
+	if err != nil {
+		return nil, err
+	}
+	raw, ok := chunkJSON(chunks, "ccv3")
+	if !ok {
+		raw, ok = chunkJSON(chunks, "chara")
+	}
+	if !ok {
+		return nil, fmt.Errorf("no character data (chara/ccv3 tEXt chunk) in PNG")
+	}
+	pc, err := parseJSON(raw)
+	if err != nil {
+		return nil, err
+	}
+	pc.Portrait = data
+	return pc, nil
+}
+
+// chunkJSON returns the JSON bytes for a tEXt keyword, base64-decoding the stored
+// value (SillyTavern's convention) and falling back to the raw value when the
+// decode does not yield a JSON object.
+func chunkJSON(chunks map[string]string, key string) ([]byte, bool) {
+	v, ok := chunks[key]
+	if !ok || v == "" {
+		return nil, false
+	}
+	if decoded, err := base64.StdEncoding.DecodeString(v); err == nil {
+		if t := bytes.TrimSpace(decoded); len(t) > 0 && t[0] == '{' {
+			return decoded, true
+		}
+	}
+	return []byte(v), true
 }

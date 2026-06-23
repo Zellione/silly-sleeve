@@ -82,3 +82,19 @@ func TestRoundTrip_Export_Import(t *testing.T) {
 	assert.Equal(t, []string{"Hello there"}, got.Quotes)
 	assert.Equal(t, orig.Stats, got.Stats)
 }
+
+func TestToCharacter_EmptyStatsAndQuotesUseSentinels(t *testing.T) {
+	// A card with no stats section and no messages falls back to the same
+	// sentinels compose.NewCharacter uses (one blank stat row, one blank quote),
+	// keeping imported characters consistent with freshly created ones.
+	ch, _ := ToCharacter(&ParsedCard{Name: "Empty", Description: "just prose"})
+	assert.Equal(t, []compose.StatKV{{Key: "", Value: ""}}, ch.Stats)
+	assert.Equal(t, []string{""}, ch.Quotes)
+}
+
+func TestParseStats_BlankRowsReturnSentinel(t *testing.T) {
+	// A Stats section whose rows are all blank yields the single sentinel row,
+	// not an empty slice.
+	ch, _ := ToCharacter(&ParsedCard{Name: "S", Description: "### Stats\n- :"})
+	assert.Equal(t, []compose.StatKV{{Key: "", Value: ""}}, ch.Stats)
+}

@@ -316,6 +316,21 @@ describe('EditorScreen', () => {
     });
   });
 
+  it('shows the full multi-word name in the title, not just the first word', async () => {
+    const longName = compose.Character.createFrom({
+      id: 3, name: 'A Delivery Girl Ate Your Pizza', epithet: '', tags: [], quotes: [''], stats: [],
+    });
+    mockGetCharacters.mockResolvedValue([longName]);
+    mockGetActiveCharacter.mockResolvedValue(longName);
+
+    renderEditor();
+
+    await waitFor(() => {
+      const heading = screen.getByRole('heading', { level: 1 });
+      expect(heading).toHaveTextContent('Compose A Delivery Girl Ate Your Pizza');
+    });
+  });
+
   it('shows footer with field summary', async () => {
     renderEditor();
     await waitFor(() => {

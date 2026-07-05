@@ -494,7 +494,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       <PageHead
         step={2}
         subtitle="Let the model format the lore"
-        title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar.name.split(' ')[0] || 'character'}</em></>}
+        title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar.name.trim() || 'character'}</em></>}
         actions={
           <>
             <button className="btn ghost"

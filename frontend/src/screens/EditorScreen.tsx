@@ -12,7 +12,7 @@ import {
   SetActiveCharacter, GetCrawlForCharacter,
   GenerateField, GenerateCharacterBulk,
   PickSaveBundle, SaveProjectBundle,
-  GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint,
+  GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint, ImportCard,
 } from '../../wailsjs/go/app/App';
 import { SectionContent } from '../components/SectionContent';
 import { TagsInput } from '../components/TagsInput';
@@ -214,7 +214,8 @@ const CharacterStrip: React.FC<{
   activeId: number;
   onSelect: (id: number) => void;
   onAdd: () => void;
-}> = ({ characters, activeId, onSelect, onAdd }) => (
+  onImport: () => void;
+}> = ({ characters, activeId, onSelect, onAdd, onImport }) => (
   <div className="ss-char-strip scroll">
     <span className="uplabel">Characters · {characters.length}</span>
     {characters.map(c => (
@@ -226,6 +227,9 @@ const CharacterStrip: React.FC<{
         {c.epithet && <span className="ep">{c.epithet}</span>}
       </button>
     ))}
+    <button className="ss-char-add" onClick={onImport}>
+      <PlusIcon size={11} /> Import card
+    </button>
     <button className="ss-char-add" onClick={onAdd}>
       <PlusIcon size={11} /> Add character
     </button>
@@ -358,6 +362,19 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     }
   }, [toast, refreshCharacters]);
 
+  const handleImport = useCallback(async () => {
+    try {
+      const res = await ImportCard();
+      if (!res) return; // cancelled
+      await refreshCharacters();
+      setActiveChar(res.character);
+      const extra = res.importedEntries > 0 ? ` (+${res.importedEntries} lore entries)` : '';
+      toast({ kind: 'ok', title: 'Card imported', body: `Imported "${res.character.name}"${extra}.` });
+    } catch (e: any) {
+      toast({ kind: 'bad', title: 'Import failed', body: e?.message || 'Could not import card.' });
+    }
+  }, [toast, refreshCharacters]);
+
   const handleDelete = useCallback(async () => {
     if (!activeChar || characters.length <= 1) return;
     try {
@@ -477,7 +494,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       <PageHead
         step={2}
         subtitle="Let the model format the lore"
-        title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar.name.split(' ')[0] || 'character'}</em></>}
+        title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar.name.trim() || 'character'}</em></>}
         actions={
           <>
             <button className="btn ghost"
@@ -505,6 +522,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
         activeId={activeId}
         onSelect={selectChar}
         onAdd={handleAdd}
+        onImport={handleImport}
       />
       <div className="ss-page-body scroll">
         <div className="editor-grid">

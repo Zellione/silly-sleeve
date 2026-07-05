@@ -203,10 +203,12 @@ input, textarea, select { font-family: inherit; color: inherit; }
   background: var(--bg);
   gap: 24px;
 }
+.ss-page-head > div:first-child { min-width: 0; }
 .ss-page-head h1 {
-  font: 400 38px/1 var(--f-display); font-style: italic;
+  font: 400 38px/1.15 var(--f-display); font-style: italic;
   margin: 0;
   letter-spacing: -0.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ss-page-head .step-pill {
   display: inline-flex; align-items: center; gap: 6px;
@@ -1118,12 +1120,18 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   flex-shrink: 0;
 }
 .ss-char-tab[data-on="1"] .av { background: var(--bg); color: var(--ink); }
-.ss-char-tab .nm { font-weight: 600; }
+.ss-char-tab .nm {
+  font-weight: 600;
+  max-width: 220px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .ss-char-tab .ep {
   font: 500 10px/1 var(--f-mono);
   text-transform: uppercase; letter-spacing: 0.08em;
   opacity: 0.55; border-left: 1px solid currentColor;
   padding-left: 8px;
+  max-width: 260px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ss-char-add {
   appearance: none;

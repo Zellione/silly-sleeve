@@ -178,6 +178,21 @@ describe('Dropdown', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
+  it('positions the listbox as position:fixed anchored to the trigger, escaping ancestor overflow clipping', async () => {
+    const user = userEvent.setup();
+    render(<Dropdown options={opts} value="a" onChange={() => {}} aria-label="Fruit" />);
+    const trigger = screen.getByRole('combobox');
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      top: 100, bottom: 130, left: 50, right: 250, width: 200, height: 30,
+      x: 50, y: 100, toJSON: () => ({}),
+    } as DOMRect);
+
+    await user.click(trigger);
+
+    const listbox = screen.getByRole('listbox');
+    expect(listbox).toHaveStyle({ position: 'fixed', top: '134px', left: '50px' });
+  });
+
   it('passes through id, className, title and data-source', () => {
     render(
       <Dropdown

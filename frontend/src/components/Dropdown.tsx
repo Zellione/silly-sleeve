@@ -48,6 +48,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -57,11 +58,34 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const selectedIndex = options.findIndex(o => o.value === current);
   const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
 
+  // The list is `position: fixed` and anchored here (rather than `absolute`
+  // relative to the trigger) so it isn't clipped by a scrollable ancestor's
+  // implicit overflow-x — e.g. a narrow sidebar column with `overflow-y:
+  // auto` also computes overflow-x to a non-visible value, cutting off any
+  // option text wider than the column.
+  const updateCoords = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setCoords({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, []);
+
   const openMenu = useCallback(() => {
     if (disabled) return;
     setActive(Math.max(selectedIndex, 0));
+    updateCoords();
     setOpen(true);
-  }, [disabled, selectedIndex]);
+  }, [disabled, selectedIndex, updateCoords]);
+
+  // Keep the list anchored to the trigger if the page scrolls or resizes
+  // while it's open.
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener('scroll', updateCoords, true);
+    window.addEventListener('resize', updateCoords);
+    return () => {
+      window.removeEventListener('scroll', updateCoords, true);
+      window.removeEventListener('resize', updateCoords);
+    };
+  }, [open, updateCoords]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -179,8 +203,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <span className="ss-dropdown-value">{selected ? selected.label : placeholder ?? ''}</span>
         <span className="ss-dropdown-caret" aria-hidden="true" />
       </button>
-      {open && (
-        <ul className="ss-dropdown-list" id={listId} role="listbox" aria-label={ariaLabel}>
+      {open && coords && (
+        <ul
+          className="ss-dropdown-list"
+          id={listId}
+          role="listbox"
+          aria-label={ariaLabel}
+          style={{ position: 'fixed', top: coords.top, left: coords.left, minWidth: coords.width }}
+        >
           {options.map((opt, i) => (
             // Keyboard selection is handled on the combobox via aria-activedescendant.
             // eslint-disable-next-line jsx-a11y/click-events-have-key-events

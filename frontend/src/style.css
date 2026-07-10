@@ -2190,11 +2190,14 @@ kbd {
   border-top: 5px solid currentColor; opacity: .55;
 }
 .ss-dropdown-list {
-  position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; min-width: 100%;
+  /* position/top/left/min-width are set inline from the trigger's
+     getBoundingClientRect() — position:fixed escapes clipping by a
+     scrollable ancestor's implicit overflow-x (see Dropdown.tsx). */
+  z-index: 60;
   margin: 0; padding: 4px; list-style: none;
   background: var(--panel); border: 1px solid var(--hair-strong); border-radius: 6px;
   box-shadow: var(--shadow);
-  max-height: 260px; overflow-y: auto;
+  max-height: 260px; max-width: calc(100vw - 16px); overflow-y: auto;
 }
 .ss-dropdown-option {
   padding: 6px 8px; border-radius: 4px; cursor: pointer;

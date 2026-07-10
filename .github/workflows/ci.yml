@@ -43,6 +43,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # frontend/wailsjs/runtime is Wails-generated and gitignored; regenerate
+      # it (and go:embed's dummy target) before touching the frontend so its
+      # imports resolve, same as the build job further down.
+      - name: Create dummy frontend/dist for go:embed
+        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          check-latest: true
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Generate wailsjs bindings
+        run: wails generate module
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
@@ -87,6 +100,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Create dummy frontend/dist for go:embed
+        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          check-latest: true
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Generate wailsjs bindings
+        run: wails generate module
       - uses: actions/setup-node@v6
         with:
           node-version: '22'

@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-23 — Phase 4 · 6.7 Import existing cards complete.
+> Last updated: 2026-07-10 — Phase 5 · started (7.1 in progress).
 
 ## Overview
 
@@ -118,9 +118,33 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ---
 
+## Phase 5 — Character Preview
+
+Goal: A live "as-you'd-see-it-in-SillyTavern" preview of the assembled card for the
+active character, including the opening greeting.
+
+- [~] **7.1** Data model: add `AltGreetings` to `Character` (Go) and the card-field
+  export/import path; Editor field card for authoring alternate greetings; bulk and
+  per-field LLM generation support
+- [ ] **7.2** Extract the Editor's inline `CharacterStrip` into a shared component;
+  add a `GetCardPreview` Go binding assembling `compose.CardFields` + per-section
+  token counts for the active character
+- [ ] **7.3** Preview screen — character-card sheet: portrait, tags, field sections,
+  stat block, matching the `design_handoff/screen-export.jsx` mockup
+- [ ] **7.4** Preview screen — SillyTavern-style chat header + opening-message
+  bubble, swipeable across alternate greetings
+- [ ] **7.5** Preview screen — token-budget panel, linked-lorebook panel, ready-check
+  panel; tests + quality gate
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-07-10
+
+- Started Phase 5 — Character Preview (`milestone/7-preview-tab`).
 
 ### 2026-06-23
 

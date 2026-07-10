@@ -38,6 +38,21 @@ func TestToCharacter_EmptyNameDefaults(t *testing.T) {
 	assert.Equal(t, "Untitled", ch.Name)
 }
 
+func TestToCharacter_AltGreetingsSeparateFromQuotes(t *testing.T) {
+	ch, _ := ToCharacter(&ParsedCard{
+		Name:               "Ada",
+		FirstMes:           "Hi",
+		AlternateGreetings: []string{"Oh, it's you.", "", "Welcome back."},
+	})
+	assert.Equal(t, []string{"Hi"}, ch.Quotes, "alternate greetings must not be folded into Quotes")
+	assert.Equal(t, []string{"Oh, it's you.", "Welcome back."}, ch.AltGreetings)
+}
+
+func TestToCharacter_AltGreetingsEmptyDefaultsToEmptySlice(t *testing.T) {
+	ch, _ := ToCharacter(&ParsedCard{Name: "Ada", FirstMes: "Hi"})
+	assert.Equal(t, []string{}, ch.AltGreetings)
+}
+
 func TestToCharacter_CharacterBook(t *testing.T) {
 	enabled := false
 	_, entries := ToCharacter(&ParsedCard{CharacterBook: &CharacterBook{Entries: []BookEntry{
@@ -64,6 +79,7 @@ func TestRoundTrip_Export_Import(t *testing.T) {
 	orig.Relationships = "none"
 	orig.Tags = []string{"sci-fi"}
 	orig.Quotes = []string{"Hello there"}
+	orig.AltGreetings = []string{"Oh, it's you.", "Welcome back."}
 	orig.Stats = []compose.StatKV{{Key: "STR", Value: "10"}}
 
 	raw, err := cardexport.CardV2JSON(orig, nil, "0", cardexport.Options{IncludeGreetings: true})
@@ -80,6 +96,7 @@ func TestRoundTrip_Export_Import(t *testing.T) {
 	assert.Equal(t, orig.Relationships, got.Relationships)
 	assert.Equal(t, orig.Tags, got.Tags)
 	assert.Equal(t, []string{"Hello there"}, got.Quotes)
+	assert.Equal(t, orig.AltGreetings, got.AltGreetings)
 	assert.Equal(t, orig.Stats, got.Stats)
 }
 

@@ -27,6 +27,7 @@ func ToCharacter(p *ParsedCard) (compose.Character, []lorebook.Entry) {
 	ch.Epithet = p.CreatorNotes
 	ch.Tags = nonNil(p.Tags)
 	ch.Quotes = buildQuotes(p)
+	ch.AltGreetings = buildAltGreetings(p)
 	ch.Portrait = p.Portrait
 
 	sections := parseSections(p.Description)
@@ -101,8 +102,7 @@ func parseStats(block string) []compose.StatKV {
 	return stats
 }
 
-// buildQuotes reconstructs the quotes slice from first_mes, mes_example, and
-// alternate_greetings.
+// buildQuotes reconstructs the quotes slice from first_mes and mes_example.
 func buildQuotes(p *ParsedCard) []string {
 	var quotes []string
 	if p.FirstMes != "" {
@@ -115,15 +115,22 @@ func buildQuotes(p *ParsedCard) []string {
 			}
 		}
 	}
-	for _, g := range p.AlternateGreetings {
-		if g != "" {
-			quotes = append(quotes, g)
-		}
-	}
 	if len(quotes) == 0 {
 		return []string{""}
 	}
 	return quotes
+}
+
+// buildAltGreetings filters blank entries out of a card's alternate_greetings,
+// returning a non-nil slice.
+func buildAltGreetings(p *ParsedCard) []string {
+	greetings := make([]string, 0, len(p.AlternateGreetings))
+	for _, g := range p.AlternateGreetings {
+		if g != "" {
+			greetings = append(greetings, g)
+		}
+	}
+	return greetings
 }
 
 // convertEntries maps character_book entries to lorebook entries. UIDs are

@@ -6,21 +6,22 @@ export interface FieldSpec {
   id: string;
   label: string;
   required: boolean;
-  type: 'line' | 'text' | 'tags' | 'quotes' | 'stats';
+  type: 'line' | 'text' | 'tags' | 'quotes' | 'greetings' | 'stats';
   helper: string;
 }
 
 export const FIELDS: FieldSpec[] = [
-  { id: 'name',          label: 'Name',                required: true,  type: 'line',   helper: 'How the model addresses the character.' },
-  { id: 'epithet',       label: 'Title / epithet',     required: false, type: 'line',   helper: 'Optional flourish, shown beneath the name.' },
-  { id: 'tags',          label: 'Tags',                 required: false, type: 'tags',   helper: "Used by SillyTavern's prompt filters." },
-  { id: 'appearance',    label: 'Appearance',           required: true,  type: 'text',   helper: 'Sensory description: build, dress, marks.' },
-  { id: 'personality',   label: 'Personality',          required: true,  type: 'text',   helper: 'Traits as a comma list or short prose.' },
-  { id: 'backstory',     label: 'Backstory',            required: false, type: 'text',   helper: 'Compressed past — model condenses lore.' },
-  { id: 'abilities',     label: 'Abilities & skills',   required: false, type: 'text',   helper: 'Powers, magic, mundane talents.' },
-  { id: 'relationships', label: 'Relationships',        required: false, type: 'text',   helper: 'Allies, rivals, ties to other NPCs.' },
-  { id: 'quotes',        label: 'Example quotes',       required: false, type: 'quotes', helper: 'Voice anchors — italic, in-character.' },
-  { id: 'stats',         label: 'Stat block',           required: false, type: 'stats',  helper: 'Custom numbers — STR, HP, age, etc.' },
+  { id: 'name',          label: 'Name',                required: true,  type: 'line',      helper: 'How the model addresses the character.' },
+  { id: 'epithet',       label: 'Title / epithet',     required: false, type: 'line',      helper: 'Optional flourish, shown beneath the name.' },
+  { id: 'tags',          label: 'Tags',                 required: false, type: 'tags',      helper: "Used by SillyTavern's prompt filters." },
+  { id: 'appearance',    label: 'Appearance',           required: true,  type: 'text',      helper: 'Sensory description: build, dress, marks.' },
+  { id: 'personality',   label: 'Personality',          required: true,  type: 'text',      helper: 'Traits as a comma list or short prose.' },
+  { id: 'backstory',     label: 'Backstory',            required: false, type: 'text',      helper: 'Compressed past — model condenses lore.' },
+  { id: 'abilities',     label: 'Abilities & skills',   required: false, type: 'text',      helper: 'Powers, magic, mundane talents.' },
+  { id: 'relationships', label: 'Relationships',        required: false, type: 'text',      helper: 'Allies, rivals, ties to other NPCs.' },
+  { id: 'quotes',        label: 'Example quotes',       required: false, type: 'quotes',    helper: 'Voice anchors — italic, in-character.' },
+  { id: 'altGreetings',  label: 'Alternate greetings',  required: false, type: 'greetings', helper: 'Extra openings, shown as swipe options in chat.' },
+  { id: 'stats',         label: 'Stat block',           required: false, type: 'stats',     helper: 'Custom numbers — STR, HP, age, etc.' },
 ];
 
 /** A field's value is one of three concrete shapes, keyed by `FieldSpec.type`. */
@@ -38,7 +39,7 @@ export interface FieldState {
 
 export function wordCount(val: FieldValue, type: string): number {
   if (typeof val === 'string') return val.trim().split(/\s+/).filter(Boolean).length;
-  if (type === 'quotes') return (val as string[]).reduce((sum, q) => sum + q.trim().split(/\s+/).filter(Boolean).length, 0);
+  if (type === 'quotes' || type === 'greetings') return (val as string[]).reduce((sum, q) => sum + q.trim().split(/\s+/).filter(Boolean).length, 0);
   return 0; // tags and stats contribute no word count
 }
 
@@ -46,6 +47,7 @@ export function wordCountLabel(val: FieldValue, type: string): string {
   const wc = wordCount(val, type);
   if (Array.isArray(val) && type === 'tags') return val.length + ' tags';
   if (Array.isArray(val) && type === 'quotes') return val.length + ' quotes, ' + wc + ' words';
+  if (Array.isArray(val) && type === 'greetings') return val.length + ' greetings, ' + wc + ' words';
   if (Array.isArray(val) && type === 'stats') return val.length + ' rows';
   return wc + ' words';
 }
@@ -62,6 +64,7 @@ export function charsFromFieldState(ch: compose.Character, fields: Record<string
     abilities: fields.abilities?.value ?? ch.abilities,
     relationships: fields.relationships?.value ?? ch.relationships,
     quotes: fields.quotes?.value ?? ch.quotes,
+    altGreetings: fields.altGreetings?.value ?? ch.altGreetings,
     stats: fields.stats?.value ?? ch.stats,
     dirty: Object.values(fields).some(f => f.dirty),
   });
@@ -79,6 +82,7 @@ export function fieldStateFromChar(ch: compose.Character, field: FieldSpec): Fie
     case 'abilities': val = ch.abilities; break;
     case 'relationships': val = ch.relationships; break;
     case 'quotes': val = (ch.quotes && ch.quotes.length > 0) ? ch.quotes : ['']; break;
+    case 'altGreetings': val = ch.altGreetings ?? []; break;
     case 'stats': val = (ch.stats && ch.stats.length > 0) ? ch.stats : [compose.StatKV.createFrom({ key: '', value: '' })]; break;
     default: val = '';
   }

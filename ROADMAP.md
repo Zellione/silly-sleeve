@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-07-10 — Phase 5 · started (7.1 in progress).
+> Last updated: 2026-07-10 — Phase 5 · 7.1 Alternate greetings data model complete.
 
 ## Overview
 
@@ -123,7 +123,7 @@ Goal: Multi-source, multi-endpoint, and full project management.
 Goal: A live "as-you'd-see-it-in-SillyTavern" preview of the assembled card for the
 active character, including the opening greeting.
 
-- [~] **7.1** Data model: add `AltGreetings` to `Character` (Go) and the card-field
+- [x] **7.1** Data model: add `AltGreetings` to `Character` (Go) and the card-field
   export/import path; Editor field card for authoring alternate greetings; bulk and
   per-field LLM generation support
 - [ ] **7.2** Extract the Editor's inline `CharacterStrip` into a shared component;
@@ -145,6 +145,38 @@ active character, including the opening greeting.
 ### 2026-07-10
 
 - Started Phase 5 — Character Preview (`milestone/7-preview-tab`).
+- Implemented 7.1 — Alternate greetings data model.
+
+#### Completed 7.1 — Alternate greetings data model
+
+- [x] **7.1** Added `AltGreetings []string` to `compose.Character`, wired end to end
+  so SillyTavern's alternate-greetings concept round-trips instead of being folded
+  into the flat `Quotes` list.
+  - `internal/compose/models.go`: new field + `FieldIDs`/`FieldLabel`/`FieldType`
+    entries (`"altGreetings"`, ordered between `quotes` and `stats`, type `"quotes"`).
+  - `internal/compose/export.go`: `CardFields.AltGreetings`, populated in
+    `BuildCardFields` via a new `nonEmpty` helper that filters blank entries.
+  - `internal/cardexport/card.go`: `buildData` now sources `AlternateGreetings` from
+    `CardFields.AltGreetings` instead of a hardcoded empty slice.
+  - `internal/cardimport/mapcard.go`: `buildQuotes` no longer folds
+    `AlternateGreetings` into `Quotes`; a new `buildAltGreetings` maps them onto the
+    dedicated field, filtering blanks.
+  - `internal/prompts/prompts.go`: matching `FieldIDs`/`defaultFieldLabels`/
+    `defaultFieldPrompt` entries for the per-field reroll template registry.
+  - `internal/compose/prompt.go` + `generate.go`: bulk system prompt describes
+    `altGreetings`; `generateResponse`, lock-masking, `applyResponse`, `applyField`,
+    and `applyStringSliceField` all treat it like `quotes` so both bulk generation
+    and per-field reroll work.
+  - Frontend (`frontend/src/components/useFieldEditor.ts`): new `FIELDS` entry,
+    typed as a `'greetings'` variant of the list-editor UI (so word-count wording
+    reads "N greetings" instead of "N quotes"); `fieldStateFromChar`/
+    `charsFromFieldState` wired; `EditorScreen.tsx`'s quote-row renderer now also
+    handles `'greetings'`, with "Add greeting" / "Remove greeting" labels.
+  - `frontend/wailsjs/go/models.ts` regenerated via `wails generate module`.
+  - Quality gate green: go vet + golangci-lint clean; 585 Go tests (`-race`), all
+    packages ≥80% (`compose` 93.8%, `cardexport` 93.8%, `cardimport` 93.2%,
+    `prompts` 96.9%); `tsc --noEmit` + eslint clean; 712 frontend tests, 84.58%
+    statements / 86.62% line coverage; `wails build -clean -tags webkit2_41` links.
 
 ### 2026-06-23
 

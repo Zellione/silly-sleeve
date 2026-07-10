@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useFieldEditor } from './useFieldEditor';
+import {
+  useFieldEditor, FIELDS, wordCountLabel, fieldStateFromChar, charsFromFieldState,
+} from './useFieldEditor';
 import { compose } from '../../wailsjs/go/models';
 
 const mockCountTokens = vi.fn();
@@ -126,5 +128,45 @@ describe('useFieldEditor', () => {
     });
     // a single debounced flush, not one per state change
     await waitFor(() => expect(mockCountTokens).toHaveBeenCalled());
+  });
+});
+
+describe('altGreetings field', () => {
+  it('is registered between quotes and stats as a greetings-type field', () => {
+    const ids = FIELDS.map(f => f.id);
+    expect(ids.indexOf('quotes')).toBeLessThan(ids.indexOf('altGreetings'));
+    expect(ids.indexOf('altGreetings')).toBeLessThan(ids.indexOf('stats'));
+    const spec = FIELDS.find(f => f.id === 'altGreetings');
+    expect(spec?.label).toBe('Alternate greetings');
+    expect(spec?.required).toBe(false);
+    expect(spec?.type).toBe('greetings');
+  });
+
+  it('fieldStateFromChar defaults to an empty array when the character has none', () => {
+    const spec = FIELDS.find(f => f.id === 'altGreetings')!;
+    const st = fieldStateFromChar(makeChar({ altGreetings: undefined }), spec);
+    expect(st.value).toEqual([]);
+  });
+
+  it('fieldStateFromChar reads existing altGreetings values', () => {
+    const spec = FIELDS.find(f => f.id === 'altGreetings')!;
+    const st = fieldStateFromChar(makeChar({ altGreetings: ['Oh, it is you.'] }), spec);
+    expect(st.value).toEqual(['Oh, it is you.']);
+  });
+
+  it('charsFromFieldState writes altGreetings back onto the character', () => {
+    const ch = makeChar({ altGreetings: [] });
+    const fields = {
+      altGreetings: {
+        value: ['New greeting'], locked: false, dirty: true,
+        showPrompt: false, prompt: '', rolling: false, history: 1,
+      },
+    };
+    const next = charsFromFieldState(ch, fields);
+    expect(next.altGreetings).toEqual(['New greeting']);
+  });
+
+  it('wordCountLabel reports greetings distinctly from quotes', () => {
+    expect(wordCountLabel(['Hi there friend'], 'greetings')).toBe('1 greetings, 3 words');
   });
 });

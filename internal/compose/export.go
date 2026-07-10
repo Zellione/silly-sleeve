@@ -33,14 +33,15 @@ func ExportSillyTavernCard(ch Character, folderPath string) (string, error) {
 // single source of truth shared by the v1 JSON export here and the v2/v3 PNG
 // export engine in internal/export.
 type CardFields struct {
-	Name        string
-	Description string
-	Personality string
-	Scenario    string
-	FirstMes    string
-	MesExample  string
-	Epithet     string
-	Tags        []string
+	Name         string
+	Description  string
+	Personality  string
+	Scenario     string
+	FirstMes     string
+	MesExample   string
+	AltGreetings []string
+	Epithet      string
+	Tags         []string
 }
 
 // BuildCardFields derives the SillyTavern card fields from a character: the
@@ -55,15 +56,27 @@ func BuildCardFields(ch Character) CardFields {
 	}
 
 	return CardFields{
-		Name:        ch.Name,
-		Description: strings.Join(buildDescriptionSections(ch), "\n\n"),
-		Personality: ch.Personality,
-		Scenario:    "",
-		FirstMes:    firstMes,
-		MesExample:  mesExample,
-		Epithet:     ch.Epithet,
-		Tags:        tags,
+		Name:         ch.Name,
+		Description:  strings.Join(buildDescriptionSections(ch), "\n\n"),
+		Personality:  ch.Personality,
+		Scenario:     "",
+		FirstMes:     firstMes,
+		MesExample:   mesExample,
+		AltGreetings: nonEmpty(ch.AltGreetings),
+		Epithet:      ch.Epithet,
+		Tags:         tags,
 	}
+}
+
+// nonEmpty returns a new slice with blank entries removed, never nil.
+func nonEmpty(s []string) []string {
+	out := make([]string, 0, len(s))
+	for _, v := range s {
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // sillyTavernCard builds the SillyTavern v1 card map from a character.

@@ -155,7 +155,7 @@ const FieldCard: React.FC<{
             />
           )}
 
-          {field.type === 'quotes' && (
+          {(field.type === 'quotes' || field.type === 'greetings') && (
             <div className="col" style={{ gap: 6 }}>
               {(st.value as string[]).map((q, i) => (
                 <div key={i} className="quote-row">
@@ -170,7 +170,7 @@ const FieldCard: React.FC<{
                     }}
                   />
                   {!st.locked && (
-                    <button type="button" className="x" aria-label="Remove quote" onClick={() => onChange((st.value as string[]).filter((_, j) => j !== i))}>
+                    <button type="button" className="x" aria-label={field.type === 'greetings' ? 'Remove greeting' : 'Remove quote'} onClick={() => onChange((st.value as string[]).filter((_, j) => j !== i))}>
                       <XIcon size={12} />
                     </button>
                   )}
@@ -179,7 +179,7 @@ const FieldCard: React.FC<{
               {!st.locked && (
                 <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
                   onClick={() => onChange([...(st.value as string[]), ''])}>
-                  <PlusIcon size={11} /> Add quote
+                  <PlusIcon size={11} /> {field.type === 'greetings' ? 'Add greeting' : 'Add quote'}
                 </button>
               )}
             </div>

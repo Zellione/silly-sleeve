@@ -163,6 +163,53 @@ func TestGenerateBulk_WithLockedFields(t *testing.T) {
 	assert.Equal(t, "New.", ch.Appearance)
 }
 
+func TestGenerateBulk_AltGreetings(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"name":         "Elara",
+			"altGreetings": []string{"Oh, it's you.", "Welcome back."},
+		}
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": mustMarshal(t, resp)}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	ep := llm.LLMEndpoint{URL: srv.URL, Model: "model"}
+	result := crawler.CrawlResult{Title: "Elara Page"}
+	ch, err := GenerateBulk(context.Background(), result, ep, nil, Character{})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Oh, it's you.", "Welcome back."}, ch.AltGreetings)
+}
+
+func TestGenerateBulk_WithLockedAltGreetings(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"name":         "Elara",
+			"altGreetings": []string{"Overwritten."},
+		}
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": mustMarshal(t, resp)}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	ep := llm.LLMEndpoint{URL: srv.URL, Model: "model"}
+	result := crawler.CrawlResult{Title: "Page"}
+	existing := Character{AltGreetings: []string{"Keep me."}}
+	ch, err := GenerateBulk(context.Background(), result, ep, []string{"altGreetings"}, existing)
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Keep me."}, ch.AltGreetings)
+}
+
 func TestGenerateBulk_LLMError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
@@ -387,6 +434,20 @@ func TestGenerateField_QuotesArray(t *testing.T) {
 	assert.Equal(t, []string{"Hello there!", "Let's go!"}, ch.Quotes)
 }
 
+func TestGenerateField_AltGreetingsArray(t *testing.T) {
+	srv := fieldLLMServer(t, `{"altGreetings": ["Oh, it's you.", "Welcome back."]}`)
+	defer srv.Close()
+
+	ep := llm.LLMEndpoint{URL: srv.URL, Model: "m"}
+	result := crawler.CrawlResult{Title: "Test"}
+	tmpl := prompts.Defaults()
+	tmpl.FieldPrompts["altGreetings"] = "List alternate greetings."
+
+	ch, err := GenerateField(context.Background(), "altGreetings", result, ep, "", Character{}, tmpl)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Oh, it's you.", "Welcome back."}, ch.AltGreetings)
+}
+
 /* ── resolveFieldValue tests ─────────────────────────── */
 
 func TestResolveFieldValue_ValidJSON(t *testing.T) {
@@ -607,6 +668,12 @@ func TestApplyField_Quotes(t *testing.T) {
 	assert.Equal(t, []string{"Hello!", "Bye!"}, ch.Quotes)
 }
 
+func TestApplyField_AltGreetings(t *testing.T) {
+	ch := Character{}
+	applyField(&ch, "altGreetings", []any{"Oh, it's you.", "Welcome back."})
+	assert.Equal(t, []string{"Oh, it's you.", "Welcome back."}, ch.AltGreetings)
+}
+
 func TestApplyField_Stats(t *testing.T) {
 	ch := Character{}
 	applyField(&ch, "stats", []any{[]any{"STR", "14"}, []any{"DEX", "18"}})
@@ -672,6 +739,12 @@ func TestApplyStringSliceField_Quotes(t *testing.T) {
 	ch := Character{}
 	applyStringSliceField(&ch, "quotes", []any{"q1", "q2"})
 	assert.Equal(t, []string{"q1", "q2"}, ch.Quotes)
+}
+
+func TestApplyStringSliceField_AltGreetings(t *testing.T) {
+	ch := Character{}
+	applyStringSliceField(&ch, "altGreetings", []any{"g1", "g2"})
+	assert.Equal(t, []string{"g1", "g2"}, ch.AltGreetings)
 }
 
 func TestApplyStatsField_Empty(t *testing.T) {

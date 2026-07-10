@@ -85,9 +85,10 @@ func TestSubstitute(t *testing.T) {
 
 func TestFieldIDs(t *testing.T) {
 	ids := FieldIDs()
-	assert.Len(t, ids, 10)
+	assert.Len(t, ids, 11)
 	assert.Equal(t, "name", ids[0])
-	assert.Equal(t, "stats", ids[9])
+	assert.Equal(t, "altGreetings", ids[9])
+	assert.Equal(t, "stats", ids[10])
 	seen := make(map[string]bool)
 	for _, id := range ids {
 		assert.False(t, seen[id], "duplicate field: "+id)
@@ -98,6 +99,7 @@ func TestFieldIDs(t *testing.T) {
 func TestFieldLabel(t *testing.T) {
 	assert.Equal(t, "Name", FieldLabel("name"))
 	assert.Equal(t, "Title / epithet", FieldLabel("epithet"))
+	assert.Equal(t, "Alternate greetings", FieldLabel("altGreetings"))
 	assert.Equal(t, "Stat block", FieldLabel("stats"))
 	assert.Equal(t, "unknown", FieldLabel("unknown"))
 }

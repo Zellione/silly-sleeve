@@ -18,6 +18,7 @@ type Character struct {
 	Abilities     string    `json:"abilities"`
 	Relationships string    `json:"relationships"`
 	Quotes        []string  `json:"quotes"`
+	AltGreetings  []string  `json:"altGreetings"`
 	Stats         []StatKV  `json:"stats"`
 	Dirty         bool      `json:"dirty"`
 	Portrait      []byte    `json:"portrait"`
@@ -39,7 +40,7 @@ func NewCharacter(id int) Character {
 func FieldIDs() []string {
 	return []string{
 		"name", "epithet", "tags", "appearance", "personality",
-		"backstory", "abilities", "relationships", "quotes", "stats",
+		"backstory", "abilities", "relationships", "quotes", "altGreetings", "stats",
 	}
 }
 
@@ -55,6 +56,7 @@ func FieldLabel(id string) string {
 		"abilities":     "Abilities & skills",
 		"relationships": "Relationships",
 		"quotes":        "Example quotes",
+		"altGreetings":  "Alternate greetings",
 		"stats":         "Stat block",
 	}
 	if v, ok := m[id]; ok {
@@ -71,11 +73,12 @@ func FieldRequired(id string) bool {
 // FieldType returns the input type for a field ID.
 func FieldType(id string) string {
 	m := map[string]string{
-		"name":    "line",
-		"epithet": "line",
-		"tags":    "tags",
-		"quotes":  "quotes",
-		"stats":   "stats",
+		"name":         "line",
+		"epithet":      "line",
+		"tags":         "tags",
+		"quotes":       "quotes",
+		"altGreetings": "quotes",
+		"stats":        "stats",
 	}
 	if v, ok := m[id]; ok {
 		return v

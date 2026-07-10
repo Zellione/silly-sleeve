@@ -356,6 +356,7 @@ export namespace compose {
 	    abilities: string;
 	    relationships: string;
 	    quotes: string[];
+	    altGreetings: string[];
 	    stats: StatKV[];
 	    dirty: boolean;
 	    portrait: number[];
@@ -377,6 +378,7 @@ export namespace compose {
 	        this.abilities = source["abilities"];
 	        this.relationships = source["relationships"];
 	        this.quotes = source["quotes"];
+	        this.altGreetings = source["altGreetings"];
 	        this.stats = this.convertValues(source["stats"], StatKV);
 	        this.dirty = source["dirty"];
 	        this.portrait = source["portrait"];

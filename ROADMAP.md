@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-07-10 — Phase 5 · 7.4 Preview screen chat greeting bubble complete.
+> Last updated: 2026-07-10 — Phase 5 · complete (7.5 side panels + quality gate).
 
 ## Overview
 
@@ -133,7 +133,7 @@ active character, including the opening greeting.
   stat block, matching the `design_handoff/screen-export.jsx` mockup
 - [x] **7.4** Preview screen — SillyTavern-style chat header + opening-message
   bubble, swipeable across alternate greetings
-- [ ] **7.5** Preview screen — token-budget panel, linked-lorebook panel, ready-check
+- [x] **7.5** Preview screen — token-budget panel, linked-lorebook panel, ready-check
   panel; tests + quality gate
 
 ---
@@ -149,6 +149,57 @@ active character, including the opening greeting.
 - Implemented 7.2 — Shared `CharacterStrip` + `GetCardPreview` binding.
 - Implemented 7.3 — Preview screen character-card sheet.
 - Implemented 7.4 — Preview screen chat greeting bubble.
+- Implemented 7.5 — Preview screen side panels (token budget, linked lorebook,
+  ready check). Phase 5 complete.
+
+#### Completed 7.5 — Preview screen side panels
+
+- [x] **7.5** The `.export-side` right column (defined in CSS since 7.3, unused
+  until now) is populated with three `.card` panels in `PreviewScreen.tsx`,
+  completing the `design_handoff/screen-export.jsx` mockup:
+  - **Token budget** — new `TokenBudgetPanel`, fed by the existing (7.2)
+    `GetCardPreview` binding's `tokens` (Description/Personality/Scenario/
+    Examples + Total). Each bar's width is `value / total` rather than a
+    hardcoded per-field max, so it stays meaningful for characters of any
+    length; the summary row reads `total.toLocaleString()} / 2,048` — 2048 is
+    a fixed reference budget (not a config value, matching the mockup's
+    static "1,004 / 2,048"), since no per-project/per-endpoint context-window
+    setting exists anywhere in the app to source it from.
+  - **Linked lorebook** — new `LinkedLorebookPanel`, fed by the existing
+    `GetLorebook` binding. Reuses the milestone-6.5 scoping convention
+    (`entry.characters: string[]` of stringified character IDs; an empty
+    array means the entry is global) to filter entries relevant to the active
+    character, with a "N of M project entries are scoped to X" footer and an
+    explicit "No lorebook entries yet." empty state.
+  - **Ready check** — new `ReadyCheckPanel`, pure client-side derivation from
+    the already-fetched `activeChar` + `portrait` state (no new binding
+    needed). Checks the same six items as the mockup (Name & tags,
+    Personality, Appearance, Backstory, Portrait, First message/greeting);
+    dropped the mockup's hardcoded "832×1216" portrait resolution text since
+    decoding actual image dimensions from the raw bytes was out of scope.
+    Each row carries an `aria-label` (`"<item>: complete"` /
+    `"<item>: incomplete"`) for accessible, unambiguous testing instead of
+    relying on icon color alone.
+  - `GetCardPreview()` takes no character-ID argument (it reads the server's
+    active character), unlike `GetPortrait(id)` — so `selectChar` now chains
+    `SetActiveCharacter(id).then(() => GetCardPreview()).then(setCardPreview)`
+    instead of a separate `activeId`-keyed effect, avoiding a race where the
+    preview could reflect the character being switched away from.
+  - Ported the base `.card` (background/border/radius), `.bar`, and
+    `.divline` rules from `design_handoff/styles.css` into `style.css` — the
+    side-panel-specific CSS (`.export-side .card`, `.lorebook-row`) already
+    existed since 7.3, but the generic `.card` shell it depends on had never
+    been ported in any earlier milestone.
+  - Several pre-existing 7.3/7.4 tests asserted `getByText`/`queryByText` for
+    field labels ("Appearance", "Personality", etc.) that are now also
+    present as Ready Check row labels; re-scoped with
+    `within(container.querySelector('.character-card')!)` following the same
+    disambiguation pattern used for the 7.4 quote duplication.
+  - Quality gate green: go vet + golangci-lint clean (no Go changes this
+    substep); `tsc --noEmit` + eslint clean; 737 frontend tests, 84.92%
+    statements / 86.9% line coverage (`PreviewScreen.tsx` 97.05%/96.61%); Go
+    591 tests passing with `-race`; `wails build -clean -tags webkit2_41`
+    links. **Phase 5 — Character Preview is now complete.**
 
 #### Completed 7.4 — Preview screen chat greeting bubble
 

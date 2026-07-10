@@ -2,18 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PreviewScreen from './PreviewScreen';
-import { compose } from '../../wailsjs/go/models';
+import { compose, lorebook } from '../../wailsjs/go/models';
 
 const mockGetCharacters = vi.fn();
 const mockGetActiveCharacter = vi.fn();
 const mockSetActiveCharacter = vi.fn();
 const mockGetPortrait = vi.fn();
+const mockGetCardPreview = vi.fn();
+const mockGetLorebook = vi.fn();
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetActiveCharacter: () => mockGetActiveCharacter(),
   SetActiveCharacter: (id: number) => mockSetActiveCharacter(id),
   GetPortrait: (charID: number) => mockGetPortrait(charID),
+  GetCardPreview: () => mockGetCardPreview(),
+  GetLorebook: () => mockGetLorebook(),
 }));
 
 const elara = compose.Character.createFrom({
@@ -51,6 +55,10 @@ describe('PreviewScreen', () => {
     mockGetActiveCharacter.mockResolvedValue(elara);
     mockSetActiveCharacter.mockResolvedValue(undefined);
     mockGetPortrait.mockResolvedValue([]);
+    mockGetCardPreview.mockResolvedValue(compose.CardPreview.createFrom({
+      tokens: { description: 0, personality: 0, scenario: 0, examples: 0, total: 0 },
+    }));
+    mockGetLorebook.mockResolvedValue([]);
   });
 
   it('renders the PageHead with step 6 and the active character name', async () => {
@@ -70,16 +78,17 @@ describe('PreviewScreen', () => {
   });
 
   it('renders populated field sections', async () => {
-    renderScreen();
+    const { container } = renderScreen();
     await waitFor(() => {
-      expect(screen.getByText('Appearance')).toBeInTheDocument();
       expect(screen.getByText('Auburn hair, smoke-grey eyes.')).toBeInTheDocument();
-      expect(screen.getByText('Personality')).toBeInTheDocument();
-      expect(screen.getByText('Backstory')).toBeInTheDocument();
-      expect(screen.getByText('Born in Reithwin.')).toBeInTheDocument();
-      expect(screen.getByText('Abilities & skills')).toBeInTheDocument();
-      expect(screen.getByText('Relationships')).toBeInTheDocument();
     });
+    const card = within(container.querySelector('.character-card')!);
+    expect(card.getByText('Appearance')).toBeInTheDocument();
+    expect(card.getByText('Personality')).toBeInTheDocument();
+    expect(card.getByText('Backstory')).toBeInTheDocument();
+    expect(card.getByText('Born in Reithwin.')).toBeInTheDocument();
+    expect(card.getByText('Abilities & skills')).toBeInTheDocument();
+    expect(card.getByText('Relationships')).toBeInTheDocument();
   });
 
   it('renders the first quote as a voice example blockquote', async () => {
@@ -110,23 +119,27 @@ describe('PreviewScreen', () => {
 
   it('omits empty field sections and the stat block for a bare character', async () => {
     mockGetActiveCharacter.mockResolvedValue(bare);
-    renderScreen();
+    const { container } = renderScreen();
     await waitFor(() => {
       expect(screen.getAllByText('Tatsumi').length).toBeGreaterThan(0);
     });
-    expect(screen.queryByText('Appearance')).not.toBeInTheDocument();
-    expect(screen.queryByText('Voice — example exchange')).not.toBeInTheDocument();
-    expect(screen.queryByText('Stat block')).not.toBeInTheDocument();
+    const card = within(container.querySelector('.character-card')!);
+    expect(card.queryByText('Appearance')).not.toBeInTheDocument();
+    expect(card.queryByText('Voice — example exchange')).not.toBeInTheDocument();
+    expect(card.queryByText('Stat block')).not.toBeInTheDocument();
   });
 
   it('switches the active character when a strip tab is clicked', async () => {
     const user = userEvent.setup();
-    renderScreen();
+    const { container } = renderScreen();
     await waitFor(() => expect(screen.getByText('Tatsumi')).toBeInTheDocument());
 
     await user.click(screen.getByText('Tatsumi'));
     expect(mockSetActiveCharacter).toHaveBeenCalledWith(2);
-    await waitFor(() => expect(screen.queryByText('Appearance')).not.toBeInTheDocument());
+    await waitFor(() => {
+      const card = within(container.querySelector('.character-card')!);
+      expect(card.queryByText('Appearance')).not.toBeInTheDocument();
+    });
   });
 
   it('renders the portrait image when GetPortrait returns bytes', async () => {
@@ -221,5 +234,70 @@ describe('PreviewScreen', () => {
       expect(container.querySelector('.chat-bubble')).toHaveTextContent('Sit. I will pour.');
     });
     expect(screen.queryByText('2 / 3')).not.toBeInTheDocument();
+  });
+
+  it('renders the token budget panel with per-section counts and a formatted total', async () => {
+    mockGetCardPreview.mockResolvedValue(compose.CardPreview.createFrom({
+      tokens: { description: 412, personality: 186, scenario: 94, examples: 312, total: 1004 },
+    }));
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByText('Token budget')).toBeInTheDocument();
+    });
+    expect(screen.getByText('412')).toBeInTheDocument();
+    expect(screen.getByText('186')).toBeInTheDocument();
+    expect(screen.getByText('94')).toBeInTheDocument();
+    expect(screen.getByText('312')).toBeInTheDocument();
+    expect(screen.getByText('1,004 / 2,048')).toBeInTheDocument();
+  });
+
+  it('renders linked lorebook entries scoped to the active character, including global entries', async () => {
+    mockGetLorebook.mockResolvedValue([
+      lorebook.Entry.createFrom({ uid: 1, comment: 'The Harpers', order: 100, characters: [] }),
+      lorebook.Entry.createFrom({ uid: 2, comment: 'Songthorn (rapier)', order: 40, characters: ['1'] }),
+      lorebook.Entry.createFrom({ uid: 3, comment: 'Unrelated', order: 10, characters: ['99'] }),
+    ]);
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByText('Linked lorebook')).toBeInTheDocument();
+    });
+    expect(screen.getByText('The Harpers')).toBeInTheDocument();
+    expect(screen.getByText('Songthorn (rapier)')).toBeInTheDocument();
+    expect(screen.queryByText('Unrelated')).not.toBeInTheDocument();
+    expect(screen.getByText('2 of 3 project entries are scoped to Elara.')).toBeInTheDocument();
+  });
+
+  it('shows an empty state in the linked lorebook panel when the project has no entries', async () => {
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByText('No lorebook entries yet.')).toBeInTheDocument();
+    });
+  });
+
+  it('renders the ready check panel showing complete items for a fully populated character', async () => {
+    mockGetPortrait.mockResolvedValue([0x89, 0x50, 0x4e, 0x47]);
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Portrait: complete')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Name & tags: complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Personality: complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Appearance: complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Backstory: complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('First message / greeting: complete')).toBeInTheDocument();
+  });
+
+  it('renders the ready check panel showing incomplete items for a bare character', async () => {
+    mockGetActiveCharacter.mockResolvedValue(bare);
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByText('Ready check')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Name & tags: incomplete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Personality: incomplete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Appearance: incomplete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Backstory: incomplete')).toBeInTheDocument();
+    expect(screen.getByLabelText('Portrait: incomplete')).toBeInTheDocument();
+    expect(screen.getByLabelText('First message / greeting: incomplete')).toBeInTheDocument();
   });
 });

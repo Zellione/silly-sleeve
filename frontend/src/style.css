@@ -2357,6 +2357,15 @@ kbd {
 .character-card .stat-mini b { font: 600 16px/1 var(--f-mono); color: var(--ink); }
 .character-card .stat-mini span { font: 500 9px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); }
 
+.card {
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+}
+.bar { height: 3px; background: var(--hair); border-radius: 2px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); }
+.divline { height: 1px; background: var(--hair); margin: 12px 0; }
+
 .export-side {
   display: flex; flex-direction: column; gap: 16px;
   position: sticky; top: 0;

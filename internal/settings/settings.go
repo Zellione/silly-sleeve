@@ -107,9 +107,7 @@ func Load() (Settings, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return Settings{}, fmt.Errorf("parse settings: %w", err)
 	}
-	if len(s.PromptTemplates.FieldPrompts) == 0 {
-		s.PromptTemplates = prompts.Defaults()
-	}
+	s.PromptTemplates = s.PromptTemplates.WithDefaults()
 	return s, nil
 }
 

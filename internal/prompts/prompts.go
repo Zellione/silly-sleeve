@@ -20,6 +20,27 @@ func (ts TemplateSet) Clone() TemplateSet {
 	}
 }
 
+// WithDefaults returns a copy of ts with any missing field prompts and an
+// empty system prompt backfilled from the built-in defaults. Existing
+// entries are left untouched — this only fills gaps left by fields added
+// (e.g. to FieldIDs) after ts was saved, such as settings persisted by an
+// older version of the app.
+func (ts TemplateSet) WithDefaults() TemplateSet {
+	out := ts.Clone()
+	if out.SystemPrompt == "" {
+		out.SystemPrompt = defaultSystemPrompt
+	}
+	if out.FieldPrompts == nil {
+		out.FieldPrompts = map[string]string{}
+	}
+	for _, id := range FieldIDs() {
+		if out.FieldPrompts[id] == "" {
+			out.FieldPrompts[id] = defaultFieldPrompt(id)
+		}
+	}
+	return out
+}
+
 // Substitute replaces {{key}} placeholders in the template with values from vars.
 func Substitute(template string, vars map[string]string) string {
 	result := template

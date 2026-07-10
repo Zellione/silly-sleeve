@@ -138,6 +138,48 @@ func TestBuildVars(t *testing.T) {
 	assert.Equal(t, "", vars["custom"])
 }
 
+func TestWithDefaults_FillsMissingFieldPrompt(t *testing.T) {
+	// Simulates settings persisted before a new field (e.g. altGreetings) was
+	// added to FieldIDs(): the saved map is non-empty but missing the new key.
+	ts := Defaults()
+	delete(ts.FieldPrompts, "altGreetings")
+
+	got := ts.WithDefaults()
+
+	assert.Equal(t, defaultFieldPrompt("altGreetings"), got.FieldPrompts["altGreetings"])
+	assert.Len(t, got.FieldPrompts, len(FieldIDs()))
+}
+
+func TestWithDefaults_PreservesCustomizations(t *testing.T) {
+	ts := Defaults()
+	ts.FieldPrompts["name"] = "custom name prompt"
+	ts.SystemPrompt = "custom system prompt"
+
+	got := ts.WithDefaults()
+
+	assert.Equal(t, "custom name prompt", got.FieldPrompts["name"])
+	assert.Equal(t, "custom system prompt", got.SystemPrompt)
+}
+
+func TestWithDefaults_FillsEmptySystemPrompt(t *testing.T) {
+	ts := Defaults()
+	ts.SystemPrompt = ""
+
+	got := ts.WithDefaults()
+
+	assert.Equal(t, defaultSystemPrompt, got.SystemPrompt)
+}
+
+func TestWithDefaults_DoesNotMutateReceiver(t *testing.T) {
+	ts := Defaults()
+	delete(ts.FieldPrompts, "altGreetings")
+
+	ts.WithDefaults()
+
+	_, stillMissing := ts.FieldPrompts["altGreetings"]
+	assert.False(t, stillMissing)
+}
+
 func TestDefaultFieldPromptsAreComplete(t *testing.T) {
 	ts := Defaults()
 	for _, id := range FieldIDs() {

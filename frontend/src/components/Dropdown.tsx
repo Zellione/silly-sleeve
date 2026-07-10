@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { getCurrentZoom } from '../utils/fontScale';
 
 export interface DropdownOption {
   value: string;
@@ -65,7 +66,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
   // option text wider than the column.
   const updateCoords = useCallback(() => {
     const rect = triggerRef.current?.getBoundingClientRect();
-    if (rect) setCoords({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    if (!rect) return;
+    // rect is in true/visual screen pixels; divide by the app's UI zoom
+    // factor to compensate for WebKit/Blink treating the zoomed <html> as
+    // position:fixed's containing block (see utils/fontScale.getCurrentZoom).
+    const zoom = getCurrentZoom();
+    setCoords({ top: (rect.bottom + 4) / zoom, left: rect.left / zoom, width: rect.width / zoom });
   }, []);
 
   const openMenu = useCallback(() => {

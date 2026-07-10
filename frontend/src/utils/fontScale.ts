@@ -46,3 +46,17 @@ export function applyFontScale(id: string): void {
 export function initFontScale(): void {
   applyFontScale(getStoredFontScaleId());
 }
+
+/**
+ * Returns the zoom factor currently applied to the document root (1 when
+ * unset/invalid). WebKit/Blink treat a zoomed ancestor as the containing
+ * block for `position: fixed` descendants — unlike the spec, where only the
+ * viewport (or a transform/filter/perspective ancestor) qualifies — so any
+ * code that positions a fixed element from `getBoundingClientRect()` pixels
+ * (which are always true/visual screen pixels) must divide by this factor
+ * before assigning `top`/`left`, or the element renders offset by the zoom.
+ */
+export function getCurrentZoom(): number {
+  const z = parseFloat(document.documentElement.style.zoom || '');
+  return Number.isFinite(z) && z > 0 ? z : 1;
+}

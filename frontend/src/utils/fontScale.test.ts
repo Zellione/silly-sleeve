@@ -5,6 +5,7 @@ import {
   getStoredFontScaleId,
   applyFontScale,
   initFontScale,
+  getCurrentZoom,
 } from './fontScale';
 
 describe('fontScale', () => {
@@ -46,5 +47,19 @@ describe('fontScale', () => {
     initFontScale();
     const small = FONT_SCALES.find(s => s.id === 'small')!;
     expect(document.documentElement.style.zoom).toBe(String(small.value));
+  });
+
+  it('getCurrentZoom defaults to 1 when unset', () => {
+    expect(getCurrentZoom()).toBe(1);
+  });
+
+  it('getCurrentZoom reflects the applied preset', () => {
+    applyFontScale('xl');
+    expect(getCurrentZoom()).toBe(1.25);
+  });
+
+  it('getCurrentZoom falls back to 1 for an invalid value', () => {
+    document.documentElement.style.zoom = 'nonsense';
+    expect(getCurrentZoom()).toBe(1);
   });
 });

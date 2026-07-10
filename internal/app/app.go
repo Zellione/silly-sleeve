@@ -416,6 +416,14 @@ func (a *App) CountTokens(text string) int {
 	return compose.CountTokens(text)
 }
 
+// GetCardPreview returns the assembled card fields and token budget for the
+// active character, for the Preview screen.
+func (a *App) GetCardPreview() compose.CardPreview {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return compose.BuildCardPreview(a.activeCharacterLocked())
+}
+
 func (a *App) nextCharID() int {
 	max := 0
 	for _, c := range a.characters {

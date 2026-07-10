@@ -397,6 +397,47 @@ func TestSetActiveCharacter(t *testing.T) {
 	assert.Equal(t, 2, ch.ID)
 }
 
+func TestGetCardPreview_Default(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	p := app.GetCardPreview()
+	assert.Equal(t, "Untitled", p.Fields.Name)
+	assert.Equal(t, 0, p.Tokens.Personality)
+	assert.Equal(t, 0, p.Tokens.Scenario)
+	assert.Equal(t, 0, p.Tokens.Examples)
+}
+
+func TestGetCardPreview_ReflectsActiveCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GetActiveCharacter()
+	ch.Name = "Elara"
+	ch.Personality = "Cheerful and brave."
+	ch.Quotes = []string{"Hello there!"}
+	require.NoError(t, app.UpdateCharacter(ch))
+
+	p := app.GetCardPreview()
+	assert.Equal(t, "Elara", p.Fields.Name)
+	assert.Equal(t, "Hello there!", p.Fields.FirstMes)
+	assert.Greater(t, p.Tokens.Personality, 0)
+}
+
+func TestGetCardPreview_SwitchesWithActiveCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	second := app.GetCharacters()[1]
+	second.Name = "Tatsumi"
+	require.NoError(t, app.UpdateCharacter(second))
+
+	app.SetActiveCharacter(second.ID)
+	p := app.GetCardPreview()
+	assert.Equal(t, "Tatsumi", p.Fields.Name)
+}
+
 func TestSetActiveCharacter_Nonexistent(t *testing.T) {
 	app := NewApp()
 	app.startup(context.Background())

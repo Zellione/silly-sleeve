@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-07-10 — Phase 5 · 7.1 Alternate greetings data model complete.
+> Last updated: 2026-07-10 — Phase 5 · 7.2 Shared CharacterStrip + GetCardPreview binding complete.
 
 ## Overview
 
@@ -126,7 +126,7 @@ active character, including the opening greeting.
 - [x] **7.1** Data model: add `AltGreetings` to `Character` (Go) and the card-field
   export/import path; Editor field card for authoring alternate greetings; bulk and
   per-field LLM generation support
-- [ ] **7.2** Extract the Editor's inline `CharacterStrip` into a shared component;
+- [x] **7.2** Extract the Editor's inline `CharacterStrip` into a shared component;
   add a `GetCardPreview` Go binding assembling `compose.CardFields` + per-section
   token counts for the active character
 - [ ] **7.3** Preview screen — character-card sheet: portrait, tags, field sections,
@@ -146,6 +146,33 @@ active character, including the opening greeting.
 
 - Started Phase 5 — Character Preview (`milestone/7-preview-tab`).
 - Implemented 7.1 — Alternate greetings data model.
+- Implemented 7.2 — Shared `CharacterStrip` + `GetCardPreview` binding.
+
+#### Completed 7.2 — Shared CharacterStrip + GetCardPreview binding
+
+- [x] **7.2** Extracted the Editor's character-switcher into a reusable component
+  and added the backend seam the Preview screen (7.3/7.4) will read from.
+  - `frontend/src/components/CharacterStrip.tsx` (+ test): moved out of
+    `EditorScreen.tsx` verbatim, with `onAdd`/`onImport` made optional — omitting
+    either hides that action button, so a future read-only consumer (the Preview
+    screen) can render just the switcher. `EditorScreen.tsx` now imports it; all
+    existing Editor tests passed unchanged, confirming the extraction is
+    behavior-preserving.
+  - `internal/compose/preview.go`: new `CardPreview{Fields, Tokens}` and
+    `CardPreviewTokens{Description, Personality, Scenario, Examples, Total}`;
+    `BuildCardPreview(ch)` wraps the existing `BuildCardFields` and tokenizes the
+    "permanent" context fields (mirrors real SillyTavern semantics — `FirstMes` is
+    inserted once into chat history, not counted in the permanent budget).
+  - `internal/app/app.go`: `GetCardPreview()` binding, no-arg like
+    `GetActiveCharacter`, returning `compose.BuildCardPreview` for the active
+    character (via `activeCharacterLocked`, so it never returns a zero-value
+    struct even before any character is set).
+  - `frontend/wailsjs/go/{app/App,models}.ts` regenerated via `wails generate
+    module`.
+  - Quality gate green: go vet + golangci-lint clean; Go tests pass (`-race`), all
+    packages ≥80% (`compose` 94.2%, `app` 88.6%); `tsc --noEmit` + eslint clean;
+    717 frontend tests, 84.58% statements / 86.62% line coverage; `wails build
+    -clean -tags webkit2_41` links.
 
 #### Completed 7.1 — Alternate greetings data model
 

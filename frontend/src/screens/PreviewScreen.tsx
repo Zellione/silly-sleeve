@@ -108,8 +108,8 @@ const CharacterCard: React.FC<{ ch: compose.Character; portrait: string | null }
         <div className="field">
           <h5 className="field-title">Stat block</h5>
           <div className="stat-mini">
-            {ch.stats.filter(s => s.key !== '' || s.value !== '').map((s, i) => (
-              <div key={i}><b>{s.value}</b><span>{s.key}</span></div>
+            {ch.stats.filter(s => s.key !== '' || s.value !== '').map(s => (
+              <div key={`${s.key}:${s.value}`}><b>{s.value}</b><span>{s.key}</span></div>
             ))}
           </div>
         </div>

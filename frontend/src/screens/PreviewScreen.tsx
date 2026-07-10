@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PageHead } from '../components/Layout';
 import { CharacterStrip } from '../components/CharacterStrip';
+import { ArrowIcon } from '../icons';
 import { GetCharacters, GetActiveCharacter, SetActiveCharacter, GetPortrait } from '../../wailsjs/go/app/App';
 import { compose } from '../../wailsjs/go/models';
 import { arrayBufferToDataURL } from '../utils/image';
@@ -16,6 +17,53 @@ const TextField: React.FC<{ title: string; body: string }> = ({ title, body }) =
     </div>
   ) : null
 );
+
+const Avatar: React.FC<{ name: string; portrait: string | null }> = ({ name, portrait }) => (
+  <div className="chat-avatar">
+    {portrait ? <img src={portrait} alt="" /> : (name[0] || '?')}
+  </div>
+);
+
+const ChatPreview: React.FC<{ ch: compose.Character; portrait: string | null }> = ({ ch, portrait }) => {
+  const greetings = [ch.quotes?.[0], ...(ch.altGreetings ?? [])].filter((g): g is string => !!g);
+  const [idx, setIdx] = useState(0);
+  const name = ch.name || 'Untitled';
+
+  return (
+    <div className="chat-preview">
+      <div className="chat-header">
+        <Avatar name={name} portrait={portrait} />
+        <div className="chat-title">
+          <b>{name}</b>
+          <span>New chat</span>
+        </div>
+      </div>
+      <div className="chat-body">
+        {greetings.length > 0 ? (
+          <>
+            <Avatar name={name} portrait={portrait} />
+            <div className="chat-bubble">{greetings[idx]}</div>
+          </>
+        ) : (
+          <div className="chat-empty">No opening message written yet.</div>
+        )}
+      </div>
+      {greetings.length > 1 && (
+        <div className="swipe-controls">
+          <button type="button" aria-label="Previous greeting"
+            onClick={() => setIdx(i => (i - 1 + greetings.length) % greetings.length)}>
+            <ArrowIcon size={13} style={{ transform: 'rotate(180deg)' }} />
+          </button>
+          <span>{idx + 1} / {greetings.length}</span>
+          <button type="button" aria-label="Next greeting"
+            onClick={() => setIdx(i => (i + 1) % greetings.length)}>
+            <ArrowIcon size={13} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CharacterCard: React.FC<{ ch: compose.Character; portrait: string | null }> = ({ ch, portrait }) => (
   <div className="character-card">
@@ -105,6 +153,7 @@ const PreviewScreen: React.FC = () => {
         {activeChar ? (
           <div className="export-grid">
             <div className="col" style={{ gap: 18 }}>
+              <ChatPreview key={activeChar.id} ch={activeChar} portrait={portrait} />
               <CharacterCard ch={activeChar} portrait={portrait} />
             </div>
           </div>

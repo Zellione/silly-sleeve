@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PreviewScreen from './PreviewScreen';
 import { compose } from '../../wailsjs/go/models';
@@ -33,6 +33,13 @@ const bare = compose.Character.createFrom({
   appearance: '', personality: '', backstory: '', abilities: '', relationships: '',
   quotes: [''], stats: [compose.StatKV.createFrom({ key: '', value: '' })],
   altGreetings: [],
+});
+
+const withGreetings = compose.Character.createFrom({
+  id: 3, name: 'Karlach', epithet: '', tags: [],
+  appearance: '', personality: '', backstory: '', abilities: '', relationships: '',
+  quotes: ['You have the look of a man who pays for his secrets with his name.'],
+  stats: [], altGreetings: ["Well met, stranger.", "Careful — I burn hot today."],
 });
 
 const renderScreen = () => render(<PreviewScreen />);
@@ -76,11 +83,12 @@ describe('PreviewScreen', () => {
   });
 
   it('renders the first quote as a voice example blockquote', async () => {
-    renderScreen();
+    const { container } = renderScreen();
     await waitFor(() => {
       expect(screen.getByText('Voice — example exchange')).toBeInTheDocument();
-      expect(screen.getByText('Sit. I will pour.')).toBeInTheDocument();
     });
+    const card = within(container.querySelector('.character-card')!);
+    expect(card.getByText('Sit. I will pour.')).toBeInTheDocument();
   });
 
   it('renders the stat block grid', async () => {
@@ -125,9 +133,11 @@ describe('PreviewScreen', () => {
     mockGetPortrait.mockResolvedValue([0x89, 0x50, 0x4e, 0x47]);
     renderScreen();
     await waitFor(() => {
-      const img = screen.queryByRole('img');
-      expect(img).toBeInTheDocument();
-      expect(img).toHaveAttribute('src', expect.stringMatching(/^data:image\/png;base64,/));
+      const imgs = screen.getAllByRole('img');
+      expect(imgs.length).toBeGreaterThan(0);
+      for (const img of imgs) {
+        expect(img).toHaveAttribute('src', expect.stringMatching(/^data:image\/png;base64,/));
+      }
     });
   });
 
@@ -138,5 +148,78 @@ describe('PreviewScreen', () => {
     await waitFor(() => {
       expect(screen.getByText(/no characters yet/i)).toBeInTheDocument();
     });
+  });
+
+  it('renders a chat header with the active character name', async () => {
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByText('New chat')).toBeInTheDocument();
+    });
+    expect(screen.getAllByText('Elara').length).toBeGreaterThan(0);
+  });
+
+  it('renders quotes[0] as the greeting bubble with no swipe controls when there are no alt greetings', async () => {
+    const { container } = renderScreen();
+    await waitFor(() => {
+      expect(container.querySelector('.chat-bubble')).toHaveTextContent('Sit. I will pour.');
+    });
+    expect(screen.queryByLabelText('Next greeting')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Previous greeting')).not.toBeInTheDocument();
+  });
+
+  it('shows an empty greeting state for a character with no quotes and no alt greetings', async () => {
+    mockGetActiveCharacter.mockResolvedValue(bare);
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByText(/no opening message/i)).toBeInTheDocument();
+    });
+  });
+
+  it('swipes through alternate greetings and wraps around', async () => {
+    const user = userEvent.setup();
+    mockGetCharacters.mockResolvedValue([elara, withGreetings]);
+    mockGetActiveCharacter.mockResolvedValue(withGreetings);
+    const { container } = renderScreen();
+    const bubble = () => container.querySelector('.chat-bubble');
+
+    await waitFor(() => {
+      expect(bubble()).toHaveTextContent('You have the look of a man who pays for his secrets with his name.');
+    });
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Next greeting'));
+    expect(bubble()).toHaveTextContent('Well met, stranger.');
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Next greeting'));
+    expect(bubble()).toHaveTextContent('Careful — I burn hot today.');
+    expect(screen.getByText('3 / 3')).toBeInTheDocument();
+
+    // wraps back to the first greeting
+    await user.click(screen.getByLabelText('Next greeting'));
+    expect(bubble()).toHaveTextContent('You have the look of a man who pays for his secrets with his name.');
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+
+    // previous wraps to the last greeting
+    await user.click(screen.getByLabelText('Previous greeting'));
+    expect(bubble()).toHaveTextContent('Careful — I burn hot today.');
+    expect(screen.getByText('3 / 3')).toBeInTheDocument();
+  });
+
+  it('resets the greeting swipe index when the active character changes', async () => {
+    const user = userEvent.setup();
+    mockGetCharacters.mockResolvedValue([withGreetings, elara]);
+    mockGetActiveCharacter.mockResolvedValue(withGreetings);
+    const { container } = renderScreen();
+
+    await waitFor(() => expect(screen.getByText('1 / 3')).toBeInTheDocument());
+    await user.click(screen.getByLabelText('Next greeting'));
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
+
+    await user.click(screen.getByText('Elara'));
+    await waitFor(() => {
+      expect(container.querySelector('.chat-bubble')).toHaveTextContent('Sit. I will pour.');
+    });
+    expect(screen.queryByText('2 / 3')).not.toBeInTheDocument();
   });
 });

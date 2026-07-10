@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-07-10 — Phase 5 · 7.3 Preview screen character-card sheet complete.
+> Last updated: 2026-07-10 — Phase 5 · 7.4 Preview screen chat greeting bubble complete.
 
 ## Overview
 
@@ -131,7 +131,7 @@ active character, including the opening greeting.
   token counts for the active character
 - [x] **7.3** Preview screen — character-card sheet: portrait, tags, field sections,
   stat block, matching the `design_handoff/screen-export.jsx` mockup
-- [ ] **7.4** Preview screen — SillyTavern-style chat header + opening-message
+- [x] **7.4** Preview screen — SillyTavern-style chat header + opening-message
   bubble, swipeable across alternate greetings
 - [ ] **7.5** Preview screen — token-budget panel, linked-lorebook panel, ready-check
   panel; tests + quality gate
@@ -148,6 +148,38 @@ active character, including the opening greeting.
 - Implemented 7.1 — Alternate greetings data model.
 - Implemented 7.2 — Shared `CharacterStrip` + `GetCardPreview` binding.
 - Implemented 7.3 — Preview screen character-card sheet.
+- Implemented 7.4 — Preview screen chat greeting bubble.
+
+#### Completed 7.4 — Preview screen chat greeting bubble
+
+- [x] **7.4** A SillyTavern-style chat simulation now sits above the character
+  card in `PreviewScreen.tsx`: a chat header (avatar + name + "New chat") and a
+  message bubble showing the opening greeting, swipeable across
+  `[Quotes[0], ...AltGreetings]` (the same order SillyTavern itself swipes
+  through — the primary `first_mes` first, then the authored alternates).
+  - New local `ChatPreview`/`Avatar` components in `PreviewScreen.tsx`, keyed by
+    `activeChar.id` so the swipe index resets to the first greeting whenever the
+    active character changes (React remounts the component on key change —
+    no manual reset effect needed). Swipe controls (prev/next, reusing the
+    existing `ArrowIcon` mirrored via CSS `rotate(180deg)`, plus an "N / M"
+    counter) only render when there's more than one greeting; a single greeting
+    shows no controls, and zero greetings show an italic "No opening message
+    written yet." empty state.
+  - New `.chat-preview`/`.chat-header`/`.chat-avatar`/`.chat-bubble`/
+    `.chat-empty`/`.swipe-controls` CSS in `style.css` — this is new UI with no
+    `design_handoff` mockup precedent (the existing "Preview screen" mockup
+    only lists "First message / greeting" as an unchecked readiness item, never
+    rendering the text), so it was designed fresh using the app's existing
+    design tokens rather than ported.
+  - `Quotes[0]` now legitimately renders twice on screen (the chat bubble here,
+    and the pre-existing "Voice — example exchange" blockquote from 7.3) —
+    expected, since both are accurate representations of the same authored
+    line in different contexts; several 7.3 tests were re-scoped with
+    `within()`/`container.querySelector` to disambiguate.
+  - Quality gate green: go vet + golangci-lint clean (no Go changes this
+    substep); `tsc --noEmit` + eslint clean; 732 frontend tests, 84.73%
+    statements / 86.75% line coverage (`PreviewScreen.tsx` 93.33%/94.59%);
+    `wails build -clean -tags webkit2_41` links.
 
 #### Completed 7.3 — Preview screen character-card sheet
 

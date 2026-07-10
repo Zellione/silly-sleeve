@@ -2381,3 +2381,69 @@ kbd {
 .lorebook-row b { font: 600 12px/1.2 var(--f-sans); }
 .lorebook-row .kw { font: 500 10px/1 var(--f-mono); color: var(--ink-3); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.08em; }
 .lorebook-row .pri { font: 600 11px/1 var(--f-mono); color: var(--acc); }
+
+/* === PREVIEW · chat greeting simulation === */
+.chat-preview {
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.chat-preview .chat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--hair);
+}
+.chat-preview .chat-avatar {
+  width: 34px; height: 34px; flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--hair);
+  display: flex; align-items: center; justify-content: center;
+  font: 600 13px/1 var(--f-display);
+  color: var(--ink-2);
+}
+.chat-preview .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.chat-preview .chat-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.chat-preview .chat-title b { font: 600 13px/1.2 var(--f-sans); }
+.chat-preview .chat-title span {
+  font: 500 9.5px/1 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+.chat-preview .chat-body {
+  padding: 20px 16px;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.chat-preview .chat-bubble {
+  background: var(--panel-2);
+  border: 1px solid var(--hair);
+  border-radius: 4px 14px 14px 14px;
+  padding: 12px 14px;
+  font: 14px/1.6 var(--f-sans);
+  color: var(--ink);
+  max-width: 60ch;
+}
+.chat-preview .chat-empty {
+  font: italic 13px/1.5 var(--f-sans);
+  color: var(--ink-3);
+}
+.chat-preview .swipe-controls {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--hair);
+}
+.chat-preview .swipe-controls button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.chat-preview .swipe-controls button:hover { border-color: var(--hair-strong); color: var(--ink); }
+.chat-preview .swipe-controls span { font: 500 11px/1 var(--f-mono); color: var(--ink-3); }

@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-07-10 — Phase 5 · 7.2 Shared CharacterStrip + GetCardPreview binding complete.
+> Last updated: 2026-07-10 — Phase 5 · 7.3 Preview screen character-card sheet complete.
 
 ## Overview
 
@@ -129,7 +129,7 @@ active character, including the opening greeting.
 - [x] **7.2** Extract the Editor's inline `CharacterStrip` into a shared component;
   add a `GetCardPreview` Go binding assembling `compose.CardFields` + per-section
   token counts for the active character
-- [ ] **7.3** Preview screen — character-card sheet: portrait, tags, field sections,
+- [x] **7.3** Preview screen — character-card sheet: portrait, tags, field sections,
   stat block, matching the `design_handoff/screen-export.jsx` mockup
 - [ ] **7.4** Preview screen — SillyTavern-style chat header + opening-message
   bubble, swipeable across alternate greetings
@@ -147,6 +147,36 @@ active character, including the opening greeting.
 - Started Phase 5 — Character Preview (`milestone/7-preview-tab`).
 - Implemented 7.1 — Alternate greetings data model.
 - Implemented 7.2 — Shared `CharacterStrip` + `GetCardPreview` binding.
+- Implemented 7.3 — Preview screen character-card sheet.
+
+#### Completed 7.3 — Preview screen character-card sheet
+
+- [x] **7.3** New `frontend/src/screens/PreviewScreen.tsx` replaces the Phase 0 stub,
+  rendering the assembled character card matching the `design_handoff/
+  screen-export.jsx` mockup.
+  - Fetches `GetCharacters`/`GetActiveCharacter` on mount (honoring whichever
+    character the Editor left active) and reuses the shared `CharacterStrip`
+    (7.2) to switch; `GetPortrait` + `utils/image.ts`'s `arrayBufferToDataURL`
+    render the portrait as an `<img>` layered over the mockup's diagonal-stripe
+    placeholder background.
+  - Renders `Character` fields directly (Appearance/Personality/Backstory/
+    Abilities/Relationships as `.field` blocks, `Quotes[0]` as a "Voice —
+    example exchange" blockquote, `Stats` as a `.stat-mini` grid) — deliberately
+    not the concatenated `CardFields.Description` export blob, since the mockup
+    shows each authored field separately; each section only renders when
+    non-empty. An empty-project state ("No characters yet") covers a project
+    with zero characters.
+  - `.export-grid`/`.character-card`/`.export-side`/`.lorebook-row` CSS ported
+    from `design_handoff/screens-styles.jsx` into `style.css` (the side-panel
+    rules are unused until 7.5 but came from the same contiguous mockup block).
+  - `frontend/src/screens/index.tsx` now exports the real component; removed
+    the now-fully-dead `Placeholder`/"Coming soon" machinery it previously
+    shared with other screens. Updated `App.test.tsx` and `screens/index.test.tsx`
+    accordingly.
+  - Quality gate green: go vet + golangci-lint clean (no Go changes this
+    substep); `tsc --noEmit` + eslint clean; 727 frontend tests, 84.65%
+    statements / 86.69% line coverage (`PreviewScreen.tsx` itself 90.9%/92.85%);
+    `wails build -clean -tags webkit2_41` links.
 
 #### Completed 7.2 — Shared CharacterStrip + GetCardPreview binding
 

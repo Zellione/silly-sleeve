@@ -20,6 +20,7 @@ const mockExportLorebook = vi.fn();
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
+  GetActiveCharacter: vi.fn().mockResolvedValue({}),
   AddCharacter: vi.fn(),
   UpdateCharacter: vi.fn(),
   DeleteCharacter: vi.fn(),
@@ -58,10 +59,6 @@ vi.mock('../../wailsjs/go/app/App', () => ({
 
 const renderWithToast = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
-
-const placeholders = [
-  { name: 'PreviewScreen', component: PreviewScreen, title: 'Preview character card' },
-];
 
 describe('screens/index', () => {
   beforeEach(() => {
@@ -102,19 +99,24 @@ describe('screens/index', () => {
     });
   });
 
-  describe.each(placeholders)('$name', ({ component: Comp, title }) => {
-    it('renders its title', () => {
-      const { container } = render(<Comp />);
-      expect(container.textContent).toContain(title);
+  describe('PreviewScreen', () => {
+    it('renders the empty state with no characters', async () => {
+      const { container } = render(<PreviewScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('No characters yet');
+      });
     });
 
-    it('renders "Coming soon" text', () => {
-      const { container } = render(<Comp />);
-      expect(container.textContent).toContain('Coming soon');
+    it('renders the character card when a character exists', async () => {
+      mockGetCharacters.mockResolvedValue([{ id: 1, name: 'Elara', tags: [], quotes: [''], stats: [] }]);
+      const { container } = render(<PreviewScreen />);
+      await waitFor(() => {
+        expect(container.textContent).toContain('Elara');
+      });
     });
 
     it('is a function component', () => {
-      expect(typeof Comp).toBe('function');
+      expect(typeof PreviewScreen).toBe('function');
     });
   });
 

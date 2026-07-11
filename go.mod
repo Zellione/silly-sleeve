@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/pkoukk/tiktoken-go v0.1.8
 	github.com/stretchr/testify v1.11.1
-	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/wailsapp/wails/v2 v2.13.0
 	golang.org/x/net v0.57.0
 )
 

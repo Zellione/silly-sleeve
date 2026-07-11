@@ -98,7 +98,7 @@ describe('EditorScreen', () => {
     });
   });
 
-  it('renders all 10 field labels', async () => {
+  it('renders all 11 field labels', async () => {
     renderEditor();
     await waitFor(() => {
       expect(screen.getByText('Name')).toBeInTheDocument();
@@ -110,8 +110,22 @@ describe('EditorScreen', () => {
       expect(screen.getByText('Abilities & skills')).toBeInTheDocument();
       expect(screen.getByText('Relationships')).toBeInTheDocument();
       expect(screen.getByText('Example quotes')).toBeInTheDocument();
+      expect(screen.getByText('Alternate greetings')).toBeInTheDocument();
       expect(screen.getByText('Stat block')).toBeInTheDocument();
     });
+  });
+
+  it('adds and removes an alternate greeting row', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText('Alternate greetings')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Add greeting' }));
+    const removeButtons = screen.getAllByRole('button', { name: 'Remove greeting' });
+    expect(removeButtons).toHaveLength(1);
+
+    await user.click(removeButtons[0]);
+    expect(screen.queryAllByRole('button', { name: 'Remove greeting' })).toHaveLength(0);
   });
 
   it('shows required/optional badges', async () => {
@@ -120,7 +134,7 @@ describe('EditorScreen', () => {
       const required = screen.getAllByText('required');
       const optional = screen.getAllByText('optional');
       expect(required.length).toBe(3);
-      expect(optional.length).toBe(7);
+      expect(optional.length).toBe(8);
     });
   });
 
@@ -282,7 +296,7 @@ describe('EditorScreen', () => {
     renderEditor();
     await waitFor(() => {
       const lockButtons = screen.getAllByTitle("Lock — won't re-roll with Compose All");
-      expect(lockButtons.length).toBe(10);
+      expect(lockButtons.length).toBe(11);
     });
   });
 
@@ -351,7 +365,7 @@ describe('EditorScreen', () => {
     renderEditor();
 
     await waitFor(() => {
-      expect(screen.getAllByTitle("Lock — won't re-roll with Compose All").length).toBe(10);
+      expect(screen.getAllByTitle("Lock — won't re-roll with Compose All").length).toBe(11);
     });
 
     const lockButtons = screen.getAllByTitle("Lock — won't re-roll with Compose All");
@@ -359,7 +373,7 @@ describe('EditorScreen', () => {
 
     await waitFor(() => {
       const afterClick = screen.getAllByTitle("Lock — won't re-roll with Compose All");
-      expect(afterClick.length).toBe(10);
+      expect(afterClick.length).toBe(11);
     });
   });
 

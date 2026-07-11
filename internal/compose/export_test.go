@@ -56,6 +56,21 @@ func TestExportSillyTavernCard(t *testing.T) {
 	assert.Len(t, st["tags"].([]any), 2)
 }
 
+func TestBuildCardFields_AltGreetings(t *testing.T) {
+	ch := Character{
+		Name:         "Alice",
+		Quotes:       []string{"Hello there!"},
+		AltGreetings: []string{"Oh, it's you.", "", "Welcome back."},
+	}
+	f := BuildCardFields(ch)
+	assert.Equal(t, []string{"Oh, it's you.", "Welcome back."}, f.AltGreetings)
+}
+
+func TestBuildCardFields_AltGreetings_Empty(t *testing.T) {
+	f := BuildCardFields(Character{Name: "Alice"})
+	assert.Equal(t, []string{}, f.AltGreetings)
+}
+
 func TestExportSillyTavernCard_EmptyNameAndTags(t *testing.T) {
 	dir := t.TempDir()
 	path, err := ExportSillyTavernCard(Character{ID: 1}, dir)

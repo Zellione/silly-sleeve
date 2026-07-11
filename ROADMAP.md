@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-06-23 — Phase 4 · 6.7 Import existing cards complete.
+> Last updated: 2026-07-10 — Phase 5 · complete (7.5 side panels + quality gate).
 
 ## Overview
 
@@ -118,9 +118,205 @@ Goal: Multi-source, multi-endpoint, and full project management.
 
 ---
 
+## Phase 5 — Character Preview
+
+Goal: A live "as-you'd-see-it-in-SillyTavern" preview of the assembled card for the
+active character, including the opening greeting.
+
+- [x] **7.1** Data model: add `AltGreetings` to `Character` (Go) and the card-field
+  export/import path; Editor field card for authoring alternate greetings; bulk and
+  per-field LLM generation support
+- [x] **7.2** Extract the Editor's inline `CharacterStrip` into a shared component;
+  add a `GetCardPreview` Go binding assembling `compose.CardFields` + per-section
+  token counts for the active character
+- [x] **7.3** Preview screen — character-card sheet: portrait, tags, field sections,
+  stat block, matching the `design_handoff/screen-export.jsx` mockup
+- [x] **7.4** Preview screen — SillyTavern-style chat header + opening-message
+  bubble, swipeable across alternate greetings
+- [x] **7.5** Preview screen — token-budget panel, linked-lorebook panel, ready-check
+  panel; tests + quality gate
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-07-10
+
+- Started Phase 5 — Character Preview (`milestone/7-preview-tab`).
+- Implemented 7.1 — Alternate greetings data model.
+- Implemented 7.2 — Shared `CharacterStrip` + `GetCardPreview` binding.
+- Implemented 7.3 — Preview screen character-card sheet.
+- Implemented 7.4 — Preview screen chat greeting bubble.
+- Implemented 7.5 — Preview screen side panels (token budget, linked lorebook,
+  ready check). Phase 5 complete.
+
+#### Completed 7.5 — Preview screen side panels
+
+- [x] **7.5** The `.export-side` right column (defined in CSS since 7.3, unused
+  until now) is populated with three `.card` panels in `PreviewScreen.tsx`,
+  completing the `design_handoff/screen-export.jsx` mockup:
+  - **Token budget** — new `TokenBudgetPanel`, fed by the existing (7.2)
+    `GetCardPreview` binding's `tokens` (Description/Personality/Scenario/
+    Examples + Total). Each bar's width is `value / total` rather than a
+    hardcoded per-field max, so it stays meaningful for characters of any
+    length; the summary row reads `total.toLocaleString()} / 2,048` — 2048 is
+    a fixed reference budget (not a config value, matching the mockup's
+    static "1,004 / 2,048"), since no per-project/per-endpoint context-window
+    setting exists anywhere in the app to source it from.
+  - **Linked lorebook** — new `LinkedLorebookPanel`, fed by the existing
+    `GetLorebook` binding. Reuses the milestone-6.5 scoping convention
+    (`entry.characters: string[]` of stringified character IDs; an empty
+    array means the entry is global) to filter entries relevant to the active
+    character, with a "N of M project entries are scoped to X" footer and an
+    explicit "No lorebook entries yet." empty state.
+  - **Ready check** — new `ReadyCheckPanel`, pure client-side derivation from
+    the already-fetched `activeChar` + `portrait` state (no new binding
+    needed). Checks the same six items as the mockup (Name & tags,
+    Personality, Appearance, Backstory, Portrait, First message/greeting);
+    dropped the mockup's hardcoded "832×1216" portrait resolution text since
+    decoding actual image dimensions from the raw bytes was out of scope.
+    Each row carries an `aria-label` (`"<item>: complete"` /
+    `"<item>: incomplete"`) for accessible, unambiguous testing instead of
+    relying on icon color alone.
+  - `GetCardPreview()` takes no character-ID argument (it reads the server's
+    active character), unlike `GetPortrait(id)` — so `selectChar` now chains
+    `SetActiveCharacter(id).then(() => GetCardPreview()).then(setCardPreview)`
+    instead of a separate `activeId`-keyed effect, avoiding a race where the
+    preview could reflect the character being switched away from.
+  - Ported the base `.card` (background/border/radius), `.bar`, and
+    `.divline` rules from `design_handoff/styles.css` into `style.css` — the
+    side-panel-specific CSS (`.export-side .card`, `.lorebook-row`) already
+    existed since 7.3, but the generic `.card` shell it depends on had never
+    been ported in any earlier milestone.
+  - Several pre-existing 7.3/7.4 tests asserted `getByText`/`queryByText` for
+    field labels ("Appearance", "Personality", etc.) that are now also
+    present as Ready Check row labels; re-scoped with
+    `within(container.querySelector('.character-card')!)` following the same
+    disambiguation pattern used for the 7.4 quote duplication.
+  - Quality gate green: go vet + golangci-lint clean (no Go changes this
+    substep); `tsc --noEmit` + eslint clean; 737 frontend tests, 84.92%
+    statements / 86.9% line coverage (`PreviewScreen.tsx` 97.05%/96.61%); Go
+    591 tests passing with `-race`; `wails build -clean -tags webkit2_41`
+    links. **Phase 5 — Character Preview is now complete.**
+
+#### Completed 7.4 — Preview screen chat greeting bubble
+
+- [x] **7.4** A SillyTavern-style chat simulation now sits above the character
+  card in `PreviewScreen.tsx`: a chat header (avatar + name + "New chat") and a
+  message bubble showing the opening greeting, swipeable across
+  `[Quotes[0], ...AltGreetings]` (the same order SillyTavern itself swipes
+  through — the primary `first_mes` first, then the authored alternates).
+  - New local `ChatPreview`/`Avatar` components in `PreviewScreen.tsx`, keyed by
+    `activeChar.id` so the swipe index resets to the first greeting whenever the
+    active character changes (React remounts the component on key change —
+    no manual reset effect needed). Swipe controls (prev/next, reusing the
+    existing `ArrowIcon` mirrored via CSS `rotate(180deg)`, plus an "N / M"
+    counter) only render when there's more than one greeting; a single greeting
+    shows no controls, and zero greetings show an italic "No opening message
+    written yet." empty state.
+  - New `.chat-preview`/`.chat-header`/`.chat-avatar`/`.chat-bubble`/
+    `.chat-empty`/`.swipe-controls` CSS in `style.css` — this is new UI with no
+    `design_handoff` mockup precedent (the existing "Preview screen" mockup
+    only lists "First message / greeting" as an unchecked readiness item, never
+    rendering the text), so it was designed fresh using the app's existing
+    design tokens rather than ported.
+  - `Quotes[0]` now legitimately renders twice on screen (the chat bubble here,
+    and the pre-existing "Voice — example exchange" blockquote from 7.3) —
+    expected, since both are accurate representations of the same authored
+    line in different contexts; several 7.3 tests were re-scoped with
+    `within()`/`container.querySelector` to disambiguate.
+  - Quality gate green: go vet + golangci-lint clean (no Go changes this
+    substep); `tsc --noEmit` + eslint clean; 732 frontend tests, 84.73%
+    statements / 86.75% line coverage (`PreviewScreen.tsx` 93.33%/94.59%);
+    `wails build -clean -tags webkit2_41` links.
+
+#### Completed 7.3 — Preview screen character-card sheet
+
+- [x] **7.3** New `frontend/src/screens/PreviewScreen.tsx` replaces the Phase 0 stub,
+  rendering the assembled character card matching the `design_handoff/
+  screen-export.jsx` mockup.
+  - Fetches `GetCharacters`/`GetActiveCharacter` on mount (honoring whichever
+    character the Editor left active) and reuses the shared `CharacterStrip`
+    (7.2) to switch; `GetPortrait` + `utils/image.ts`'s `arrayBufferToDataURL`
+    render the portrait as an `<img>` layered over the mockup's diagonal-stripe
+    placeholder background.
+  - Renders `Character` fields directly (Appearance/Personality/Backstory/
+    Abilities/Relationships as `.field` blocks, `Quotes[0]` as a "Voice —
+    example exchange" blockquote, `Stats` as a `.stat-mini` grid) — deliberately
+    not the concatenated `CardFields.Description` export blob, since the mockup
+    shows each authored field separately; each section only renders when
+    non-empty. An empty-project state ("No characters yet") covers a project
+    with zero characters.
+  - `.export-grid`/`.character-card`/`.export-side`/`.lorebook-row` CSS ported
+    from `design_handoff/screens-styles.jsx` into `style.css` (the side-panel
+    rules are unused until 7.5 but came from the same contiguous mockup block).
+  - `frontend/src/screens/index.tsx` now exports the real component; removed
+    the now-fully-dead `Placeholder`/"Coming soon" machinery it previously
+    shared with other screens. Updated `App.test.tsx` and `screens/index.test.tsx`
+    accordingly.
+  - Quality gate green: go vet + golangci-lint clean (no Go changes this
+    substep); `tsc --noEmit` + eslint clean; 727 frontend tests, 84.65%
+    statements / 86.69% line coverage (`PreviewScreen.tsx` itself 90.9%/92.85%);
+    `wails build -clean -tags webkit2_41` links.
+
+#### Completed 7.2 — Shared CharacterStrip + GetCardPreview binding
+
+- [x] **7.2** Extracted the Editor's character-switcher into a reusable component
+  and added the backend seam the Preview screen (7.3/7.4) will read from.
+  - `frontend/src/components/CharacterStrip.tsx` (+ test): moved out of
+    `EditorScreen.tsx` verbatim, with `onAdd`/`onImport` made optional — omitting
+    either hides that action button, so a future read-only consumer (the Preview
+    screen) can render just the switcher. `EditorScreen.tsx` now imports it; all
+    existing Editor tests passed unchanged, confirming the extraction is
+    behavior-preserving.
+  - `internal/compose/preview.go`: new `CardPreview{Fields, Tokens}` and
+    `CardPreviewTokens{Description, Personality, Scenario, Examples, Total}`;
+    `BuildCardPreview(ch)` wraps the existing `BuildCardFields` and tokenizes the
+    "permanent" context fields (mirrors real SillyTavern semantics — `FirstMes` is
+    inserted once into chat history, not counted in the permanent budget).
+  - `internal/app/app.go`: `GetCardPreview()` binding, no-arg like
+    `GetActiveCharacter`, returning `compose.BuildCardPreview` for the active
+    character (via `activeCharacterLocked`, so it never returns a zero-value
+    struct even before any character is set).
+  - `frontend/wailsjs/go/{app/App,models}.ts` regenerated via `wails generate
+    module`.
+  - Quality gate green: go vet + golangci-lint clean; Go tests pass (`-race`), all
+    packages ≥80% (`compose` 94.2%, `app` 88.6%); `tsc --noEmit` + eslint clean;
+    717 frontend tests, 84.58% statements / 86.62% line coverage; `wails build
+    -clean -tags webkit2_41` links.
+
+#### Completed 7.1 — Alternate greetings data model
+
+- [x] **7.1** Added `AltGreetings []string` to `compose.Character`, wired end to end
+  so SillyTavern's alternate-greetings concept round-trips instead of being folded
+  into the flat `Quotes` list.
+  - `internal/compose/models.go`: new field + `FieldIDs`/`FieldLabel`/`FieldType`
+    entries (`"altGreetings"`, ordered between `quotes` and `stats`, type `"quotes"`).
+  - `internal/compose/export.go`: `CardFields.AltGreetings`, populated in
+    `BuildCardFields` via a new `nonEmpty` helper that filters blank entries.
+  - `internal/cardexport/card.go`: `buildData` now sources `AlternateGreetings` from
+    `CardFields.AltGreetings` instead of a hardcoded empty slice.
+  - `internal/cardimport/mapcard.go`: `buildQuotes` no longer folds
+    `AlternateGreetings` into `Quotes`; a new `buildAltGreetings` maps them onto the
+    dedicated field, filtering blanks.
+  - `internal/prompts/prompts.go`: matching `FieldIDs`/`defaultFieldLabels`/
+    `defaultFieldPrompt` entries for the per-field reroll template registry.
+  - `internal/compose/prompt.go` + `generate.go`: bulk system prompt describes
+    `altGreetings`; `generateResponse`, lock-masking, `applyResponse`, `applyField`,
+    and `applyStringSliceField` all treat it like `quotes` so both bulk generation
+    and per-field reroll work.
+  - Frontend (`frontend/src/components/useFieldEditor.ts`): new `FIELDS` entry,
+    typed as a `'greetings'` variant of the list-editor UI (so word-count wording
+    reads "N greetings" instead of "N quotes"); `fieldStateFromChar`/
+    `charsFromFieldState` wired; `EditorScreen.tsx`'s quote-row renderer now also
+    handles `'greetings'`, with "Add greeting" / "Remove greeting" labels.
+  - `frontend/wailsjs/go/models.ts` regenerated via `wails generate module`.
+  - Quality gate green: go vet + golangci-lint clean; 585 Go tests (`-race`), all
+    packages ≥80% (`compose` 93.8%, `cardexport` 93.8%, `cardimport` 93.2%,
+    `prompts` 96.9%); `tsc --noEmit` + eslint clean; 712 frontend tests, 84.58%
+    statements / 86.62% line coverage; `wails build -clean -tags webkit2_41` links.
 
 ### 2026-06-23
 

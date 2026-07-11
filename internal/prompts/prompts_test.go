@@ -85,9 +85,10 @@ func TestSubstitute(t *testing.T) {
 
 func TestFieldIDs(t *testing.T) {
 	ids := FieldIDs()
-	assert.Len(t, ids, 10)
+	assert.Len(t, ids, 11)
 	assert.Equal(t, "name", ids[0])
-	assert.Equal(t, "stats", ids[9])
+	assert.Equal(t, "altGreetings", ids[9])
+	assert.Equal(t, "stats", ids[10])
 	seen := make(map[string]bool)
 	for _, id := range ids {
 		assert.False(t, seen[id], "duplicate field: "+id)
@@ -98,6 +99,7 @@ func TestFieldIDs(t *testing.T) {
 func TestFieldLabel(t *testing.T) {
 	assert.Equal(t, "Name", FieldLabel("name"))
 	assert.Equal(t, "Title / epithet", FieldLabel("epithet"))
+	assert.Equal(t, "Alternate greetings", FieldLabel("altGreetings"))
 	assert.Equal(t, "Stat block", FieldLabel("stats"))
 	assert.Equal(t, "unknown", FieldLabel("unknown"))
 }
@@ -134,6 +136,48 @@ func TestBuildVars(t *testing.T) {
 	assert.Equal(t, "https://example.com/wiki/Elara", vars["crawl.url"])
 	assert.Equal(t, "wiki content", vars["crawl_context"])
 	assert.Equal(t, "", vars["custom"])
+}
+
+func TestWithDefaults_FillsMissingFieldPrompt(t *testing.T) {
+	// Simulates settings persisted before a new field (e.g. altGreetings) was
+	// added to FieldIDs(): the saved map is non-empty but missing the new key.
+	ts := Defaults()
+	delete(ts.FieldPrompts, "altGreetings")
+
+	got := ts.WithDefaults()
+
+	assert.Equal(t, defaultFieldPrompt("altGreetings"), got.FieldPrompts["altGreetings"])
+	assert.Len(t, got.FieldPrompts, len(FieldIDs()))
+}
+
+func TestWithDefaults_PreservesCustomizations(t *testing.T) {
+	ts := Defaults()
+	ts.FieldPrompts["name"] = "custom name prompt"
+	ts.SystemPrompt = "custom system prompt"
+
+	got := ts.WithDefaults()
+
+	assert.Equal(t, "custom name prompt", got.FieldPrompts["name"])
+	assert.Equal(t, "custom system prompt", got.SystemPrompt)
+}
+
+func TestWithDefaults_FillsEmptySystemPrompt(t *testing.T) {
+	ts := Defaults()
+	ts.SystemPrompt = ""
+
+	got := ts.WithDefaults()
+
+	assert.Equal(t, defaultSystemPrompt, got.SystemPrompt)
+}
+
+func TestWithDefaults_DoesNotMutateReceiver(t *testing.T) {
+	ts := Defaults()
+	delete(ts.FieldPrompts, "altGreetings")
+
+	ts.WithDefaults()
+
+	_, stillMissing := ts.FieldPrompts["altGreetings"]
+	assert.False(t, stillMissing)
 }
 
 func TestDefaultFieldPromptsAreComplete(t *testing.T) {

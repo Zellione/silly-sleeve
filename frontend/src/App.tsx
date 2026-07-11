@@ -75,8 +75,8 @@ function AppShell() {
       /* v8 ignore next */
       /* v8 ignore next */
       case 'lorebook': return <LorebookScreen projectPath={projectPath} />;
-      case 'projectImage': return <ProjectImageScreen />;
-      case 'image': return <PortraitScreen />;
+      case 'projectImage': return <ProjectImageScreen projectPath={projectPath} />;
+      case 'image': return <PortraitScreen projectPath={projectPath} />;
       case 'preview': return <PreviewScreen />;
       case 'export': return <ExportScreen />;
       case 'settings': return <SettingsScreen />;

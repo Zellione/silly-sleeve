@@ -218,6 +218,26 @@ func TestLoad_FillsDefaultPromptTemplates(t *testing.T) {
 	assert.Len(t, loaded.PromptTemplates.FieldPrompts, len(prompts.FieldIDs()))
 }
 
+func TestLoad_BackfillsMissingFieldPrompt(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	// Simulates settings.json saved by an older version of the app, before
+	// a new field (e.g. altGreetings) was added to prompts.FieldIDs().
+	stale := prompts.Defaults()
+	delete(stale.FieldPrompts, "altGreetings")
+	s := Settings{
+		Endpoints:       []LLMEndpoint{},
+		PromptTemplates: stale,
+	}
+	require.NoError(t, Save(s))
+
+	loaded, err := Load()
+	require.NoError(t, err)
+	assert.NotEmpty(t, loaded.PromptTemplates.FieldPrompts["altGreetings"])
+	assert.Len(t, loaded.PromptTemplates.FieldPrompts, len(prompts.FieldIDs()))
+}
+
 func TestSave_RoundtripPromptTemplates(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)

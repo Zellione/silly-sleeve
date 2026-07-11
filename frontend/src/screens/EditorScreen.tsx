@@ -17,6 +17,7 @@ import {
 import { SectionContent } from '../components/SectionContent';
 import { TagsInput } from '../components/TagsInput';
 import { FieldEndpointChip } from '../components/FieldEndpointChip';
+import { CharacterStrip } from '../components/CharacterStrip';
 import { logError } from '../utils/log';
 import {
   FIELDS, type FieldSpec, type FieldState, type FieldValue,
@@ -50,6 +51,83 @@ const StatsField: React.FC<{
     )}
   </div>
 );
+
+const FieldInput: React.FC<{
+  field: FieldSpec;
+  st: FieldState;
+  onChange: (v: FieldValue) => void;
+  onPatch: (p: Partial<FieldState>) => void;
+  onBlur: () => void;
+}> = ({ field, st, onChange, onPatch, onBlur }) => {
+  if (field.type === 'line') {
+    return (
+      <input className="field" value={st.value as string} disabled={st.locked}
+        onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
+        onBlur={onBlur} />
+    );
+  }
+
+  if (field.type === 'text') {
+    return (
+      <textarea className="field" value={st.value as string} disabled={st.locked}
+        onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
+        onBlur={onBlur}
+        style={{ minHeight: field.id === 'backstory' || field.id === 'appearance' ? 140 : 100 }} />
+    );
+  }
+
+  if (field.type === 'tags') {
+    return (
+      <TagsInput
+        value={st.value as string[]}
+        onChange={v => { onChange(v); onPatch({ dirty: true }); }}
+        disabled={st.locked}
+        placeholder="Add tag and press Enter…"
+        normalize={s => s.toLowerCase()}
+        accentCount={2}
+      />
+    );
+  }
+
+  if (field.type === 'quotes' || field.type === 'greetings') {
+    const isGreeting = field.type === 'greetings';
+    return (
+      <div className="col" style={{ gap: 6 }}>
+        {(st.value as string[]).map((q, i) => (
+          <div key={i} className="quote-row">
+            <textarea
+              rows={Math.max(2, Math.ceil(q.length / 60))}
+              value={q}
+              disabled={st.locked}
+              onChange={e => {
+                const next = (st.value as string[]).map((x, j) => j === i ? e.target.value : x);
+                onChange(next);
+                onPatch({ dirty: true });
+              }}
+            />
+            {!st.locked && (
+              <button type="button" className="x" aria-label={isGreeting ? 'Remove greeting' : 'Remove quote'} onClick={() => onChange((st.value as string[]).filter((_, j) => j !== i))}>
+                <XIcon size={12} />
+              </button>
+            )}
+          </div>
+        ))}
+        {!st.locked && (
+          <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
+            onClick={() => onChange([...(st.value as string[]), ''])}>
+            <PlusIcon size={11} /> {isGreeting ? 'Add greeting' : 'Add quote'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (field.type === 'stats') {
+    return <StatsField value={st.value as compose.StatKV[]} onChange={v => { onChange(v); onPatch({ dirty: true }); }} locked={st.locked} />;
+  }
+
+  return null;
+};
 
 const FieldCard: React.FC<{
   field: FieldSpec;
@@ -130,65 +208,7 @@ const FieldCard: React.FC<{
           margin: '8px 0',
         }} />
       ) : (
-        <>
-          {field.type === 'line' && (
-            <input className="field" value={st.value as string} disabled={st.locked}
-              onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
-              onBlur={onBlur} />
-          )}
-
-          {field.type === 'text' && (
-            <textarea className="field" value={st.value as string} disabled={st.locked}
-              onChange={e => { onChange(e.target.value); onPatch({ dirty: true }); }}
-              onBlur={onBlur}
-              style={{ minHeight: field.id === 'backstory' || field.id === 'appearance' ? 140 : 100 }} />
-          )}
-
-          {field.type === 'tags' && (
-            <TagsInput
-              value={st.value as string[]}
-              onChange={v => { onChange(v); onPatch({ dirty: true }); }}
-              disabled={st.locked}
-              placeholder="Add tag and press Enter…"
-              normalize={s => s.toLowerCase()}
-              accentCount={2}
-            />
-          )}
-
-          {field.type === 'quotes' && (
-            <div className="col" style={{ gap: 6 }}>
-              {(st.value as string[]).map((q, i) => (
-                <div key={i} className="quote-row">
-                  <textarea
-                    rows={Math.max(2, Math.ceil(q.length / 60))}
-                    value={q}
-                    disabled={st.locked}
-                    onChange={e => {
-                      const next = (st.value as string[]).map((x, j) => j === i ? e.target.value : x);
-                      onChange(next);
-                      onPatch({ dirty: true });
-                    }}
-                  />
-                  {!st.locked && (
-                    <button type="button" className="x" aria-label="Remove quote" onClick={() => onChange((st.value as string[]).filter((_, j) => j !== i))}>
-                      <XIcon size={12} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {!st.locked && (
-                <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
-                  onClick={() => onChange([...(st.value as string[]), ''])}>
-                  <PlusIcon size={11} /> Add quote
-                </button>
-              )}
-            </div>
-          )}
-
-          {field.type === 'stats' && (
-            <StatsField value={st.value as compose.StatKV[]} onChange={v => { onChange(v); onPatch({ dirty: true }); }} locked={st.locked} />
-          )}
-        </>
+        <FieldInput field={field} st={st} onChange={onChange} onPatch={onPatch} onBlur={onBlur} />
       )}
 
       <div className="fc-foot">
@@ -208,33 +228,6 @@ const FieldCard: React.FC<{
     </div>
   );
 };
-
-const CharacterStrip: React.FC<{
-  characters: compose.Character[];
-  activeId: number;
-  onSelect: (id: number) => void;
-  onAdd: () => void;
-  onImport: () => void;
-}> = ({ characters, activeId, onSelect, onAdd, onImport }) => (
-  <div className="ss-char-strip scroll">
-    <span className="uplabel">Characters · {characters.length}</span>
-    {characters.map(c => (
-      <button key={c.id} className="ss-char-tab"
-        data-on={c.id === activeId ? '1' : '0'}
-        onClick={() => onSelect(c.id)}>
-        <span className="av">{c.name[0] || '?'}</span>
-        <span className="nm">{c.name || 'Untitled'}</span>
-        {c.epithet && <span className="ep">{c.epithet}</span>}
-      </button>
-    ))}
-    <button className="ss-char-add" onClick={onImport}>
-      <PlusIcon size={11} /> Import card
-    </button>
-    <button className="ss-char-add" onClick={onAdd}>
-      <PlusIcon size={11} /> Add character
-    </button>
-  </div>
-);
 
 interface EditorScreenProps {
   projectPath: string;

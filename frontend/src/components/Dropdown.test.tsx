@@ -178,6 +178,45 @@ describe('Dropdown', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
+  it('positions the listbox as position:fixed anchored to the trigger, escaping ancestor overflow clipping', async () => {
+    const user = userEvent.setup();
+    render(<Dropdown options={opts} value="a" onChange={() => {}} aria-label="Fruit" />);
+    const trigger = screen.getByRole('combobox');
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      top: 100, bottom: 130, left: 50, right: 250, width: 200, height: 30,
+      x: 50, y: 100, toJSON: () => ({}),
+    } as DOMRect);
+
+    await user.click(trigger);
+
+    const listbox = screen.getByRole('listbox');
+    expect(listbox).toHaveStyle({ position: 'fixed', top: '134px', left: '50px' });
+  });
+
+  it('compensates the fixed position for the app-wide UI zoom (font-scale) factor', async () => {
+    const user = userEvent.setup();
+    document.documentElement.style.zoom = '1.25';
+    try {
+      render(<Dropdown options={opts} value="a" onChange={() => {}} aria-label="Fruit" />);
+      const trigger = screen.getByRole('combobox');
+      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+        top: 100, bottom: 130, left: 50, right: 250, width: 200, height: 30,
+        x: 50, y: 100, toJSON: () => ({}),
+      } as DOMRect);
+
+      await user.click(trigger);
+
+      // getBoundingClientRect reports true screen pixels, but WebKit/Blink
+      // make the zoomed <html> the containing block for position:fixed
+      // descendants, so raw values must be divided by the zoom factor to
+      // land in the right visual spot (see utils/fontScale.getCurrentZoom).
+      const listbox = screen.getByRole('listbox');
+      expect(listbox).toHaveStyle({ position: 'fixed', top: '107.2px', left: '40px' });
+    } finally {
+      document.documentElement.style.zoom = '';
+    }
+  });
+
   it('passes through id, className, title and data-source', () => {
     render(
       <Dropdown

@@ -20,6 +20,27 @@ func (ts TemplateSet) Clone() TemplateSet {
 	}
 }
 
+// WithDefaults returns a copy of ts with any missing field prompts and an
+// empty system prompt backfilled from the built-in defaults. Existing
+// entries are left untouched — this only fills gaps left by fields added
+// (e.g. to FieldIDs) after ts was saved, such as settings persisted by an
+// older version of the app.
+func (ts TemplateSet) WithDefaults() TemplateSet {
+	out := ts.Clone()
+	if out.SystemPrompt == "" {
+		out.SystemPrompt = defaultSystemPrompt
+	}
+	if out.FieldPrompts == nil {
+		out.FieldPrompts = map[string]string{}
+	}
+	for _, id := range FieldIDs() {
+		if out.FieldPrompts[id] == "" {
+			out.FieldPrompts[id] = defaultFieldPrompt(id)
+		}
+	}
+	return out
+}
+
 // Substitute replaces {{key}} placeholders in the template with values from vars.
 func Substitute(template string, vars map[string]string) string {
 	result := template
@@ -91,6 +112,10 @@ func defaultFieldPrompt(fieldID string) string {
 		return `Based on the wiki content below, generate 2-3 in-character dialogue snippets for this character. Return ONLY a JSON object with a single "quotes" field containing an array of strings.
 
 {{crawl_context}}`
+	case "altGreetings":
+		return `Based on the wiki content below, generate 1-3 alternate opening greetings this character could use to start a conversation — variations in tone or scene, distinct from each other. Use third-person present tense. Return ONLY a JSON object with a single "altGreetings" field containing an array of strings.
+
+{{crawl_context}}`
 	case "stats":
 		return `Based on the wiki content below, generate RPG-style stat key/value pairs for this character. Return ONLY a JSON object with a single "stats" field containing an array of [key, value] pairs, e.g. [["STR","10"],["DEX","14"]].
 
@@ -112,6 +137,7 @@ func FieldIDs() []string {
 		"abilities",
 		"relationships",
 		"quotes",
+		"altGreetings",
 		"stats",
 	}
 }
@@ -146,6 +172,7 @@ var defaultFieldLabels = map[string]string{
 	"abilities":     "Abilities & skills",
 	"relationships": "Relationships",
 	"quotes":        "Example quotes",
+	"altGreetings":  "Alternate greetings",
 	"stats":         "Stat block",
 }
 

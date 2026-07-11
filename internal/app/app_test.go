@@ -397,6 +397,47 @@ func TestSetActiveCharacter(t *testing.T) {
 	assert.Equal(t, 2, ch.ID)
 }
 
+func TestGetCardPreview_Default(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	p := app.GetCardPreview()
+	assert.Equal(t, "Untitled", p.Fields.Name)
+	assert.Equal(t, 0, p.Tokens.Personality)
+	assert.Equal(t, 0, p.Tokens.Scenario)
+	assert.Equal(t, 0, p.Tokens.Examples)
+}
+
+func TestGetCardPreview_ReflectsActiveCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+
+	ch := app.GetActiveCharacter()
+	ch.Name = "Elara"
+	ch.Personality = "Cheerful and brave."
+	ch.Quotes = []string{"Hello there!"}
+	require.NoError(t, app.UpdateCharacter(ch))
+
+	p := app.GetCardPreview()
+	assert.Equal(t, "Elara", p.Fields.Name)
+	assert.Equal(t, "Hello there!", p.Fields.FirstMes)
+	assert.Greater(t, p.Tokens.Personality, 0)
+}
+
+func TestGetCardPreview_SwitchesWithActiveCharacter(t *testing.T) {
+	app := NewApp()
+	app.startup(context.Background())
+	app.AddCharacter()
+
+	second := app.GetCharacters()[1]
+	second.Name = "Tatsumi"
+	require.NoError(t, app.UpdateCharacter(second))
+
+	app.SetActiveCharacter(second.ID)
+	p := app.GetCardPreview()
+	assert.Equal(t, "Tatsumi", p.Fields.Name)
+}
+
 func TestSetActiveCharacter_Nonexistent(t *testing.T) {
 	app := NewApp()
 	app.startup(context.Background())
@@ -768,6 +809,18 @@ func TestGetPromptTemplates_ReturnsDefaultsWhenEmpty(t *testing.T) {
 	assert.Len(t, tmpl.FieldPrompts, len(prompts.FieldIDs()))
 }
 
+func TestGetPromptTemplates_BackfillsMissingField(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	app := NewApp()
+	stale := prompts.Defaults()
+	delete(stale.FieldPrompts, "altGreetings")
+	app.settings.PromptTemplates = stale
+
+	tmpl := app.GetPromptTemplates()
+	assert.NotEmpty(t, tmpl.FieldPrompts["altGreetings"])
+}
+
 func TestGetPromptTemplates_ReturnsCustom(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
@@ -835,6 +888,40 @@ func TestGenerateField_Success(t *testing.T) {
 
 	ch := app.GenerateField("appearance", "")
 	assert.Equal(t, "Tall and lean.", ch.Appearance)
+	assert.True(t, ch.Dirty)
+}
+
+func TestGenerateField_BackfillsMissingFieldPrompt(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": `{"altGreetings": ["Well met, stranger."]}`}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	app.startup(context.Background())
+	app.settings = settings.Settings{
+		Endpoints: []settings.LLMEndpoint{{
+			ID: 1, Name: "test", URL: srv.URL, Model: "m", IsDefault: true,
+		}},
+	}
+	// Simulates settings saved before altGreetings existed: the FieldPrompts
+	// map is non-empty (so the old empty-map check wouldn't backfill it) but
+	// is missing the "altGreetings" key specifically.
+	stale := prompts.Defaults()
+	delete(stale.FieldPrompts, "altGreetings")
+	app.settings.PromptTemplates = stale
+	app.cachedCrawl = &crawler.CrawlResult{Title: "Elara", URL: "https://wiki.test/Elara"}
+
+	ch := app.GenerateField("altGreetings", "")
+	assert.Equal(t, []string{"Well met, stranger."}, ch.AltGreetings)
 	assert.True(t, ch.Dirty)
 }
 

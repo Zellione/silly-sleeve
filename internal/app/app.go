@@ -149,10 +149,7 @@ func (a *App) GetDefaultPromptTemplates() prompts.TemplateSet {
 
 // GetPromptTemplates returns the current prompt templates from settings.
 func (a *App) GetPromptTemplates() prompts.TemplateSet {
-	if len(a.settings.PromptTemplates.FieldPrompts) == 0 {
-		return prompts.Defaults()
-	}
-	return a.settings.PromptTemplates
+	return a.settings.PromptTemplates.WithDefaults()
 }
 
 // SavePromptTemplates persists prompt templates to settings.
@@ -416,6 +413,14 @@ func (a *App) CountTokens(text string) int {
 	return compose.CountTokens(text)
 }
 
+// GetCardPreview returns the assembled card fields and token budget for the
+// active character, for the Preview screen.
+func (a *App) GetCardPreview() compose.CardPreview {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return compose.BuildCardPreview(a.activeCharacterLocked())
+}
+
 func (a *App) nextCharID() int {
 	max := 0
 	for _, c := range a.characters {
@@ -485,10 +490,7 @@ func (a *App) GenerateField(fieldID, customPrompt string) compose.Character {
 		}
 	}
 	def := a.endpointForSlot(fieldID)
-	templates := a.settings.PromptTemplates
-	if len(templates.FieldPrompts) == 0 {
-		templates = prompts.Defaults()
-	}
+	templates := a.settings.PromptTemplates.WithDefaults()
 	a.mu.Unlock()
 
 	if crawl == nil {

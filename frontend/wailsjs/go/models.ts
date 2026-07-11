@@ -331,6 +331,87 @@ export namespace comfy {
 
 export namespace compose {
 	
+	export class CardFields {
+	    Name: string;
+	    Description: string;
+	    Personality: string;
+	    Scenario: string;
+	    FirstMes: string;
+	    MesExample: string;
+	    AltGreetings: string[];
+	    Epithet: string;
+	    Tags: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CardFields(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Name = source["Name"];
+	        this.Description = source["Description"];
+	        this.Personality = source["Personality"];
+	        this.Scenario = source["Scenario"];
+	        this.FirstMes = source["FirstMes"];
+	        this.MesExample = source["MesExample"];
+	        this.AltGreetings = source["AltGreetings"];
+	        this.Epithet = source["Epithet"];
+	        this.Tags = source["Tags"];
+	    }
+	}
+	export class CardPreviewTokens {
+	    description: number;
+	    personality: number;
+	    scenario: number;
+	    examples: number;
+	    total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CardPreviewTokens(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.description = source["description"];
+	        this.personality = source["personality"];
+	        this.scenario = source["scenario"];
+	        this.examples = source["examples"];
+	        this.total = source["total"];
+	    }
+	}
+	export class CardPreview {
+	    fields: CardFields;
+	    tokens: CardPreviewTokens;
+	
+	    static createFrom(source: any = {}) {
+	        return new CardPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fields = this.convertValues(source["fields"], CardFields);
+	        this.tokens = this.convertValues(source["tokens"], CardPreviewTokens);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class StatKV {
 	    key: string;
 	    value: string;
@@ -356,6 +437,7 @@ export namespace compose {
 	    abilities: string;
 	    relationships: string;
 	    quotes: string[];
+	    altGreetings: string[];
 	    stats: StatKV[];
 	    dirty: boolean;
 	    portrait: number[];
@@ -377,6 +459,7 @@ export namespace compose {
 	        this.abilities = source["abilities"];
 	        this.relationships = source["relationships"];
 	        this.quotes = source["quotes"];
+	        this.altGreetings = source["altGreetings"];
 	        this.stats = this.convertValues(source["stats"], StatKV);
 	        this.dirty = source["dirty"];
 	        this.portrait = source["portrait"];

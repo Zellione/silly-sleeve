@@ -21,6 +21,7 @@ type generateResponse struct {
 	Abilities     string     `json:"abilities"`
 	Relationships string     `json:"relationships"`
 	Quotes        []string   `json:"quotes"`
+	AltGreetings  []string   `json:"altGreetings"`
 	Stats         [][]string `json:"stats"`
 }
 
@@ -73,6 +74,8 @@ func GenerateBulkWith(ctx context.Context, completer llm.Completer, result crawl
 			gr.Relationships = existing.Relationships
 		case "quotes":
 			gr.Quotes = existing.Quotes
+		case "altGreetings":
+			gr.AltGreetings = existing.AltGreetings
 		case "stats":
 			gr.Stats = nil
 		}
@@ -111,6 +114,9 @@ func applyResponse(ch *Character, gr generateResponse) {
 	}
 	if len(gr.Quotes) > 0 {
 		ch.Quotes = gr.Quotes
+	}
+	if len(gr.AltGreetings) > 0 {
+		ch.AltGreetings = gr.AltGreetings
 	}
 	if len(gr.Stats) > 0 {
 		ch.Stats = make([]StatKV, len(gr.Stats))
@@ -350,7 +356,7 @@ func applyField(ch *Character, fieldID string, value any) {
 	}
 
 	switch fieldID {
-	case "tags", "quotes":
+	case "tags", "quotes", "altGreetings":
 		applyStringSliceField(ch, fieldID, value)
 	case "stats":
 		applyStatsField(ch, value)
@@ -398,6 +404,8 @@ func applyStringSliceField(ch *Character, fieldID string, value any) {
 		ch.Tags = slice
 	case "quotes":
 		ch.Quotes = slice
+	case "altGreetings":
+		ch.AltGreetings = slice
 	}
 }
 

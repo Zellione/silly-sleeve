@@ -46,6 +46,8 @@ export function GetActiveCharacter():Promise<compose.Character>;
 
 export function GetCachedCrawl():Promise<crawler.CrawlResult>;
 
+export function GetCardPreview():Promise<compose.CardPreview>;
+
 export function GetCharacters():Promise<Array<compose.Character>>;
 
 export function GetComfyCheckpoints():Promise<Array<string>>;

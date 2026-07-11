@@ -8,11 +8,13 @@ import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
 const mockGetProjectImage = vi.fn().mockResolvedValue([]);
 const mockSaveProjectImage = vi.fn().mockResolvedValue(undefined);
+const mockSaveProjectBundle = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
   GetProjectImage: () => mockGetProjectImage(),
   SaveProjectImage: (data: number[]) => mockSaveProjectImage(data),
+  SaveProjectBundle: (path: string) => mockSaveProjectBundle(path),
   GetComfySamplers: () => Promise.resolve(['euler', 'dpmpp_2m']),
   GetComfySchedulers: () => Promise.resolve(['karras', 'normal']),
   GetComfyCheckpoints: () => Promise.resolve(['sd_xl_base_1.0.safetensors']),
@@ -382,5 +384,43 @@ describe('ProjectImageScreen', () => {
     await waitFor(() => {
       expect(mockSaveProjectImage).toHaveBeenCalledWith(PNG_BYTES);
     });
+  });
+
+  it('persists the project bundle to disk after "Use as project image" when a project is open', async () => {
+    mockGetProjectImage.mockResolvedValue([]);
+    mockGenerateProjectImage.mockResolvedValue([
+      { data: PNG_BYTES, filename: 'c.png', subfolder: '', type: 'output' },
+    ]);
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen projectPath="/project/test.slv" bundleSaveDelay={0} />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      const btn = screen.getByText('Use as project image').closest('button');
+      expect(btn).not.toBeDisabled();
+    });
+    await user.click(screen.getByText('Use as project image'));
+    await waitFor(() => {
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/project/test.slv');
+    });
+  });
+
+  it('does not persist the project bundle when no project is open', async () => {
+    mockGetProjectImage.mockResolvedValue([]);
+    mockGenerateProjectImage.mockResolvedValue([
+      { data: PNG_BYTES, filename: 'c.png', subfolder: '', type: 'output' },
+    ]);
+    mockSaveProjectBundle.mockClear();
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen bundleSaveDelay={0} />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      const btn = screen.getByText('Use as project image').closest('button');
+      expect(btn).not.toBeDisabled();
+    });
+    await user.click(screen.getByText('Use as project image'));
+    await waitFor(() => expect(mockSaveProjectImage).toHaveBeenCalled());
+    expect(mockSaveProjectBundle).not.toHaveBeenCalled();
   });
 });

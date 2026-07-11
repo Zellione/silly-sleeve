@@ -18,6 +18,7 @@ const mockGetComfyVAEs = vi.fn().mockResolvedValue(['sdxl_vae.safetensors']);
 const mockGetComfyLoRAs = vi.fn().mockResolvedValue([]);
 const mockGetPortrait = vi.fn().mockResolvedValue([]);
 const mockSavePortrait = vi.fn().mockResolvedValue(undefined);
+const mockSaveProjectBundle = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCharacters: () => mockGetCharacters(),
@@ -32,6 +33,7 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   GetComfyLoRAs: () => mockGetComfyLoRAs(),
   GetPortrait: (charID: number) => mockGetPortrait(charID),
   SavePortrait: (charID: number, data: number[]) => mockSavePortrait(charID, data),
+  SaveProjectBundle: (path: string) => mockSaveProjectBundle(path),
   GetComfyWorkflows: () => Promise.resolve([]),
   GetComfyWorkflowTemplate: () => Promise.resolve('{"1":{"class_type":"KSampler"}}'),
 }));
@@ -53,6 +55,7 @@ describe('PortraitScreen', () => {
     mockSetActiveCharacter.mockResolvedValue(undefined);
     mockGetPortrait.mockResolvedValue([]);
     mockSavePortrait.mockResolvedValue(undefined);
+    mockSaveProjectBundle.mockResolvedValue(undefined);
   });
 
   it('renders Generate and Upload tabs', async () => {
@@ -440,5 +443,40 @@ describe('PortraitScreen', () => {
     await waitFor(() => {
       expect(mockSavePortrait).toHaveBeenCalledWith(1, PNG_BYTES);
     });
+  });
+
+  it('persists the project bundle to disk after "Use as portrait" when a project is open', async () => {
+    mockGeneratePortrait.mockResolvedValue([
+      { data: PNG_BYTES, filename: 'p.png', subfolder: '', type: 'output' },
+    ]);
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen projectPath="/project/test.slv" bundleSaveDelay={0} />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      const btn = screen.getByText('Use as portrait').closest('button');
+      expect(btn).not.toBeDisabled();
+    });
+    await user.click(screen.getByText('Use as portrait'));
+    await waitFor(() => {
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/project/test.slv');
+    });
+  });
+
+  it('does not persist the project bundle when no project is open', async () => {
+    mockGeneratePortrait.mockResolvedValue([
+      { data: PNG_BYTES, filename: 'p.png', subfolder: '', type: 'output' },
+    ]);
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen bundleSaveDelay={0} />);
+    await waitFor(() => screen.getByText('Queue generation'));
+    await user.click(screen.getByText('Queue generation'));
+    await waitFor(() => {
+      const btn = screen.getByText('Use as portrait').closest('button');
+      expect(btn).not.toBeDisabled();
+    });
+    await user.click(screen.getByText('Use as portrait'));
+    await waitFor(() => expect(mockSavePortrait).toHaveBeenCalled());
+    expect(mockSaveProjectBundle).not.toHaveBeenCalled();
   });
 });

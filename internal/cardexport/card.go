@@ -113,7 +113,7 @@ func buildData(ch compose.Character, entries []lorebook.Entry, charKey string, o
 		Scenario:           f.Scenario,
 		FirstMes:           f.FirstMes,
 		MesExample:         f.MesExample,
-		AlternateGreetings: []string{},
+		AlternateGreetings: f.AltGreetings,
 		Tags:               f.Tags,
 		Creator:            creatorName,
 		CharacterVersion:   characterVer,

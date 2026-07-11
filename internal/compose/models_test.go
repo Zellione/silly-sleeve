@@ -19,6 +19,7 @@ func TestNewCharacter_Defaults(t *testing.T) {
 	assert.Empty(t, c.Abilities)
 	assert.Empty(t, c.Relationships)
 	assert.Equal(t, []string{""}, c.Quotes)
+	assert.Empty(t, c.AltGreetings)
 	assert.Len(t, c.Stats, 1)
 	assert.Equal(t, "", c.Stats[0].Key)
 	assert.Equal(t, "", c.Stats[0].Value)
@@ -27,9 +28,10 @@ func TestNewCharacter_Defaults(t *testing.T) {
 
 func TestFieldIDs_Order(t *testing.T) {
 	ids := FieldIDs()
-	assert.Len(t, ids, 10)
+	assert.Len(t, ids, 11)
 	assert.Equal(t, "name", ids[0])
-	assert.Equal(t, "stats", ids[9])
+	assert.Equal(t, "altGreetings", ids[9])
+	assert.Equal(t, "stats", ids[10])
 }
 
 func TestFieldLabel_Known(t *testing.T) {
@@ -37,6 +39,7 @@ func TestFieldLabel_Known(t *testing.T) {
 	assert.Equal(t, "Title / epithet", FieldLabel("epithet"))
 	assert.Equal(t, "Appearance", FieldLabel("appearance"))
 	assert.Equal(t, "Personality", FieldLabel("personality"))
+	assert.Equal(t, "Alternate greetings", FieldLabel("altGreetings"))
 	assert.Equal(t, "Stat block", FieldLabel("stats"))
 }
 
@@ -60,6 +63,7 @@ func TestFieldType(t *testing.T) {
 	assert.Equal(t, "text", FieldType("appearance"))
 	assert.Equal(t, "text", FieldType("personality"))
 	assert.Equal(t, "quotes", FieldType("quotes"))
+	assert.Equal(t, "quotes", FieldType("altGreetings"))
 	assert.Equal(t, "stats", FieldType("stats"))
 }
 
@@ -70,4 +74,13 @@ func TestCharacter_SourceURLPersists(t *testing.T) {
 	var back Character
 	assert.NoError(t, json.Unmarshal(data, &back))
 	assert.Equal(t, "https://w.fandom.com/wiki/A", back.SourceURL)
+}
+
+func TestCharacter_AltGreetingsPersists(t *testing.T) {
+	ch := NewCharacter(1)
+	ch.AltGreetings = []string{"Oh, it's you again.", "Welcome back, stranger."}
+	data, _ := json.Marshal(ch)
+	var back Character
+	assert.NoError(t, json.Unmarshal(data, &back))
+	assert.Equal(t, []string{"Oh, it's you again.", "Welcome back, stranger."}, back.AltGreetings)
 }

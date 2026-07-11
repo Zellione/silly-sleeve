@@ -104,6 +104,16 @@ func TestScopePerCharFiltersEntries(t *testing.T) {
 	assert.Len(t, entries, 2)
 }
 
+func TestAlternateGreetingsExported(t *testing.T) {
+	ch := sampleChar()
+	ch.AltGreetings = []string{"Oh, it's you.", "Welcome back."}
+	data, err := CardV2JSON(ch, nil, "1", Options{IncludeGreetings: true})
+	require.NoError(t, err)
+
+	d := decode(t, data)["data"].(map[string]any)
+	assert.Equal(t, []any{"Oh, it's you.", "Welcome back."}, d["alternate_greetings"])
+}
+
 func TestExcludeGreetings(t *testing.T) {
 	opts := Options{IncludeGreetings: false}
 	data, err := CardV2JSON(sampleChar(), nil, "1", opts)

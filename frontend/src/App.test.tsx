@@ -182,7 +182,7 @@ describe('App', () => {
 
     await user.click(screen.getByText('Preview'));
     await waitFor(() => {
-      expect(screen.getByText('Coming soon')).toBeInTheDocument();
+      expect(screen.getByText('No characters yet')).toBeInTheDocument();
     });
   });
 

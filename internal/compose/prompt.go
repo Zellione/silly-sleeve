@@ -28,6 +28,7 @@ The JSON object must have exactly these fields:
 - abilities (string): Powers, skills, talents
 - relationships (string): Key alliances and rivalries
 - quotes (string[]): 2-3 in-character dialogue snippets
+- altGreetings (string[]): 1-3 alternate opening greetings, distinct in tone or scene from each other
 - stats ([][]string): Custom stat key/value pairs, e.g. [["STR","10"],["DEX","14"]]`
 
 func buildUserPrompt(result crawler.CrawlResult) string {

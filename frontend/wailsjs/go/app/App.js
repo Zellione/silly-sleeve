@@ -70,6 +70,10 @@ export function GetCachedCrawl() {
   return window['go']['app']['App']['GetCachedCrawl']();
 }
 
+export function GetCardPreview() {
+  return window['go']['app']['App']['GetCardPreview']();
+}
+
 export function GetCharacters() {
   return window['go']['app']['App']['GetCharacters']();
 }

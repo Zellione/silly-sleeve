@@ -57,6 +57,6 @@ export function initFontScale(): void {
  * before assigning `top`/`left`, or the element renders offset by the zoom.
  */
 export function getCurrentZoom(): number {
-  const z = parseFloat(document.documentElement.style.zoom || '');
+  const z = Number.parseFloat(document.documentElement.style.zoom || '');
   return Number.isFinite(z) && z > 0 ? z : 1;
 }

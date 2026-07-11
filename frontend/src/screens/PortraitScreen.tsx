@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
@@ -8,7 +8,7 @@ import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
   GetComfyVAEs, GetComfyLoRAs,
-  GetPortrait, SavePortrait,
+  GetPortrait, SavePortrait, SaveProjectBundle,
 } from '../../wailsjs/go/app/App';
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
@@ -71,7 +71,7 @@ function variantUrl(images: string[], index: number): string | null {
   return null;
 }
 
-const PortraitScreen: React.FC = () => {
+const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number }> = ({ projectPath = '', bundleSaveDelay = 2000 }) => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [activeCharId, setActiveCharId] = useState(0);
   const [activeChar, setActiveChar] = useState<compose.Character | null>(null);
@@ -90,6 +90,9 @@ const PortraitScreen: React.FC = () => {
   const [loras, setLoras] = useState<string[]>([]);
   const [savedPortrait, setSavedPortrait] = useState<string | null>(null);
   const { toast } = useToast();
+  const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current); }, []);
 
   const {
     samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
@@ -135,6 +138,17 @@ const PortraitScreen: React.FC = () => {
       await SavePortrait(activeCharId, dataURLToBytes(dataUrl));
       setSavedPortrait(dataUrl);
       toast({ kind: 'ok', title: 'Portrait saved', body: 'Portrait attached to character.' });
+      // SavePortrait only updates the in-memory character; without also
+      // writing the project bundle to disk, the portrait is lost the next
+      // time the project is opened.
+      if (projectPath) {
+        if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current);
+        bundleSaveTimer.current = setTimeout(() => {
+          SaveProjectBundle(projectPath).catch(e => {
+            console.error('Portrait bundle save failed:', e);
+          });
+        }, bundleSaveDelay);
+      }
     } catch (e) {
       toast({ kind: 'bad', title: 'Save failed', body: String(e) });
     }

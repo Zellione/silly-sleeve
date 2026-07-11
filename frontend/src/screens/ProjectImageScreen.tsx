@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetProjectImage, SaveProjectImage } from '../../wailsjs/go/app/App';
+import { GenerateProjectImage, GetProjectImage, SaveProjectImage, SaveProjectBundle } from '../../wailsjs/go/app/App';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
@@ -19,7 +19,7 @@ const PROJECT_IMG_WORKFLOWS = [
   { id: 'painterly', name: 'painterly_square', model: 'juggernautXL_v9', size: '1024×1024', steps: 30, sampler: 'dpmpp_2m', scheduler: 'karras' },
 ];
 
-const ProjectImageScreen: React.FC = () => {
+const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number }> = ({ projectPath = '', bundleSaveDelay = 2000 }) => {
   const [mode, setMode] = useState<'generate' | 'upload'>('generate');
   const [workflow, setWorkflow] = useState(PROJECT_IMG_WORKFLOWS[0]);
   const [steps, setSteps] = useState(26);
@@ -31,6 +31,9 @@ const ProjectImageScreen: React.FC = () => {
   const [negPrompt, setNegPrompt] = useState('');
   const [savedCover, setSavedCover] = useState<string | null>(null);
   const { toast } = useToast();
+  const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current); }, []);
 
   const {
     samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
@@ -58,6 +61,17 @@ const ProjectImageScreen: React.FC = () => {
       await SaveProjectImage(dataURLToBytes(dataUrl));
       setSavedCover(dataUrl);
       toast({ kind: 'ok', title: 'Project image set', body: 'Cover art saved and will appear in exports.' });
+      // SaveProjectImage only updates in-memory state; without also writing
+      // the project bundle to disk, the cover is lost the next time the
+      // project is opened.
+      if (projectPath) {
+        if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current);
+        bundleSaveTimer.current = setTimeout(() => {
+          SaveProjectBundle(projectPath).catch(e => {
+            console.error('Project image bundle save failed:', e);
+          });
+        }, bundleSaveDelay);
+      }
     } catch (e) {
       toast({ kind: 'bad', title: 'Save failed', body: String(e) });
     }

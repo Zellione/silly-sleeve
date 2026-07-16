@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
           check-latest: true
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
           check-latest: true
@@ -48,7 +48,7 @@ jobs:
       # imports resolve, same as the build job further down.
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
           check-latest: true
@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
           check-latest: true
@@ -102,7 +102,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
           check-latest: true
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.25'
           check-latest: true

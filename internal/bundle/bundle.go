@@ -13,6 +13,7 @@ import (
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/lorebook"
+	"silly-sleeve/internal/loreextract"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 )
@@ -31,6 +32,10 @@ type Bundle struct {
 	Prompts    prompts.TemplateSet     `json:"prompts"`
 	CrawlCache *crawler.CrawlResult    `json:"crawlCache"`
 	CrawlSet   *crawler.CrawlSet       `json:"crawlSet"`
+	// Extraction is the in-progress lorebook review: staged sources, candidates
+	// and suggestions. Optional, like the crawl entries — bundles written before
+	// it existed simply have none.
+	Extraction *loreextract.State `json:"extraction"`
 }
 
 // WriteBundle serializes a project bundle as a .slv zip file.
@@ -70,6 +75,11 @@ func WriteBundle(filePath string, b Bundle) error {
 	}
 	if b.CrawlSet != nil {
 		if err := writeJSON(zw, "crawl_set.json", b.CrawlSet); err != nil {
+			return err
+		}
+	}
+	if b.Extraction != nil && !b.Extraction.Empty() {
+		if err := writeJSON(zw, "extraction.json", b.Extraction); err != nil {
 			return err
 		}
 	}
@@ -155,6 +165,7 @@ func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
 		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, b) },
 		"crawl_set.json":   func(f *zip.File) error { return readCrawlSet(f, b) },
+		"extraction.json":  func(f *zip.File) error { return readExtraction(f, b) },
 	}
 
 	foundManifest := false
@@ -229,6 +240,15 @@ func readCrawlSet(f *zip.File, b *Bundle) error {
 		return err
 	}
 	b.CrawlSet = &cs
+	return nil
+}
+
+func readExtraction(f *zip.File, b *Bundle) error {
+	var st loreextract.State
+	if err := readJSON(f, &st); err != nil {
+		return err
+	}
+	b.Extraction = &st
 	return nil
 }
 

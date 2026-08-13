@@ -6,6 +6,14 @@ export function AddCharacter() {
   return window['go']['app']['App']['AddCharacter']();
 }
 
+export function ApplyLorebookSuggestions(arg1) {
+  return window['go']['app']['App']['ApplyLorebookSuggestions'](arg1);
+}
+
+export function ApproveLorebookCandidates(arg1) {
+  return window['go']['app']['App']['ApproveLorebookCandidates'](arg1);
+}
+
 export function ClearCrawl() {
   return window['go']['app']['App']['ClearCrawl']();
 }
@@ -26,6 +34,10 @@ export function DeleteComfyWorkflow(arg1) {
   return window['go']['app']['App']['DeleteComfyWorkflow'](arg1);
 }
 
+export function DiscardLorebookCandidates(arg1) {
+  return window['go']['app']['App']['DiscardLorebookCandidates'](arg1);
+}
+
 export function ExportCharacter(arg1, arg2) {
   return window['go']['app']['App']['ExportCharacter'](arg1, arg2);
 }
@@ -40,6 +52,10 @@ export function ExportCharactersBulk(arg1, arg2, arg3, arg4) {
 
 export function ExportLorebook(arg1) {
   return window['go']['app']['App']['ExportLorebook'](arg1);
+}
+
+export function ExtractLorebookCandidates(arg1) {
+  return window['go']['app']['App']['ExtractLorebookCandidates'](arg1);
 }
 
 export function GenerateCharacterBulk(arg1) {
@@ -130,6 +146,14 @@ export function GetLorebook() {
   return window['go']['app']['App']['GetLorebook']();
 }
 
+export function GetLorebookCandidates() {
+  return window['go']['app']['App']['GetLorebookCandidates']();
+}
+
+export function GetLorebookSuggestions() {
+  return window['go']['app']['App']['GetLorebookSuggestions']();
+}
+
 export function GetPortrait(arg1) {
   return window['go']['app']['App']['GetPortrait'](arg1);
 }
@@ -152,6 +176,10 @@ export function GetPromptTemplates() {
 
 export function GetSettings() {
   return window['go']['app']['App']['GetSettings']();
+}
+
+export function GetStagedSources() {
+  return window['go']['app']['App']['GetStagedSources']();
 }
 
 export function Greet(arg1) {
@@ -210,6 +238,10 @@ export function RemoveProject(arg1, arg2) {
   return window['go']['app']['App']['RemoveProject'](arg1, arg2);
 }
 
+export function RemoveStagedSource(arg1) {
+  return window['go']['app']['App']['RemoveStagedSource'](arg1);
+}
+
 export function SaveComfyWorkflowTemplate(arg1, arg2) {
   return window['go']['app']['App']['SaveComfyWorkflowTemplate'](arg1, arg2);
 }
@@ -256,6 +288,14 @@ export function SetProjectFieldEndpoint(arg1, arg2) {
 
 export function SetProjectStatus(arg1, arg2) {
   return window['go']['app']['App']['SetProjectStatus'](arg1, arg2);
+}
+
+export function SetStagedSourceMode(arg1, arg2) {
+  return window['go']['app']['App']['SetStagedSourceMode'](arg1, arg2);
+}
+
+export function SuggestLorebookConnections() {
+  return window['go']['app']['App']['SuggestLorebookConnections']();
 }
 
 export function TestComfyUIEndpoint(arg1, arg2) {

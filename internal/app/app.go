@@ -34,15 +34,19 @@ type App struct {
 	fieldEndpoints  map[string]int
 
 	// Lorebook extraction work in progress. Crawled pages sent to the lorebook
-	// are staged here rather than becoming entries, and candidates are proposals
-	// awaiting the user's review. Neither is part of the lorebook until approved.
-	stagedSources  []loreextract.StagedSource
-	loreCandidates []loreextract.Candidate
+	// are staged here rather than becoming entries; candidates and suggestions
+	// are proposals awaiting the user's review. None of it is part of the
+	// lorebook until approved.
+	stagedSources   []loreextract.StagedSource
+	loreCandidates  []loreextract.Candidate
+	loreSuggestions []loreextract.Suggestion
 
-	comfy   *ComfyUIService
-	charGen *CharacterGenerator
-	project *ProjectManager
-	library *LibraryManager
+	comfy    *ComfyUIService
+	charGen  *CharacterGenerator
+	project  *ProjectManager
+	library  *LibraryManager
+	loreGen  *loreextract.Extractor
+	loreConn *loreextract.Connector
 }
 
 // NewApp creates a new App application struct
@@ -55,6 +59,8 @@ func NewApp() *App {
 	}
 	a.charGen = &CharacterGenerator{ctx: ctxFn, completer: llm.DefaultCompleter}
 	a.project = &ProjectManager{ctx: ctxFn}
+	a.loreGen = loreextract.NewExtractor(llm.DefaultCompleter)
+	a.loreConn = loreextract.NewConnector(llm.DefaultCompleter)
 	return a
 }
 
@@ -639,6 +645,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		fe[k] = v
 	}
 	snap.FieldEndpoints = fe
+	snap.Extraction = a.extractionStateLocked()
 	a.mu.Unlock()
 
 	// Preserve an existing project's status across re-saves (default draft).
@@ -733,6 +740,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	if len(b.Prompts.FieldPrompts) > 0 {
 		a.settings.PromptTemplates = b.Prompts
 	}
+	a.applyExtractionStateLocked(b.Extraction)
 	active := a.activeCharacterLocked()
 	a.mu.Unlock()
 

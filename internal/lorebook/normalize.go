@@ -189,6 +189,13 @@ func cleanKeyList(keys []string, label string, adj []string) ([]string, []string
 	return out, adj
 }
 
+// IsGenericKey reports whether a keyword is too generic to be a useful trigger.
+// Exported so proposed keywords can be filtered against the same stoplist the
+// normaliser uses, rather than a second copy of it.
+func IsGenericKey(key string) bool {
+	return isGenericKey(strings.ToLower(strings.TrimSpace(key)))
+}
+
 // isGenericKey reports whether a keyword is too generic to be a useful trigger.
 // Only single words are ever rejected: the spec treats bare "queen" as generic
 // but "the Queen" and "Queen Elara" as valid, and qualifying a word is exactly

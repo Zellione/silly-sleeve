@@ -153,8 +153,13 @@ func (a *App) GetPromptTemplates() prompts.TemplateSet {
 }
 
 // SavePromptTemplates persists prompt templates to settings.
+// SavePromptTemplates stores the prompt templates, merging over what is already
+// saved. The merge matters because callers need not know about every prompt
+// group: the settings screen rebuilds a template set from the system prompt and
+// the character fields alone, which would otherwise wipe customised lorebook
+// prompts every time a character prompt was edited.
 func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
-	a.settings.PromptTemplates = t
+	a.settings.PromptTemplates = a.settings.PromptTemplates.Merge(t)
 	return settings.Save(a.settings)
 }
 

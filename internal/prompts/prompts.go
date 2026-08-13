@@ -1,23 +1,52 @@
 package prompts
 
-import "strings"
+import (
+	"maps"
+	"strings"
+)
 
-// TemplateSet holds prompt templates for bulk and per-field generation.
+// TemplateSet holds prompt templates for bulk and per-field generation, plus
+// the lorebook extraction and connection prompts.
 type TemplateSet struct {
 	SystemPrompt string            `json:"systemPrompt"`
 	FieldPrompts map[string]string `json:"fieldPrompts"`
+	// LorePrompts is keyed by LorePromptIDs. It is a separate group from
+	// FieldPrompts because FieldIDs drives the character editor's field list —
+	// lorebook prompts would otherwise show up as character fields.
+	LorePrompts map[string]string `json:"lorePrompts"`
 }
 
 // Clone returns a deep copy of the TemplateSet.
 func (ts TemplateSet) Clone() TemplateSet {
-	fields := make(map[string]string, len(ts.FieldPrompts))
-	for k, v := range ts.FieldPrompts {
-		fields[k] = v
-	}
 	return TemplateSet{
 		SystemPrompt: ts.SystemPrompt,
-		FieldPrompts: fields,
+		FieldPrompts: copyMap(ts.FieldPrompts),
+		LorePrompts:  copyMap(ts.LorePrompts),
 	}
+}
+
+func copyMap(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	maps.Copy(out, m)
+	return out
+}
+
+// Merge returns ts with the groups present in next applied over it. A nil group
+// in next leaves the corresponding group in ts untouched, so a caller that only
+// knows about some of the prompt groups cannot silently drop the others by
+// round-tripping a TemplateSet through them.
+func (ts TemplateSet) Merge(next TemplateSet) TemplateSet {
+	out := ts.Clone()
+	if next.SystemPrompt != "" {
+		out.SystemPrompt = next.SystemPrompt
+	}
+	if next.FieldPrompts != nil {
+		out.FieldPrompts = copyMap(next.FieldPrompts)
+	}
+	if next.LorePrompts != nil {
+		out.LorePrompts = copyMap(next.LorePrompts)
+	}
+	return out
 }
 
 // WithDefaults returns a copy of ts with any missing field prompts and an
@@ -38,6 +67,14 @@ func (ts TemplateSet) WithDefaults() TemplateSet {
 			out.FieldPrompts[id] = defaultFieldPrompt(id)
 		}
 	}
+	if out.LorePrompts == nil {
+		out.LorePrompts = map[string]string{}
+	}
+	for _, id := range LorePromptIDs() {
+		if out.LorePrompts[id] == "" {
+			out.LorePrompts[id] = defaultLorePrompt(id)
+		}
+	}
 	return out
 }
 
@@ -55,6 +92,7 @@ func Defaults() TemplateSet {
 	return TemplateSet{
 		SystemPrompt: defaultSystemPrompt,
 		FieldPrompts: defaultFieldPrompts(),
+		LorePrompts:  defaultLorePrompts(),
 	}
 }
 

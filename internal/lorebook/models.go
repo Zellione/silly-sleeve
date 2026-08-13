@@ -40,18 +40,18 @@ type Entry struct {
 // NewEntry creates a new lorebook entry with sensible defaults.
 func NewEntry(uid int) Entry {
 	return Entry{
-		UID:              uid,
-		Comment:          "New entry",
-		Key:              []string{},
-		KeySecondary:     []string{},
-		Content:          "",
-		AddMemo:          true,
-		Order:            100,
-		Position:         0,
-		Probability:      100,
-		UseProbability:   true,
-		Depth:            4,
-		Characters:       []string{},
+		UID:            uid,
+		Comment:        "New entry",
+		Key:            []string{},
+		KeySecondary:   []string{},
+		Content:        "",
+		AddMemo:        true,
+		Order:          100,
+		Position:       0,
+		Probability:    100,
+		UseProbability: true,
+		Depth:          4,
+		Characters:     []string{},
 	}
 }
 

@@ -55,13 +55,13 @@ func TestInfoboxEntry_JSONRoundtrip(t *testing.T) {
 
 func TestCrawlResult_JSONRoundtrip(t *testing.T) {
 	result := CrawlResult{
-		Title:     "test_page",
-		URL:       "https://example.com/wiki/Test",
-		Domain:    "example.com",
-		RawHTML:   "<p>hello</p>",
-		Sections:  []Section{{Heading: "Intro", Body: "text", Level: 1}},
-		Infobox:   []InfoboxEntry{{Key: "type", Value: "character"}},
-		WordCount: 42,
+		Title:      "test_page",
+		URL:        "https://example.com/wiki/Test",
+		Domain:     "example.com",
+		RawHTML:    "<p>hello</p>",
+		Sections:   []Section{{Heading: "Intro", Body: "text", Level: 1}},
+		Infobox:    []InfoboxEntry{{Key: "type", Value: "character"}},
+		WordCount:  42,
 		StatusCode: 200,
 		LatencyMs:  150,
 	}

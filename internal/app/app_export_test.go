@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/cardexport"
+	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/lorebook"
 )
 

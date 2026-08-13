@@ -36,8 +36,8 @@ func TestEndpoint(ep LLMEndpoint) TestResult {
 	}
 
 	payload := map[string]any{
-		"model":    ep.Model,
-		"messages": []map[string]string{{"role": "user", "content": "hi"}},
+		"model":      ep.Model,
+		"messages":   []map[string]string{{"role": "user", "content": "hi"}},
 		"max_tokens": 1,
 	}
 	body, err := json.Marshal(payload)

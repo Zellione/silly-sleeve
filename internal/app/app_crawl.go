@@ -203,7 +203,6 @@ func crawlPlainText(res crawler.CrawlResult) string {
 	return strings.Join(b, "\n\n")
 }
 
-
 // RemoveCrawlResult removes the crawled page with the given URL from the cached
 // crawl set and returns the updated set. The legacy single-result cache is kept
 // in sync with the new root (or cleared when the set becomes empty).

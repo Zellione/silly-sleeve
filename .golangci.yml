@@ -24,3 +24,12 @@ linters:
       - linters:
           - staticcheck
         text: "QF1002|QF1003|QF1012"
+
+# Formatting is part of the gate rather than a thing to remember: gofmt drift
+# is invisible in review and shows up as noise in unrelated diffs.
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - frontend/node_modules

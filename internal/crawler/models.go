@@ -2,9 +2,9 @@ package crawler
 
 // CrawlOptions configures a crawl operation.
 type CrawlOptions struct {
-	FollowLinks int              `json:"followLinks"`
-	Include     map[string]bool  `json:"include"`
-	Selectors   []string         `json:"selectors,omitempty"`
+	FollowLinks int             `json:"followLinks"`
+	Include     map[string]bool `json:"include"`
+	Selectors   []string        `json:"selectors,omitempty"`
 }
 
 // Section represents a parsed heading + body pair.
@@ -23,18 +23,18 @@ type InfoboxEntry struct {
 
 // CrawlResult holds the parsed content from a crawled page.
 type CrawlResult struct {
-	Title      string         `json:"title"`
-	URL        string         `json:"url"`
-	Domain     string         `json:"domain"`
-	RawHTML    string         `json:"rawHtml"`
-	Sections   []Section      `json:"sections"`
-	Infobox    []InfoboxEntry `json:"infobox"`
-	WordCount  int            `json:"wordCount"`
-	StatusCode int            `json:"statusCode"`
-	LatencyMs  int64          `json:"latencyMs"`
-	Depth      int            `json:"depth"`
-	ParentURL  string         `json:"parentUrl,omitempty"`
-	IsMediaWiki bool          `json:"isMediaWiki"`
+	Title       string         `json:"title"`
+	URL         string         `json:"url"`
+	Domain      string         `json:"domain"`
+	RawHTML     string         `json:"rawHtml"`
+	Sections    []Section      `json:"sections"`
+	Infobox     []InfoboxEntry `json:"infobox"`
+	WordCount   int            `json:"wordCount"`
+	StatusCode  int            `json:"statusCode"`
+	LatencyMs   int64          `json:"latencyMs"`
+	Depth       int            `json:"depth"`
+	ParentURL   string         `json:"parentUrl,omitempty"`
+	IsMediaWiki bool           `json:"isMediaWiki"`
 }
 
 // CrawlSet is the full result of a crawl: the root page plus any followed pages.

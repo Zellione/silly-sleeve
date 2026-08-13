@@ -34,7 +34,7 @@ type ProjectManifest struct {
 	CrawlSelectors   string            `json:"crawlSelectors,omitempty"`
 	CrawlRoles       map[string]string `json:"crawlRoles,omitempty"`
 	CrawlSent        map[string]string `json:"crawlSent,omitempty"`
-	ProjectImage []byte   `json:"projectImage"`
+	ProjectImage     []byte            `json:"projectImage"`
 	// FieldEndpoints maps a generation slot ("bulk" or a field id) to an
 	// LLMEndpoint ID, overriding the global default for this project only.
 	FieldEndpoints map[string]int `json:"fieldEndpoints,omitempty"`

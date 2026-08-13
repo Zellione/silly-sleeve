@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	nbSpace  = "\u00a0"
+	nbSpace      = "\u00a0"
 	infoboxClass = "portable-infobox"
 )
 

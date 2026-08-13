@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-13 — Phase 8 · started (8.1 entry categories).
+> Last updated: 2026-08-13 — Phase 8 · complete (8.9 connection review UI).
 
 ## Overview
 
@@ -147,25 +147,25 @@ connections are materialised in the SillyTavern fields that already exist — ke
 linkage, `Characters[]` scoping, `preventRecursion` per category, bracketed metadata —
 not in a new graph model.
 
-- [~] **8.1** Entry categories: `Category` on `lorebook.Entry`, `category.go` mapping
+- [x] **8.1** Entry categories: `Category` on `lorebook.Entry`, `category.go` mapping
   each category to its position / recursion / constant settings, order tier constants
-- [ ] **8.2** Normaliser: pure `Normalize` coercing LLM output to the spec — forced
+- [x] **8.2** Normaliser: pure `Normalize` coercing LLM output to the spec — forced
   position and recursion per category, order tier clamping and redistribution, generic
   keyword rejection, `selective` ⇒ `keysecondary`, constant cap, adjustment reporting
-- [ ] **8.3** Lore prompt templates: `LorePrompts` group on `TemplateSet` with
+- [x] **8.3** Lore prompt templates: `LorePrompts` group on `TemplateSet` with
   split-extraction, summary-extraction and connection prompts, defaults backfill, new
   substitution variables
-- [ ] **8.4** Extraction service: `internal/loreextract` with an injectable-completer
+- [x] **8.4** Extraction service: `internal/loreextract` with an injectable-completer
   `Extractor`, split/summary modes, JSON parsing, character name → ID mapping
-- [ ] **8.5** Connection service: `Connector` with token-budget batching, a global entry
+- [x] **8.5** Connection service: `Connector` with token-budget batching, a global entry
   index in every request so links can cross batches, suggestion dedup
-- [ ] **8.6** Crawl send rework: lorebook sends stage a source instead of creating an
+- [x] **8.6** Crawl send rework: lorebook sends stage a source instead of creating an
   entry; remove `appendLorebookFromCrawl` and `crawlPlainText`
-- [ ] **8.7** Bindings + persistence: `app_lore.go` staging/extract/approve/suggest
+- [x] **8.7** Bindings + persistence: `app_lore.go` staging/extract/approve/suggest
   bindings, `loreExtract`/`loreConnect` endpoint slots, `extraction.json` bundle entry
-- [ ] **8.8** Review UI: staged-sources and candidate panels, Entries/Extract tab split
+- [x] **8.8** Review UI: staged-sources and candidate panels, Entries/Extract tab split
   in the Lorebook screen, shared character-scope chip component
-- [ ] **8.9** Connection review UI: suggestion list grouped by kind, "Suggest
+- [x] **8.9** Connection review UI: suggestion list grouped by kind, "Suggest
   connections" action, current-vs-proposed relationship editing
 
 ---
@@ -182,6 +182,49 @@ not in a new graph model.
   extracts atomic candidate entries which the user reviews before approval; connections
   are materialised in existing SillyTavern entry fields per the universal-lorebook-creator
   v2 spec; a whole-project pass proposes missed links.
+
+#### Completed Phase 8 — Lorebook Extraction & Connections
+
+- [x] **8.1** Entry categories — `Category` on `lorebook.Entry` plus `category.go`
+  mapping each category to its insertion position, recursion behaviour and default
+  order tier. Stored explicitly rather than derived, because position and
+  `preventRecursion` cannot tell a location from an organization from a concept.
+- [x] **8.2** Normaliser — pure `Normalize` coercing model output to the spec and
+  reporting each correction. Category-implied settings are forced; judgement calls
+  (too few keywords, overlong content) are reported and left to the user. Only
+  single-word keys are checked against the generic stoplist, so "the Queen" passes
+  where "queen" does not. Order redistribution triggers only when over half a batch
+  shares one order.
+- [x] **8.3** Lore prompt templates — `LorePrompts` group on `TemplateSet` (system,
+  split extraction, summary extraction, connections), backfilled by `WithDefaults`.
+  Fixed a data-loss path: `SavePromptTemplates` stored the incoming set wholesale, so
+  editing a character prompt would have wiped customised lorebook prompts; it now
+  merges.
+- [x] **8.4** Extraction service — `internal/loreextract` with an
+  injectable-completer `Extractor`. Character references are resolved rather than
+  trusted: the prompt asks for ids but models return names, and an unmapped value
+  would silently scope an entry to nobody. `compose.CrawlContext` exported so
+  extraction renders pages the same way character generation does.
+- [x] **8.5** Connection service — `Connector` batching by token budget, with the
+  full character roster and a uid/comment/keys index of every entry in every request
+  so links can cross batch boundaries. Suggestions referencing nothing, or changing
+  nothing, are dropped before the user sees them.
+- [x] **8.6** Crawl send rework — lorebook sends stage a page instead of creating an
+  entry; `appendLorebookFromCrawl` and `crawlPlainText` deleted. New `staged` and
+  `restaged` statuses.
+- [x] **8.7** Bindings + persistence — `app_lore.go`, `extraction.json` as an
+  optional bundle entry, `loreExtract`/`loreConnect` endpoint slots. The lock is
+  released around both LLM calls, and a source removed mid-flight has its extraction
+  rejected rather than misapplied.
+- [x] **8.8** Review UI — Entries/Extract tabs, staged-sources and candidate panels,
+  normaliser adjustments surfaced per candidate, shared `CharacterScopeChips`.
+- [x] **8.9** Connection review UI — suggestions grouped by kind and described in
+  entry titles and character names rather than ids; relationship rewrites show the
+  current text beside an editable proposal.
+- Go: 16 packages, 793 tests, vet + golangci-lint clean. Frontend: 778 tests,
+  85.4% statements / 87.4% lines.
+- `gofmt` added to the linter set (it was absent, and 16 files had drifted).
+- `wails build -clean -tags webkit2_41` verified.
 
 ### 2026-07-10
 

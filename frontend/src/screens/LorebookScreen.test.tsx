@@ -29,6 +29,9 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   ExtractLorebookCandidates: () => Promise.resolve([]),
   DiscardLorebookCandidates: () => Promise.resolve([]),
   ApproveLorebookCandidates: () => Promise.resolve([]),
+  GetLorebookSuggestions: () => Promise.resolve([]),
+  SuggestLorebookConnections: () => Promise.resolve([]),
+  ApplyLorebookSuggestions: () => Promise.resolve({ lorebook: [], characters: [], staged: [], activeCharId: 0 }),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>

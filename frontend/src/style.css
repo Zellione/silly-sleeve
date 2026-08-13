@@ -1633,6 +1633,44 @@ kbd {
   display: flex; gap: 8px; justify-content: flex-end;
 }
 
+/* ─── Connection suggestions ────────────────────────────── */
+
+.lore-suggestions {
+  background: var(--panel); border: 1px solid var(--hair); border-radius: 6px;
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+.lore-sugg-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 16px; }
+.lore-sugg-group { display: flex; flex-direction: column; gap: 6px; }
+.lore-sugg-group h4 {
+  margin: 0; display: flex; align-items: center; gap: 6px;
+  font: 500 10px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3);
+}
+.lore-sugg-group h4 > svg { color: var(--acc); }
+.lore-sugg { border: 1px solid var(--hair); border-radius: 5px; background: var(--bg); overflow: hidden; }
+.lore-sugg[data-on="0"] { opacity: 0.5; }
+.lore-sugg[data-on="1"] { border-color: var(--hair-strong); }
+.lore-sugg-head { display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; cursor: pointer; }
+.lore-sugg-head input[type="checkbox"] { accent-color: var(--acc); width: 14px; height: 14px; margin-top: 2px; cursor: pointer; }
+.lore-sugg-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.lore-sugg-body .what { font: 400 12.5px/1.45 var(--f-sans); color: var(--ink); }
+.lore-sugg-body .what b { font-weight: 600; }
+.lore-sugg-body .what .k {
+  font: 500 10px/1 var(--f-mono); padding: 3px 6px; border-radius: 3px;
+  background: var(--panel-2); color: var(--ink-2); margin: 0 2px;
+}
+.lore-sugg-body .why { font: 400 11px/1.5 var(--f-sans); color: var(--ink-3); }
+
+.lore-sugg-diff { border-top: 1px solid var(--hair); padding: 10px 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lore-sugg-diff .side { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lore-sugg-diff .lbl {
+  font: 500 10px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.lore-sugg-diff .lbl small { font: 400 10.5px/1.4 var(--f-sans); text-transform: none; letter-spacing: 0; }
+.lore-sugg-diff p { margin: 0; font: 400 11.5px/1.5 var(--f-sans); color: var(--ink-2); }
+.lore-sugg-diff p em { color: var(--ink-3); }
+@media (max-width: 900px) { .lore-sugg-diff { grid-template-columns: 1fr; } }
+
 /* ─── Confirm dialog ────────────────────────────────────── */
 
 .ss-confirm-backdrop {

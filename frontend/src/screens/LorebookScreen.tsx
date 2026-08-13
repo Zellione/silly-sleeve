@@ -3,12 +3,13 @@ import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
-  MoreIcon, BookIcon, UploadIcon, PenIcon,
+  MoreIcon, BookIcon, UploadIcon, PenIcon, LinkIcon,
 } from '../icons';
 import { GetLorebook, SaveLorebook, SaveProjectBundle, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/app/App';
 import { TagsInput } from '../components/TagsInput';
 import { CharacterScopeChips } from '../components/lore/CharacterScopeChips';
 import { ExtractPanel } from '../components/lore/ExtractPanel';
+import { useLoreConnections } from '../components/lore/useLoreConnections';
 import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';
 
@@ -274,6 +275,19 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   const [pendingImport, setPendingImport] = useState<lorebook.Entry[] | null>(null);
   const [tab, setTab] = useState<LorebookTab>('entries');
   const { toast } = useToast();
+
+  // Applying a connection can change entries and characters at once — an entry
+  // gains keys or scoping, a character gains relationship text — so both come
+  // back from the same call.
+  const connections = useLoreConnections(useCallback((es: lorebook.Entry[], cs: compose.Character[]) => {
+    setEntries(es);
+    setCharacters(cs);
+  }, []));
+
+  const handleSuggest = useCallback(() => {
+    setTab('extract');
+    connections.suggest();
+  }, [connections]);
   const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -478,12 +492,25 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
                 onClick={() => setTab('extract')}
               >Extract</button>
             </div>
+            <button className="btn ghost" onClick={handleSuggest} disabled={connections.running || entries.length === 0}>
+              <LinkIcon size={13}/> {connections.running ? 'Finding connections…' : 'Suggest connections'}
+            </button>
             <button className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
             <button className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
           </>
         } />
       {tab === 'extract' ? (
-        <ExtractPanel characters={characters} onEntriesChanged={setEntries} />
+        <ExtractPanel
+          characters={characters}
+          onEntriesChanged={setEntries}
+          connections={{
+            suggestions: connections.suggestions,
+            entries,
+            onChange: connections.updateSuggestion,
+            onApply: connections.apply,
+            onDismiss: connections.dismiss,
+          }}
+        />
       ) : (
       <div className="ss-page-body scroll">
         <div className="lb-grid">

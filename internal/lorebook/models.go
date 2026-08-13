@@ -30,6 +30,11 @@ type Entry struct {
 	PreventRecursion bool     `json:"preventRecursion"`
 	Characters       []string `json:"characters"`
 	SourceURL        string   `json:"sourceUrl,omitempty"`
+	// Category is our own classification (see category.go), not part of the
+	// SillyTavern spec. It rides along in exports, where SillyTavern ignores it,
+	// and drives the mechanical settings applied by Normalize. Entries predating
+	// this field carry an empty category and are left alone.
+	Category string `json:"category,omitempty"`
 }
 
 // NewEntry creates a new lorebook entry with sensible defaults.

@@ -12,6 +12,7 @@ import (
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/lorebook"
+	"silly-sleeve/internal/loreextract"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 	"silly-sleeve/internal/settings"
@@ -31,6 +32,12 @@ type App struct {
 	lorebookEntries []lorebook.Entry
 	projectImage    []byte
 	fieldEndpoints  map[string]int
+
+	// Lorebook extraction work in progress. Crawled pages sent to the lorebook
+	// are staged here rather than becoming entries, and candidates are proposals
+	// awaiting the user's review. Neither is part of the lorebook until approved.
+	stagedSources  []loreextract.StagedSource
+	loreCandidates []loreextract.Candidate
 
 	comfy   *ComfyUIService
 	charGen *CharacterGenerator
@@ -152,7 +159,6 @@ func (a *App) GetPromptTemplates() prompts.TemplateSet {
 	return a.settings.PromptTemplates.WithDefaults()
 }
 
-// SavePromptTemplates persists prompt templates to settings.
 // SavePromptTemplates stores the prompt templates, merging over what is already
 // saved. The merge matters because callers need not know about every prompt
 // group: the settings screen rebuilds a template set from the system prompt and

@@ -9,6 +9,8 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/lorebook"
+	"silly-sleeve/internal/loreextract"
 )
 
 func newSendApp() *App {
@@ -38,10 +40,15 @@ func TestSendCrawlResult_CreatesCharacterAndLorebook(t *testing.T) {
 	assert.Equal(t, "Hero", hero.Name)
 
 	lb := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false)
-	assert.Equal(t, "created", lb.Status)
-	require.Len(t, lb.Result.Lorebook, 1)
-	assert.Equal(t, "https://w/wiki/Lore", lb.Result.Lorebook[0].SourceURL)
-	assert.Contains(t, lb.Result.Lorebook[0].Content, "world lore")
+	assert.Equal(t, "staged", lb.Status)
+	assert.Empty(t, lb.Result.Lorebook,
+		"a lorebook send must create no entry — the page is staged for extraction first")
+
+	require.Len(t, lb.Result.Staged, 1)
+	assert.Equal(t, "https://w/wiki/Lore", lb.Result.Staged[0].URL)
+	assert.Equal(t, "Lore", lb.Result.Staged[0].Title)
+	assert.Equal(t, loreextract.ModeSplit, lb.Result.Staged[0].Mode, "split is the default mode")
+	assert.False(t, lb.Result.Staged[0].Extracted)
 }
 
 func TestGetCrawlForCharacter_TracksRequestedCharacterSource(t *testing.T) {
@@ -93,19 +100,84 @@ func TestSendCrawlResult_DuplicateCharacterNeedsConfirmThenOverwrites(t *testing
 	assert.Len(t, ow.Result.Characters, 2)
 }
 
-func TestSendCrawlResult_DuplicateLorebookNeedsConfirmThenOverwrites(t *testing.T) {
+func TestSendCrawlResult_DuplicateLorebookNeedsConfirmThenRestages(t *testing.T) {
 	app := newSendApp()
 
-	require.Equal(t, "created", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false).Status)
+	require.Equal(t, "staged", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false).Status)
 
 	dup := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false)
 	assert.Equal(t, "needs_confirm", dup.Status)
 	assert.Equal(t, "lorebook", dup.Kind)
-	assert.Len(t, app.lorebookEntries, 1, "no duplicate appended")
+	assert.Len(t, app.stagedSources, 1, "no duplicate staged")
 
 	ow := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", true)
-	assert.Equal(t, "overwritten", ow.Status)
-	assert.Len(t, ow.Result.Lorebook, 1)
+	assert.Equal(t, "restaged", ow.Status)
+	assert.Len(t, ow.Result.Staged, 1)
+}
+
+func TestSendCrawlResult_RestagingResetsExtractionState(t *testing.T) {
+	// Re-sending a page the user has already extracted must start over rather
+	// than leave the old candidates to be approved alongside fresh ones.
+	app := newSendApp()
+	require.Equal(t, "staged", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false).Status)
+
+	app.stagedSources[0].Extracted = true
+	app.loreCandidates = []loreextract.Candidate{
+		{SourceURL: "https://w/wiki/Lore"},
+		{SourceURL: "https://w/wiki/Other"},
+	}
+
+	require.Equal(t, "restaged", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", true).Status)
+
+	assert.False(t, app.stagedSources[0].Extracted)
+	require.Len(t, app.loreCandidates, 1, "only this page's candidates are discarded")
+	assert.Equal(t, "https://w/wiki/Other", app.loreCandidates[0].SourceURL)
+}
+
+func TestSendCrawlResult_LorebookNeedsConfirmWhenEntriesWereAlreadyApproved(t *testing.T) {
+	// The page is no longer staged — its candidates were approved into the
+	// lorebook — so the duplicate check has to look at the entries too.
+	app := newSendApp()
+	app.lorebookEntries = []lorebook.Entry{{UID: 1, Comment: "Lore", SourceURL: "https://w/wiki/Lore"}}
+
+	dup := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false)
+	assert.Equal(t, "needs_confirm", dup.Status)
+	assert.Empty(t, app.stagedSources)
+
+	again := app.SendCrawlResult("https://w/wiki/Lore", "lorebook", true)
+	assert.Equal(t, "staged", again.Status)
+	assert.Len(t, app.stagedSources, 1)
+	assert.Len(t, app.lorebookEntries, 1, "approved entries are left alone")
+}
+
+func TestClearCrawl_DiscardsStagingButKeepsApprovedEntries(t *testing.T) {
+	app := newSendApp()
+	require.Equal(t, "staged", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false).Status)
+	app.loreCandidates = []loreextract.Candidate{{SourceURL: "https://w/wiki/Lore"}}
+	app.lorebookEntries = []lorebook.Entry{{UID: 1, Comment: "Approved"}}
+
+	app.ClearCrawl()
+
+	assert.Empty(t, app.stagedSources, "staging cannot outlive the crawl it reads from")
+	assert.Empty(t, app.loreCandidates)
+	assert.Len(t, app.lorebookEntries, 1, "approved entries belong to the lorebook now")
+}
+
+func TestRemoveCrawlResult_DiscardsThatPagesStaging(t *testing.T) {
+	app := newSendApp()
+	require.Equal(t, "staged", app.SendCrawlResult("https://w/wiki/Lore", "lorebook", false).Status)
+	require.Equal(t, "staged", app.SendCrawlResult("https://w/wiki/Hero", "lorebook", false).Status)
+	app.loreCandidates = []loreextract.Candidate{
+		{SourceURL: "https://w/wiki/Lore"},
+		{SourceURL: "https://w/wiki/Hero"},
+	}
+
+	app.RemoveCrawlResult("https://w/wiki/Lore")
+
+	require.Len(t, app.stagedSources, 1)
+	assert.Equal(t, "https://w/wiki/Hero", app.stagedSources[0].URL)
+	require.Len(t, app.loreCandidates, 1)
+	assert.Equal(t, "https://w/wiki/Hero", app.loreCandidates[0].SourceURL)
 }
 
 func TestSendCrawlResult_MissingPageOrRole(t *testing.T) {

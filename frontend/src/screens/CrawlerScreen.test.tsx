@@ -47,6 +47,13 @@ const sampleResult: crawler.CrawlResult = new crawler.CrawlResult({
 const renderWithProviders = (ui: React.ReactElement) =>
   render(<ToastProvider><ConfirmProvider>{ui}</ConfirmProvider></ToastProvider>);
 
+// The role picker is a custom Dropdown (a button owning a listbox), not a
+// native select, so it has to be opened before an option can be clicked.
+const pickLorebookRole = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('combobox', { name: /^Role for / }));
+  await user.click(await screen.findByRole('option', { name: 'Lorebook' }));
+};
+
 describe('CrawlerScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -455,6 +462,47 @@ describe('CrawlerScreen', () => {
 
     await waitFor(() => expect(mockSendCrawlResult).toHaveBeenNthCalledWith(2, 'https://w/wiki/A', 'character', true));
     await waitFor(() => expect(screen.getByRole('button', { name: /^Re-send$/i })).toBeInTheDocument());
+  });
+
+  it('reports a lorebook send as staged rather than as an entry', async () => {
+    // A lorebook send creates no entry — it queues the page for extraction —
+    // so the confirmation must not send the user looking for an entry.
+    mockCrawlPage.mockResolvedValue(singleResultSet());
+    mockSendCrawlResult.mockResolvedValue({
+      status: 'staged', kind: 'lorebook', name: 'A',
+      result: { characters: [], lorebook: [], staged: [{ url: 'https://w/wiki/A', title: 'A', mode: 'split', extracted: false }], activeCharId: 0 },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await pickLorebookRole(user);
+    await user.click(screen.getByRole('button', { name: /^Send$/i }));
+
+    await waitFor(() => expect(mockSendCrawlResult).toHaveBeenCalledWith('https://w/wiki/A', 'lorebook', false));
+    expect(await screen.findByText('Staged for extraction')).toBeInTheDocument();
+    expect(screen.queryByText(/Sent to lorebook/i)).not.toBeInTheDocument();
+  });
+
+  it('warns that pending candidates are discarded when re-sending to the lorebook', async () => {
+    mockCrawlPage.mockResolvedValue(singleResultSet());
+    mockSendCrawlResult
+      .mockResolvedValueOnce({ status: 'needs_confirm', kind: 'lorebook', name: 'A', result: { characters: [], lorebook: [], staged: [], activeCharId: 0 } })
+      .mockResolvedValueOnce({ status: 'restaged', kind: 'lorebook', name: 'A', result: { characters: [], lorebook: [], staged: [], activeCharId: 0 } });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await pickLorebookRole(user);
+    await user.click(screen.getByRole('button', { name: /^Send$/i }));
+
+    expect(await screen.findByText(/already been sent to the lorebook/i)).toBeInTheDocument();
+    expect(screen.getByText(/awaiting review will be discarded/i)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: /^Confirm$/i }));
+    await waitFor(() => expect(mockSendCrawlResult).toHaveBeenNthCalledWith(2, 'https://w/wiki/A', 'lorebook', true));
   });
 
   it('does not overwrite when the user cancels the duplicate prompt', async () => {

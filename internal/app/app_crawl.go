@@ -6,6 +6,7 @@ import (
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/lorebook"
+	"silly-sleeve/internal/loreextract"
 )
 
 // CrawlState is the persisted Crawler-screen state: the input parameters, the
@@ -50,7 +51,10 @@ func (a *App) SaveCrawlState(s CrawlState) {
 }
 
 // ClearCrawl empties the crawl list (the set and its role assignments),
-// leaving the input parameters so the user can re-crawl.
+// leaving the input parameters so the user can re-crawl. Staged sources and
+// their pending candidates go too: extraction reads the page text out of the
+// crawl set, so a staged source outliving its page could never be extracted.
+// Approved entries are untouched — they are part of the lorebook now.
 func (a *App) ClearCrawl() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -58,20 +62,30 @@ func (a *App) ClearCrawl() {
 	a.cachedCrawl = nil
 	a.crawlInputs.Roles = map[string]string{}
 	a.crawlInputs.Sent = map[string]string{}
+	a.stagedSources = nil
+	a.loreCandidates = nil
 }
 
 // CrawlSendResult is the project state after distributing crawl results.
 type CrawlSendResult struct {
-	Characters   []compose.Character `json:"characters"`
-	Lorebook     []lorebook.Entry    `json:"lorebook"`
-	ActiveCharID int                 `json:"activeCharId"`
+	Characters   []compose.Character        `json:"characters"`
+	Lorebook     []lorebook.Entry           `json:"lorebook"`
+	Staged       []loreextract.StagedSource `json:"staged"`
+	ActiveCharID int                        `json:"activeCharId"`
 }
 
 // SendCrawlOutcome reports the result of sending one crawled page to the
-// project. Status is "created", "overwritten", "needs_confirm", or "missing".
-// On "needs_confirm" the caller should ask the user to overwrite the existing
-// item (named Name, of kind Kind) and retry with overwrite=true. Result carries
-// the updated project state for the "created" and "overwritten" statuses.
+// project. Status is one of:
+//
+//	created       a character stub was added
+//	overwritten   an existing character was repointed at this page
+//	staged        the page was queued for lorebook extraction
+//	restaged      an already-staged page was queued again
+//	needs_confirm the page has already been sent; retry with overwrite=true
+//	missing       no such page in the crawl, or an unknown role
+//
+// Result carries the updated project state for every status except
+// "needs_confirm".
 type SendCrawlOutcome struct {
 	Status string          `json:"status"`
 	Kind   string          `json:"kind"`
@@ -79,11 +93,19 @@ type SendCrawlOutcome struct {
 	Result CrawlSendResult `json:"result"`
 }
 
-// SendCrawlResult sends a single crawled page to the project as a character or
-// lorebook entry, recording its origin page in SourceURL. Characters are unique
-// by name and lorebook entries by source page; sending a duplicate returns
-// "needs_confirm" unless overwrite is true, in which case the existing item is
-// replaced in place. No LLM calls happen here — generation occurs in the editors.
+// SendCrawlResult sends a single crawled page to the project, recording its
+// origin page in SourceURL. Sending a duplicate returns "needs_confirm" unless
+// overwrite is true.
+//
+// The two roles behave differently on purpose. A character page becomes a
+// character stub immediately, because a page maps to one character and the
+// editor fills the fields in. A lorebook page does not become an entry: it is
+// staged for extraction. One wiki page is many lorebook facts, and which of
+// them are worth keeping — and what should trigger each — is a judgement the
+// user makes after seeing them.
+//
+// No LLM calls happen here. Generation runs from the editors, and extraction
+// from the lorebook screen.
 func (a *App) SendCrawlResult(pageURL, role string, overwrite bool) SendCrawlOutcome {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -108,6 +130,7 @@ func (a *App) SendCrawlResult(pageURL, role string, overwrite bool) SendCrawlOut
 		out.Result = CrawlSendResult{
 			Characters:   a.characters,
 			Lorebook:     a.lorebookEntries,
+			Staged:       a.stagedSources,
 			ActiveCharID: a.activeCharID,
 		}
 	}
@@ -145,21 +168,75 @@ func (a *App) sendCharacterLocked(res crawler.CrawlResult, overwrite bool) strin
 	return "created"
 }
 
-// sendLorebookLocked creates a lorebook entry from a crawl result, or
-// overwrites the existing entry from the same source page. Caller holds a.mu.
+// sendLorebookLocked stages a crawled page for lorebook extraction. It
+// deliberately creates no entry: the previous behaviour dumped every section
+// body of the page into a single entry with no keywords, producing something
+// that could never fire in SillyTavern and blew the token budget if it did.
+// Caller holds a.mu.
 func (a *App) sendLorebookLocked(res crawler.CrawlResult, overwrite bool) string {
-	for i := range a.lorebookEntries {
-		if a.lorebookEntries[i].SourceURL != "" && a.lorebookEntries[i].SourceURL == res.URL {
-			if !overwrite {
-				return "needs_confirm"
-			}
-			a.lorebookEntries[i].Comment = res.Title
-			a.lorebookEntries[i].Content = crawlPlainText(res)
-			return "overwritten"
+	if i, ok := a.stagedSourceIndexLocked(res.URL); ok {
+		if !overwrite {
+			return "needs_confirm"
+		}
+		// Re-staging clears the extracted flag and the pending candidates, so
+		// the page is extracted afresh rather than accumulating duplicates.
+		a.stagedSources[i].Title = res.Title
+		a.stagedSources[i].Extracted = false
+		a.dropCandidatesLocked(res.URL)
+		return "restaged"
+	}
+
+	if a.hasApprovedEntriesLocked(res.URL) && !overwrite {
+		return "needs_confirm"
+	}
+
+	a.stagedSources = append(a.stagedSources, loreextract.StagedSource{
+		URL:   res.URL,
+		Title: res.Title,
+		Mode:  loreextract.ModeSplit,
+	})
+	return "staged"
+}
+
+// stagedSourceIndexLocked finds a staged source by page URL. Caller holds a.mu.
+func (a *App) stagedSourceIndexLocked(pageURL string) (int, bool) {
+	for i := range a.stagedSources {
+		if a.stagedSources[i].URL == pageURL {
+			return i, true
 		}
 	}
-	a.appendLorebookFromCrawl(res)
-	return "created"
+	return 0, false
+}
+
+// hasApprovedEntriesLocked reports whether the lorebook already holds entries
+// extracted from a page. Caller holds a.mu.
+func (a *App) hasApprovedEntriesLocked(pageURL string) bool {
+	for _, e := range a.lorebookEntries {
+		if e.SourceURL != "" && e.SourceURL == pageURL {
+			return true
+		}
+	}
+	return false
+}
+
+// dropCandidatesLocked removes the pending candidates from a page. Caller holds a.mu.
+func (a *App) dropCandidatesLocked(pageURL string) {
+	kept := make([]loreextract.Candidate, 0, len(a.loreCandidates))
+	for _, c := range a.loreCandidates {
+		if c.SourceURL != pageURL {
+			kept = append(kept, c)
+		}
+	}
+	a.loreCandidates = kept
+}
+
+// dropStagedSourceLocked removes a staged source and its pending candidates.
+// Caller holds a.mu.
+func (a *App) dropStagedSourceLocked(pageURL string) {
+	if i, ok := a.stagedSourceIndexLocked(pageURL); ok {
+		a.stagedSources = append(a.stagedSources[:i], a.stagedSources[i+1:]...)
+	}
+	a.dropCandidatesLocked(pageURL)
 }
 
 // appendCharacterFromCrawl adds a new character stub. Caller holds a.mu.
@@ -173,42 +250,14 @@ func (a *App) appendCharacterFromCrawl(res crawler.CrawlResult) {
 	a.activeCharID = ch.ID
 }
 
-// appendLorebookFromCrawl adds a new lorebook entry seeded with page text.
-// Caller holds a.mu.
-func (a *App) appendLorebookFromCrawl(res crawler.CrawlResult) {
-	uid := 1
-	for _, e := range a.lorebookEntries {
-		if e.UID >= uid {
-			uid = e.UID + 1
-		}
-	}
-	a.lorebookEntries = append(a.lorebookEntries, lorebook.Entry{
-		UID:        uid,
-		Comment:    res.Title,
-		Content:    crawlPlainText(res),
-		Key:        []string{},
-		Characters: []string{},
-		SourceURL:  res.URL,
-	})
-}
-
-// crawlPlainText joins a result's non-empty section bodies into seed content.
-func crawlPlainText(res crawler.CrawlResult) string {
-	var b []string
-	for _, s := range res.Sections {
-		if s.Body != "" {
-			b = append(b, s.Body)
-		}
-	}
-	return strings.Join(b, "\n\n")
-}
-
 // RemoveCrawlResult removes the crawled page with the given URL from the cached
 // crawl set and returns the updated set. The legacy single-result cache is kept
-// in sync with the new root (or cleared when the set becomes empty).
+// in sync with the new root (or cleared when the set becomes empty). Any staging
+// for that page goes too, since extraction reads the page text from the set.
 func (a *App) RemoveCrawlResult(pageURL string) crawler.CrawlSet {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.dropStagedSourceLocked(pageURL)
 	if a.cachedCrawlSet == nil {
 		return crawler.CrawlSet{}
 	}

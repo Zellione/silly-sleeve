@@ -7,7 +7,67 @@ on:
     branches: [main]
 
 jobs:
+  # Decides whether the rest of the pipeline has anything to do. A change that
+  # only touches documentation cannot break a lint, a test or a build, so
+  # running them costs minutes of CI for no signal.
+  #
+  # This gates each job with `if:` rather than putting `paths-ignore` on the
+  # workflow trigger. With `paths-ignore` the workflow never starts, so its
+  # checks never report at all — and the moment anyone marks one of them
+  # required in branch protection, every docs-only PR becomes unmergeable while
+  # waiting for a check that will never arrive. A job skipped by `if:` still
+  # reports, and counts as passing.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags origin "$BASE_REF"
+            FILES=$(git diff --name-only "origin/$BASE_REF...HEAD")
+          elif [ -n "${BEFORE:-}" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            FILES=$(git diff --name-only "$BEFORE" "$SHA")
+          else
+            # First push of a branch, a force-push, or anything else we cannot
+            # diff: fall through to running everything rather than guessing.
+            FILES=""
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "Could not determine the changed files — running the full pipeline."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed files:"
+          echo "$FILES"
+
+          # Anything that is not documentation counts as code. Listing what is
+          # safe to ignore (rather than what is code) keeps the failure mode on
+          # the right side: a path nobody thought about runs the full pipeline.
+          if echo "$FILES" | grep -qvE '(\.md$|^LICENSE$)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Documentation-only change — skipping lint, tests and build."
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint-go:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -25,6 +85,8 @@ jobs:
           version: v2.12.2
 
   vuln-go:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -42,6 +104,8 @@ jobs:
           govulncheck ./...
 
   lint-frontend:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -74,7 +138,8 @@ jobs:
         working-directory: frontend
 
   test-go:
-    needs: lint-go
+    needs: [changes, lint-go]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -100,7 +165,8 @@ jobs:
           path: coverage.out
 
   test-frontend:
-    needs: lint-frontend
+    needs: [changes, lint-frontend]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -140,7 +206,8 @@ jobs:
           path: frontend/coverage
 
   build:
-    needs: [test-go, test-frontend]
+    needs: [changes, test-go, test-frontend]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

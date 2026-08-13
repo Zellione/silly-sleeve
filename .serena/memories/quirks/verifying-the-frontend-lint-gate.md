@@ -1,3 +1,19 @@
+# The tools in this shell are not the tools you think they are
+
+Broader than lint: **common CLI names are rewritten in this session's shell**, so
+a command can silently do something other than what you wrote.
+
+- **`grep` is a shell function** (from the Claude Code shell snapshot), backed by
+  `rg`/`ugrep`, not GNU grep. Different regex dialect and different semantics.
+  Tell-tale errors: `rg: regex parse error`, `ugrep: warning: ... No such file`.
+  It produced **wrong answers** when testing a `grep -qvE` classifier locally —
+  four of seven cases inverted — while CI (real GNU grep) was correct all along.
+  **When testing logic that will run in CI, invoke `/usr/bin/grep` explicitly.**
+- **`eslint` is substituted** — see below.
+
+Rule of thumb: if a local result will decide whether you push, run the tool by
+its absolute path or via `./node_modules/.bin/`, and check `--version`.
+
 # Verifying the frontend lint gate (this WILL bite you)
 
 Cost a CI failure on PR #75 (Phase 8). Two independent traps stack.

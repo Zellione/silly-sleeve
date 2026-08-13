@@ -131,8 +131,10 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     try {
       let outcome = await SendCrawlResult(pageURL, role, false);
       if (outcome.status === 'needs_confirm') {
-        const noun = role === 'character' ? `character named "${outcome.name}"` : `lorebook entry from "${outcome.name}"`;
-        const ok = await confirm(`A ${noun} already exists. Overwrite it?`);
+        const question = role === 'character'
+          ? `A character named "${outcome.name}" already exists. Overwrite it?`
+          : `"${outcome.name}" has already been sent to the lorebook. Send it again? Any candidates still awaiting review will be discarded.`;
+        const ok = await confirm(question);
         if (!ok) return;
         outcome = await SendCrawlResult(pageURL, role, true);
       }
@@ -141,6 +143,17 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         return;
       }
       setSent(prev => ({ ...prev, [pageURL]: role }));
+      // A lorebook send stages the page for extraction rather than creating an
+      // entry, so say so — otherwise the user goes looking for an entry that
+      // does not exist yet.
+      if (role === 'lorebook') {
+        toast({
+          kind: 'ok',
+          title: 'Staged for extraction',
+          body: `"${title}" is ready to extract in the Lorebook screen.`,
+        });
+        return;
+      }
       const label = ROLE_LABELS[role];
       const verb = outcome.status === 'overwritten' ? 'Overwrote' : 'Sent to';
       toast({ kind: 'ok', title: `${verb} ${label.toLowerCase()}`, body: `"${title}" → ${label}` });

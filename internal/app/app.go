@@ -12,6 +12,7 @@ import (
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/lorebook"
+	"silly-sleeve/internal/loreextract"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 	"silly-sleeve/internal/settings"
@@ -32,10 +33,20 @@ type App struct {
 	projectImage    []byte
 	fieldEndpoints  map[string]int
 
-	comfy   *ComfyUIService
-	charGen *CharacterGenerator
-	project *ProjectManager
-	library *LibraryManager
+	// Lorebook extraction work in progress. Crawled pages sent to the lorebook
+	// are staged here rather than becoming entries; candidates and suggestions
+	// are proposals awaiting the user's review. None of it is part of the
+	// lorebook until approved.
+	stagedSources   []loreextract.StagedSource
+	loreCandidates  []loreextract.Candidate
+	loreSuggestions []loreextract.Suggestion
+
+	comfy    *ComfyUIService
+	charGen  *CharacterGenerator
+	project  *ProjectManager
+	library  *LibraryManager
+	loreGen  *loreextract.Extractor
+	loreConn *loreextract.Connector
 }
 
 // NewApp creates a new App application struct
@@ -48,6 +59,8 @@ func NewApp() *App {
 	}
 	a.charGen = &CharacterGenerator{ctx: ctxFn, completer: llm.DefaultCompleter}
 	a.project = &ProjectManager{ctx: ctxFn}
+	a.loreGen = loreextract.NewExtractor(llm.DefaultCompleter)
+	a.loreConn = loreextract.NewConnector(llm.DefaultCompleter)
 	return a
 }
 
@@ -152,9 +165,13 @@ func (a *App) GetPromptTemplates() prompts.TemplateSet {
 	return a.settings.PromptTemplates.WithDefaults()
 }
 
-// SavePromptTemplates persists prompt templates to settings.
+// SavePromptTemplates stores the prompt templates, merging over what is already
+// saved. The merge matters because callers need not know about every prompt
+// group: the settings screen rebuilds a template set from the system prompt and
+// the character fields alone, which would otherwise wipe customised lorebook
+// prompts every time a character prompt was edited.
 func (a *App) SavePromptTemplates(t prompts.TemplateSet) error {
-	a.settings.PromptTemplates = t
+	a.settings.PromptTemplates = a.settings.PromptTemplates.Merge(t)
 	return settings.Save(a.settings)
 }
 
@@ -628,6 +645,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 		fe[k] = v
 	}
 	snap.FieldEndpoints = fe
+	snap.Extraction = a.extractionStateLocked()
 	a.mu.Unlock()
 
 	// Preserve an existing project's status across re-saves (default draft).
@@ -722,6 +740,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	if len(b.Prompts.FieldPrompts) > 0 {
 		a.settings.PromptTemplates = b.Prompts
 	}
+	a.applyExtractionStateLocked(b.Extraction)
 	active := a.activeCharacterLocked()
 	a.mu.Unlock()
 

@@ -51,47 +51,47 @@ type ComfyWorkflow struct {
 
 // Node represents a single node in a ComfyUI workflow graph.
 type Node struct {
-	ID        int              `json:"id"`
-	ClassType string           `json:"class_type"`
-	Inputs    []NodeInput      `json:"inputs"`
-	Outputs   []NodeOutput     `json:"outputs"`
-	Title     string           `json:"_meta_title"`
+	ID        int          `json:"id"`
+	ClassType string       `json:"class_type"`
+	Inputs    []NodeInput  `json:"inputs"`
+	Outputs   []NodeOutput `json:"outputs"`
+	Title     string       `json:"_meta_title"`
 }
 
 // NodeInput represents a single input connection or value.
 type NodeInput struct {
-	Name      string
-	Value     any
-	Connected bool
-	SourceID  int
+	Name       string
+	Value      any
+	Connected  bool
+	SourceID   int
 	SourceSlot int
 }
 
 // NodeOutput represents an output slot.
 type NodeOutput struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Links []int `json:"links"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Links []int  `json:"links"`
 }
 
 // Workflow is the top-level structure of a ComfyUI workflow JSON.
 type Workflow struct {
-	LastNodeID int            `json:"last_node_id"`
+	LastNodeID int `json:"last_node_id"`
 	Nodes      map[int]Node
 	Raw        json.RawMessage
 }
 
 // QueuedRequest is the body sent to POST /prompt.
 type QueuedRequest struct {
-	ClientID string           `json:"client_id"`
-	Prompt   json.RawMessage  `json:"prompt"`
+	ClientID string          `json:"client_id"`
+	Prompt   json.RawMessage `json:"prompt"`
 }
 
 // QueuedResponse is returned from POST /prompt.
 type QueuedResponse struct {
-	PromptID   string           `json:"prompt_id"`
-	Number     int              `json:"number"`
-	NodeErrors map[string]any   `json:"node_errors"`
+	PromptID   string         `json:"prompt_id"`
+	Number     int            `json:"number"`
+	NodeErrors map[string]any `json:"node_errors"`
 }
 
 // HistoryEntry represents a single execution in ComfyUI history.
@@ -116,9 +116,9 @@ type SystemStats struct {
 		ComfyGitHash  string `json:"comfyui_version"`
 	} `json:"system"`
 	Devices []struct {
-		Name   string `json:"name"`
-		Type   string `json:"type"`
-		VRAM   int64  `json:"vram_total"`
+		Name string `json:"name"`
+		Type string `json:"type"`
+		VRAM int64  `json:"vram_total"`
 	} `json:"devices"`
 }
 
@@ -145,8 +145,8 @@ type WSStatusInfo struct {
 
 // WSProgressMsg reports per-node progress during generation.
 type WSProgressMsg struct {
-	Type  string `json:"type"`
-	Data  struct {
+	Type string `json:"type"`
+	Data struct {
 		Value int `json:"value"`
 		Max   int `json:"max"`
 	} `json:"data"`
@@ -154,7 +154,7 @@ type WSProgressMsg struct {
 
 // WSExecutingMsg indicates which node is currently executing (null = done).
 type WSExecutingMsg struct {
-	Type string  `json:"type"`
+	Type string `json:"type"`
 	Data struct {
 		Node     *string `json:"node"`
 		PromptID string  `json:"prompt_id"`
@@ -168,7 +168,7 @@ type ExecutedOutputData struct {
 
 // ExecutedMsg holds the output images from a completed node.
 type ExecutedMsg struct {
-	Type string         `json:"type"`
+	Type string          `json:"type"`
 	Data ExecutedMsgData `json:"data"`
 }
 

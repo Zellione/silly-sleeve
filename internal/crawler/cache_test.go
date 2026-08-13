@@ -33,13 +33,13 @@ func TestSaveCache_Success(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 	r := CrawlResult{
-		Title:     "Test Page",
-		URL:       "https://example.com/wiki/Test",
-		Domain:    "example.com",
-		RawHTML:   "<p>content</p>",
-		Sections:  []Section{{Heading: "Intro", Body: "Hello", Level: 1}},
-		Infobox:   []InfoboxEntry{{Key: "race", Value: "Elf"}},
-		WordCount: 42,
+		Title:      "Test Page",
+		URL:        "https://example.com/wiki/Test",
+		Domain:     "example.com",
+		RawHTML:    "<p>content</p>",
+		Sections:   []Section{{Heading: "Intro", Body: "Hello", Level: 1}},
+		Infobox:    []InfoboxEntry{{Key: "race", Value: "Elf"}},
+		WordCount:  42,
 		StatusCode: 200,
 		LatencyMs:  150,
 	}

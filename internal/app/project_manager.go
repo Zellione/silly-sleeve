@@ -10,6 +10,7 @@ import (
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
 	"silly-sleeve/internal/lorebook"
+	"silly-sleeve/internal/loreextract"
 	"silly-sleeve/internal/project"
 	"silly-sleeve/internal/prompts"
 )
@@ -28,6 +29,7 @@ type ProjectSnapshot struct {
 	CrawlCache     *crawler.CrawlResult
 	CrawlSet       *crawler.CrawlSet
 	FieldEndpoints map[string]int
+	Extraction     *loreextract.State
 
 	CrawlFollowLinks int
 	CrawlInclude     map[string]bool
@@ -143,6 +145,7 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		Prompts:    snap.Prompts,
 		CrawlCache: snap.CrawlCache,
 		CrawlSet:   snap.CrawlSet,
+		Extraction: snap.Extraction,
 	}
 	if err := bundle.WriteBundle(filePath, b); err != nil {
 		return project.ProjectManifest{}, err

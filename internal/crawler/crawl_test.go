@@ -97,7 +97,6 @@ func TestCrawler_WaitDelays(t *testing.T) {
 	assert.GreaterOrEqual(t, elapsed, 30*time.Millisecond)
 }
 
-
 func TestCrawler_DedupesSamePageReachedViaAlias(t *testing.T) {
 	// Root "Mine" links to an alias URL that the wiki resolves to the same page
 	// (parse.title == "Mine"). The duplicate must not be collected twice.
@@ -130,7 +129,6 @@ func TestCrawler_DedupesSamePageReachedViaAlias(t *testing.T) {
 	assert.Equal(t, 1, mine, "the same page reached via an alias must be collected once")
 	assert.Contains(t, titles, "Tatsumi")
 }
-
 
 func TestCrawler_TwoHopReachesDepth2(t *testing.T) {
 	// Chain: Root -> A (hop 1) -> B (hop 2).
@@ -165,7 +163,6 @@ func TestCrawler_TwoHopReachesDepth2(t *testing.T) {
 	assert.True(t, hasB2, "B must be reached with FollowLinks=2")
 	assert.Equal(t, 2, dB)
 }
-
 
 func TestCrawler_TwoHopFanoutReachesDepth2OnDenseRoot(t *testing.T) {
 	// Root links to MORE pages than the cap. Pure breadth-first would fill the

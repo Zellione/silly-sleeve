@@ -3,6 +3,7 @@ export namespace app {
 	export class CrawlSendResult {
 	    characters: compose.Character[];
 	    lorebook: lorebook.Entry[];
+	    staged: loreextract.StagedSource[];
 	    activeCharId: number;
 	
 	    static createFrom(source: any = {}) {
@@ -13,6 +14,7 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.characters = this.convertValues(source["characters"], compose.Character);
 	        this.lorebook = this.convertValues(source["lorebook"], lorebook.Entry);
+	        this.staged = this.convertValues(source["staged"], loreextract.StagedSource);
 	        this.activeCharId = source["activeCharId"];
 	    }
 	
@@ -706,6 +708,7 @@ export namespace lorebook {
 	    preventRecursion: boolean;
 	    characters: string[];
 	    sourceUrl?: string;
+	    category?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Entry(source);
@@ -735,6 +738,100 @@ export namespace lorebook {
 	        this.preventRecursion = source["preventRecursion"];
 	        this.characters = source["characters"];
 	        this.sourceUrl = source["sourceUrl"];
+	        this.category = source["category"];
+	    }
+	}
+
+}
+
+export namespace loreextract {
+	
+	export class Candidate {
+	    entry: lorebook.Entry;
+	    sourceUrl: string;
+	    adjustments: string[];
+	    selected: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Candidate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.entry = this.convertValues(source["entry"], lorebook.Entry);
+	        this.sourceUrl = source["sourceUrl"];
+	        this.adjustments = source["adjustments"];
+	        this.selected = source["selected"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StagedSource {
+	    url: string;
+	    title: string;
+	    mode: string;
+	    extracted: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new StagedSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.title = source["title"];
+	        this.mode = source["mode"];
+	        this.extracted = source["extracted"];
+	    }
+	}
+	export class Suggestion {
+	    kind: string;
+	    entryUid?: number;
+	    targetUid?: number;
+	    charId?: number;
+	    targetCharId?: number;
+	    addKeys?: string[];
+	    addSecondary?: string[];
+	    addCharacters?: string[];
+	    currentRelationships?: string;
+	    proposedRelationships?: string;
+	    rationale: string;
+	    selected: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Suggestion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.entryUid = source["entryUid"];
+	        this.targetUid = source["targetUid"];
+	        this.charId = source["charId"];
+	        this.targetCharId = source["targetCharId"];
+	        this.addKeys = source["addKeys"];
+	        this.addSecondary = source["addSecondary"];
+	        this.addCharacters = source["addCharacters"];
+	        this.currentRelationships = source["currentRelationships"];
+	        this.proposedRelationships = source["proposedRelationships"];
+	        this.rationale = source["rationale"];
+	        this.selected = source["selected"];
 	    }
 	}
 
@@ -792,6 +889,7 @@ export namespace prompts {
 	export class TemplateSet {
 	    systemPrompt: string;
 	    fieldPrompts: Record<string, string>;
+	    lorePrompts: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new TemplateSet(source);
@@ -801,6 +899,7 @@ export namespace prompts {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.systemPrompt = source["systemPrompt"];
 	        this.fieldPrompts = source["fieldPrompts"];
+	        this.lorePrompts = source["lorePrompts"];
 	    }
 	}
 

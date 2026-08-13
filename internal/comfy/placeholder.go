@@ -34,17 +34,17 @@ func BuildPlaceholderValues(p GenerationParams) map[string]any {
 		height = 1024
 	}
 	return map[string]any{
-		"seed":             seed,
-		"steps":            steps,
-		"cfg":              p.CFG,
-		"sampler":          p.Sampler,
-		"scheduler":        p.Scheduler,
-		"denoise":          p.Denoise,
-		"width":            width,
-		"height":           height,
-		"positive_prompt":  p.PositivePrompt,
-		"negative_prompt":  p.NegativePrompt,
-		"model":            p.Checkpoint,
+		"seed":            seed,
+		"steps":           steps,
+		"cfg":             p.CFG,
+		"sampler":         p.Sampler,
+		"scheduler":       p.Scheduler,
+		"denoise":         p.Denoise,
+		"width":           width,
+		"height":          height,
+		"positive_prompt": p.PositivePrompt,
+		"negative_prompt": p.NegativePrompt,
+		"model":           p.Checkpoint,
 	}
 }
 

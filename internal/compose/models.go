@@ -8,31 +8,31 @@ type StatKV struct {
 
 // Character holds all fields for a single character card.
 type Character struct {
-	ID            int       `json:"id"`
-	Name          string    `json:"name"`
-	Epithet       string    `json:"epithet"`
-	Tags          []string  `json:"tags"`
-	Appearance    string    `json:"appearance"`
-	Personality   string    `json:"personality"`
-	Backstory     string    `json:"backstory"`
-	Abilities     string    `json:"abilities"`
-	Relationships string    `json:"relationships"`
-	Quotes        []string  `json:"quotes"`
-	AltGreetings  []string  `json:"altGreetings"`
-	Stats         []StatKV  `json:"stats"`
-	Dirty         bool      `json:"dirty"`
-	Portrait      []byte    `json:"portrait"`
-	SourceURL     string    `json:"sourceUrl,omitempty"`
+	ID            int      `json:"id"`
+	Name          string   `json:"name"`
+	Epithet       string   `json:"epithet"`
+	Tags          []string `json:"tags"`
+	Appearance    string   `json:"appearance"`
+	Personality   string   `json:"personality"`
+	Backstory     string   `json:"backstory"`
+	Abilities     string   `json:"abilities"`
+	Relationships string   `json:"relationships"`
+	Quotes        []string `json:"quotes"`
+	AltGreetings  []string `json:"altGreetings"`
+	Stats         []StatKV `json:"stats"`
+	Dirty         bool     `json:"dirty"`
+	Portrait      []byte   `json:"portrait"`
+	SourceURL     string   `json:"sourceUrl,omitempty"`
 }
 
 // NewCharacter creates a fresh character with empty fields.
 func NewCharacter(id int) Character {
 	return Character{
-		ID:    id,
-		Name:  "Untitled",
-		Tags:  []string{},
+		ID:     id,
+		Name:   "Untitled",
+		Tags:   []string{},
 		Quotes: []string{""},
-		Stats: []StatKV{{Key: "", Value: ""}},
+		Stats:  []StatKV{{Key: "", Value: ""}},
 	}
 }
 

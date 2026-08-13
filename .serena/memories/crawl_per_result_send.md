@@ -3,11 +3,21 @@
 Follow-up to `mem:milestone_6.3_complete`, on branch `milestone/6.3-advanced-crawler` (PR #28).
 Replaces the old bulk "Send to project" model with per-row sending.
 
+> ⚠️ **The lorebook half of this is superseded by
+> `mem:phase8/lorebook-extraction-and-connections`.** As of Phase 8, sending a
+> row with role=lorebook **stages the page for LLM extraction and creates no
+> entry**; `sendLorebookLocked` no longer matches on SourceURL to overwrite an
+> entry, `appendLorebookFromCrawl`/`crawlPlainText` are deleted, and Status gained
+> `staged`/`restaged`. Everything below about **characters**, the per-row UI, the
+> `Sent` map and its persistence is still accurate.
+
 ## Behavior
 - Each crawl result row has its own **Send** button driven by its dropdown
   (Character / Lorebook only — the "Skip" option was removed; you just don't
   send rows you don't want).
 - Characters are unique **by name**; lorebook entries unique **by SourceURL**.
+  *(Phase 8: lorebook dedupe now checks staged sources OR approved entries
+  carrying that SourceURL.)*
 - Sending a duplicate prompts the user to overwrite (confirm dialog). Confirm →
   re-send with overwrite=true, replacing the existing item in place (no dup).
 - Sent rows show a green ✓ badge and the button flips to **Re-send**.
@@ -16,8 +26,8 @@ Replaces the old bulk "Send to project" model with per-row sending.
 - Removed `SendCrawlToProject` + `CrawlAssignment`.
 - `SendCrawlResult(pageURL, role string, overwrite bool) SendCrawlOutcome`.
   - `SendCrawlOutcome{Status, Kind, Name, Result}`; Status ∈
-    created|overwritten|needs_confirm|missing. On needs_confirm, Result is empty
-    (no project state until confirmed).
+    created|overwritten|needs_confirm|missing *(Phase 8 adds staged|restaged)*.
+    On needs_confirm, Result is empty (no project state until confirmed).
   - Helpers: `crawlResultByURLLocked`, `sendCharacterLocked` (EqualFold trimmed
     name match), `sendLorebookLocked` (SourceURL match). Split out to keep
     cognitive complexity ≤15 (Sonar S3776).
@@ -38,6 +48,9 @@ Replaces the old bulk "Send to project" model with per-row sending.
 ## Test gotchas
 - The whole result row is `role="button"`, so `getByRole('button', {name:/Re-send/i})`
   matches BOTH the row (substring) and the inner button. Anchor it: `/^Re-send$/i`.
+- The **role dropdown is a custom `Dropdown`** (button owning a listbox), not a
+  native `<select>` — `user.selectOptions` fails. Click the `combobox` named
+  `Role for <title>`, then click the `option`.
 - CrawlerScreen.test.tsx now wraps in `<ConfirmProvider>` so the confirm dialog
   renders; click its "Confirm"/"Cancel" buttons. mockSendCrawlResult default
   resolves `{status:'created',...}`.

@@ -14,7 +14,7 @@ func ParseWorkflow(raw json.RawMessage) (*Workflow, error) {
 	}
 
 	var wrapper struct {
-		LastNodeID int                      `json:"last_node_id"`
+		LastNodeID int                        `json:"last_node_id"`
 		Nodes      map[string]json.RawMessage `json:"nodes"`
 	}
 	if err := json.Unmarshal(raw, &wrapper); err != nil {
@@ -23,13 +23,13 @@ func ParseWorkflow(raw json.RawMessage) (*Workflow, error) {
 
 	for _, rawNode := range wrapper.Nodes {
 		var nodeRaw struct {
-			ID            int              `json:"id"`
-			ClassType     string           `json:"class_type"`
-			Type          string           `json:"type"`
-			Title         string           `json:"_meta_title"`
+			ID            int               `json:"id"`
+			ClassType     string            `json:"class_type"`
+			Type          string            `json:"type"`
+			Title         string            `json:"_meta_title"`
 			Inputs        []json.RawMessage `json:"inputs"`
 			Outputs       []json.RawMessage `json:"outputs"`
-			WidgetsValues []any            `json:"widgets_values"`
+			WidgetsValues []any             `json:"widgets_values"`
 		}
 		if err := json.Unmarshal(rawNode, &nodeRaw); err != nil {
 			continue
@@ -83,10 +83,10 @@ func parseInput(raw json.RawMessage) NodeInput {
 	ni := NodeInput{}
 
 	var asObj struct {
-		Name      string `json:"name"`
-		Type      string `json:"type"`
-		Value     any    `json:"value"`
-		Link      *int   `json:"link"`
+		Name  string `json:"name"`
+		Type  string `json:"type"`
+		Value any    `json:"value"`
+		Link  *int   `json:"link"`
 	}
 	if err := json.Unmarshal(raw, &asObj); err == nil {
 		ni.Name = asObj.Name

@@ -521,7 +521,7 @@ func TestBuildCrawlContent_Full(t *testing.T) {
 			{Heading: "Personality", Body: "Cheerful.", Level: 2},
 		},
 	}
-	content := buildCrawlContent(result)
+	content := CrawlContext(result)
 	assert.Contains(t, content, "Wiki page title: Elara")
 	assert.Contains(t, content, "Infobox:")
 	assert.Contains(t, content, "race: Half-elf")
@@ -534,7 +534,7 @@ func TestBuildCrawlContent_Full(t *testing.T) {
 
 func TestBuildCrawlContent_Minimal(t *testing.T) {
 	result := crawler.CrawlResult{Title: "X", URL: "https://x"}
-	content := buildCrawlContent(result)
+	content := CrawlContext(result)
 	assert.Contains(t, content, "Wiki page title: X")
 	assert.NotContains(t, content, "Infobox:")
 }
@@ -547,7 +547,7 @@ func TestBuildCrawlContent_SkipsEmptyKey(t *testing.T) {
 			{Key: "real", Value: "yes"},
 		},
 	}
-	content := buildCrawlContent(result)
+	content := CrawlContext(result)
 	assert.NotContains(t, content, "no key")
 	assert.Contains(t, content, "real: yes")
 }
@@ -557,7 +557,7 @@ func TestBuildCrawlContent_EmptySections(t *testing.T) {
 		Title:    "Test",
 		Sections: []crawler.Section{{Heading: "", Body: "body"}},
 	}
-	content := buildCrawlContent(result)
+	content := CrawlContext(result)
 	assert.NotContains(t, content, "## ")
 	assert.Contains(t, content, "body")
 }

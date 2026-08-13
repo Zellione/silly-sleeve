@@ -10,9 +10,9 @@ import (
 // ParseWorldInfo parses a SillyTavern lorebook JSON document into entries.
 // It accepts three shapes, in precedence order:
 //
-//	1. World Info export: {"entries": {"<uid>": {entry}}}
-//	2. Character book:     {"entries": [{entry}]}
-//	3. Bare array:         [{entry}]
+//  1. World Info export: {"entries": {"<uid>": {entry}}}
+//  2. Character book:     {"entries": [{entry}]}
+//  3. Bare array:         [{entry}]
 //
 // Entries are returned sorted ascending by UID. Empty or unrecognized input
 // yields an empty slice with no error; only malformed JSON returns an error.

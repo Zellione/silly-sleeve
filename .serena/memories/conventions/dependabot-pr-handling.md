@@ -58,6 +58,29 @@ is skipped. It looks catastrophic but is a one-line resolution problem, not a Re
   `react` / `react-dom` / `@types/react` / `@types/react-dom` so they always ship in one PR.
   If a future React bump still desyncs, check that group is intact before debugging anything else.
 
+## Dependabot may rebase *while you are fixing its branch* — replay, never force-push
+
+Hit on PR #74. Sequence: `@dependabot rebase` → it pushed b7506f4 → I committed my fix on
+top locally → meanwhile the merge of #73 moved `main`, so Dependabot **rebased again** to
+1bd025e → my `git push` was rejected with `(fetch first)`.
+
+`--force` here would have discarded Dependabot's newer rebase. Correct recovery:
+
+```bash
+git fetch origin <dependabot-branch>
+git checkout -B fix74 origin/<dependabot-branch>   # adopt ITS new head
+git cherry-pick <my-commit>                        # replay my fix on top
+```
+
+The cherry-pick auto-merged `package.json` / `package-lock.json` cleanly. **Re-run the full
+gate after replaying** — the base changed, so the pre-cherry-pick green run proves nothing
+(`npm ci` then eslint/tsc/vitest).
+
+Two consequences of pushing a manual commit to a Dependabot branch:
+- Dependabot **stops auto-rebasing it** from then on. Further staleness is yours to fix.
+- Avoid the race entirely by fixing the broken PR **last**, after the merge train is drained,
+  so nothing moves `main` underneath you.
+
 ## Merge-train ordering that actually worked (2026-08-14)
 
 With five dependabot PRs open and a toolchain fix needed first, this order avoided all conflicts:

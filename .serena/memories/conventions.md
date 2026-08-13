@@ -100,6 +100,14 @@
     `new_security_hotspots_reviewed` requires 100%, so an unreviewed hotspot
     fails the gate even when all issue ratings are OK. Prefer fixing the code
     over marking the hotspot "safe".
+  - The `githubactions` analyzer also scans `.github/workflows/ci.yml` itself —
+    a clean app-code gate doesn't mean a clean overall gate. Rules seen so far
+    (all `VULNERABILITY` type, all push `new_security_rating` to C):
+    `githubactions:S8545` (`go install pkg@latest` → pin to a full commit SHA,
+    resolved via `git ls-remote --tags <repo> 'refs/tags/<vX.Y.Z>*'`, peeled
+    `^{}` commit if annotated), `githubactions:S6505` (`npm install` → add
+    `--ignore-scripts`), `githubactions:S8543` (`npm install` → use `npm ci`).
+    See `mem:sonarcloud_automatic_analysis_config` for the full fix writeup.
 
 ## Tooling gotcha
 - The `rtk` shell wrapper can corrupt the OUTPUT of `npm`/`npx`/`eslint`/`vitest`
@@ -123,6 +131,19 @@
 ## Workflow
 - USER PREFERENCE: always `git add` newly-created/updated `.serena/memories/**` files
   and include them in the milestone commit/PR (they are tracked in this repo).
+- **STANDING RULE (explicit user directive): if a memory changes as a result of
+  work done for a PR, that memory change goes INTO the PR branch, committed
+  BEFORE the PR is opened — every time, no exceptions.** Don't write/edit
+  memories after switching back to `main` post-PR; do it on the fix branch
+  first, or if a Stop-hook memory nudge fires after `main` is already checked
+  out, switch back to the still-open branch, commit the memory update there,
+  and push — don't leave it stranded on `main` for a later retrofit.
+- When asked to branch+PR a fix but the working tree also has an unrelated
+  pre-existing uncommitted change (e.g. a stale memory-file edit from a prior
+  session), don't sweep it into the new branch. `git stash push -m "..." --
+  <path>` it before `git checkout -b`, commit/push/PR only the relevant files,
+  then `git checkout main && git stash pop` to restore it where it was. Keeps
+  the PR diff scoped to what was actually asked for.
 - Design specs are LOCAL ONLY — never commit them. `docs/superpowers/specs/` is
   gitignored. Brainstorming writes specs there for local review; they must not
   enter git history (same policy as `APPROVAL_REQUEST.md`).

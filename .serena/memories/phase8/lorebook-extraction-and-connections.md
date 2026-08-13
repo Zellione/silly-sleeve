@@ -1,8 +1,11 @@
 # Phase 8 — Lorebook extraction & connections
 
-Branch `milestone/8-lorebook-extraction`, 12 commits, **not pushed** at session end.
-`APPROVAL_REQUEST.md` written to repo root (uncommitted, per AGENTS.md).
+Branch `milestone/8-lorebook-extraction`, 14 commits, **pushed** — PR #75.
+`APPROVAL_REQUEST.md` was written for review then deleted before push, per
+AGENTS.md (it is also gitignored). Serena memories committed as `chore(serena):`.
 Supersedes the lorebook half of `mem:crawl_per_result_send`.
+See `mem:quirks/verifying-the-frontend-lint-gate` — a lint trap cost a CI failure
+on this PR.
 
 ## What changed behaviourally
 
@@ -103,6 +106,11 @@ content mentions. No graph, no edges table.
 - **Test gotcha:** the crawler role picker is a custom `Dropdown` (button owning
   a listbox), not a native `<select>` — `selectOptions` fails. Click the
   `combobox` by its `Role for <title>` label, then the `option`.
+- **jsx-a11y/label-has-associated-control failed CI.** `<label>` wrapped
+  `Dropdown` and `TagsInput` in `CandidateRow.tsx`. Both are composites, not
+  native form controls, so no label can ever be associated with them — use
+  `<div className="lore-field">` and let each carry its own `aria-label`.
+  Fixed in `411df39`. Full detail in `mem:quirks/verifying-the-frontend-lint-gate`.
 - **Test gotcha:** `vi.mock` replaces the whole App module, so adding bindings
   means updating `LorebookScreen.test.tsx` AND `screens/index.test.tsx` mocks
   even though those screens don't call them.
@@ -119,6 +127,11 @@ vet + golangci-lint clean; `go test -race` 793 pass / 86.3%
 (loreextract 98.9, lorebook 96.5, prompts 95.7, app 90.3, bundle 81.5);
 tsc + eslint clean; vitest 778 pass / 85.4% statements, 87.4% lines;
 `wails build -clean -tags webkit2_41` links (12.5s).
+
+⚠️ The eslint half of that was **not actually verified** until after CI failed —
+both the rtk global-eslint substitution and a `$?`-after-pipe mistake hid two real
+a11y errors. Verify with `./node_modules/.bin/eslint src --max-warnings 0` and
+read the exit code directly. See `mem:quirks/verifying-the-frontend-lint-gate`.
 
 ## Known gaps
 

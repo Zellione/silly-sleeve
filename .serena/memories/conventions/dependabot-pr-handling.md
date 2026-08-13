@@ -7,6 +7,15 @@ Pattern used 2026-07-06 (PRs #43, #46–#50), 2026-08 (PRs #52–#56), and 2026-
 - Merging a PR to `main` is treated as a "merge without review" risky action by the auto-mode classifier — it will be denied until the user explicitly confirms (use `AskUserQuestion` to get sign-off before the first `gh pr merge` call in a session). This applies separately to *every* PR merge, including a same-session fix PR you authored yourself (e.g. #67) — approval to *create* a fix PR is not approval to *merge* it; ask again before that `gh pr merge` call.
 - Frontend bumps all touch `frontend/package-lock.json` (same for `go.sum`), so merge **sequentially**: after each merge, re-check the rest with `gh pr view <n> --json mergeable,mergeStateStatus` (state shows UNKNOWN briefly while GitHub recomputes — retry after ~10s).
 - If a PR turns `CONFLICTING`/`CONFLICTING DIRTY`, comment `@dependabot rebase` and wait — Dependabot rebases automatically (~1-3 min), after which CI re-runs from scratch (checks go back to `pending`). Poll with `gh pr view <n> --json mergeable,mergeStateStatus` and `gh pr checks <n>`.
+- **Poll workflow runs on `status == "completed"`, never on `status != "in_progress"`.** A run
+  sits in `queued` before it starts, so the negated form exits immediately and reports a
+  half-finished run: `conclusion` comes back as `""` and the not-yet-started jobs print blank
+  conclusions. Bit once this session — it looked like main had finished with two silent jobs.
+  ```bash
+  until [ "$(gh run list --branch main --workflow CI --limit 1 --json status --jq '.[0].status')" = "completed" ]; do sleep 25; done
+  ```
+  Same shape as the `$?`-after-pipe trap: an empty/blank field is not a pass, it means "no
+  answer yet". Treat a blank `conclusion` as "keep waiting", never as success.
 - Use the `Monitor` tool (background polling loop) rather than manual sleep/poll cycles to wait for rebase + CI to settle. Don't name a shell variable `status` in a Monitor script — it's a read-only special variable in zsh and crashes the loop with "read-only variable: status"; use a different name (e.g. `st`). Working pattern for polling `gh pr checks`:
   ```
   prev=""
@@ -57,6 +66,26 @@ is skipped. It looks catastrophic but is a one-line resolution problem, not a Re
 - **Fixed structurally**: `.github/dependabot.yml` now has a `react` group covering
   `react` / `react-dom` / `@types/react` / `@types/react-dom` so they always ship in one PR.
   If a future React bump still desyncs, check that group is intact before debugging anything else.
+- **Confirmed working the same day**: PR #78 opened titled "... in /frontend **in the react
+  group**", and GitHub added a `.github/dependabot.yml` check that validates the config
+  server-side (it passed). That title suffix and that check are the two signals the grouping
+  is live — no need to wait for a real multi-package React release to verify it.
+
+## Merging one batch spawns the next — and those are safe to trust
+
+Merging the queue moved `main` five times, and Dependabot immediately opened three fresh PRs
+(#78/#79/#80) cut from the *post-fix* `main`. Unlike the original batch these need **no**
+rebase: verify by checking they carry the fix rather than assuming either way —
+`git show origin/<branch>:.github/workflows/ci.yml | /usr/bin/grep -c 1.25.13` (use
+`/usr/bin/grep`, the shell's `grep` is `rg`-backed — see
+`mem:quirks/verifying-the-frontend-lint-gate`), and compare `baseRefOid` against the fixed SHA.
+
+Caveat actually hit: after merging the first of the three, the other two still reported
+`mergeable=CLEAN` because they touched *different* packages in `package-lock.json`, so they
+merged on CI that predated the two merges before them. That is a real (if small) stale-signal
+compromise — textual cleanliness is not proof of semantic consistency. `main`'s own post-merge
+run is the thing that actually settles it, so always confirm main green at the end rather than
+treating the last `gh pr merge` as the finish line.
 
 ## Dependabot may rebase *while you are fixing its branch* — replay, never force-push
 

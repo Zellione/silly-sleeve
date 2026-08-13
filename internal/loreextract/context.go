@@ -9,12 +9,17 @@ import (
 	"silly-sleeve/internal/lorebook"
 )
 
+// noneMarker is what an empty list renders as in a prompt. A visible marker
+// beats a blank line: it tells the model the section exists and is empty,
+// rather than looking like a truncated prompt.
+const noneMarker = "(none)"
+
 // buildCharacterRoster renders the project's characters compactly, as
 // "id · name · epithet" lines. Only identity is included: the model needs to
 // know which characters exist and what to call them, not their full cards.
 func buildCharacterRoster(characters []compose.Character) string {
 	if len(characters) == 0 {
-		return "(none)"
+		return noneMarker
 	}
 	var b strings.Builder
 	for _, c := range characters {
@@ -37,7 +42,7 @@ func buildCharacterRoster(characters []compose.Character) string {
 // entry it reuses that entry's exact key spelling.
 func buildEntryIndex(entries []lorebook.Entry) string {
 	if len(entries) == 0 {
-		return "(none)"
+		return noneMarker
 	}
 	var b strings.Builder
 	for _, e := range entries {
@@ -58,7 +63,7 @@ func buildEntryIndex(entries []lorebook.Entry) string {
 // analysed by the connection pass.
 func buildFocusEntries(entries []lorebook.Entry) string {
 	if len(entries) == 0 {
-		return "(none)"
+		return noneMarker
 	}
 	var b strings.Builder
 	for _, e := range entries {
@@ -78,7 +83,7 @@ func buildFocusEntries(entries []lorebook.Entry) string {
 
 func joinOrNone(items []string) string {
 	if len(items) == 0 {
-		return "(none)"
+		return noneMarker
 	}
 	return strings.Join(items, ", ")
 }

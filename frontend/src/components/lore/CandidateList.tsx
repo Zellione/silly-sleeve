@@ -4,6 +4,16 @@ import { CandidateRow } from './CandidateRow';
 import { SparksIcon } from '../../icons';
 
 /**
+ * Approving is destructive to whatever is left unticked, so the button says
+ * both numbers rather than only the happy one.
+ */
+function approveLabel(keeping: number, dropping: number): string {
+  if (keeping === 0) return 'Nothing selected';
+  const discard = dropping > 0 ? ` · discard ${dropping}` : '';
+  return `Add ${keeping} to lorebook${discard}`;
+}
+
+/**
  * The candidate review column: everything extracted from the selected page,
  * each editable and individually keepable, with one action to approve the
  * ticked ones.
@@ -76,11 +86,9 @@ export const CandidateList: React.FC<{
       </div>
 
       <div className="lore-cands-foot">
-        <button className="btn ghost" onClick={onDiscard}>Discard all</button>
-        <button className="btn primary" disabled={keeping === 0} onClick={onApprove}>
-          {keeping === 0
-            ? 'Nothing selected'
-            : `Add ${keeping} to lorebook${dropping > 0 ? ` · discard ${dropping}` : ''}`}
+        <button type="button" className="btn ghost" onClick={onDiscard}>Discard all</button>
+        <button type="button" className="btn primary" disabled={keeping === 0} onClick={onApprove}>
+          {approveLabel(keeping, dropping)}
         </button>
       </div>
     </div>

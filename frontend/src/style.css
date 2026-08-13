@@ -1580,18 +1580,26 @@ kbd {
 .lore-empty .helpr { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
 
 .lore-source-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+/* Row wrapper: selecting and removing are sibling buttons, never nested. */
 .lore-source {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 9px 10px; text-align: left; cursor: pointer;
-  background: transparent; border: 1px solid transparent; border-radius: 4px;
-  color: var(--ink); font-family: var(--f-sans);
+  display: flex; align-items: center; gap: 4px; width: 100%;
+  padding: 0 6px 0 0; border: 1px solid transparent; border-radius: 4px;
+  color: var(--ink);
 }
 .lore-source:hover { background: var(--bg); border-color: var(--hair); }
 .lore-source[data-on="1"] { background: var(--bg); border-color: var(--hair-strong); box-shadow: inset 3px 0 0 var(--acc); }
-.lore-source .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lore-source-pick {
+  appearance: none; background: transparent; border: 0; cursor: pointer;
+  flex: 1; min-width: 0; padding: 9px 4px 9px 10px; text-align: left;
+  color: inherit; font-family: var(--f-sans);
+}
+.lore-source .body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .lore-source .body b { font: 600 12.5px/1.3 var(--f-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lore-source .state { font: 500 10px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
-.lore-source-remove { display: grid; place-items: center; padding: 4px; border-radius: 3px; color: var(--ink-3); cursor: pointer; }
+.lore-source-remove {
+  appearance: none; background: transparent; border: 0; cursor: pointer;
+  display: grid; place-items: center; padding: 5px; border-radius: 3px; color: var(--ink-3);
+}
 .lore-source-remove:hover { color: var(--bad); background: var(--panel-2); }
 
 .lore-source-actions {

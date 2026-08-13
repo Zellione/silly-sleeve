@@ -107,8 +107,8 @@ export const SuggestionList: React.FC<{
       </div>
 
       <div className="lore-cands-foot">
-        <button className="btn ghost" onClick={onDismiss}>Dismiss all</button>
-        <button className="btn primary" disabled={selected === 0} onClick={onApply}>
+        <button type="button" className="btn ghost" onClick={onDismiss}>Dismiss all</button>
+        <button type="button" className="btn primary" disabled={selected === 0} onClick={onApply}>
           {selected === 0 ? 'Nothing selected' : `Apply ${selected}`}
         </button>
       </div>

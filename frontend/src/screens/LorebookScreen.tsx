@@ -482,17 +482,17 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
           <>
             <div className="lore-tabs" role="tablist" aria-label="Lorebook view">
               <button
-                className="lore-tab" role="tab" data-on={tab === 'entries' ? '1' : '0'}
+                type="button" className="lore-tab" role="tab" data-on={tab === 'entries' ? '1' : '0'}
                 aria-selected={tab === 'entries'}
                 onClick={() => setTab('entries')}
               >Entries</button>
               <button
-                className="lore-tab" role="tab" data-on={tab === 'extract' ? '1' : '0'}
+                type="button" className="lore-tab" role="tab" data-on={tab === 'extract' ? '1' : '0'}
                 aria-selected={tab === 'extract'}
                 onClick={() => setTab('extract')}
               >Extract</button>
             </div>
-            <button className="btn ghost" onClick={handleSuggest} disabled={connections.running || entries.length === 0}>
+            <button type="button" className="btn ghost" onClick={handleSuggest} disabled={connections.running || entries.length === 0}>
               <LinkIcon size={13}/> {connections.running ? 'Finding connections…' : 'Suggest connections'}
             </button>
             <button className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>

@@ -123,10 +123,7 @@ export const CandidateRow: React.FC<{
           </div>
 
           <label className="lore-field">
-            <span>
-              Content
-              <small>~{estimateTokens(entry.content)} tokens</small>
-            </span>
+            <span>Content<small>~{estimateTokens(entry.content)} tokens</small></span>
             <textarea
               className="field"
               rows={5}

@@ -14,6 +14,18 @@ const MODE_HINTS: Record<string, string> = {
   summary: 'One compressed entry for the whole page.',
 };
 
+/** What a staged page is currently doing, in the order that matters most. */
+function sourceState(source: loreextract.StagedSource, pending: number, extracting: string | null): string {
+  if (extracting === source.url) return 'Extracting…';
+  if (pending > 0) return `${pending} awaiting review`;
+  return source.extracted ? 'Extracted' : 'Not yet extracted';
+}
+
+function extractLabel(source: loreextract.StagedSource, extracting: string | null): string {
+  if (extracting === source.url) return 'Extracting…';
+  return source.extracted ? 'Extract again' : 'Extract facts';
+}
+
 /**
  * The staged-sources column: crawled pages queued for extraction, the mode
  * each will be extracted with, and the Extract action.
@@ -64,44 +76,36 @@ export const StagedSourcePanel: React.FC<{
 
       <div className="lore-source-list">
         {sources.map(s => {
-          const pending = pendingFor(s.url);
+          const name = s.title || s.url;
           return (
-            <button
-              key={s.url}
-              type="button"
-              className="lore-source"
-              data-on={s.url === activeUrl ? '1' : '0'}
-              onClick={() => onSelect(s.url)}
-            >
-              <div className="body">
-                <b>{s.title || s.url}</b>
-                <span className="state">
-                  {extracting === s.url ? 'Extracting…'
-                    : pending > 0 ? `${pending} awaiting review`
-                    : s.extracted ? 'Extracted'
-                    : 'Not yet extracted'}
+            // Two sibling buttons in a wrapper, not a button inside a button:
+            // selecting and removing are separate actions, and nesting them
+            // would be invalid HTML however the inner one is marked up.
+            <div key={s.url} className="lore-source" data-on={s.url === activeUrl ? '1' : '0'}>
+              <button type="button" className="lore-source-pick" onClick={() => onSelect(s.url)}>
+                <span className="body">
+                  <b>{name}</b>
+                  <span className="state">{sourceState(s, pendingFor(s.url), extracting)}</span>
                 </span>
-              </div>
-              <span
+              </button>
+              <button
+                type="button"
                 className="lore-source-remove"
-                role="button"
-                tabIndex={0}
-                aria-label={`Remove ${s.title || s.url}`}
-                onClick={e => { e.stopPropagation(); onRemove(s.url); }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRemove(s.url); }
-                }}
+                aria-label={`Remove ${name}`}
+                onClick={() => onRemove(s.url)}
               >
                 <TrashIcon size={12} />
-              </span>
-            </button>
+              </button>
+            </div>
           );
         })}
       </div>
 
       {active && (
         <div className="lore-source-actions">
-          <label className="lore-mode-label" htmlFor="lore-mode">How should this page be split?</label>
+          {/* Dropdown is a composite, not a native control, so this is a span
+              with the accessible name carried by the Dropdown's own aria-label. */}
+          <span className="lore-mode-label">How should this page be split?</span>
           <Dropdown
             value={active.mode || 'split'}
             options={MODE_OPTIONS}
@@ -110,11 +114,12 @@ export const StagedSourcePanel: React.FC<{
           />
           <small className="helpr">{MODE_HINTS[active.mode || 'split']}</small>
           <button
+            type="button"
             className="btn primary"
             disabled={busy}
             onClick={() => onExtract(active.url)}
           >
-            {extracting === active.url ? 'Extracting…' : active.extracted ? 'Extract again' : 'Extract facts'}
+            {extractLabel(active, extracting)}
           </button>
         </div>
       )}

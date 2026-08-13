@@ -200,67 +200,91 @@ func validSuggestions(payloads []suggestionPayload, req ConnectRequest) []Sugges
 	return out
 }
 
+// buildSuggestion dispatches to the builder for the proposal's kind. Each
+// builder returns false when its proposal cannot be applied or would change
+// nothing, and the caller drops it.
 func buildSuggestion(p suggestionPayload, entries map[int]lorebook.Entry, chars map[int]compose.Character, roster []compose.Character) (Suggestion, bool) {
 	s := Suggestion{Kind: p.Kind, Rationale: strings.TrimSpace(p.Rationale), Selected: true}
 
 	switch p.Kind {
 	case KindEntryCharacter:
-		entry, ok := entries[p.EntryUID]
-		if !ok {
-			return s, false
-		}
-		ids, _ := resolveCharacterRefs(p.AddCharacters, roster)
-		ids = missingItems(ids, entry.Characters)
-		if len(ids) == 0 {
-			return s, false
-		}
-		s.EntryUID, s.AddCharacters = p.EntryUID, ids
-
+		return buildEntryCharacter(s, p, entries, roster)
 	case KindTriggerKeys:
-		entry, ok := entries[p.EntryUID]
-		if !ok {
-			return s, false
-		}
-		keys := missingItems(usableKeys(p.AddKeys), entry.Key)
-		if len(keys) == 0 {
-			return s, false
-		}
-		s.EntryUID, s.AddKeys = p.EntryUID, keys
-
+		return buildTriggerKeys(s, p, entries)
 	case KindEntryEntry:
-		entry, ok := entries[p.EntryUID]
-		if !ok {
-			return s, false
-		}
-		if _, ok := entries[p.TargetUID]; !ok || p.TargetUID == p.EntryUID {
-			return s, false
-		}
-		secondary := missingItems(usableKeys(p.AddSecondary), entry.KeySecondary)
-		if len(secondary) == 0 {
-			return s, false
-		}
-		s.EntryUID, s.TargetUID, s.AddSecondary = p.EntryUID, p.TargetUID, secondary
-
+		return buildEntryEntry(s, p, entries)
 	case KindCharacterCharacter:
-		source, ok := chars[p.CharID]
-		if !ok {
-			return s, false
-		}
-		if _, ok := chars[p.TargetCharID]; !ok || p.TargetCharID == p.CharID {
-			return s, false
-		}
-		proposed := strings.TrimSpace(p.ProposedRelationships)
-		if proposed == "" || proposed == strings.TrimSpace(source.Relationships) {
-			return s, false
-		}
-		s.CharID, s.TargetChar = p.CharID, p.TargetCharID
-		s.CurrentRelationships = source.Relationships
-		s.ProposedRelationships = proposed
-
+		return buildCharacterCharacter(s, p, chars)
 	default:
 		return s, false
 	}
+}
 
+// buildEntryCharacter scopes an entry to characters it is not already scoped to.
+func buildEntryCharacter(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry, roster []compose.Character) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok {
+		return s, false
+	}
+	ids, _ := resolveCharacterRefs(p.AddCharacters, roster)
+	ids = missingItems(ids, entry.Characters)
+	if len(ids) == 0 {
+		return s, false
+	}
+	s.EntryUID, s.AddCharacters = p.EntryUID, ids
+	return s, true
+}
+
+// buildTriggerKeys adds keywords an entry cannot currently be reached by.
+func buildTriggerKeys(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok {
+		return s, false
+	}
+	keys := missingItems(usableKeys(p.AddKeys), entry.Key)
+	if len(keys) == 0 {
+		return s, false
+	}
+	s.EntryUID, s.AddKeys = p.EntryUID, keys
+	return s, true
+}
+
+// buildEntryEntry gives one entry another's key as a secondary key, so
+// SillyTavern's recursion chains them.
+func buildEntryEntry(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok {
+		return s, false
+	}
+	if _, ok := entries[p.TargetUID]; !ok || p.TargetUID == p.EntryUID {
+		return s, false
+	}
+	secondary := missingItems(usableKeys(p.AddSecondary), entry.KeySecondary)
+	if len(secondary) == 0 {
+		return s, false
+	}
+	s.EntryUID, s.TargetUID, s.AddSecondary = p.EntryUID, p.TargetUID, secondary
+	return s, true
+}
+
+// buildCharacterCharacter records a relationship in a character's prose. The
+// current text travels with the proposal because applying it replaces rather
+// than merges.
+func buildCharacterCharacter(s Suggestion, p suggestionPayload, chars map[int]compose.Character) (Suggestion, bool) {
+	source, ok := chars[p.CharID]
+	if !ok {
+		return s, false
+	}
+	if _, ok := chars[p.TargetCharID]; !ok || p.TargetCharID == p.CharID {
+		return s, false
+	}
+	proposed := strings.TrimSpace(p.ProposedRelationships)
+	if proposed == "" || proposed == strings.TrimSpace(source.Relationships) {
+		return s, false
+	}
+	s.CharID, s.TargetChar = p.CharID, p.TargetCharID
+	s.CurrentRelationships = source.Relationships
+	s.ProposedRelationships = proposed
 	return s, true
 }
 

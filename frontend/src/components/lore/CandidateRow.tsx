@@ -94,7 +94,10 @@ export const CandidateRow: React.FC<{
             />
           </label>
 
-          <label className="lore-field">
+          {/* Dropdown and TagsInput are composites, not native controls, so a
+              <label> could never be associated with one. Each carries its own
+              aria-label instead. */}
+          <div className="lore-field">
             <span>Category<small>Sets where the entry is inserted and whether it cascades.</small></span>
             <Dropdown
               value={entry.category || 'concept'}
@@ -102,9 +105,9 @@ export const CandidateRow: React.FC<{
               onChange={v => setEntry('category', v)}
               aria-label={`Category for candidate ${index + 1}`}
             />
-          </label>
+          </div>
 
-          <label className="lore-field">
+          <div className="lore-field">
             <span>Trigger keys<small>What a chat has to mention for this entry to fire.</small></span>
             <TagsInput
               value={keys}
@@ -117,7 +120,7 @@ export const CandidateRow: React.FC<{
               accentClassName="primary"
               accentCount={1}
             />
-          </label>
+          </div>
 
           <label className="lore-field">
             <span>

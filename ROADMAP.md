@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-07-10 — Phase 5 · complete (7.5 side panels + quality gate).
+> Last updated: 2026-08-13 — Phase 8 · started (8.1 entry categories).
 
 ## Overview
 
@@ -136,11 +136,52 @@ active character, including the opening greeting.
 - [x] **7.5** Preview screen — token-budget panel, linked-lorebook panel, ready-check
   panel; tests + quality gate
 
+## Phase 8 — Lorebook Extraction & Connections
+
+Goal: Stop the crawl-to-lorebook path from dumping whole wiki pages into one keyless
+entry. Sending a crawl now stages a source; the LLM extracts minimal atomic facts from
+it, proposes the connections between them, and the user reviews and approves candidates
+before anything enters the lorebook. A separate whole-project pass suggests the links
+that were missed. Extraction semantics follow the universal-lorebook-creator v2 spec:
+connections are materialised in the SillyTavern fields that already exist — keyword
+linkage, `Characters[]` scoping, `preventRecursion` per category, bracketed metadata —
+not in a new graph model.
+
+- [~] **8.1** Entry categories: `Category` on `lorebook.Entry`, `category.go` mapping
+  each category to its position / recursion / constant settings, order tier constants
+- [ ] **8.2** Normaliser: pure `Normalize` coercing LLM output to the spec — forced
+  position and recursion per category, order tier clamping and redistribution, generic
+  keyword rejection, `selective` ⇒ `keysecondary`, constant cap, adjustment reporting
+- [ ] **8.3** Lore prompt templates: `LorePrompts` group on `TemplateSet` with
+  split-extraction, summary-extraction and connection prompts, defaults backfill, new
+  substitution variables
+- [ ] **8.4** Extraction service: `internal/loreextract` with an injectable-completer
+  `Extractor`, split/summary modes, JSON parsing, character name → ID mapping
+- [ ] **8.5** Connection service: `Connector` with token-budget batching, a global entry
+  index in every request so links can cross batches, suggestion dedup
+- [ ] **8.6** Crawl send rework: lorebook sends stage a source instead of creating an
+  entry; remove `appendLorebookFromCrawl` and `crawlPlainText`
+- [ ] **8.7** Bindings + persistence: `app_lore.go` staging/extract/approve/suggest
+  bindings, `loreExtract`/`loreConnect` endpoint slots, `extraction.json` bundle entry
+- [ ] **8.8** Review UI: staged-sources and candidate panels, Entries/Extract tab split
+  in the Lorebook screen, shared character-scope chip component
+- [ ] **8.9** Connection review UI: suggestion list grouped by kind, "Suggest
+  connections" action, current-vs-proposed relationship editing
+
 ---
 
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-08-13
+
+- Started Phase 8 — Lorebook Extraction & Connections
+  (`milestone/8-lorebook-extraction`).
+- Planning complete: crawl sends stage a source rather than creating an entry; LLM
+  extracts atomic candidate entries which the user reviews before approval; connections
+  are materialised in existing SillyTavern entry fields per the universal-lorebook-creator
+  v2 spec; a whole-project pass proposes missed links.
 
 ### 2026-07-10
 

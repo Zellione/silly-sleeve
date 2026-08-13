@@ -3,6 +3,7 @@ package prompts
 // Lore prompt IDs. These are kept out of FieldIDs because that list drives the
 // character editor's per-field generate buttons.
 const (
+	LoreSystem         = "system"
 	LoreExtractSplit   = "extract.split"
 	LoreExtractSummary = "extract.summary"
 	LoreConnect        = "connect"
@@ -10,7 +11,7 @@ const (
 
 // LorePromptIDs returns the lorebook prompt IDs in display order.
 func LorePromptIDs() []string {
-	return []string{LoreExtractSplit, LoreExtractSummary, LoreConnect}
+	return []string{LoreSystem, LoreExtractSplit, LoreExtractSummary, LoreConnect}
 }
 
 // LorePromptLabel returns the display label for a lore prompt ID.
@@ -22,6 +23,7 @@ func LorePromptLabel(id string) string {
 }
 
 var lorePromptLabels = map[string]string{
+	LoreSystem:         "Lorebook — system prompt",
 	LoreExtractSplit:   "Lorebook — split into facts",
 	LoreExtractSummary: "Lorebook — single summary",
 	LoreConnect:        "Lorebook — suggest connections",
@@ -52,6 +54,8 @@ func defaultLorePrompts() map[string]string {
 
 func defaultLorePrompt(id string) string {
 	switch id {
+	case LoreSystem:
+		return loreSystemPrompt
 	case LoreExtractSplit:
 		return loreExtractSplitPrompt
 	case LoreExtractSummary:
@@ -62,6 +66,19 @@ func defaultLorePrompt(id string) string {
 		return ""
 	}
 }
+
+// loreSystemPrompt frames lorebook work. It is deliberately separate from the
+// character-card system prompt: telling a model it is "an expert SillyTavern
+// character card creator" pulls lorebook extraction towards writing character
+// cards, which is the opposite of splitting a page into atomic world facts.
+const loreSystemPrompt = `You are an expert at building SillyTavern world info (lorebooks).
+
+Follow these rules:
+1. Work only from the material you are given. Never invent facts to fill a gap — omit instead.
+2. Write in third-person present tense. Do not use "{{char}}" or "{{user}}" placeholders.
+3. Write compressed, concrete prose. Every word should carry information.
+4. Use straight quotes in all string values — never curly quotes.
+5. Output only the requested JSON object: no preamble, no markdown fences, no explanation.`
 
 // loreRules is the shared body of both extraction prompts: what an entry is,
 // how its category fixes its mechanics, and how entries link to one another.

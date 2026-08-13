@@ -48,12 +48,30 @@ func TestLoreVariableNames_CoverEveryPlaceholderUsed(t *testing.T) {
 		declared[v] = true
 	}
 
+	// The system prompt is excluded: its "{{char}}"/"{{user}}" are quoted
+	// SillyTavern placeholders the model is told not to emit, not substitutions
+	// we perform. Substitute leaves unknown placeholders alone, so they survive
+	// into the prompt intact, which is what we want.
 	for _, id := range LorePromptIDs() {
+		if id == LoreSystem {
+			continue
+		}
 		for _, name := range placeholdersIn(defaultLorePrompt(id)) {
 			assert.True(t, declared[name],
 				"lore prompt %q uses {{%s}}, which LoreVariableNames does not declare", id, name)
 		}
 	}
+}
+
+func TestLoreSystemPrompt_KeepsSillyTavernPlaceholdersLiteral(t *testing.T) {
+	// Substitute must not have a variable named char or user, or the instruction
+	// telling the model to avoid those placeholders would itself be substituted.
+	p := defaultLorePrompt(LoreSystem)
+	assert.Contains(t, p, "{{char}}")
+
+	out := Substitute(p, BuildVars("t", "u", "c"))
+	assert.Contains(t, out, "{{char}}")
+	assert.Contains(t, out, "{{user}}")
 }
 
 // placeholdersIn returns the {{name}} placeholders appearing in a template.

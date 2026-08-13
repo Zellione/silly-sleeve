@@ -195,7 +195,7 @@ func GenerateFieldWith(ctx context.Context, completer llm.Completer, ep llm.LLME
 		return req.Existing, fmt.Errorf("no template for field %s", req.FieldID)
 	}
 
-	vars := prompts.BuildVars(req.Result.Title, req.Result.URL, buildCrawlContent(req.Result))
+	vars := prompts.BuildVars(req.Result.Title, req.Result.URL, CrawlContext(req.Result))
 	userPrompt := prompts.Substitute(fieldTemplate, vars)
 
 	if req.CustomPrompt != "" {
@@ -282,8 +282,11 @@ func stripJSONQuotes(s string) string {
 	return str
 }
 
-// buildCrawlContent renders the crawl result as a flat string for template substitution.
-func buildCrawlContent(result crawler.CrawlResult) string {
+// CrawlContext renders a crawl result as the flat page text used in prompts:
+// title, infobox rows, then each section under its heading. Exported because
+// lorebook extraction builds its prompts from the same rendering, and a second
+// copy would drift.
+func CrawlContext(result crawler.CrawlResult) string {
 	var sb strings.Builder
 	sb.WriteString("Wiki page title: ")
 	sb.WriteString(result.Title)

@@ -13,6 +13,17 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      # react and react-dom must resolve to the exact same version or react-dom
+      # throws "Incompatible React versions" and every test file fails to load.
+      # Ungrouped, Dependabot bumps them in separate PRs and the lockfile desyncs
+      # between merges — keep them in one PR so they always move together.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
 
   # GitHub Actions — surfaces new action versions / SHA updates.
   - package-ecosystem: github-actions

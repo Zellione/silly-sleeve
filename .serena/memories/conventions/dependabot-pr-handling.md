@@ -35,6 +35,44 @@ See https://github.com/typescript-eslint/typescript-eslint/issues/10940 for trac
 ```
 That's typescript-eslint's own tracking issue for TS ≥7.1 support — check that issue's status before re-testing #57 again; no need to re-test on every `typescript-eslint` patch bump, only when that issue closes or a changelog explicitly mentions TS 7.x support.
 
+## Ungrouped `react` / `react-dom` bumps produce a self-breaking PR (2026-08-14, PR #74)
+
+Dependabot bumped `react` 19.2.7 → 19.2.8 (grouped with `@types/react`) but left `react-dom`
+at 19.2.7, because they were **separate update jobs**. react-dom hard-throws on a mismatch:
+
+```
+Error: Incompatible React versions: The "react" and "react-dom" packages must have
+the exact same version. Instead got: react 19.2.8 / react-dom 19.2.7
+```
+
+All 36 test files fail to load (10 pass — the ones that never mount a component), `build`
+is skipped. It looks catastrophic but is a one-line resolution problem, not a React defect.
+
+- Diagnose by reading the actual error, not the failure count: 36 red files with only
+  75 tests *passing* and none *failing* means a module-load error, not broken assertions.
+- `package.json` already had `react-dom: "^19.2.7"`, which **permits** 19.2.8 — only the
+  lockfile pinned it. A bare `npm install` will NOT fix it: the locked 19.2.7 still satisfies
+  `^19.2.7`, so npm leaves it alone. Use `npm install react-dom@^19.2.8` to move both the
+  range and the lock (this is the AGENTS.md-sanctioned route — never hand-edit package.json).
+- **Fixed structurally**: `.github/dependabot.yml` now has a `react` group covering
+  `react` / `react-dom` / `@types/react` / `@types/react-dom` so they always ship in one PR.
+  If a future React bump still desyncs, check that group is intact before debugging anything else.
+
+## Merge-train ordering that actually worked (2026-08-14)
+
+With five dependabot PRs open and a toolchain fix needed first, this order avoided all conflicts:
+
+1. Land the `ci.yml` fix on `main` first — otherwise every PR re-runs against the broken workflow.
+2. `@dependabot rebase` the **Go** PR and **one** frontend PR together — different ecosystems
+   (`go.sum` vs `package-lock.json`) don't collide, so these two can go in parallel.
+3. Then frontend PRs strictly **one at a time**: rebase → wait for green → merge → rebase next.
+   Each merge rewrites `package-lock.json`, so rebasing them all up front just wastes CI.
+4. Fix the *broken* frontend PR **last** — every preceding merge would have invalidated its
+   lockfile anyway, so one `npm install` at the end resolves against final state.
+
+Dependabot took ~1–5 min per rebase here; #71's push lagged ~5 min behind #70's despite being
+requested at the same moment. Wait on `headRefOid` changing, never on the clock.
+
 ## `vuln-go` can break `main` with zero code changes too — Go *stdlib* advisories (2026-08-14)
 
 Same shape as the npm-audit cascade below, but on the Go side and with a different fix.

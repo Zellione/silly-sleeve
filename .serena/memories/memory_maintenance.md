@@ -31,3 +31,9 @@ Do not add: quick-read facts; generic language/framework knowledge; one-off task
 
 - Renaming memories: References are updated automatically if handled via Serena's memory rename tool.
 - Checking for stale memories (e.g. after deletion): Call `serena memories check` for a report.
+- Before committing a newly-written, untracked memory file: check whether an existing
+  tracked memory (often in a topic folder, e.g. `conventions/`) already covers the same
+  topic. If so, merge the new/non-duplicate content into the tracked file and delete the
+  stray one instead of committing a second file on the same topic at a different path
+  (happened with `dependabot-handling.md` vs. `conventions/dependabot-pr-handling.md`,
+  see PR #66).

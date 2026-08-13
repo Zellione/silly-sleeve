@@ -44,15 +44,42 @@ though some predated it):
   `renderPreviewHead()` / `renderPreviewBody()` using if/early-return.
 
 ## How to inspect (MCP); projectKey: Zellione_silly-sleeve
-- `get_project_quality_gate_status(projectKey, pullRequest:"28")`
+- `get_project_quality_gate_status(projectKey, pullRequest:"28")` — omit
+  `pullRequest` (branch param isn't accepted) to read the **main branch** gate.
 - `search_sonar_issues_in_projects(projects, pullRequestId, issueStatuses:["OPEN","CONFIRMED"], ps:200)`
 - `search_duplicated_files(projectKey, pullRequest)`
 - Confirm a fix landed for the NEW head SHA (gh pr checks can show the PREVIOUS
   commit's stale result during re-analysis):
   `gh api repos/Zellione/silly-sleeve/commits/<SHA>/check-runs --jq '.check_runs[]|select(.name|test("Sonar";"i"))|"\(.status)|\(.conclusion)"'`
 
-## Final state
+## Final state (PR #28)
 PR #28 fully green on commit b184ec0: SonarCloud gate OK (all A, duplication 0.0%,
 hotspots 100%, **0 open issues**), build/lint-go/lint-frontend/test-go/
 test-frontend/vuln-go all pass. Local gate also clean (549 Go tests, 630 FE tests,
 wails build links).
+
+## Recurrence: main-branch gate ERROR from `.github/workflows/ci.yml` itself (2026-08)
+The `githubactions` SonarQube language analyzer scans `ci.yml` too — its own
+rules can fail `new_security_rating` even when app code is clean. Found via
+`get_project_quality_gate_status(projectKey)` (no PR) → `new_security_rating`
+ERROR (actual 3/C) → `search_sonar_issues_in_projects(projects, impactSoftwareQualities:["SECURITY"])`
+surfaced 10 `VULNERABILITY`-type issues, all in `ci.yml`:
+- `githubactions:S8545` — `go install pkg@latest` (Go dep not locked to a
+  verified version). Fix: pin to a full commit SHA, e.g.
+  `go install github.com/wailsapp/wails/v2/cmd/wails@<sha>` — resolve the SHA
+  with `git ls-remote --tags <repo> 'refs/tags/<vX.Y.Z>*'` (use the `^{}`
+  peeled commit if the tag is annotated). `go install module@<sha>` works
+  directly, no pseudo-version math needed. This matches the file's existing
+  convention of pinning `golangci-lint-action` to a commit SHA with a
+  "Pinned to a full commit SHA... for supply-chain integrity" comment.
+- `githubactions:S6505` — `npm install` without `--ignore-scripts` (lets
+  postinstall lifecycle scripts run). Fix: add `--ignore-scripts`.
+- `githubactions:S8543` — `npm install` doesn't lock to `package-lock.json`.
+  Fix: `npm ci` instead of `npm install`.
+- Combined fix for all `npm install` steps: `npm ci --ignore-scripts`. Verified
+  safe here — `node -e "... hasInstallScript"` over `package-lock.json` shows
+  only `fsevents` (macOS-only optional dep, irrelevant on Linux CI runners) has
+  an install script, so skipping scripts doesn't break `vite build`/tests.
+- `mcp__sonarqube__analyze_code_snippet`'s `language` enum has no
+  `githubactions`/`yaml` option — can't dry-run these rules through that tool;
+  verify by actually pinning + running the commands locally instead.

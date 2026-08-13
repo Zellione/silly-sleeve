@@ -20,6 +20,15 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   PickExportFolder: () => mockPickExportFolder(),
   GetCharacters: () => mockGetCharacters(),
   ImportLorebook: () => mockImportLorebook(),
+  // The Extract tab's bindings. It only mounts when that tab is selected, but
+  // the module mock replaces the whole module, so they have to exist here.
+  GetStagedSources: () => Promise.resolve([]),
+  GetLorebookCandidates: () => Promise.resolve([]),
+  SetStagedSourceMode: () => Promise.resolve([]),
+  RemoveStagedSource: () => Promise.resolve([]),
+  ExtractLorebookCandidates: () => Promise.resolve([]),
+  DiscardLorebookCandidates: () => Promise.resolve([]),
+  ApproveLorebookCandidates: () => Promise.resolve([]),
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
@@ -391,5 +400,34 @@ describe('LorebookScreen', () => {
     await user.click(screen.getByRole('button', { name: /Import \.json/i }));
     await waitFor(() => expect(screen.getByText('Import failed')).toBeInTheDocument());
     expect(mockSaveLorebook).not.toHaveBeenCalled();
+  });
+});
+
+describe('LorebookScreen tabs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetLorebook.mockResolvedValue([]);
+    mockGetCharacters.mockResolvedValue([]);
+    mockSaveLorebook.mockResolvedValue(undefined);
+  });
+
+  it('shows the entry editor by default', async () => {
+    renderWithToast(<LorebookScreen />);
+    expect(await screen.findByRole('tab', { name: 'Entries' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByPlaceholderText(/Search by name or trigger key/i)).toBeInTheDocument();
+  });
+
+  it('switches to the extraction review without disturbing the editor', async () => {
+    const user = userEvent.setup();
+    renderWithToast(<LorebookScreen />);
+    await screen.findByRole('tab', { name: 'Extract' });
+
+    await user.click(screen.getByRole('tab', { name: 'Extract' }));
+
+    expect(await screen.findByText('No pages staged.')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Search by name or trigger key/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Entries' }));
+    expect(await screen.findByPlaceholderText(/Search by name or trigger key/i)).toBeInTheDocument();
   });
 });

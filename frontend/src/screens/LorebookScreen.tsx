@@ -7,8 +7,12 @@ import {
 } from '../icons';
 import { GetLorebook, SaveLorebook, SaveProjectBundle, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/app/App';
 import { TagsInput } from '../components/TagsInput';
+import { CharacterScopeChips } from '../components/lore/CharacterScopeChips';
+import { ExtractPanel } from '../components/lore/ExtractPanel';
 import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';
+
+type LorebookTab = 'entries' | 'extract';
 
 const POSITIONS = [
   { i: 0, name: 'Before Char Defs', hint: 'Top of context — system frame' },
@@ -172,23 +176,12 @@ const LbDetail: React.FC<{
           <div className="lb-sect-h"><h4>Character scope</h4><hr/></div>
           <div className="lb-row">
             <span>Applies to<small>No selection = global (all characters).</small></span>
-            <div className="lb-scope">
-              {characters.length === 0 && <span className="lb-scope-empty">No characters in project.</span>}
-              {characters.map(c => {
-                const id = String(c.id);
-                const on = (entry.characters || []).includes(id);
-                return (
-                  <button key={c.id} type="button" className="lb-scope-chip" data-on={on ? '1' : '0'}
-                          onClick={() => set('characters',
-                            on ? (entry.characters || []).filter(x => x !== id)
-                               : [...(entry.characters || []), id])}>
-                    {c.name || `#${c.id}`}
-                  </button>
-                );
-              })}
-            </div>
-            {(entry.characters || []).length === 0 && characters.length > 0 &&
-              <small className="lb-scope-note">Global · all characters</small>}
+            <CharacterScopeChips
+              characters={characters}
+              value={entry.characters || []}
+              onChange={v => set('characters', v)}
+              idPrefix="entry"
+            />
           </div>
         </div>
 
@@ -279,6 +272,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   const [overUid, setOverUid] = useState<number | null>(null);
   const overUidRef = useRef<number | null>(null);
   const [pendingImport, setPendingImport] = useState<lorebook.Entry[] | null>(null);
+  const [tab, setTab] = useState<LorebookTab>('entries');
   const { toast } = useToast();
   const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -472,10 +466,25 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
         actions={
           <>
+            <div className="lore-tabs" role="tablist" aria-label="Lorebook view">
+              <button
+                className="lore-tab" role="tab" data-on={tab === 'entries' ? '1' : '0'}
+                aria-selected={tab === 'entries'}
+                onClick={() => setTab('entries')}
+              >Entries</button>
+              <button
+                className="lore-tab" role="tab" data-on={tab === 'extract' ? '1' : '0'}
+                aria-selected={tab === 'extract'}
+                onClick={() => setTab('extract')}
+              >Extract</button>
+            </div>
             <button className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
             <button className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
           </>
         } />
+      {tab === 'extract' ? (
+        <ExtractPanel characters={characters} onEntriesChanged={setEntries} />
+      ) : (
       <div className="ss-page-body scroll">
         <div className="lb-grid">
           {/* LEFT — list */}
@@ -548,6 +557,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
           <LbDetail entry={selected} characters={characters} onChange={updateSelected}/>
         </div>
       </div>
+      )}
       <dialog
         ref={importDialogRef}
         className="lb-import-dialog"

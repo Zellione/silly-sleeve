@@ -35,6 +35,46 @@ See https://github.com/typescript-eslint/typescript-eslint/issues/10940 for trac
 ```
 That's typescript-eslint's own tracking issue for TS ≥7.1 support — check that issue's status before re-testing #57 again; no need to re-test on every `typescript-eslint` patch bump, only when that issue closes or a changelog explicitly mentions TS 7.x support.
 
+## `vuln-go` can break `main` with zero code changes too — Go *stdlib* advisories (2026-08-14)
+
+Same shape as the npm-audit cascade below, but on the Go side and with a different fix.
+`main` went red on `vuln-go` with three Go **standard library** advisories — GO-2026-6218
+(quadratic `resolvePath` in `net/url`), GO-2026-6090 (post-handshake message flooding in
+`crypto/tls`), GO-2026-5972 (recursion depth in `encoding/asn1`) — all fixed in **go1.25.13**.
+No dependency and no repo code was at fault: CI had installed go1.25.12.
+
+- **Stdlib advisories are not fixable with `go get`.** There is no module to bump — the only
+  fix is installing a newer Go toolchain, i.e. a `.github/workflows/ci.yml` change. Don't
+  waste a round on `go get`/`go mod tidy`; go straight to the `setup-go` pin.
+- `ci.yml` uses `go-version: '1.25'` + `check-latest: true` across **six** `setup-go` steps
+  (lint-go, vuln-go, build×2, test-go, and the Sonar job). All six must move together.
+- **`check-latest: true` is already set**, which matters: it makes setup-go skip the runner's
+  local tool cache and query the manifest. So the range form *does* self-heal on its own once
+  the manifest catches up — the tool-cache staleness trap does **not** apply to this repo.
+  Don't cite it as a reason to pin.
+- **`actions/go-versions` lags go.dev by days.** Check both before deciding:
+  ```bash
+  curl -s "https://go.dev/dl/?mode=json&include=all" | jq -r '.[].version' | grep '^go1\.25\.' | sort -V | tail -3
+  curl -s "https://raw.githubusercontent.com/actions/go-versions/main/versions-manifest.json" | jq -r '.[].version' | grep '^1\.25\.' | sort -V | tail -3
+  ```
+  On 2026-08-14 go.dev had 1.25.13 but the manifest topped out at 1.25.12, so *no* re-run
+  could have gone green — waiting was the only alternative to pinning.
+- **An exact pin works even when the manifest lacks the version**: setup-go resolves
+  local cache → go-versions manifest → **direct download from go.dev**. Verified in the
+  setup-go README, not assumed.
+- Pin is therefore **temporary by design** — an exact patch pin silently stops picking up
+  *future* stdlib CVEs, the opposite of the range's behaviour. Each of the six sites carries a
+  comment saying to revert to `'1.25'` once the manifest ships 1.25.13. Revert it; don't
+  leave the repo pinned.
+- Get the fix-version set straight from the advisory rather than guessing per release branch:
+  ```bash
+  curl -s https://vuln.go.dev/ID/GO-2026-6218.json | jq -r '.affected[0].ranges[0].events[] | select(.fixed) | .fixed'
+  ```
+- **Ordering consequence for the merge train:** dependabot PRs carry the *old* `ci.yml` on
+  their branches, so their `vuln-go` fails until rebased. Land the toolchain fix on `main`
+  first, then `@dependabot rebase` each PR so it re-runs against the fixed workflow. Merging
+  them on stale-green checks would "work" but produces unverified merges.
+
 ## npm audit vulnerabilities can break `main` with zero code changes (2026-08-13)
 
 A GHSA advisory can be published *after* a dependency version is already pinned on `main`, and `npm audit --audit-level=high` (a non-`continue-on-error` step in `lint-frontend`, `.github/workflows/ci.yml`) will then fail on the next push/PR run even though nothing changed — this happened on `main` itself (PR #66 merge) and cascaded to block dependabot PRs #65/#64, whose own bumps were not at fault.

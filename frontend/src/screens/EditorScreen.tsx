@@ -15,6 +15,8 @@ import {
   GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint, ImportCard,
 } from '../../wailsjs/go/app/App';
 import { SectionContent } from '../components/SectionContent';
+import { Infobox } from '../components/Infobox';
+import { useRowIds } from '../components/useRowIds';
 import { TagsInput } from '../components/TagsInput';
 import { FieldEndpointChip } from '../components/FieldEndpointChip';
 import { CharacterStrip } from '../components/CharacterStrip';
@@ -28,23 +30,31 @@ import { compose, crawler, settings } from '../../wailsjs/go/models';
 const StatsField: React.FC<{
   value: compose.StatKV[]; onChange: (v: compose.StatKV[]) => void; locked: boolean;
 }> = ({ value, onChange, locked }) => {
-  // Rows are plain key/value pairs with no natural id, so the index is the key.
-  // SonarCloud flags this (typescript:S6479) and it does mean a deleted row
-  // re-keys the rows after it; giving rows real ids would require carrying them
-  // in the character model, which is not worth it for a focus nicety.
-  const removeRow = (i: number) => onChange(value.filter((_, j) => j !== i));
+  // Stat pairs carry no id of their own, so row identity is tracked alongside
+  // the data — see useRowIds.
+  const { rows, removeRow, addRow } = useRowIds(value);
+
+  const handleRemove = (i: number) => {
+    removeRow(i);
+    onChange(value.filter((_, j) => j !== i));
+  };
+
+  const handleAdd = () => {
+    addRow();
+    onChange([...value, compose.StatKV.createFrom({ key: '', value: '' })]);
+  };
 
   return (
   <div className="stat-grid">
-    {value.map((row, i) => (
-      <div key={i} className="stat-row">
+    {rows.map(({ item: row, key, index: i }) => (
+      <div key={key} className="stat-row">
         <input className="key" placeholder="stat" value={row.key} disabled={locked}
           onChange={e => onChange(value.map((r, j) => j === i ? compose.StatKV.createFrom({ key: e.target.value, value: r.value }) : r))} />
         <span style={{ color: 'var(--ink-3)' }}>·</span>
         <input className="val" placeholder="—" value={row.value} disabled={locked}
           onChange={e => onChange(value.map((r, j) => j === i ? compose.StatKV.createFrom({ key: r.key, value: e.target.value }) : r))} />
         {!locked && (
-          <button type="button" className="x" aria-label="Remove stat" onClick={() => removeRow(i)}>
+          <button type="button" className="x" aria-label="Remove stat" onClick={() => handleRemove(i)}>
             <XIcon size={12} />
           </button>
         )}
@@ -52,7 +62,7 @@ const StatsField: React.FC<{
     ))}
     {!locked && (
       <button type="button" className="btn ghost sm" style={{ gridColumn: '1 / -1', justifySelf: 'flex-start' }}
-        onClick={() => onChange([...value, compose.StatKV.createFrom({ key: '', value: '' })])}>
+        onClick={handleAdd}>
         <PlusIcon size={11} /> Add stat
       </button>
     )}
@@ -79,13 +89,19 @@ const QuoteRows: React.FC<Readonly<{
   isGreeting: boolean;
   onChange: (v: string[]) => void;
 }>> = ({ value, locked, isGreeting, onChange }) => {
-  // Index keys: see the note in StatsField (typescript:S6479).
-  const removeRow = (i: number) => onChange(value.filter((_, j) => j !== i));
+  // Quotes are bare strings with no id of their own; row identity is tracked
+  // alongside the data so removing one does not re-key the rows below it.
+  const { rows, removeRow } = useRowIds(value);
+
+  const handleRemove = (i: number) => {
+    removeRow(i);
+    onChange(value.filter((_, j) => j !== i));
+  };
 
   return (
     <>
-      {value.map((q, i) => (
-        <div key={i} className="quote-row">
+      {rows.map(({ item: q, key, index: i }) => (
+        <div key={key} className="quote-row">
           <textarea
             rows={Math.max(2, Math.ceil(q.length / 60))}
             value={q}
@@ -95,7 +111,7 @@ const QuoteRows: React.FC<Readonly<{
           {!locked && (
             <button type="button" className="x"
               aria-label={isGreeting ? 'Remove greeting' : 'Remove quote'}
-              onClick={() => removeRow(i)}>
+              onClick={() => handleRemove(i)}>
               <XIcon size={12} />
             </button>
           )}
@@ -589,17 +605,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
                 <>
                   {crawl.sections && <SectionContent sections={crawl.sections} />}
                   {crawl.infobox && crawl.infobox.length > 0 && (
-                    <dl className="infobox" style={{ marginTop: 16 }}>
-                      {crawl.infobox.map((entry, i) => (
-                        <React.Fragment key={i}>
-                          {entry.section && (i === 0 || crawl.infobox[i - 1].section !== entry.section) && (
-                            <div className="infobox-section">{entry.section}</div>
-                          )}
-                          <dt>{entry.key}</dt>
-                          <dd>{entry.value}</dd>
-                        </React.Fragment>
-                      ))}
-                    </dl>
+                    <Infobox entries={crawl.infobox} style={{ marginTop: 16 }} />
                   )}
                 </>
               ) : (

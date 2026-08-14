@@ -43,14 +43,13 @@ return b }` and a `SaveProjectImage` that ignored its first param; app.go GREW
 `app_files.go` (which exists for image I/O). app.go 916→**888**, no ceremony.
 **Don't accept an extraction that adds indirection without encapsulating logic.**
 
-### S6479 index keys — ATTEMPTED AND REVERTED (do not retry the same way)
+### S6479 index keys — REVERTED HERE, then FIXED in the follow-up
 Built a `useStableIds` ref-based hook so deleting a stats/quotes row wouldn't
 re-key later rows. **ESLint rejected it: "Cannot access refs during render"
-(10 errors)** — the rule is right. A correct fix needs row ids carried in the
-character data model itself. Reverted; index keys kept with an explanatory
-comment at both sites (`StatsField`, `QuoteRows` in EditorScreen).
-**Recommendation: mark `typescript:S6479` accepted in SonarCloud** for the
-read-only infobox lists too (static render, no reorder — index keys are correct).
+(10 errors)** — the rule is right. Reverted; index keys kept with a comment.
+**Superseded**: `mem:sonarqube/2026-08-14-findings-followup` fixes this properly
+with `useRowIds`, which holds ids in STATE (no refs). Row ids in the Go data
+model turned out not to be necessary.
 
 ## Other notable changes
 

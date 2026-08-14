@@ -1,10 +1,12 @@
 package crawler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,7 +34,7 @@ func TestCrawler_NoFollowSingleResult(t *testing.T) {
 	})
 	defer srv.Close()
 	c := Crawler{UserAgent: "UA/1", RateLimitMs: 0, MaxPages: 10}
-	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 0})
+	set, err := c.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 0})
 	assert.NoError(t, err)
 	assert.Len(t, set.Results, 1)
 	assert.Equal(t, 0, set.Results[0].Depth)
@@ -49,7 +51,7 @@ func TestCrawler_OneHopRespectsCap(t *testing.T) {
 	})
 	defer srv.Close()
 	c := Crawler{UserAgent: "UA/1", RateLimitMs: 0, MaxPages: 2}
-	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	set, err := c.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
 	assert.NoError(t, err)
 	assert.Len(t, set.Results, 2) // root + 1 hop, capped at MaxPages
 	assert.Equal(t, 1, set.Results[1].Depth)
@@ -65,7 +67,7 @@ func TestCrawler_DedupesAndSkipsFailures(t *testing.T) {
 	})
 	defer srv.Close()
 	c := Crawler{UserAgent: "UA/1", RateLimitMs: 0, MaxPages: 10}
-	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	set, err := c.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
 	assert.NoError(t, err)
 	urls := []string{}
 	for _, r := range set.Results {
@@ -87,10 +89,10 @@ func TestExtractContent_SelectorPrecedence(t *testing.T) {
 
 func TestCrawler_WaitDelays(t *testing.T) {
 	c := Crawler{RateLimitMs: 40}
-	c.wait() // First call should not delay
+	c.wait(context.Background()) // First call should not delay
 
 	start := time.Now()
-	c.wait() // Second call should delay ~40ms
+	c.wait(context.Background()) // Second call should delay ~40ms
 	elapsed := time.Since(start)
 
 	// Allow some margin for timing variance, but should be at least 30ms
@@ -115,7 +117,7 @@ func TestCrawler_DedupesSamePageReachedViaAlias(t *testing.T) {
 	defer srv.Close()
 
 	c := Crawler{UserAgent: "UA/1", MaxPages: 10}
-	set, err := c.Crawl(srv.URL+"/wiki/Mine", CrawlOptions{FollowLinks: 1})
+	set, err := c.Crawl(context.Background(), srv.URL+"/wiki/Mine", CrawlOptions{FollowLinks: 1})
 	assert.NoError(t, err)
 
 	mine := 0
@@ -150,14 +152,14 @@ func TestCrawler_TwoHopReachesDepth2(t *testing.T) {
 
 	// 1 hop: B (depth 2) must NOT be collected.
 	c := Crawler{UserAgent: "UA/1", MaxPages: 50}
-	oneHop, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	oneHop, err := c.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
 	assert.NoError(t, err)
 	_, hasB1 := depthOf(oneHop, "B")
 	assert.False(t, hasB1, "B is 2 hops away; must be absent with FollowLinks=1")
 
 	// 2 hops: B must be collected at depth 2.
 	c2 := Crawler{UserAgent: "UA/1", MaxPages: 50}
-	twoHop, err := c2.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 2})
+	twoHop, err := c2.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 2})
 	assert.NoError(t, err)
 	dB, hasB2 := depthOf(twoHop, "B")
 	assert.True(t, hasB2, "B must be reached with FollowLinks=2")
@@ -185,7 +187,7 @@ func TestCrawler_TwoHopFanoutReachesDepth2OnDenseRoot(t *testing.T) {
 	defer srv.Close()
 
 	c := Crawler{UserAgent: "UA/1", MaxPages: 6}
-	set, err := c.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 2})
+	set, err := c.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 2})
 	assert.NoError(t, err)
 
 	byDepth := map[int]int{}
@@ -197,10 +199,81 @@ func TestCrawler_TwoHopFanoutReachesDepth2OnDenseRoot(t *testing.T) {
 
 	// 1-hop keeps full breadth (no fan-out cap): all reachable hop-1 within cap.
 	c1 := Crawler{UserAgent: "UA/1", MaxPages: 6}
-	oneHop, err := c1.Crawl(srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+	oneHop, err := c1.Crawl(context.Background(), srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
 	assert.NoError(t, err)
 	for _, r := range oneHop.Results {
 		assert.LessOrEqual(t, r.Depth, 1)
 	}
 	assert.Len(t, oneHop.Results, 6, "1-hop fills the cap with root + hop-1 breadth")
+}
+
+func TestCrawler_CancelledContextStopsBeforeAnyFetch(t *testing.T) {
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		fmt.Fprint(w, `{"parse":{"title":"Root","text":{"*":"<p>body</p>"}}}`)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	c := Crawler{UserAgent: "UA/1", MaxPages: 10}
+	set, err := c.Crawl(ctx, srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Empty(t, set.Results)
+	assert.Zero(t, atomic.LoadInt32(&hits), "no request should be issued once ctx is cancelled")
+}
+
+func TestCrawler_CancelMidCrawlStopsFollowingLinks(t *testing.T) {
+	var hits int32
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// The root is served normally. Cancellation is triggered by the FIRST CHILD
+	// request, so the root result is already collected and the queue still holds
+	// the remaining children when the context dies. Cancelling from the root
+	// handler instead would abort the root's own in-flight request.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&hits, 1)
+		title := r.URL.Query().Get("page")
+		body := `<div class="mw-parser-output"><p>body ` +
+			`<a href="/wiki/A">A</a><a href="/wiki/B">B</a><a href="/wiki/C">C</a></p></div>`
+		fmt.Fprintf(w, `{"parse":{"title":%q,"text":{"*":%q}}}`, title, body)
+		if n >= 2 {
+			cancel()
+		}
+	}))
+	defer srv.Close()
+
+	c := Crawler{UserAgent: "UA/1", MaxPages: 10}
+	set, err := c.Crawl(ctx, srv.URL+"/wiki/Root", CrawlOptions{FollowLinks: 1})
+
+	assert.ErrorIs(t, err, context.Canceled)
+	// Root plus at most the one child that triggered cancellation — the
+	// remaining queued children are abandoned rather than fetched.
+	assert.LessOrEqual(t, len(set.Results), 2)
+	assert.NotEmpty(t, set.Results)
+	assert.LessOrEqual(t, atomic.LoadInt32(&hits), int32(2))
+}
+
+func TestCrawler_WaitReturnsFalseWhenContextCancelledDuringRateLimit(t *testing.T) {
+	c := Crawler{RateLimitMs: 60_000}
+	c.lastReq = time.Now()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := time.Now()
+	ok := c.wait(ctx)
+
+	assert.False(t, ok)
+	assert.Less(t, time.Since(start), 5*time.Second,
+		"cancellation must interrupt the rate-limit delay rather than sleeping it out")
+}
+
+func TestCrawler_WaitSucceedsWithLiveContext(t *testing.T) {
+	c := Crawler{RateLimitMs: 0}
+	assert.True(t, c.wait(context.Background()))
 }

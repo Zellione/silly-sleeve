@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -203,7 +204,7 @@ func TestFetchPage_SendsUserAgent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := FetchPageWith(srv.URL+"/wiki/T", FetchOptions{UserAgent: "UA-test/9"})
+	res := FetchPageWith(context.Background(), srv.URL+"/wiki/T", FetchOptions{UserAgent: "UA-test/9"})
 	assert.NoError(t, res.Error)
 	assert.Equal(t, "UA-test/9", gotUA)
 }

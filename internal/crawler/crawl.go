@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"context"
 	"net/url"
 	"strings"
 	"sync"
@@ -22,7 +23,7 @@ type Crawler struct {
 // Crawl fetches the root page and (when opts.FollowLinks > 0) its same-domain
 // links breadth-first. Failed page fetches are skipped. The returned CrawlSet
 // contains the root first when it succeeds.
-func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
+func (c *Crawler) Crawl(ctx context.Context, rootURL string, opts CrawlOptions) (CrawlSet, error) {
 	maxPages := c.MaxPages
 	if maxPages <= 0 {
 		maxPages = 1
@@ -41,10 +42,16 @@ func (c *Crawler) Crawl(rootURL string, opts CrawlOptions) (CrawlSet, error) {
 	set := CrawlSet{RootURL: rootURL}
 
 	for len(queue) > 0 && len(set.Results) < maxPages {
+		// Stop as soon as the caller cancels (app shutdown, user abort) rather
+		// than working through the remaining queue.
+		if err := ctx.Err(); err != nil {
+			return set, err
+		}
+
 		item := queue[0]
 		queue = queue[1:]
 
-		res, raw, ok := c.fetchOne(item.url, opts)
+		res, raw, ok := c.fetchOne(ctx, item.url, opts)
 		if !ok || !claimPage(seenPages, res) {
 			continue
 		}
@@ -126,11 +133,13 @@ func normalizeURL(raw string) string {
 // fetchOne fetches a single page (rate-limited), runs the extraction-precedence
 // pipeline, and returns the CrawlResult plus the raw HTML used for link
 // discovery. ok is false when the page should be skipped.
-func (c *Crawler) fetchOne(pageURL string, opts CrawlOptions) (CrawlResult, string, bool) {
-	c.wait()
-	fr := FetchPageWith(pageURL, FetchOptions{UserAgent: c.UserAgent})
+func (c *Crawler) fetchOne(ctx context.Context, pageURL string, opts CrawlOptions) (CrawlResult, string, bool) {
+	if !c.wait(ctx) {
+		return CrawlResult{}, "", false
+	}
+	fr := FetchPageWith(ctx, pageURL, FetchOptions{UserAgent: c.UserAgent})
 	if fr.Error != nil || fr.RawHTML == "" {
-		fr = FetchReadable(pageURL, FetchOptions{UserAgent: c.UserAgent})
+		fr = FetchReadable(ctx, pageURL, FetchOptions{UserAgent: c.UserAgent})
 		if fr.Error != nil || fr.RawHTML == "" {
 			return CrawlResult{}, "", false
 		}
@@ -159,18 +168,28 @@ func extractContent(fr FetchResult, opts CrawlOptions) ([]Section, []InfoboxEntr
 	return SectionsFromRawHTML(fr.RawHTML, opts.Include)
 }
 
-// wait enforces the inter-request delay.
-func (c *Crawler) wait() {
+// wait enforces the inter-request delay, reporting false if ctx was cancelled
+// while waiting. The delay is interruptible: a plain time.Sleep would keep the
+// caller blocked for up to RateLimitMs after cancellation, which on app
+// shutdown means the crawl goroutine outlives the window.
+func (c *Crawler) wait(ctx context.Context) bool {
 	if c.RateLimitMs <= 0 {
-		return
+		return ctx.Err() == nil
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.lastReq.IsZero() {
 		elapsed := time.Since(c.lastReq)
 		if d := time.Duration(c.RateLimitMs)*time.Millisecond - elapsed; d > 0 {
-			time.Sleep(d)
+			timer := time.NewTimer(d)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				return false
+			}
 		}
 	}
 	c.lastReq = time.Now()
+	return true
 }

@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,13 +82,20 @@ type FetchResult struct {
 	Error       error
 }
 
+// mediaWikiParseText holds the rendered HTML of a page. MediaWiki nests it
+// under the JSON key "*".
+type mediaWikiParseText struct {
+	Content string `json:"*"`
+}
+
+// mediaWikiParse is the `parse` object of an action=parse response.
+type mediaWikiParse struct {
+	Title string             `json:"title"`
+	Text  mediaWikiParseText `json:"text"`
+}
+
 type mediaWikiParseResponse struct {
-	Parse struct {
-		Title string `json:"title"`
-		Text  struct {
-			Content string `json:"*"`
-		} `json:"text"`
-	} `json:"parse"`
+	Parse mediaWikiParse `json:"parse"`
 }
 
 // FetchOptions tunes a single page fetch.
@@ -96,12 +104,15 @@ type FetchOptions struct {
 }
 
 // FetchPage fetches a wiki page with default options (kept for back-compat).
+// It is not cancellable; prefer FetchPageWith with a real context.
 func FetchPage(pageURL string) FetchResult {
-	return FetchPageWith(pageURL, FetchOptions{})
+	return FetchPageWith(context.Background(), pageURL, FetchOptions{})
 }
 
-// FetchPageWith fetches a wiki page via the MediaWiki action=parse API with configurable options.
-func FetchPageWith(pageURL string, opts FetchOptions) FetchResult {
+// FetchPageWith fetches a wiki page via the MediaWiki action=parse API with
+// configurable options. The request is bound to ctx, so cancelling ctx aborts
+// an in-flight fetch instead of blocking until the client timeout expires.
+func FetchPageWith(ctx context.Context, pageURL string, opts FetchOptions) FetchResult {
 	start := time.Now()
 
 	u, err := url.Parse(pageURL)
@@ -127,7 +138,7 @@ func FetchPageWith(pageURL string, opts FetchOptions) FetchResult {
 	}
 
 	client := newSafeClient()
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return FetchResult{Domain: domain, LatencyMs: time.Since(start).Milliseconds(), Error: err}
 	}

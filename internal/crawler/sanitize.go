@@ -272,45 +272,72 @@ func joinTextParts(parts []string) string {
 
 func getListContent(node *html.Node) string {
 	var lines []string
-	var walk func(*html.Node, int)
-	walk = func(n *html.Node, depth int) {
-		for li := n.FirstChild; li != nil; li = li.NextSibling {
-			if li.Type != html.ElementNode || li.Data != "li" {
-				continue
-			}
-			indent := strings.Repeat("  ", depth)
-			var textParts []string
-			for c := li.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.TextNode {
-					if t := strings.TrimSpace(c.Data); t != "" {
-						textParts = append(textParts, t)
-					}
-				} else if c.Type == html.ElementNode {
-					if c.Data == "ul" || c.Data == "ol" {
-						if len(textParts) > 0 {
-							text := joinTextParts(textParts)
-							lines = append(lines, indent+"- "+text)
-							textParts = nil
-						}
-						walk(c, depth+1)
-					} else if c.Data == "br" {
-						textParts = append(textParts, "\n")
-					} else if !shouldSkip(c) {
-						inner := strings.TrimSpace(getTextContent(c))
-						if inner != "" {
-							textParts = append(textParts, inner)
-						}
-					}
-				}
-			}
-			if len(textParts) > 0 {
-				text := joinTextParts(textParts)
-				lines = append(lines, indent+"- "+text)
-			}
+	walkListNodes(node, 0, &lines)
+	return strings.Join(lines, "\n\n")
+}
+
+// walkListNodes recursively walks list nodes (ul, ol) and extracts list item text.
+func walkListNodes(n *html.Node, depth int, lines *[]string) {
+	for li := n.FirstChild; li != nil; li = li.NextSibling {
+		if li.Type != html.ElementNode || li.Data != "li" {
+			continue
+		}
+		processListItem(li, depth, lines)
+	}
+}
+
+// processListItem extracts text from a list item and handles nested lists.
+func processListItem(li *html.Node, depth int, lines *[]string) {
+	indent := strings.Repeat("  ", depth)
+	var textParts []string
+
+	for c := li.FirstChild; c != nil; c = c.NextSibling {
+		processListItemChild(c, depth, &textParts, lines, indent)
+	}
+
+	if len(textParts) > 0 {
+		text := joinTextParts(textParts)
+		*lines = append(*lines, indent+"- "+text)
+	}
+}
+
+// processListItemChild processes a single child node of a list item.
+func processListItemChild(c *html.Node, depth int, textParts *[]string, lines *[]string, indent string) {
+	if c.Type == html.TextNode {
+		if t := strings.TrimSpace(c.Data); t != "" {
+			*textParts = append(*textParts, t)
+		}
+		return
+	}
+
+	if c.Type != html.ElementNode {
+		return
+	}
+
+	// Handle nested lists.
+	if c.Data == "ul" || c.Data == "ol" {
+		if len(*textParts) > 0 {
+			text := joinTextParts(*textParts)
+			*lines = append(*lines, indent+"- "+text)
+			*textParts = nil
+		}
+		walkListNodes(c, depth+1, lines)
+		return
+	}
+
+	// Handle line breaks.
+	if c.Data == "br" {
+		*textParts = append(*textParts, "\n")
+		return
+	}
+
+	// Handle other elements (links, spans, etc.).
+	if !shouldSkip(c) {
+		inner := strings.TrimSpace(getTextContent(c))
+		if inner != "" {
+			*textParts = append(*textParts, inner)
 		}
 	}
-	walk(node, 0)
-	return strings.Join(lines, "\n\n")
 }
 
 // ExtractInfobox parses infobox key/value pairs from raw HTML.
@@ -339,32 +366,50 @@ func ExtractInfobox(rawHTML string) []InfoboxEntry {
 
 func extractTableInfobox(table *html.Node) []InfoboxEntry {
 	var entries []InfoboxEntry
-	for tr := table.FirstChild; tr != nil; tr = tr.NextSibling {
-		if tr.Type != html.ElementNode || tr.Data != "tbody" {
+	walkTableBodies(table, &entries)
+	return entries
+}
+
+// walkTableBodies walks through tbody elements in a table and extracts rows.
+func walkTableBodies(table *html.Node, entries *[]InfoboxEntry) {
+	for tbody := table.FirstChild; tbody != nil; tbody = tbody.NextSibling {
+		if tbody.Type != html.ElementNode || tbody.Data != "tbody" {
 			continue
 		}
-		for row := tr.FirstChild; row != nil; row = row.NextSibling {
-			if row.Type != html.ElementNode || row.Data != "tr" {
-				continue
-			}
-			var key, value string
-			for cell := row.FirstChild; cell != nil; cell = cell.NextSibling {
-				if cell.Type != html.ElementNode {
-					continue
-				}
-				if cell.Data == "th" {
-					key = cleanInfoboxText(getTextContent(cell))
-				}
-				if cell.Data == "td" {
-					value = cleanInfoboxText(getTextContent(cell))
-				}
-			}
-			if key != "" && value != "" {
-				entries = append(entries, InfoboxEntry{Key: key, Value: value})
-			}
+		walkTableRows(tbody, entries)
+	}
+}
+
+// walkTableRows walks through rows in a tbody and extracts infobox entries.
+func walkTableRows(tbody *html.Node, entries *[]InfoboxEntry) {
+	for row := tbody.FirstChild; row != nil; row = row.NextSibling {
+		if row.Type != html.ElementNode || row.Data != "tr" {
+			continue
+		}
+		extractRowEntry(row, entries)
+	}
+}
+
+// extractRowEntry extracts key-value pair from a table row.
+func extractRowEntry(row *html.Node, entries *[]InfoboxEntry) {
+	var key, value string
+
+	for cell := row.FirstChild; cell != nil; cell = cell.NextSibling {
+		if cell.Type != html.ElementNode {
+			continue
+		}
+
+		if cell.Data == "th" {
+			key = cleanInfoboxText(getTextContent(cell))
+		}
+		if cell.Data == "td" {
+			value = cleanInfoboxText(getTextContent(cell))
 		}
 	}
-	return entries
+
+	if key != "" && value != "" {
+		*entries = append(*entries, InfoboxEntry{Key: key, Value: value})
+	}
 }
 
 func extractPortableInfobox(aside *html.Node) []InfoboxEntry {
@@ -443,59 +488,27 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 		if shouldSkipSections(n, include) {
 			return false
 		}
-		if n.Type == html.ElementNode && (n.Data == "h2" || n.Data == "h3" || n.Data == "h4") {
-			heading := cleanHeading(cleanText(getTextContent(n)))
-			if heading == "" {
-				return true
-			}
-			if current != nil {
-				sections = append(sections, *current)
-			}
-			level := 2
-			switch n.Data {
-			case "h2":
-				level = 2
-			case "h3":
-				level = 3
-			case "h4":
-				level = 4
-			}
-			current = &Section{Heading: heading, Level: level}
-			collecting = true
+
+		// Check if this is a heading node.
+		if isHeadingNode(n) {
+			return processHeadingNode(n, &sections, &current, &collecting)
+		}
+
+		// Check if this is a gallery element.
+		if isGalleryNode(n) {
+			appendGalleryContent(n, current)
 			return false
 		}
-		if n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery") {
-			if current != nil {
-				text := cleanParagraph(getTextContent(n))
-				if text != "" {
-					if current.Body != "" {
-						current.Body += "\n\n"
-					}
-					current.Body += text
-				}
-			}
-			return false
-		}
-		if n.Type == html.ElementNode && (n.Data == "p" || n.Data == "ul" || n.Data == "ol") {
+
+		// Check if this is content (paragraph or list).
+		if isContentNode(n) {
 			if !collecting {
 				current = &Section{Heading: "", Level: 1}
 				collecting = true
 			}
-			if current != nil {
-				var text string
-				if n.Data == "ul" || n.Data == "ol" {
-					text = getListContent(n)
-				} else {
-					text = cleanParagraph(getParagraphText(n))
-				}
-				if text != "" {
-					if current.Body != "" {
-						current.Body += "\n\n"
-					}
-					current.Body += text
-				}
-			}
+			appendContentToSection(n, current)
 		}
+
 		return true
 	})
 
@@ -503,6 +516,97 @@ func ExtractSections(rawHTML string, include map[string]bool) []Section {
 		sections = append(sections, *current)
 	}
 
+	return filterSections(sections, include)
+}
+
+// isHeadingNode returns true if the node is a heading element (h2, h3, h4).
+func isHeadingNode(n *html.Node) bool {
+	return n.Type == html.ElementNode && (n.Data == "h2" || n.Data == "h3" || n.Data == "h4")
+}
+
+// getHeadingLevel extracts the numeric level from a heading element.
+func getHeadingLevel(tag string) int {
+	switch tag {
+	case "h2":
+		return 2
+	case "h3":
+		return 3
+	case "h4":
+		return 4
+	}
+	return 2
+}
+
+// processHeadingNode processes a heading element and updates the current section.
+// It returns false to skip the heading's children (which are usually formatting/edit links).
+func processHeadingNode(n *html.Node, sections *[]Section, current **Section, collecting *bool) bool {
+	heading := cleanHeading(cleanText(getTextContent(n)))
+	if heading == "" {
+		return true
+	}
+
+	if *current != nil {
+		*sections = append(*sections, **current)
+	}
+
+	level := getHeadingLevel(n.Data)
+	*current = &Section{Heading: heading, Level: level}
+	*collecting = true
+	return false
+}
+
+// isGalleryNode returns true if the node is a gallery list.
+func isGalleryNode(n *html.Node) bool {
+	return n.Type == html.ElementNode && n.Data == "ul" && hasClass(n, "gallery")
+}
+
+// appendGalleryContent appends gallery text to the current section.
+func appendGalleryContent(n *html.Node, current *Section) {
+	if current == nil {
+		return
+	}
+
+	text := cleanParagraph(getTextContent(n))
+	if text == "" {
+		return
+	}
+
+	if current.Body != "" {
+		current.Body += "\n\n"
+	}
+	current.Body += text
+}
+
+// isContentNode returns true if the node is a content element (p, ul, or ol).
+func isContentNode(n *html.Node) bool {
+	return n.Type == html.ElementNode && (n.Data == "p" || n.Data == "ul" || n.Data == "ol")
+}
+
+// appendContentToSection appends content from a paragraph or list to the current section.
+func appendContentToSection(n *html.Node, current *Section) {
+	if current == nil {
+		return
+	}
+
+	var text string
+	if n.Data == "ul" || n.Data == "ol" {
+		text = getListContent(n)
+	} else {
+		text = cleanParagraph(getParagraphText(n))
+	}
+
+	if text == "" {
+		return
+	}
+
+	if current.Body != "" {
+		current.Body += "\n\n"
+	}
+	current.Body += text
+}
+
+// filterSections removes unwanted sections (Navigation, Trivia, Quotes) based on user preferences.
+func filterSections(sections []Section, include map[string]bool) []Section {
 	skipTrivia := include != nil && !include["trivia"]
 	skipQuotes := include != nil && !include["quotes"]
 

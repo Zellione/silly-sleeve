@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 // FetchReadable fetches an arbitrary HTML page and extracts its readable
 // article content using go-readability. Used as a fallback for non-MediaWiki
 // sites.
-func FetchReadable(pageURL string, opts FetchOptions) FetchResult {
+func FetchReadable(ctx context.Context, pageURL string, opts FetchOptions) FetchResult {
 	start := time.Now()
 	u, err := url.Parse(pageURL)
 	if err != nil {
@@ -25,7 +26,7 @@ func FetchReadable(pageURL string, opts FetchOptions) FetchResult {
 	}
 
 	client := newSafeClient()
-	req, err := http.NewRequest(http.MethodGet, pageURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
 	if err != nil {
 		return FetchResult{Domain: u.Hostname(), LatencyMs: time.Since(start).Milliseconds(), Error: err}
 	}

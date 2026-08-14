@@ -4,6 +4,7 @@ import { useToast } from '../ToastProvider';
 import { useConfirmDialog } from '../ConfirmDialog';
 import { GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '../../../wailsjs/go/app/App';
 import { prompts } from '../../../wailsjs/go/models';
+import { errorMessage } from '../../utils/errorMessage';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const FIELD_IDS = ['name', 'epithet', 'tags', 'appearance', 'personality', 'backstory', 'abilities', 'relationships', 'quotes', 'stats'];
@@ -77,7 +78,7 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
       setDirty(false);
       toast({ kind: 'ok', title: 'Templates saved', body: activeField === 'bulk' ? 'Bulk system prompt updated.' : `${FIELD_LABELS[activeField] || activeField} template updated.` });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not save prompt templates.' });
+      toast({ kind: 'bad', title: 'Save failed', body: errorMessage(e, 'Could not save prompt templates.') });
     }
   };
 
@@ -102,7 +103,7 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
       setDirty(false);
       toast({ kind: 'ok', title: 'Reset to default', body: activeField === 'bulk' ? 'Bulk system prompt reset to default and saved.' : `${FIELD_LABELS[activeField] || activeField} template reset to default and saved.` });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Reset failed', body: e?.message || 'Could not reset to defaults.' });
+      toast({ kind: 'bad', title: 'Reset failed', body: errorMessage(e, 'Could not reset to defaults.') });
     }
   };
 

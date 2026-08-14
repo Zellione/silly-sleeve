@@ -21,7 +21,10 @@ type LLMEndpoint struct {
 	ContextSize  int     `json:"contextSize"`
 	Temperature  float64 `json:"temperature"`
 	SystemPrompt string  `json:"systemPrompt"`
-	Ok           bool    `json:"ok"`
+	// TimeoutSeconds bounds one completion request against this endpoint.
+	// Zero means "use the built-in default".
+	TimeoutSeconds int  `json:"timeoutSeconds,omitempty"`
+	Ok             bool `json:"ok"`
 }
 
 // ComfyConfig holds ComfyUI backend connection settings.

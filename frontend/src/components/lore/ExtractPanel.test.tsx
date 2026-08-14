@@ -102,6 +102,19 @@ describe('ExtractPanel', () => {
     expect(screen.getByText('connection refused')).toBeInTheDocument();
   });
 
+  it('surfaces the Go error text when the backend rejects with a plain string', async () => {
+    // Wails rejects promises with the Go error as a bare string, not an Error.
+    mockExtractLorebookCandidates.mockRejectedValue('llm complete: http request: context deadline exceeded');
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('button', { name: /Extract facts/i }));
+
+    expect(await screen.findByText('Extraction failed')).toBeInTheDocument();
+    expect(screen.getByText('llm complete: http request: context deadline exceeded')).toBeInTheDocument();
+  });
+
   it('shows the adjustments the normaliser made', async () => {
     mockGetLorebookCandidates.mockResolvedValue([
       candidate({ adjustments: ['Dropped generic keywords: sword.'] }),

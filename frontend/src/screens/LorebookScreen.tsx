@@ -13,6 +13,7 @@ import { ExtractPanel } from '../components/lore/ExtractPanel';
 import { useLoreConnections } from '../components/lore/useLoreConnections';
 import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
 import { lorebook, compose } from '../../wailsjs/go/models';
+import { errorMessage } from '../utils/errorMessage';
 
 type LorebookTab = 'entries' | 'extract';
 
@@ -440,7 +441,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
       }
       setPendingImport(imported);
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Import failed', body: e?.message || 'Could not read that file.' });
+      toast({ kind: 'bad', title: 'Import failed', body: errorMessage(e, 'Could not read that file.') });
     }
   }, [toast]);
 

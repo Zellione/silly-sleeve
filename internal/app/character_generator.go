@@ -38,14 +38,15 @@ func (g *CharacterGenerator) completerOrDefault() llm.Completer {
 // toLLMEndpoint maps a stored settings endpoint to the llm package's endpoint.
 func toLLMEndpoint(def settings.LLMEndpoint) llm.LLMEndpoint {
 	return llm.LLMEndpoint{
-		ID:           def.ID,
-		Name:         def.Name,
-		URL:          def.URL,
-		Model:        def.Model,
-		Key:          def.Key,
-		ContextSize:  def.ContextSize,
-		Temperature:  def.Temperature,
-		SystemPrompt: def.SystemPrompt,
+		ID:             def.ID,
+		Name:           def.Name,
+		URL:            def.URL,
+		Model:          def.Model,
+		Key:            def.Key,
+		ContextSize:    def.ContextSize,
+		Temperature:    def.Temperature,
+		SystemPrompt:   def.SystemPrompt,
+		TimeoutSeconds: def.TimeoutSeconds,
 	}
 }
 

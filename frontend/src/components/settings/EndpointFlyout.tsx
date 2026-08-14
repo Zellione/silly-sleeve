@@ -6,6 +6,7 @@ import { useToast } from '../ToastProvider';
 import { AuthTokenBlock } from '../AuthTokenBlock';
 import { TestLLMEndpoint } from '../../../wailsjs/go/app/App';
 import { settings } from '../../../wailsjs/go/models';
+import { errorMessage } from '../../utils/errorMessage';
 
 export type EndpointFlyoutProps = Readonly<{
   endpoint: settings.LLMEndpoint;
@@ -52,7 +53,7 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
       }
     } catch (e: any) {
       setTesting('fail');
-      toast({ kind: 'bad', title: `Couldn't reach ${draft.name}`, body: e?.message || 'Unknown error' });
+      toast({ kind: 'bad', title: `Couldn't reach ${draft.name}`, body: errorMessage(e, 'Unknown error') });
     }
   };
 
@@ -217,6 +218,28 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
                 value={draft.temperature}
                 onChange={e => set('temperature', +e.target.value)}
               />
+            </div>
+          </div>
+
+          {/* Request timeout */}
+          <div className="ep-row">
+            <label htmlFor="ep-timeout-input">
+              <span>Request timeout</span>
+              <small>How long one completion may take before giving up. Local thinking models can need minutes — leave empty for the 300&nbsp;s default.</small>
+            </label>
+            <div className="ep-slider-row">
+              <input
+                id="ep-timeout-input"
+                className="ep-num"
+                type="number"
+                min={0}
+                max={3600}
+                step={10}
+                value={draft.timeoutSeconds || ''}
+                onChange={e => set('timeoutSeconds', Math.max(0, Math.floor(+e.target.value)) || 0)}
+                placeholder="300"
+              />
+              <span className="ep-unit">sec</span>
             </div>
           </div>
 

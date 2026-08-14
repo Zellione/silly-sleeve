@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -36,6 +37,23 @@ func TestComplete_Success(t *testing.T) {
 	content, err := Complete(context.Background(), ep, "You are helpful.", "Hello")
 	assert.NoError(t, err)
 	assert.Equal(t, "generated content", content)
+}
+
+func TestComplete_TimeoutAccommodatesSlowLocalModels(t *testing.T) {
+	// Completions are not streamed: the client waits for the entire response.
+	// A local model — especially a thinking model — can spend minutes
+	// generating before the body arrives, so a short client timeout aborts
+	// requests the server is still happily serving.
+	assert.GreaterOrEqual(t, int64(llmRequestTimeout), int64(5*time.Minute))
+}
+
+func TestRequestTimeout_DefaultsWhenUnset(t *testing.T) {
+	assert.Equal(t, llmRequestTimeout, requestTimeout(LLMEndpoint{}))
+	assert.Equal(t, llmRequestTimeout, requestTimeout(LLMEndpoint{TimeoutSeconds: -3}))
+}
+
+func TestRequestTimeout_HonorsEndpointOverride(t *testing.T) {
+	assert.Equal(t, 90*time.Second, requestTimeout(LLMEndpoint{TimeoutSeconds: 90}))
 }
 
 func TestComplete_HTTPError(t *testing.T) {

@@ -209,6 +209,7 @@ const SettingsScreen: React.FC = () => {
         </div>
         <div className="ss-actions">
           <button
+            type="button"
             className="btn ghost"
             onClick={() =>
               persist(settingsState).then(() =>
@@ -225,7 +226,7 @@ const SettingsScreen: React.FC = () => {
         <div className={`settings-grid${sect === 'prompts' ? ' fill' : ''}`}>
           <nav className="settings-nav">
             {SECTIONS.map(s => (
-              <button key={s.id} data-on={sect === s.id ? '1' : '0'} onClick={() => setSect(s.id)}>
+              <button type="button" key={s.id} data-on={sect === s.id ? '1' : '0'} onClick={() => setSect(s.id)}>
                 <span>{s.label}</span>
                 {s.id === 'llm' && settingsState.endpoints.some(e => e.ok) && <span className="dot ok" />}
                 {s.id === 'llm' && !settingsState.endpoints.some(e => e.ok) && <span className="dot idle" />}
@@ -266,7 +267,7 @@ const SettingsScreen: React.FC = () => {
                       }}
                     />
                   ))}
-                  <button className="btn ghost" style={{ alignSelf: 'flex-start' }} onClick={addNew}>
+                  <button type="button" className="btn ghost" style={{ alignSelf: 'flex-start' }} onClick={addNew}>
                     <PlusIcon size={14} /> Add endpoint
                   </button>
                 </div>

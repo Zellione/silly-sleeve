@@ -91,7 +91,7 @@ export const CrawlerSettings: React.FC<CrawlerSettingsProps> = ({ settingsState,
         </div>
 
         <div className="row" style={{ marginTop: 8 }}>
-          <button className="btn primary sm" onClick={handleSave}>
+          <button type="button" className="btn primary sm" onClick={handleSave}>
             <CheckIcon size={13} /> Save
           </button>
         </div>

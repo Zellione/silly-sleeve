@@ -147,12 +147,12 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
               placeholder="http://127.0.0.1:8188"
               spellCheck={false}
             />
-            <button className="ep-test-btn" data-state={testing ? 'testing' : 'idle'} onClick={handleTestConnection} disabled={testing}>
+            <button type="button" className="ep-test-btn" data-state={testing ? 'testing' : 'idle'} onClick={handleTestConnection} disabled={testing}>
               {testing ? 'Testing…' : 'Test'}
             </button>
           </div>
           <div className="row" style={{ marginTop: 6 }}>
-            <button className="btn ghost sm" onClick={handleSaveURL}>Save URL</button>
+            <button type="button" className="btn ghost sm" onClick={handleSaveURL}>Save URL</button>
           </div>
         </div>
 
@@ -173,7 +173,7 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
             secretNoun="token"
           />
           <div className="row" style={{ marginTop: 6 }}>
-            <button className="btn ghost sm" onClick={handleSaveToken}>Save auth</button>
+            <button type="button" className="btn ghost sm" onClick={handleSaveToken}>Save auth</button>
           </div>
         </div>
 
@@ -192,10 +192,10 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
               placeholder="/path/to/comfyui/output"
               style={{ flex: 1, fontFamily: 'var(--f-mono)' }}
             />
-            <button className="btn ghost icon" title="Browse…"><FolderIcon size={14} /></button>
+            <button type="button" className="btn ghost icon" title="Browse…"><FolderIcon size={14} /></button>
           </div>
           <div className="row" style={{ marginTop: 6 }}>
-            <button className="btn ghost sm" onClick={handleSaveOutput}>Save folder</button>
+            <button type="button" className="btn ghost sm" onClick={handleSaveOutput}>Save folder</button>
           </div>
         </div>
 
@@ -232,11 +232,11 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
                       <span className="pill" style={{ color: 'var(--acc)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>default</span>
                     )}
                     <div className="row" style={{ gap: 4 }}>
-                      <button className="btn ghost sm" onClick={() => setEditingWorkflow(wf)}>Edit</button>
+                      <button type="button" className="btn ghost sm" onClick={() => setEditingWorkflow(wf)}>Edit</button>
                       {settingsState.comfy?.defaultWorkflow !== wf.id && (
-                        <button className="btn ghost sm" onClick={() => handleSetDefault(wf.id)}>Set default</button>
+                        <button type="button" className="btn ghost sm" onClick={() => handleSetDefault(wf.id)}>Set default</button>
                       )}
-                      <button className="btn ghost sm" style={{ color: 'var(--bad)' }} onClick={() => handleDeleteWorkflow(wf.id)}>
+                      <button type="button" className="btn ghost sm" style={{ color: 'var(--bad)' }} onClick={() => handleDeleteWorkflow(wf.id)}>
                         <TrashIcon size={11} />
                       </button>
                     </div>
@@ -248,7 +248,7 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
             <div className="helpr" style={{ padding: '12px 0' }}>No workflows imported yet. Click below to add one.</div>
           )}
           <div className="row" style={{ marginTop: 8 }}>
-            <button className="btn ghost" onClick={handleImportWorkflow}>
+            <button type="button" className="btn ghost" onClick={handleImportWorkflow}>
               <UploadIcon size={13} /> Import workflow .json
             </button>
           </div>

@@ -133,6 +133,7 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
       <div className="prompt-templates-editor">
         <nav className="prompt-field-nav">
           <button
+            type="button"
             data-on={activeField === 'bulk' ? '1' : '0'}
             onClick={() => handleFieldSelect('bulk')}
           >
@@ -140,6 +141,7 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
           </button>
           {FIELD_IDS.map(id => (
             <button
+              type="button"
               key={id}
               data-on={activeField === id ? '1' : '0'}
               onClick={() => handleFieldSelect(id)}
@@ -153,10 +155,10 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
           <div className="prompt-editor-header">
             <span className="uplabel">{activeLabel}</span>
             <div className="row" style={{ gap: 6 }}>
-              <button className="btn ghost sm" onClick={handleResetField}>
+              <button type="button" className="btn ghost sm" onClick={handleResetField}>
                 Reset to default
               </button>
-              <button className="btn primary sm" disabled={!dirty} onClick={handleSave}>
+              <button type="button" className="btn primary sm" disabled={!dirty} onClick={handleSave}>
                 {dirty ? <><CheckIcon size={12} /> Save</> : 'Saved'}
               </button>
             </div>
@@ -174,7 +176,7 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
             <span className="uplabel">Insert variable:</span>
             <div className="var-chips">
               {VARIABLES.map(v => (
-                <button key={v} className="var-chip" onClick={() => insertVariable(v)} title={VARIABLE_LABELS[v] || v}>
+                <button type="button" key={v} className="var-chip" onClick={() => insertVariable(v)} title={VARIABLE_LABELS[v] || v}>
                   {`{{${v}}}`}
                 </button>
               ))}

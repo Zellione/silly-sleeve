@@ -15,6 +15,14 @@ export type EndpointFlyoutProps = Readonly<{
   onDelete?: () => void;
 }>;
 
+// Context-size presets read better abbreviated: 4096 -> "4.1k", 128000 -> "128k".
+// Below 1000 there is nothing to abbreviate, so the raw count is shown.
+function formatContextPreset(n: number): string {
+  if (n < 1000) return String(n);
+  const decimals = n >= 10000 ? 0 : 1;
+  return `${(n / 1000).toFixed(decimals)}k`;
+}
+
 export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
   endpoint, isNew, onSave, onClose, onDelete,
 }) => {
@@ -67,7 +75,7 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
               placeholder="Endpoint name…"
             />
           </div>
-          <button className="btn icon ghost" onClick={onClose} title="Close">
+          <button type="button" className="btn icon ghost" onClick={onClose} title="Close">
             <XIcon size={14} />
           </button>
         </header>
@@ -89,6 +97,7 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
                 spellCheck={false}
               />
               <button
+                type="button"
                 className="ep-test-btn"
                 data-state={testing}
                 onClick={runTest}
@@ -105,7 +114,7 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
           {/* Auth */}
           <div className="ep-row">
             <span className="ep-label">
-              Authentication
+              <span>Authentication</span>
               <small>Toggle on for hosted endpoints that require an API key.</small>
             </span>
             <AuthTokenBlock
@@ -169,12 +178,13 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
             <div className="ep-presets">
               {[4096, 8192, 16384, 32768, 128000, 200000].map(n => (
                 <button
+                  type="button"
                   key={n}
                   className="ep-preset"
                   data-on={draft.contextSize === n ? '1' : '0'}
                   onClick={() => set('contextSize', n)}
                 >
-                  {n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : n}
+                  {formatContextPreset(n)}
                 </button>
               ))}
             </div>
@@ -227,7 +237,7 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
               <span className="helpr">
                 {draft.systemPrompt.length} chars · ~{Math.round(draft.systemPrompt.length / 4)} tokens
               </span>
-              <button className="btn ghost sm" onClick={() => set('systemPrompt', '')}>
+              <button type="button" className="btn ghost sm" onClick={() => set('systemPrompt', '')}>
                 Clear
               </button>
             </div>
@@ -236,15 +246,15 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
 
         <footer className="ep-fly-foot">
           {onDelete && (
-            <button className="btn ghost" onClick={onDelete} style={{ color: 'var(--bad)' }}>
+            <button type="button" className="btn ghost" onClick={onDelete} style={{ color: 'var(--bad)' }}>
               <TrashIcon size={13} /> Delete
             </button>
           )}
           <span style={{ flex: 1 }} />
-          <button className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn primary" onClick={() => onSave(draft)}>
+          <button type="button" className="btn primary" onClick={() => onSave(draft)}>
             <CheckIcon size={13} /> {isNew ? 'Create' : 'Save'}
           </button>
         </footer>

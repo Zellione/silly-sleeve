@@ -21,6 +21,15 @@ const maxLLMResponseBytes = 32 << 20 // 32 MiB
 // a network-level timeout.
 const llmRequestTimeout = 5 * time.Minute
 
+// requestTimeout resolves the timeout for one completion request: the
+// endpoint's configured value when positive, the built-in default otherwise.
+func requestTimeout(ep LLMEndpoint) time.Duration {
+	if ep.TimeoutSeconds > 0 {
+		return time.Duration(ep.TimeoutSeconds) * time.Second
+	}
+	return llmRequestTimeout
+}
+
 // validateEndpointURL ensures a user-supplied endpoint URL uses http(s) and
 // has a host, rejecting schemes like file:// or gopher://.
 func validateEndpointURL(raw string) error {
@@ -81,7 +90,7 @@ func Complete(ctx context.Context, ep LLMEndpoint, systemPrompt, userPrompt stri
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	client := &http.Client{Timeout: llmRequestTimeout}
+	client := &http.Client{Timeout: requestTimeout(ep)}
 	req, err := http.NewRequestWithContext(ctx, "POST", ep.URL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)

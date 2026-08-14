@@ -975,6 +975,7 @@ export namespace settings {
 	    contextSize: number;
 	    temperature: number;
 	    systemPrompt: string;
+	    timeoutSeconds?: number;
 	    ok: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -992,6 +993,7 @@ export namespace settings {
 	        this.contextSize = source["contextSize"];
 	        this.temperature = source["temperature"];
 	        this.systemPrompt = source["systemPrompt"];
+	        this.timeoutSeconds = source["timeoutSeconds"];
 	        this.ok = source["ok"];
 	    }
 	}

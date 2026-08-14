@@ -221,6 +221,28 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
             </div>
           </div>
 
+          {/* Request timeout */}
+          <div className="ep-row">
+            <label htmlFor="ep-timeout-input">
+              <span>Request timeout</span>
+              <small>How long one completion may take before giving up. Local thinking models can need minutes — leave empty for the 300&nbsp;s default.</small>
+            </label>
+            <div className="ep-slider-row">
+              <input
+                id="ep-timeout-input"
+                className="ep-num"
+                type="number"
+                min={0}
+                max={3600}
+                step={10}
+                value={draft.timeoutSeconds || ''}
+                onChange={e => set('timeoutSeconds', Math.max(0, Math.floor(+e.target.value)) || 0)}
+                placeholder="300"
+              />
+              <span className="ep-unit">sec</span>
+            </div>
+          </div>
+
           {/* System prompt */}
           <div className="ep-row">
             <label htmlFor="ep-sysprompt">

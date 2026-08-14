@@ -108,16 +108,17 @@ func TestSave_Roundtrip(t *testing.T) {
 	s := Settings{
 		Endpoints: []LLMEndpoint{
 			{
-				ID:           1,
-				Name:         "Roundtrip",
-				URL:          "https://rt.example.com/v1",
-				Model:        "rt-model",
-				Key:          &key,
-				IsDefault:    true,
-				ContextSize:  8192,
-				Temperature:  0.7,
-				SystemPrompt: "You are helpful.",
-				Ok:           true,
+				ID:             1,
+				Name:           "Roundtrip",
+				URL:            "https://rt.example.com/v1",
+				Model:          "rt-model",
+				Key:            &key,
+				IsDefault:      true,
+				ContextSize:    8192,
+				Temperature:    0.7,
+				SystemPrompt:   "You are helpful.",
+				TimeoutSeconds: 120,
+				Ok:             true,
 			},
 		},
 	}
@@ -138,6 +139,7 @@ func TestSave_Roundtrip(t *testing.T) {
 	assert.Equal(t, 8192, ep.ContextSize)
 	assert.Equal(t, 0.7, ep.Temperature)
 	assert.Equal(t, "You are helpful.", ep.SystemPrompt)
+	assert.Equal(t, 120, ep.TimeoutSeconds)
 	assert.True(t, ep.Ok)
 }
 

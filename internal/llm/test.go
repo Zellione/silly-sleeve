@@ -18,6 +18,8 @@ type LLMEndpoint struct {
 	ContextSize  int
 	Temperature  float64
 	SystemPrompt string
+	// TimeoutSeconds bounds one completion request; zero means the default.
+	TimeoutSeconds int
 }
 
 // TestResult returns the outcome of a connectivity test.

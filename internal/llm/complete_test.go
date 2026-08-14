@@ -47,6 +47,15 @@ func TestComplete_TimeoutAccommodatesSlowLocalModels(t *testing.T) {
 	assert.GreaterOrEqual(t, int64(llmRequestTimeout), int64(5*time.Minute))
 }
 
+func TestRequestTimeout_DefaultsWhenUnset(t *testing.T) {
+	assert.Equal(t, llmRequestTimeout, requestTimeout(LLMEndpoint{}))
+	assert.Equal(t, llmRequestTimeout, requestTimeout(LLMEndpoint{TimeoutSeconds: -3}))
+}
+
+func TestRequestTimeout_HonorsEndpointOverride(t *testing.T) {
+	assert.Equal(t, 90*time.Second, requestTimeout(LLMEndpoint{TimeoutSeconds: 90}))
+}
+
 func TestComplete_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)

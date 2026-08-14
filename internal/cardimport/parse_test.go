@@ -3,6 +3,7 @@ package cardimport
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"image"
 	"image/png"
 	"testing"
@@ -90,4 +91,102 @@ func TestParseCard_PNGNoChunk(t *testing.T) {
 	bare := minimalPNGNoChunks(t)
 	_, err := ParseCard(bare)
 	assert.Error(t, err)
+}
+
+func TestChunkJSON_RejectsOversizedBase64(t *testing.T) {
+	// Create a maliciously large base64 string (over maxChunkJSONBytes)
+	oversized := make([]byte, maxChunkJSONBytes+1)
+	for i := range oversized {
+		oversized[i] = 'A' // Valid base64 character
+	}
+
+	chunks := map[string]string{
+		"chara": string(oversized),
+	}
+
+	// Should still return a value (raw fallback), but not decode it
+	result, ok := chunkJSON(chunks, "chara")
+	assert.True(t, ok)
+	// The oversized value should not be valid JSON (doesn't start with {)
+	assert.False(t, bytes.HasPrefix(bytes.TrimSpace(result), []byte("{")))
+}
+
+func TestChunkJSON_AcceptsLegitimate(t *testing.T) {
+	// A normal base64-encoded JSON should still work
+	body := `{"name":"Test","description":"A test card"}`
+	encoded := base64.StdEncoding.EncodeToString([]byte(body))
+
+	chunks := map[string]string{
+		"chara": encoded,
+	}
+
+	result, ok := chunkJSON(chunks, "chara")
+	require.True(t, ok)
+	assert.Equal(t, body, string(result))
+}
+
+func TestParseCard_RejectsExcessiveCharacterBookEntries(t *testing.T) {
+	// Create a v2 card with character_book containing too many entries
+	entries := make([]map[string]interface{}, maxCharacterBookEntries+1)
+	for i := range entries {
+		entries[i] = map[string]interface{}{
+			"keys":    []string{},
+			"comment": "entry",
+			"text":    "content",
+		}
+	}
+
+	cardData := map[string]interface{}{
+		"spec":         "chara_card_v2",
+		"spec_version": "2.0",
+		"data": map[string]interface{}{
+			"name":        "Test",
+			"description": "Test",
+			"character_book": map[string]interface{}{
+				"name":    "TestBook",
+				"entries": entries,
+			},
+		},
+	}
+
+	cardBytes, err := json.Marshal(cardData)
+	require.NoError(t, err)
+
+	_, err = ParseCard(cardBytes)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum of")
+}
+
+func TestParseCard_AcceptsLegitimateCharacterBook(t *testing.T) {
+	// Create a v2 card with a reasonable number of character_book entries
+	entries := make([]map[string]interface{}, 100)
+	for i := range entries {
+		entries[i] = map[string]interface{}{
+			"keys":    []string{},
+			"comment": "entry",
+			"text":    "content",
+		}
+	}
+
+	cardData := map[string]interface{}{
+		"spec":         "chara_card_v2",
+		"spec_version": "2.0",
+		"data": map[string]interface{}{
+			"name":        "Test",
+			"description": "Test",
+			"character_book": map[string]interface{}{
+				"name":    "TestBook",
+				"entries": entries,
+			},
+		},
+	}
+
+	cardBytes, err := json.Marshal(cardData)
+	require.NoError(t, err)
+
+	pc, err := ParseCard(cardBytes)
+	require.NoError(t, err)
+	assert.Equal(t, "Test", pc.Name)
+	assert.NotNil(t, pc.CharacterBook)
+	assert.Len(t, pc.CharacterBook.Entries, 100)
 }

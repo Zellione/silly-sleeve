@@ -18,6 +18,14 @@ import (
 // pngSignature is the 8-byte magic header that begins every PNG file.
 var pngSignature = []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
 
+const (
+	// maxPNGChunkBytes is the maximum size of a single PNG chunk's data payload.
+	// 64 MiB matches the single bundle entry limit and protects against malicious
+	// PNGs claiming huge chunks without providing the data (DoS on scanning).
+	// Real character cards typically embed <=1 MiB of JSON + a portrait image.
+	maxPNGChunkBytes = 64 << 20
+)
+
 // InjectTextChunk returns a copy of pngData with a new tEXt chunk (keyword +
 // text) spliced in immediately before the terminating IEND chunk. SillyTavern
 // stores character JSON this way under the "chara" (v2) and "ccv3" keywords.
@@ -50,6 +58,12 @@ func ReadTextChunks(pngData []byte) (map[string]string, error) {
 	for offset+8 <= len(pngData) {
 		length := int(binary.BigEndian.Uint32(pngData[offset : offset+4]))
 		typ := string(pngData[offset+4 : offset+8])
+
+		// Reject chunks claiming excessive length to prevent DoS.
+		if length > maxPNGChunkBytes {
+			return nil, fmt.Errorf("PNG %q chunk claims %d bytes, exceeds maximum of %d", typ, length, maxPNGChunkBytes)
+		}
+
 		dataStart := offset + 8
 		dataEnd := dataStart + length
 		if dataEnd+4 > len(pngData) {
@@ -76,6 +90,12 @@ func findChunk(pngData []byte, want string) (int, error) {
 	for offset+8 <= len(pngData) {
 		length := int(binary.BigEndian.Uint32(pngData[offset : offset+4]))
 		typ := string(pngData[offset+4 : offset+8])
+
+		// Reject chunks claiming excessive length to prevent DoS.
+		if length > maxPNGChunkBytes {
+			return 0, fmt.Errorf("PNG %q chunk claims %d bytes, exceeds maximum of %d", typ, length, maxPNGChunkBytes)
+		}
+
 		if typ == want {
 			return offset, nil
 		}

@@ -2,6 +2,7 @@ package cardexport
 
 import (
 	"bytes"
+	"encoding/binary"
 	"image"
 	"image/color"
 	"image/png"
@@ -79,4 +80,78 @@ func TestPlaceholderPNGIsValid(t *testing.T) {
 	img, err := png.Decode(bytes.NewReader(data))
 	require.NoError(t, err)
 	assert.Positive(t, img.Bounds().Dx())
+}
+
+func TestReadTextChunksRejectsMaliciousChunkSize(t *testing.T) {
+	// Create a PNG with a chunk claiming an oversized length.
+	// This tests that we reject huge claimed sizes without trying to read that much data.
+	src := makePNG(t)
+
+	// Build a malicious PNG: valid signature + valid IHDR, then a fake tEXt chunk
+	// claiming maxPNGChunkBytes + 1 bytes.
+	malicious := make([]byte, 0, len(src)+20)
+	malicious = append(malicious, src...)
+
+	// Truncate to just after IHDR to safely insert our chunk
+	// PNG format: signature(8) + IHDR(25 bytes total) + chunks...
+	if len(malicious) > 33 {
+		malicious = malicious[:33]
+	}
+
+	// Craft a fake tEXt chunk with excessive length
+	fakeChunk := make([]byte, 16)
+	binary.BigEndian.PutUint32(fakeChunk[0:4], uint32(maxPNGChunkBytes+1))
+	copy(fakeChunk[4:8], []byte("tEXt"))
+	// Rest is fake data, but we won't read it
+
+	malicious = append(malicious, fakeChunk...)
+
+	// Add IEND chunk to make it look more valid
+	iendChunk := []byte{0, 0, 0, 0, 'I', 'E', 'N', 'D', 0xae, 0x42, 0x60, 0x82}
+	malicious = append(malicious, iendChunk...)
+
+	_, err := ReadTextChunks(malicious)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum")
+}
+
+func TestReadTextChunksAcceptsLargeButValidChunk(t *testing.T) {
+	// Test that we can read a legitimately large chunk (but within limits).
+	// We'll use InjectTextChunk to create a proper PNG with known data.
+	src := makePNG(t)
+
+	// Create a 1 MB payload
+	payload := make([]byte, 1<<20)
+	for i := range payload {
+		payload[i] = 'A' + byte(i%26)
+	}
+
+	out, err := InjectTextChunk(src, "test", string(payload))
+	require.NoError(t, err)
+
+	chunks, err := ReadTextChunks(out)
+	require.NoError(t, err)
+	assert.Equal(t, string(payload), chunks["test"])
+}
+
+func TestFindChunkRejectsMaliciousSize(t *testing.T) {
+	// Similar to ReadTextChunks, findChunk should also reject oversized chunks.
+	src := makePNG(t)
+
+	malicious := make([]byte, 0, len(src)+20)
+	malicious = append(malicious, src...)
+	if len(malicious) > 33 {
+		malicious = malicious[:33]
+	}
+
+	// Craft a fake chunk claiming oversized length
+	fakeChunk := make([]byte, 16)
+	binary.BigEndian.PutUint32(fakeChunk[0:4], uint32(maxPNGChunkBytes+1))
+	copy(fakeChunk[4:8], []byte("IEND"))
+
+	malicious = append(malicious, fakeChunk...)
+
+	_, err := findChunk(malicious, "IEND")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum")
 }

@@ -22,7 +22,21 @@ const manifestFile = "manifest.json"
 
 // maxBundleEntryBytes caps the uncompressed size of any single entry read from
 // a .slv bundle, guarding against decompression bombs in untrusted bundles.
-const maxBundleEntryBytes = 64 << 20 // 64 MiB
+const (
+	// maxBundleEntryBytes is the maximum size of a single entry in the bundle.
+	// 64 MiB per entry is large enough for character images, portraits, and JSON data.
+	maxBundleEntryBytes = 64 << 20
+
+	// maxBundleEntries is the maximum number of entries allowed in a bundle.
+	// Protects against zip bombs with millions of small entries.
+	// Typical bundles have <100 entries (manifest, lorebook, a few characters with portraits).
+	maxBundleEntries = 10000
+
+	// maxBundleCumulativeBytes is the maximum cumulative uncompressed size across all entries.
+	// 512 MiB total is 8x the single-entry limit, providing headroom for legitimate multi-character bundles
+	// while blocking aggregated DoS attacks.
+	maxBundleCumulativeBytes = 512 << 20
+) // 64 MiB
 
 // Bundle holds all data to be serialized into a .slv file.
 type Bundle struct {
@@ -135,8 +149,15 @@ func ReadBundle(filePath string) (Bundle, error) {
 	}
 	defer r.Close()
 
+	// Check entry count early to reject zip bombs
+	if len(r.File) > maxBundleEntries {
+		return Bundle{}, fmt.Errorf("bundle contains %d entries, exceeds maximum of %d", len(r.File), maxBundleEntries)
+	}
+
 	b := Bundle{}
-	foundManifest, err := readManifestAndBundleMetadata(r, &b)
+	var cumulativeBytes int64
+
+	foundManifest, err := readManifestAndBundleMetadata(r, &b, &cumulativeBytes)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -144,7 +165,7 @@ func ReadBundle(filePath string) (Bundle, error) {
 		return Bundle{}, fmt.Errorf("no manifest.json in bundle")
 	}
 
-	if err := readImageFilesFromBundle(r, &b); err != nil {
+	if err := readImageFilesFromBundle(r, &b, &cumulativeBytes); err != nil {
 		return Bundle{}, err
 	}
 
@@ -158,14 +179,14 @@ func ReadBundle(filePath string) (Bundle, error) {
 	return b, nil
 }
 
-func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
+func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle, cumulativeBytes *int64) (bool, error) {
 	fileReaders := map[string]func(*zip.File) error{
-		manifestFile:       func(f *zip.File) error { return readJSON(f, &b.Manifest) },
-		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts) },
-		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook) },
-		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, b) },
-		"crawl_set.json":   func(f *zip.File) error { return readCrawlSet(f, b) },
-		"extraction.json":  func(f *zip.File) error { return readExtraction(f, b) },
+		manifestFile:       func(f *zip.File) error { return readJSON(f, &b.Manifest, cumulativeBytes) },
+		"prompts.json":     func(f *zip.File) error { return readJSON(f, &b.Prompts, cumulativeBytes) },
+		"lorebook.json":    func(f *zip.File) error { return readJSON(f, &b.Lorebook, cumulativeBytes) },
+		"crawl_cache.json": func(f *zip.File) error { return readCrawlCache(f, b, cumulativeBytes) },
+		"crawl_set.json":   func(f *zip.File) error { return readCrawlSet(f, b, cumulativeBytes) },
+		"extraction.json":  func(f *zip.File) error { return readExtraction(f, b, cumulativeBytes) },
 	}
 
 	foundManifest := false
@@ -181,7 +202,7 @@ func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 				foundManifest = true
 			}
 		} else if isCharacterFile(f.Name) {
-			if err := readCharacterFile(f, b); err != nil {
+			if err := readCharacterFile(f, b, cumulativeBytes); err != nil {
 				return false, fmt.Errorf("read character %s: %w", f.Name, err)
 			}
 		}
@@ -190,13 +211,13 @@ func readManifestAndBundleMetadata(r *zip.ReadCloser, b *Bundle) (bool, error) {
 	return foundManifest, nil
 }
 
-func readImageFilesFromBundle(r *zip.ReadCloser, b *Bundle) error {
+func readImageFilesFromBundle(r *zip.ReadCloser, b *Bundle, cumulativeBytes *int64) error {
 	for _, f := range r.File {
 		if !safeEntryName(f.Name) {
 			continue
 		}
 		if f.Name == "images/project.png" {
-			data, err := readBytes(f)
+			data, err := readBytes(f, cumulativeBytes)
 			if err != nil {
 				return fmt.Errorf("read project image: %w", err)
 			}
@@ -206,7 +227,7 @@ func readImageFilesFromBundle(r *zip.ReadCloser, b *Bundle) error {
 			if err != nil {
 				continue
 			}
-			data, err := readBytes(f)
+			data, err := readBytes(f, cumulativeBytes)
 			if err != nil {
 				return fmt.Errorf("read portrait %d: %w", id, err)
 			}
@@ -225,36 +246,36 @@ func assignPortraitToCharacter(characters []compose.Character, id int, data []by
 	}
 }
 
-func readCrawlCache(f *zip.File, b *Bundle) error {
+func readCrawlCache(f *zip.File, b *Bundle, cumulativeBytes *int64) error {
 	var cc crawler.CrawlResult
-	if err := readJSON(f, &cc); err != nil {
+	if err := readJSON(f, &cc, cumulativeBytes); err != nil {
 		return err
 	}
 	b.CrawlCache = &cc
 	return nil
 }
 
-func readCrawlSet(f *zip.File, b *Bundle) error {
+func readCrawlSet(f *zip.File, b *Bundle, cumulativeBytes *int64) error {
 	var cs crawler.CrawlSet
-	if err := readJSON(f, &cs); err != nil {
+	if err := readJSON(f, &cs, cumulativeBytes); err != nil {
 		return err
 	}
 	b.CrawlSet = &cs
 	return nil
 }
 
-func readExtraction(f *zip.File, b *Bundle) error {
+func readExtraction(f *zip.File, b *Bundle, cumulativeBytes *int64) error {
 	var st loreextract.State
-	if err := readJSON(f, &st); err != nil {
+	if err := readJSON(f, &st, cumulativeBytes); err != nil {
 		return err
 	}
 	b.Extraction = &st
 	return nil
 }
 
-func readCharacterFile(f *zip.File, b *Bundle) error {
+func readCharacterFile(f *zip.File, b *Bundle, cumulativeBytes *int64) error {
 	var ch compose.Character
-	if err := readJSON(f, &ch); err != nil {
+	if err := readJSON(f, &ch, cumulativeBytes); err != nil {
 		return err
 	}
 	b.Characters = append(b.Characters, ch)
@@ -283,32 +304,38 @@ func writeBytes(zw *zip.Writer, name string, data []byte) error {
 	return err
 }
 
-func readJSON(f *zip.File, v any) error {
-	b, err := readBytes(f)
+func readJSON(f *zip.File, v any, cumulativeBytes *int64) error {
+	b, err := readBytes(f, cumulativeBytes)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(b, v)
 }
 
-func readBytes(f *zip.File) ([]byte, error) {
+func readBytes(f *zip.File, cumulativeBytes *int64) ([]byte, error) {
 	rc, err := f.Open()
 	if err != nil {
 		return nil, err
 	}
 	defer rc.Close()
-	return readAllLimited(rc, maxBundleEntryBytes)
+	return readAllLimited(rc, maxBundleEntryBytes, cumulativeBytes)
 }
 
 // readAllLimited reads from r but fails if the content exceeds limit bytes,
 // preventing a small compressed entry from expanding to exhaust memory.
-func readAllLimited(r io.Reader, limit int64) ([]byte, error) {
+func readAllLimited(r io.Reader, limit int64, cumulativeBytes *int64) ([]byte, error) {
 	data, err := io.ReadAll(io.LimitReader(r, limit+1))
 	if err != nil {
 		return nil, err
 	}
 	if int64(len(data)) > limit {
 		return nil, fmt.Errorf("bundle entry exceeds %d byte limit", limit)
+	}
+	if cumulativeBytes != nil {
+		*cumulativeBytes += int64(len(data))
+		if *cumulativeBytes > maxBundleCumulativeBytes {
+			return nil, fmt.Errorf("bundle cumulative size exceeds %d byte limit", maxBundleCumulativeBytes)
+		}
 	}
 	return data, nil
 }

@@ -15,6 +15,12 @@ import (
 // (and thus untrusted) LLM endpoint, guarding against memory exhaustion.
 const maxLLMResponseBytes = 32 << 20 // 32 MiB
 
+// llmRequestTimeout bounds a single completion request. Completions are not
+// streamed, and a local model (especially a thinking model) can spend minutes
+// generating before the response body arrives — so this must be generous, not
+// a network-level timeout.
+const llmRequestTimeout = 5 * time.Minute
+
 // validateEndpointURL ensures a user-supplied endpoint URL uses http(s) and
 // has a host, rejecting schemes like file:// or gopher://.
 func validateEndpointURL(raw string) error {
@@ -75,7 +81,7 @@ func Complete(ctx context.Context, ep LLMEndpoint, systemPrompt, userPrompt stri
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := &http.Client{Timeout: llmRequestTimeout}
 	req, err := http.NewRequestWithContext(ctx, "POST", ep.URL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)

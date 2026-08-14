@@ -3,7 +3,17 @@
 ## Go
 - All Wails-exposed methods are on the `App` struct (app.go + app_*.go).
   Thin wrappers only — delegate to `internal/` for logic.
-- Error values returned from App methods surface as JS promise rejections.
+- Error values returned from App methods surface as JS promise rejections — as **bare
+  strings**, not Error objects. `e?.message` is undefined on them, so
+  `e?.message || fallback` silently swallows the real Go error (bit us: every LLM
+  failure showed "The model could not be reached"). In catch blocks always use
+  `errorMessage(e, fallback)` from `frontend/src/utils/errorMessage.ts` (handles
+  string, Error, and empty/unusable values).
+- LLM completion timeout: `llm.Complete` defaults to 5 min (`llmRequestTimeout`
+  const) — completions are NOT streamed, so thinking models on local hardware need
+  minutes. Per-endpoint override via `settings.LLMEndpoint.TimeoutSeconds`
+  (0 = default; UI field in EndpointFlyout). The 15 s timeout in `llm/test.go`
+  (connection test) is deliberate — reachability checks fail fast; don't "fix" it.
 - Go `nil` slices cross the Wails bridge as JS `null`; empty slices `[]T{}` cross as `[]`.
   App methods that return slice results must never return `nil` for "no data" — always
   return `[]T{}` so the frontend can distinguish "no results" from "user cancelled"
@@ -43,6 +53,18 @@
 - `SaveLorebook` is **in-memory only** (Go struct field). It does NOT write to disk.
 - `SaveProjectBundle(path)` writes the entire project (characters + lorebook + crawl state)
   to the `.slv` ZIP on disk.
+- **Images persist ONLY inside the .slv** (`images/portrait_<id>.png` + project image
+  entry), written at `SaveProjectBundle` time from in-memory state. Portraits generated
+  or uploaded but never followed by a bundle save are lost on restart — there is no
+  other store. Dashboard thumbnails are a cache under `<config>/thumbnails/`, written by
+  `LibraryManager.Register` (called on both save AND open). Register preserves the
+  existing cached thumbnail when the incoming bundle has no image (opening must not wipe
+  it); a bundle with an image replaces it.
+- Manifest `CreatedAt`/`UpdatedAt` are stamped by `SaveBundle` (RFC3339 UTC);
+  `CreatedAt` is preserved across re-saves via `bundle.ReadManifest` (manifest-only zip
+  read — use it whenever only metadata is needed). Bundles from before 2026-08 carry
+  empty or zero-time values; treat those as unset (`isRealTimestamp`), and the frontend
+  renders pre-epoch dates as "—" (`formatRelative`).
 - Screens that mutate lorebook/character data must call `SaveProjectBundle` (debounced, 2 s)
   when a `projectPath` is known — otherwise changes are lost on app restart.
   `EditorScreen` uses `useAutoSave`; `LorebookScreen` debounces its own bundle save via a
@@ -54,7 +76,22 @@
   ```
   Pass `bundleSaveDelay={0}` in tests to avoid fake-timer complexity.
 
-## Local build & GUI smoke test (this dev machine is NOT headless)
+## Wails CLI ↔ go.mod version sync
+- Running a `wails` CLI older than the `wails/v2` version in go.mod (any `wails dev` /
+  `wails build`) **silently downgrades go.mod + go.sum to the CLI's own version** —
+  seen as an unexplained uncommitted `2.14.0 → 2.12.0` diff. Never commit that diff;
+  fix the CLI instead: `go install github.com/wailsapp/wails/v2/cmd/wails@v<go.mod version>`
+  then `git checkout -- go.mod go.sum`. After merging a dependabot `wails/v2` bump,
+  update the CLI to match as part of the same session.
+
+## Local build & GUI smoke test (machine-dependent!)
+- This project is developed on more than one machine. The section below describes the
+  Arch/Wayland box. The **WSL2 box has NO gtk3/webkit2gtk dev libs** — there
+  `wails build` fails at the CGo link step (expected, per AGENTS.md) and the verified
+  fallback is `go build ./...` + `cd frontend && npm run build`. Don't assume either
+  way: `pkg-config --exists gtk+-3.0 && echo gui || echo headless` settles it.
+
+## Arch box: build & GUI smoke test (NOT headless)
 - The Arch dev box has gtk3 + webkit2gtk-4.1 + a live Wayland session
   (`DISPLAY=:1`, `WAYLAND_DISPLAY=wayland-1`). So `wails build -clean -tags
   webkit2_41` links and produces `build/bin/silly-sleeve` (~11 MB), and the app

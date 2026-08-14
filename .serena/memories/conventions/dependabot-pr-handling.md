@@ -33,6 +33,16 @@ Pattern used 2026-07-06 (PRs #43, #46–#50), 2026-08 (PRs #52–#56), and 2026-
 - **After `@dependabot rebase`, a "no pending checks" read can still be stale data from before the rebase.** `gh pr checks <n>` right after commenting can return the *same* run IDs/results as the pre-rebase state (dependabot hasn't pushed yet — takes ~1-5 min, sometimes longer under load). Don't treat "no `pending` bucket" as "settled" on its own; track `gh pr view <n> --json headRefOid` and only trust the checks once the SHA has actually changed from the pre-rebase value. `mergeStateStatus` also flips to `DIRTY`/`UNSTABLE` while the rebase is in flight.
 - **Monitor-script gotcha (bash):** dynamic variable names via `eval "prev_sha_$n=$sha"` inside a Monitor `command` crashed one run with a bare exit 1 (no readable error surfaced in the notification). Use `declare -A seen; seen[$n]=...` associative arrays instead — reliable and avoids the eval quoting trap on top of the already-documented zsh `status`-variable trap.
 
+## After merging a `wails/v2` bump: update the CLI too (2026-08-14)
+
+The installed `wails` CLI does not auto-update with go.mod. A stale CLI silently
+**downgrades go.mod/go.sum back to its own version** on the next `wails dev`/`build`
+(seen: dependabot's 2.14.0 reverted to 2.12.0 as an unexplained dirty diff that sat in
+the working tree for a while). After merging a wails/v2 bump, run
+`go install github.com/wailsapp/wails/v2/cmd/wails@v<new version>` in the same session,
+and treat any uncommitted go.mod wails downgrade as this trap — restore, don't commit.
+Details in `mem:conventions` ("Wails CLI ↔ go.mod version sync").
+
 ## Known incompatibility (as of 2026-07, reconfirmed 2026-08-13 twice)
 
 Dependabot PR bumping `typescript` 6.0.3 → 7.0.2 in `frontend/` (PR #57) breaks `lint-frontend` CI: `@typescript-eslint/typescript-estree`'s `create-program/shared.js` throws `TypeError: Cannot read properties of undefined (reading 'Cjs')` — TS7 isn't supported yet by the installed `@typescript-eslint` version. Decision: leave this PR open (don't merge, don't close) until `@typescript-eslint` ships TS7 support; Dependabot will keep it updated automatically.

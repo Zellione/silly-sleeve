@@ -103,13 +103,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
         title={<>Your <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>projects</em></>}
         actions={
           <>
-            <button className="btn ghost" disabled title="Coming in 6.6">
+            <button type="button" className="btn ghost" disabled title="Coming in 6.6">
               <UploadIcon size={14} /> Import .png
             </button>
-            <button className="btn ghost" onClick={handlePickOpen}>
+            <button type="button" className="btn ghost" onClick={handlePickOpen}>
               <FolderIcon size={14} /> Open project
             </button>
-            <button className="btn primary" onClick={onNewProject}>
+            <button type="button" className="btn primary" onClick={onNewProject}>
               <PlusIcon size={14} /> New project
             </button>
           </>
@@ -117,7 +117,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
       <div className="ss-page-body scroll">
         <div className="dash-filters">
           {(['all', 'draft', 'ready', 'archived'] as Filter[]).map(f => (
-            <button key={f} className="chip" data-on={filter === f ? '1' : '0'} onClick={() => setFilter(f)}>
+            <button type="button" key={f} className="chip" data-on={filter === f ? '1' : '0'} onClick={() => setFilter(f)}>
               {FILTER_LABELS[f]}
               <span className="count">{count(f)}</span>
             </button>
@@ -134,7 +134,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
             <h2>No characters yet. Start with a wiki page you love.</h2>
             <p>Paste a Fandom URL on the Crawl step and Silly Sleeve will pull lore, infobox, quotes and trivia — ready for the LLM to reformat into a character card.</p>
             <div className="row">
-              <button className="btn primary" onClick={onNewProject}><GlobeIcon size={14} /> Crawl a wiki page</button>
+              <button type="button" className="btn primary" onClick={onNewProject}><GlobeIcon size={14} /> Crawl a wiki page</button>
             </div>
           </div>
         ) : (
@@ -197,10 +197,10 @@ const ProjectCard: React.FC<{
       </div>
       <div className="proj-meta">
         <div className="proj-card-head">
-          <button className="proj-status" data-status={p.status} onClick={onCycleStatus} title="Click to change status">
+          <button type="button" className="proj-status" data-status={p.status} onClick={onCycleStatus} title="Click to change status">
             {p.status || 'draft'}
           </button>
-          <button className="proj-status" onClick={onRemove} title="Remove from library" aria-label="Remove project">
+          <button type="button" className="proj-status" onClick={onRemove} title="Remove from library" aria-label="Remove project">
             <TrashIcon size={12} />
           </button>
         </div>

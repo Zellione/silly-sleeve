@@ -204,13 +204,13 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
       <div className="workflow-editor-card" ref={cardRef}>
         <div className="modal-head">
           <b>Edit Workflow: {displayName}.json</b>
-          <button className="btn ghost icon" aria-label="Close" onClick={onClose}><XIcon size={14} /></button>
+          <button type="button" className="btn ghost icon" aria-label="Close" onClick={onClose}><XIcon size={14} /></button>
         </div>
         <div className="workflow-editor-body">
           <div className="workflow-editor-left">
             <div className="workflow-editor-toolbar">
-              <button className="btn ghost sm" onClick={handleFormat}>Format JSON</button>
-              <button className="btn ghost sm" onClick={handleFix} title="Replace null with placeholders, fix '*lora*' → 'None', etc.">Fix workflow</button>
+              <button type="button" className="btn ghost sm" onClick={handleFormat}>Format JSON</button>
+              <button type="button" className="btn ghost sm" onClick={handleFix} title="Replace null with placeholders, fix '*lora*' → 'None', etc.">Fix workflow</button>
             </div>
             <textarea
               ref={textareaRef}
@@ -226,7 +226,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
             <span className="uplabel">Placeholders ({placeholders.length})</span>
             <div className="workflow-placeholder-list">
               {placeholders.map(name => (
-                <button key={name} className="btn ghost sm workflow-placeholder-chip"
+                <button type="button" key={name} className="btn ghost sm workflow-placeholder-chip"
                   onClick={() => handleInsertPlaceholder(name)}
                   title={KNOWN_PLACEHOLDERS[name] || `Custom placeholder: ${name}`}>
                   <span className="mono" style={{ fontSize: 10 }}>{`{{${name}}}`}</span>
@@ -241,7 +241,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
             <span className="uplabel">Available placeholders</span>
             <div className="workflow-placeholder-list">
               {Object.keys(KNOWN_PLACEHOLDERS).filter(name => !placeholders.includes(name)).map(name => (
-                <button key={name} className="btn ghost sm workflow-placeholder-chip"
+                <button type="button" key={name} className="btn ghost sm workflow-placeholder-chip"
                   onClick={() => handleInsertPlaceholder(name)}
                   title={KNOWN_PLACEHOLDERS[name]}>
                   <span className="mono" style={{ fontSize: 10, opacity: 0.5 }}>{`{{${name}}}`}</span>
@@ -255,8 +255,8 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
           </div>
         </div>
         <div className="modal-actions">
-          <button className="btn ghost sm" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={handleSave} disabled={saving}>
+          <button type="button" className="btn ghost sm" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save template'}
           </button>
         </div>

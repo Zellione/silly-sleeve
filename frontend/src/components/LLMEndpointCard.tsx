@@ -50,7 +50,7 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
       )}
       <span className={`pill ${e.ok ? 'ok' : 'idle'}`}>{e.ok ? '✓ connected' : '… untested'}</span>
       <div className="ep-more-wrap" ref={menuRef}>
-        <button
+        <button type="button"
           className="btn icon ghost"
           style={{ width: 28, height: 28 }}
           data-on={menuOpen ? '1' : '0'}
@@ -66,18 +66,18 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
         </button>
         {menuOpen && (
           <div className="ep-more-menu" role="menu">
-            <button className="ep-more-item" role="menuitem" disabled={e.isDefault} onClick={onSetDefault}>
+            <button type="button" className="ep-more-item" role="menuitem" disabled={e.isDefault} onClick={onSetDefault}>
               <CheckIcon size={13} /> Set as default
               {e.isDefault && <span className="hint">current</span>}
             </button>
-            <button className="ep-more-item" role="menuitem" onClick={onDuplicate}>
+            <button type="button" className="ep-more-item" role="menuitem" onClick={onDuplicate}>
               <CopyIcon size={13} /> Duplicate
             </button>
-            <button className="ep-more-item" role="menuitem" onClick={onExportConfig}>
+            <button type="button" className="ep-more-item" role="menuitem" onClick={onExportConfig}>
               <DownloadIcon size={13} /> Export config
             </button>
             <div className="ep-more-sep" />
-            <button className="ep-more-item danger" role="menuitem" onClick={onDelete}>
+            <button type="button" className="ep-more-item danger" role="menuitem" onClick={onDelete}>
               <TrashIcon size={13} /> Delete endpoint
             </button>
           </div>
@@ -88,7 +88,7 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
     <div className="row foot">
       <span>{e.key ? `auth · ${e.key.slice(0, 6)}${'•'.repeat(8)}` : 'no auth'}</span>
       <div className="row" style={{ gap: 6 }}>
-        <button className="btn ghost sm" disabled={testing} onClick={onTest}>
+        <button type="button" className="btn ghost sm" disabled={testing} onClick={onTest}>
           {testing ? (
             <>
               <span className="dot warn" style={{ boxShadow: 'none', width: 6, height: 6 }} /> Testing…
@@ -97,7 +97,7 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
             'Test'
           )}
         </button>
-        <button className="btn ghost sm" onClick={onEdit}>
+        <button type="button" className="btn ghost sm" onClick={onEdit}>
           Edit
         </button>
       </div>

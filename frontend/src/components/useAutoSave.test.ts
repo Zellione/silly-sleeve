@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAutoSave } from './useAutoSave';
 
@@ -79,120 +79,115 @@ describe('useAutoSave', () => {
     warnSpy.mockRestore();
   });
 
-  it('warns on change debounce when projectPath is empty', async () => {
-    vi.useFakeTimers();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useAutoSave({ projectPath: '', onSave }));
+  describe('with fake timers', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
+    it('warns on change debounce when projectPath is empty', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderHook(() => useAutoSave({ projectPath: '', onSave }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      act(() => {
+        result.current.handleChange();
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      expect(onSave).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('skipped'));
+      warnSpy.mockRestore();
     });
 
-    act(() => {
-      result.current.handleChange();
+    it('warns on timed interval when projectPath is empty', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'timed', autoSaveInterval: 30 });
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderHook(() => useAutoSave({ projectPath: '', onSave }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(31000);
+      });
+
+      expect(onSave).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('skipped'));
+      warnSpy.mockRestore();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(2500);
+    it('debounces save on change mode', async () => {
+      mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      act(() => {
+        result.current.handleChange();
+      });
+      expect(onSave).not.toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+      expect(onSave).toHaveBeenCalledWith('/test.slv');
     });
 
-    expect(onSave).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('skipped'));
-    warnSpy.mockRestore();
-    vi.useRealTimers();
-  });
+    it('cancels a pending onChange save when unmounted', async () => {
+      mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      const { result, unmount } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
 
-  it('warns on timed interval when projectPath is empty', async () => {
-    vi.useFakeTimers();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'timed', autoSaveInterval: 30 });
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    renderHook(() => useAutoSave({ projectPath: '', onSave }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
+      act(() => {
+        result.current.handleChange();
+      });
+
+      unmount();
+
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+      // The debounced save must not fire after the component is gone.
+      expect(onSave).not.toHaveBeenCalled();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(31000);
+    it('logs an error when an auto-save rejects instead of swallowing it', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
+      const onSave = vi.fn().mockRejectedValue(new Error('disk full'));
+      const { result } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      act(() => {
+        result.current.handleChange();
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+
+      expect(onSave).toHaveBeenCalledWith('/test.slv');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('failed'), expect.any(Error));
+      errorSpy.mockRestore();
     });
-
-    expect(onSave).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('skipped'));
-    warnSpy.mockRestore();
-    vi.useRealTimers();
-  });
-
-  it('debounces save on change mode', async () => {
-    vi.useFakeTimers();
-    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
-    });
-
-    act(() => {
-      result.current.handleChange();
-    });
-    expect(onSave).not.toHaveBeenCalled();
-
-    act(() => {
-      vi.advanceTimersByTime(2500);
-    });
-    expect(onSave).toHaveBeenCalledWith('/test.slv');
-    vi.useRealTimers();
-  });
-
-  it('cancels a pending onChange save when unmounted', async () => {
-    vi.useFakeTimers();
-    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    const { result, unmount } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
-    });
-
-    act(() => {
-      result.current.handleChange();
-    });
-
-    unmount();
-
-    act(() => {
-      vi.advanceTimersByTime(2500);
-    });
-    // The debounced save must not fire after the component is gone.
-    expect(onSave).not.toHaveBeenCalled();
-    vi.useRealTimers();
-  });
-
-  it('logs an error when an auto-save rejects instead of swallowing it', async () => {
-    vi.useFakeTimers();
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockGetSettings.mockResolvedValue({ endpoints: [], autoSaveMode: 'onChange', autoSaveInterval: 30 });
-    const onSave = vi.fn().mockRejectedValue(new Error('disk full'));
-    const { result } = renderHook(() => useAutoSave({ projectPath: '/test.slv', onSave }));
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
-    });
-
-    act(() => {
-      result.current.handleChange();
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2500);
-    });
-
-    expect(onSave).toHaveBeenCalledWith('/test.slv');
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('failed'), expect.any(Error));
-    errorSpy.mockRestore();
-    vi.useRealTimers();
   });
 });

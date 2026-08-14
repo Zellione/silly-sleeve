@@ -39,17 +39,17 @@ const SETUP_NAV: NavItem[] = [
 export const TitleBar: React.FC<{ projectName?: string }> = ({ projectName }) => (
   <div className="ss-title" onDoubleClick={() => WindowToggleMaximise()}>
     <div className="ss-traffic">
-      <button
+      <button type="button"
         aria-label="Close"
         onClick={(e) => { e.stopPropagation(); Quit() }}
         onDoubleClick={(e) => e.stopPropagation()}
       />
-      <button
+      <button type="button"
         aria-label="Minimise"
         onClick={(e) => { e.stopPropagation(); WindowMinimise() }}
         onDoubleClick={(e) => e.stopPropagation()}
       />
-      <button
+      <button type="button"
         aria-label="Maximise"
         onClick={(e) => { e.stopPropagation(); WindowToggleMaximise() }}
         onDoubleClick={(e) => e.stopPropagation()}
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<{
   const renderItem = (n: NavItem) => {
     const Icon = n.icon;
     return (
-      <button
+      <button type="button"
         key={n.id}
         className="ss-nav-item"
         data-active={current === n.id ? '1' : '0'}
@@ -164,7 +164,7 @@ export const ThemeToggle: React.FC = () => {
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     // Set the root's used color-scheme directly so WebKitGTK themes native
     // controls (e.g. <select> option popups) to match — a dynamically applied
     // CSS color-scheme does not reliably re-theme the native popup widget.
@@ -173,7 +173,7 @@ export const ThemeToggle: React.FC = () => {
   }, [dark]);
 
   return (
-    <button
+    <button type="button"
       className="btn icon ghost"
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
       onClick={() => setDark(!dark)}

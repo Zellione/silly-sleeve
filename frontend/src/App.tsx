@@ -64,7 +64,9 @@ function AppShell() {
   };
 
   const defaultEp = settingsData?.endpoints.find(e => e.isDefault) ?? settingsData?.endpoints[0];
-  const llmStatus: 'ok' | 'warn' | 'bad' | 'idle' = defaultEp ? (defaultEp.ok ? 'ok' : 'idle') : 'idle';
+  // Flattened from a nested ternary (SonarCloud typescript:S3358).
+  let llmStatus: 'ok' | 'warn' | 'bad' | 'idle' = 'idle';
+  if (defaultEp?.ok) llmStatus = 'ok';
   const llmName = defaultEp?.name ?? '—';
 
   const renderScreen = () => {

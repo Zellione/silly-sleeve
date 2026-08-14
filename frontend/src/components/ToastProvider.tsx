@@ -62,7 +62,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 <b>{t.title}</b>
                 {t.body && <span>{t.body}</span>}
               </div>
-              <button className="ss-toast-x" onClick={() => dismiss(t.id)}>
+              <button type="button" className="ss-toast-x" onClick={() => dismiss(t.id)}>
                 <XIcon size={12} />
               </button>
               <div className="ss-toast-progress" />

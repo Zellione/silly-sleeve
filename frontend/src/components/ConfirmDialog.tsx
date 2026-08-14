@@ -64,8 +64,8 @@ export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ child
           >
             <p id="ss-confirm-msg">{pending.message}</p>
             <div className="ss-confirm-actions">
-              <button className="btn ghost sm" onClick={handleCancel}>Cancel</button>
-              <button className="btn primary sm" data-autofocus onClick={handleConfirm}>Confirm</button>
+              <button type="button" className="btn ghost sm" onClick={handleCancel}>Cancel</button>
+              <button type="button" className="btn primary sm" data-autofocus onClick={handleConfirm}>Confirm</button>
             </div>
           </div>
         </div>

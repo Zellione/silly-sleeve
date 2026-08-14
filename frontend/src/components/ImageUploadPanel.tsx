@@ -199,11 +199,11 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
                   options={[{ value: defaultResize, label: defaultResize }, { value: 'Original', label: 'Original' }]}
                 />
               </div>
-              <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }}
+              <button type="button" className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }}
                 onClick={() => { if (imageData) onUseImage(imageData); }}>
                 <CheckIcon size={13} /> Use image
               </button>
-              <button className="btn ghost sm" onClick={() => { setUploadFile(null); setImageData(null); }}>
+              <button type="button" className="btn ghost sm" onClick={() => { setUploadFile(null); setImageData(null); }}>
                 Choose a different file
               </button>
             </div>
@@ -215,7 +215,7 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
           <span className="uplabel">Or paste a URL</span>
           <div className="row" style={{ gap: 6, marginTop: 8 }}>
             <input className="field" placeholder="https://…" />
-            <button className="btn ghost"><DownloadIcon size={13} /></button>
+            <button type="button" className="btn ghost"><DownloadIcon size={13} /></button>
           </div>
           <p className="helpr" style={{ marginTop: 8 }}>We'll fetch the image and store a local copy in your project.</p>
         </div>

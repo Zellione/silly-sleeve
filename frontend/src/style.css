@@ -1451,13 +1451,14 @@ kbd {
   gap: 8px; align-items: center; padding: 9px 10px 9px 6px;
   background: transparent; border: 1px solid transparent; border-radius: 4px;
   cursor: pointer; text-align: left; color: var(--ink); font-family: var(--f-sans);
+  /* Pointer-event reorder drags the row; text selection would fight it. */
+  user-select: none;
 }
 .lb-entry:hover { background: var(--bg); border-color: var(--hair); }
 .lb-entry[data-on="1"] { background: var(--bg); border-color: var(--hair-strong); box-shadow: inset 3px 0 0 var(--acc); }
 .lb-entry[data-disabled="1"] { opacity: 0.45; }
 /* Reorder is driven by pointer events (not HTML5 DnD, which WebKitGTK — the Wails
    Linux webview — does not fire reliably). The `.grip` is the drag handle. */
-.lb-entry { user-select: none; }
 .lb-entry[data-drag='1'] { opacity: 0.5; }
 .lb-entry[data-over='1'] { box-shadow: inset 0 2px 0 var(--acc); }
 .lb-entry .grip { color: var(--ink-3); cursor: grab; opacity: 0.4; touch-action: none; }

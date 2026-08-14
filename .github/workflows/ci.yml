@@ -23,7 +23,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: filter
@@ -70,10 +70,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Temporarily pinned to an exact patch: go1.25.13 carries the fixes for
           # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 and is not yet in the
@@ -81,6 +81,7 @@ jobs:
           # Revert to '1.25' once the manifest ships 1.25.13 (check-latest picks it up).
           go-version: '1.25.13'
           check-latest: true
+      - run: go vet ./...
       # golangci-lint v2 requires golangci-lint-action v7+. Pinned to a full
       # commit SHA (not a mutable tag) for supply-chain integrity; see
       # .golangci.yml for the linter config.
@@ -93,10 +94,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Temporarily pinned to an exact patch: go1.25.13 carries the fixes for
           # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 and is not yet in the
@@ -116,13 +117,13 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # frontend/wailsjs/runtime is Wails-generated and gitignored; regenerate
       # it (and go:embed's dummy target) before touching the frontend so its
       # imports resolve, same as the build job further down.
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Temporarily pinned to an exact patch: go1.25.13 carries the fixes for
           # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 and is not yet in the
@@ -136,7 +137,7 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@857398f61118eae7a6d9f5f18ffdd391590703e3
       - name: Generate wailsjs bindings
         run: wails generate module
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -154,10 +155,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Temporarily pinned to an exact patch: go1.25.13 carries the fixes for
           # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 and is not yet in the
@@ -174,7 +175,7 @@ jobs:
             echo "Coverage ${COV}% is below 80% threshold"
             exit 1
           fi
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: go-coverage
@@ -185,10 +186,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Temporarily pinned to an exact patch: go1.25.13 carries the fixes for
           # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 and is not yet in the
@@ -202,7 +203,7 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@857398f61118eae7a6d9f5f18ffdd391590703e3
       - name: Generate wailsjs bindings
         run: wails generate module
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: 'npm'
@@ -219,7 +220,7 @@ jobs:
             echo "Coverage ${COV}% is below 80% threshold"
             exit 1
           fi
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: frontend-coverage
@@ -230,8 +231,8 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Temporarily pinned to an exact patch: go1.25.13 carries the fixes for
           # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 and is not yet in the
@@ -239,7 +240,7 @@ jobs:
           # Revert to '1.25' once the manifest ships 1.25.13 (check-latest picks it up).
           go-version: '1.25.13'
           check-latest: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: 'npm'

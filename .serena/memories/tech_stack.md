@@ -2,7 +2,7 @@
 
 ## Backend (Go)
 - Go 1.25
-- Wails v2.12.0 — desktop bridge (CGo; needs GTK3 + WebKit2GTK on Linux)
+- Wails v2.14.0 — desktop bridge (CGo; needs GTK3 + WebKit2GTK on Linux)
 - github.com/stretchr/testify v1.11.1 — test assertions
 - github.com/google/uuid v1.6.0
 - github.com/pkoukk/tiktoken-go v0.1.8 — token counting

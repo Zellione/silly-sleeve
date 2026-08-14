@@ -91,7 +91,8 @@ Before opening a PR, ensure:
 ## CI Enforcement
 
 All PRs and pushes to `main` trigger automated checks (see `.github/workflows/ci.yml`):
-- Lint (Go + frontend)
+- Lint: `go vet`, `golangci-lint` (Go); `eslint`, `tsc` (frontend)
+- Vulnerability scanning: `govulncheck` (Go), `npm audit` (frontend)
 - Unit tests with coverage (threshold: 80%)
 - Build verification
 

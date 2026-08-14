@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-13 — Phase 8 · complete (8.9 connection review UI).
+> Last updated: 2026-08-14 — Codebase audit remediation (`fix/audit-findings`).
 
 ## Overview
 
@@ -173,6 +173,34 @@ not in a new graph model.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-08-14
+
+- Full codebase audit, then remediation on `fix/audit-findings`. No new features;
+  correctness, security, test and hygiene fixes across backend and frontend.
+- **Correctness:** VAE/LoRA selection wired end to end (the dropdowns previously had
+  no `onChange` and `GenerationParams` had no field to carry them, so the controls
+  did nothing). Built-in workflows are now assembled as a node graph producing four
+  variants (VAELoader / LoraLoader present or absent, consumers rewired); a
+  hand-edited template is never replaced. Wails nil-slice invariant enforced across
+  the six ComfyUI discovery methods. Character-switch races guarded in Portrait and
+  Preview screens; floating promise in the editor now rolls back and reports.
+- **Security:** ComfyUI-supplied `promptID` sanitised before reaching a file path
+  (arbitrary `.png` write via `../`). Aggregate caps added to bundle and card
+  parsing (entry count, cumulative bytes, base64 chunk length, character-book
+  entries, PNG chunk size). Data directories standardised to `0o700`.
+- **Reliability:** crawler now takes a `context.Context` end to end with an
+  interruptible rate-limit wait. Fixed a supersede bug in `WSListener.Connect`
+  where a replaced goroutine cleared the new connection's running flag.
+- **Maintainability:** `sanitize.go` cognitive complexity 68/42/29 → under the
+  limit of 15; `SettingsScreen.tsx` 1,196 → 399 LOC plus four components;
+  `app.go` 916 → 888 LOC; shared `useBundleSave` replaces three duplicated
+  debounced-save blocks that swallowed failures.
+- **Tests:** integration coverage added for bundle round-trip, card export→import
+  fidelity and lore extraction; `GenerationParamsPanel` now tested; `useAutoSave`
+  fake timers moved into `describe` hooks per convention.
+- Coverage: Go 86.5%, frontend 86.09% statements. `wails build -clean -tags
+  webkit2_41` links (12.6 MB).
 
 ### 2026-08-13
 

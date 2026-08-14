@@ -27,7 +27,14 @@ import { compose, crawler, settings } from '../../wailsjs/go/models';
 
 const StatsField: React.FC<{
   value: compose.StatKV[]; onChange: (v: compose.StatKV[]) => void; locked: boolean;
-}> = ({ value, onChange, locked }) => (
+}> = ({ value, onChange, locked }) => {
+  // Rows are plain key/value pairs with no natural id, so the index is the key.
+  // SonarCloud flags this (typescript:S6479) and it does mean a deleted row
+  // re-keys the rows after it; giving rows real ids would require carrying them
+  // in the character model, which is not worth it for a focus nicety.
+  const removeRow = (i: number) => onChange(value.filter((_, j) => j !== i));
+
+  return (
   <div className="stat-grid">
     {value.map((row, i) => (
       <div key={i} className="stat-row">
@@ -37,20 +44,66 @@ const StatsField: React.FC<{
         <input className="val" placeholder="—" value={row.value} disabled={locked}
           onChange={e => onChange(value.map((r, j) => j === i ? compose.StatKV.createFrom({ key: r.key, value: e.target.value }) : r))} />
         {!locked && (
-          <button type="button" className="x" aria-label="Remove stat" onClick={() => onChange(value.filter((_, j) => j !== i))}>
+          <button type="button" className="x" aria-label="Remove stat" onClick={() => removeRow(i)}>
             <XIcon size={12} />
           </button>
         )}
       </div>
     ))}
     {!locked && (
-      <button className="btn ghost sm" style={{ gridColumn: '1 / -1', justifySelf: 'flex-start' }}
+      <button type="button" className="btn ghost sm" style={{ gridColumn: '1 / -1', justifySelf: 'flex-start' }}
         onClick={() => onChange([...value, compose.StatKV.createFrom({ key: '', value: '' })])}>
         <PlusIcon size={11} /> Add stat
       </button>
     )}
   </div>
-);
+  );
+};
+
+/**
+ * Height of the loading shimmer, matched to the input it stands in for so the
+ * layout does not jump when a reroll completes. Flattened out of a nested
+ * ternary (SonarCloud typescript:S3358).
+ */
+const TALL_TEXT_FIELDS = new Set(['backstory', 'appearance']);
+
+function shimmerHeight(field: FieldSpec): number {
+  if (field.type !== 'text') return 38;
+  return TALL_TEXT_FIELDS.has(field.id) ? 120 : 80;
+}
+
+/** Editable list of quotes or alternate greetings, extracted from FieldInput. */
+const QuoteRows: React.FC<Readonly<{
+  value: string[];
+  locked: boolean;
+  isGreeting: boolean;
+  onChange: (v: string[]) => void;
+}>> = ({ value, locked, isGreeting, onChange }) => {
+  // Index keys: see the note in StatsField (typescript:S6479).
+  const removeRow = (i: number) => onChange(value.filter((_, j) => j !== i));
+
+  return (
+    <>
+      {value.map((q, i) => (
+        <div key={i} className="quote-row">
+          <textarea
+            rows={Math.max(2, Math.ceil(q.length / 60))}
+            value={q}
+            disabled={locked}
+            onChange={e => onChange(value.map((x, j) => j === i ? e.target.value : x))}
+          />
+          {!locked && (
+            <button type="button" className="x"
+              aria-label={isGreeting ? 'Remove greeting' : 'Remove quote'}
+              onClick={() => removeRow(i)}>
+              <XIcon size={12} />
+            </button>
+          )}
+        </div>
+      ))}
+    </>
+  );
+};
 
 const FieldInput: React.FC<{
   field: FieldSpec;
@@ -93,27 +146,14 @@ const FieldInput: React.FC<{
     const isGreeting = field.type === 'greetings';
     return (
       <div className="col" style={{ gap: 6 }}>
-        {(st.value as string[]).map((q, i) => (
-          <div key={i} className="quote-row">
-            <textarea
-              rows={Math.max(2, Math.ceil(q.length / 60))}
-              value={q}
-              disabled={st.locked}
-              onChange={e => {
-                const next = (st.value as string[]).map((x, j) => j === i ? e.target.value : x);
-                onChange(next);
-                onPatch({ dirty: true });
-              }}
-            />
-            {!st.locked && (
-              <button type="button" className="x" aria-label={isGreeting ? 'Remove greeting' : 'Remove quote'} onClick={() => onChange((st.value as string[]).filter((_, j) => j !== i))}>
-                <XIcon size={12} />
-              </button>
-            )}
-          </div>
-        ))}
+        <QuoteRows
+          value={st.value as string[]}
+          locked={st.locked}
+          isGreeting={isGreeting}
+          onChange={v => { onChange(v); onPatch({ dirty: true }); }}
+        />
         {!st.locked && (
-          <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
+          <button type="button" className="btn ghost sm" style={{ alignSelf: 'flex-start' }}
             onClick={() => onChange([...(st.value as string[]), ''])}>
             <PlusIcon size={11} /> {isGreeting ? 'Add greeting' : 'Add quote'}
           </button>
@@ -167,24 +207,24 @@ const FieldCard: React.FC<{
           onSelect={onSelectEndpoint}
         />
         <div className="tools">
-          <button className="tool" title="Custom reroll prompt"
+          <button type="button" className="tool" title="Custom reroll prompt"
             data-active={st.showPrompt ? '1' : '0'}
             onClick={() => onPatch({ showPrompt: !st.showPrompt })}>
             <SparksIcon size={14} />
           </button>
-          <button className="tool" title="Lock — won't re-roll with Compose All"
+          <button type="button" className="tool" title="Lock — won't re-roll with Compose All"
             data-active={st.locked ? '1' : '0'}
             onClick={() => onPatch({ locked: !st.locked })}>
             <LockIcon size={14} />
           </button>
-          <button className="tool" title="Copy"
+          <button type="button" className="tool" title="Copy"
             onClick={() => {
               const v = typeof st.value === 'string' ? st.value : JSON.stringify(st.value);
               navigator.clipboard.writeText(v);
             }}>
             <CopyIcon size={14} />
           </button>
-          <button className="tool" title="Re-roll this field" disabled={st.locked} onClick={startReroll}>
+          <button type="button" className="tool" title="Re-roll this field" disabled={st.locked} onClick={startReroll}>
             <RerollIcon size={14} />
           </button>
         </div>
@@ -198,13 +238,13 @@ const FieldCard: React.FC<{
             value={st.prompt}
             onChange={e => onPatch({ prompt: e.target.value })}
           />
-          <button className="btn primary sm" onClick={startReroll}><RerollIcon size={12} /> Roll</button>
+          <button type="button" className="btn primary sm" onClick={startReroll}><RerollIcon size={12} /> Roll</button>
         </div>
       )}
 
       {st.rolling ? (
         <div className="shimmer" style={{
-          height: field.type === 'text' ? (field.id === 'backstory' || field.id === 'appearance' ? 120 : 80) : 38,
+          height: shimmerHeight(field),
           margin: '8px 0',
         }} />
       ) : (
@@ -466,13 +506,31 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   }, [fields, activeChar, patchField, applyGenerated, toast, refreshCharacters]);
 
   const selectFieldEndpoint = useCallback((slot: string, id: number) => {
-    SetProjectFieldEndpoint(slot, id);
+    // Capture the value being replaced so a failed save can be rolled back to
+    // exactly what the backend still holds.
+    let previous: number | undefined;
     setProjectMap(prev => {
+      previous = prev[slot];
       const next = { ...prev };
       if (id <= 0) delete next[slot]; else next[slot] = id;
       return next;
     });
-  }, []);
+    // Previously fire-and-forget: a rejected call left the UI showing an
+    // endpoint assignment the backend never accepted, plus an unhandled
+    // rejection. Report the failure and undo the optimistic update.
+    SetProjectFieldEndpoint(slot, id).catch((e: unknown) => {
+      setProjectMap(prev => {
+        const next = { ...prev };
+        if (previous === undefined) delete next[slot]; else next[slot] = previous;
+        return next;
+      });
+      toast({
+        kind: 'bad',
+        title: 'Endpoint not saved',
+        body: e instanceof Error ? e.message : String(e),
+      });
+    });
+  }, [toast]);
 
   if (!activeChar || !ready) {
     return (
@@ -490,22 +548,22 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
         title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar.name.trim() || 'character'}</em></>}
         actions={
           <>
-            <button className="btn ghost"
+            <button type="button" className="btn ghost"
               onClick={handleDelete}
               disabled={!activeChar || characters.length <= 1}
               style={{ color: 'var(--bad)' }}>
               <TrashIcon size={14} /> Delete
             </button>
-            <button className="btn ghost" onClick={handleSave}>
+            <button type="button" className="btn ghost" onClick={handleSave}>
               <SaveIcon size={14} /> Save
             </button>
-            <button className="btn ghost" onClick={handleSaveProject}>
+            <button type="button" className="btn ghost" onClick={handleSaveProject}>
               <FolderIcon size={14} /> Save project
             </button>
-            <button className="btn ghost" onClick={handleCompose} disabled={isComposing}>
+            <button type="button" className="btn ghost" onClick={handleCompose} disabled={isComposing}>
               <DiceIcon size={14} /> Re-roll all{lockedCount > 0 && <span style={{ opacity: 0.6, marginLeft: 4 }}>({FIELDS.length - lockedCount})</span>}
             </button>
-            <button className="btn primary" disabled title="Coming in a later phase">
+            <button type="button" className="btn primary" disabled title="Coming in a later phase">
               Continue to Lorebook <ArrowIcon size={14} />
             </button>
           </>
@@ -522,7 +580,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
           <div className="editor-source">
             <div className="h">
               <b><em>{crawl?.title || '—'}</em> · source</b>
-              <button className="btn ghost sm" disabled title="Coming in a later phase">
+              <button type="button" className="btn ghost sm" disabled title="Coming in a later phase">
                 <GlobeIcon size={12} /> Re-crawl
               </button>
             </div>

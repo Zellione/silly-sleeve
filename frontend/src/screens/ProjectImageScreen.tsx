@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetProjectImage, SaveProjectImage, SaveProjectBundle } from '../../wailsjs/go/app/App';
+import { GenerateProjectImage, GetProjectImage, SaveProjectImage } from '../../wailsjs/go/app/App';
+import { useBundleSave } from '../components/useBundleSave';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
@@ -31,9 +32,8 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
   const [negPrompt, setNegPrompt] = useState('');
   const [savedCover, setSavedCover] = useState<string | null>(null);
   const { toast } = useToast();
-  const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleBundleSave = useBundleSave(projectPath, bundleSaveDelay, 'Project image');
 
-  useEffect(() => () => { if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current); }, []);
 
   const {
     samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
@@ -64,14 +64,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
       // SaveProjectImage only updates in-memory state; without also writing
       // the project bundle to disk, the cover is lost the next time the
       // project is opened.
-      if (projectPath) {
-        if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current);
-        bundleSaveTimer.current = setTimeout(() => {
-          SaveProjectBundle(projectPath).catch(e => {
-            console.error('Project image bundle save failed:', e);
-          });
-        }, bundleSaveDelay);
-      }
+      scheduleBundleSave();
     } catch (e) {
       toast({ kind: 'bad', title: 'Save failed', body: String(e) });
     }
@@ -87,10 +80,10 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
         title={<>Project <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>image</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">
-              <button data-on={mode === 'generate' ? '1' : '0'} onClick={() => setMode('generate')}>
+              <button type="button" data-on={mode === 'generate' ? '1' : '0'} onClick={() => setMode('generate')}>
                 <SparksIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Generate
               </button>
-              <button data-on={mode === 'upload' ? '1' : '0'} onClick={() => setMode('upload')}>
+              <button type="button" data-on={mode === 'upload' ? '1' : '0'} onClick={() => setMode('upload')}>
                 <UploadIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Upload
               </button>
             </div>
@@ -171,7 +164,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
               }
               showAutoFill={true}
               autoFillButton={
-                <button className="img-auto-fill" onClick={() => {
+                <button type="button" className="img-auto-fill" onClick={() => {
                   if (!negPrompt.trim()) setNegPrompt(DEFAULT_NEGATIVE_PROMPT);
                   toast({ kind: 'info', title: 'Auto-fill', body: 'Positive prompt auto-fills from lorebook context when generation is queued; a default negative prompt has been inserted.' });
                 }}>
@@ -182,7 +175,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise: 1, prompt, negPrompt, checkpoint })}
+              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise: 1, prompt, negPrompt, checkpoint, vae: '', lora: '' })}
               onSavePreset={() => {}}
             />
 
@@ -193,7 +186,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
               galleryContent={
                 <div className="proj-img-versions">
                   {variantImages.map((imgUrl, i) => (
-                    <button key={`${seed}-${i}`} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
+                    <button type="button" key={`${seed}-${i}`} className={`proj-img-version${selectedVariant === i ? ' on' : ''}`}
                       onClick={() => setSelectedVariant(i)}>
                       <div className="proj-version-thumb" style={{ overflow: 'hidden' }}>
                         <img src={imgUrl} alt={`variant ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

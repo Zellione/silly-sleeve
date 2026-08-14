@@ -217,3 +217,175 @@ func TestComfyService_ClientErrorsWithoutURL(t *testing.T) {
 	_, err := svc.GetComfySamplers()
 	assert.Error(t, err, "model discovery should fail when the ComfyUI URL is unset")
 }
+
+// TestComfyService_NilSlicesNeverCrossWailsBridge verifies that all slice-returning
+// methods return non-nil slices on success. Go nil slices cross the Wails bridge as
+// JS null, which the frontend uses as the "user cancelled" sentinel. Returning nil
+// on a success path causes the frontend's useState<string[]> to store null, breaking
+// subsequent .map() calls. Error paths returning (nil, err) are fine.
+func TestComfyService_NilSlicesNeverCrossWailsBridge(t *testing.T) {
+	type testCase struct {
+		name      string
+		fn        func(*ComfyUIService) ([]string, error)
+		fakeList  map[string][]string
+		wantEmpty bool // true if we expect an empty slice; false if we expect nil from client
+	}
+
+	tests := []testCase{
+		{
+			name:      "GetComfySamplers with nil from client",
+			fn:        (*ComfyUIService).GetComfySamplers,
+			fakeList:  map[string][]string{"KSampler.sampler_name": nil},
+			wantEmpty: true, // must return []string{}, not nil
+		},
+		{
+			name:      "GetComfySamplers with empty from client",
+			fn:        (*ComfyUIService).GetComfySamplers,
+			fakeList:  map[string][]string{"KSampler.sampler_name": {}},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfySamplers with data from client",
+			fn:        (*ComfyUIService).GetComfySamplers,
+			fakeList:  map[string][]string{"KSampler.sampler_name": {"euler"}},
+			wantEmpty: false,
+		},
+		{
+			name:      "GetComfySchedulers with nil from client",
+			fn:        (*ComfyUIService).GetComfySchedulers,
+			fakeList:  map[string][]string{"KSampler.scheduler": nil},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfySchedulers with empty from client",
+			fn:        (*ComfyUIService).GetComfySchedulers,
+			fakeList:  map[string][]string{"KSampler.scheduler": {}},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfySchedulers with data from client",
+			fn:        (*ComfyUIService).GetComfySchedulers,
+			fakeList:  map[string][]string{"KSampler.scheduler": {"normal"}},
+			wantEmpty: false,
+		},
+		{
+			name:      "GetComfyCheckpoints with nil from client",
+			fn:        (*ComfyUIService).GetComfyCheckpoints,
+			fakeList:  map[string][]string{"CheckpointLoaderSimple.ckpt_name": nil},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyCheckpoints with empty from client",
+			fn:        (*ComfyUIService).GetComfyCheckpoints,
+			fakeList:  map[string][]string{"CheckpointLoaderSimple.ckpt_name": {}},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyCheckpoints with data from client",
+			fn:        (*ComfyUIService).GetComfyCheckpoints,
+			fakeList:  map[string][]string{"CheckpointLoaderSimple.ckpt_name": {"model.safetensors"}},
+			wantEmpty: false,
+		},
+		{
+			name:      "GetComfyVAEs with nil from client",
+			fn:        (*ComfyUIService).GetComfyVAEs,
+			fakeList:  map[string][]string{"VAELoader.vae_name": nil},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyVAEs with empty from client",
+			fn:        (*ComfyUIService).GetComfyVAEs,
+			fakeList:  map[string][]string{"VAELoader.vae_name": {}},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyVAEs with data from client",
+			fn:        (*ComfyUIService).GetComfyVAEs,
+			fakeList:  map[string][]string{"VAELoader.vae_name": {"vae.safetensors"}},
+			wantEmpty: false,
+		},
+		{
+			name:      "GetComfyLoRAs with nil from client",
+			fn:        (*ComfyUIService).GetComfyLoRAs,
+			fakeList:  map[string][]string{"LoraLoader.lora_name": nil},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyLoRAs with empty from client",
+			fn:        (*ComfyUIService).GetComfyLoRAs,
+			fakeList:  map[string][]string{"LoraLoader.lora_name": {}},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyLoRAs with data from client",
+			fn:        (*ComfyUIService).GetComfyLoRAs,
+			fakeList:  map[string][]string{"LoraLoader.lora_name": {"lora.safetensors"}},
+			wantEmpty: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeComfyClient{lists: tc.fakeList}
+			set := settings.Settings{Comfy: settings.ComfyConfig{URL: "http://comfy"}}
+			svc := newTestComfyServiceWithClient(&set, fake)
+
+			result, err := tc.fn(svc)
+			require.NoError(t, err, "success path should not error")
+
+			// The critical assertion: result must never be nil, even if the client
+			// returned nil. Go nil becomes JS null, breaking the frontend's .map().
+			assert.NotNil(t, result, "slice must not be nil (would cross bridge as null)")
+
+			if tc.wantEmpty {
+				assert.Empty(t, result, "expected empty slice")
+			}
+		})
+	}
+}
+
+// TestComfyService_GetComfyWorkflowsNeverNil verifies that GetComfyWorkflows
+// returns a non-nil slice even when settings has no workflows saved.
+func TestComfyService_GetComfyWorkflowsNeverNil(t *testing.T) {
+	type testCase struct {
+		name      string
+		workflows []comfy.ComfyWorkflow
+		wantEmpty bool
+	}
+
+	tests := []testCase{
+		{
+			name:      "nil workflows in settings",
+			workflows: nil,
+			wantEmpty: true, // must return []ComfyWorkflow{}, not nil
+		},
+		{
+			name:      "empty workflows slice in settings",
+			workflows: []comfy.ComfyWorkflow{},
+			wantEmpty: true,
+		},
+		{
+			name: "workflows present",
+			workflows: []comfy.ComfyWorkflow{
+				{ID: "wf-1", Name: "test"},
+			},
+			wantEmpty: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			set := settings.Settings{Comfy: settings.ComfyConfig{Workflows: tc.workflows}}
+			svc := newTestComfyService(&set)
+
+			result := svc.GetComfyWorkflows()
+
+			// The critical assertion: result must never be nil.
+			assert.NotNil(t, result, "slice must not be nil (would cross bridge as null)")
+
+			if tc.wantEmpty {
+				assert.Empty(t, result, "expected empty slice")
+			}
+		})
+	}
+}

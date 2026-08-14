@@ -215,6 +215,11 @@ type GenerationParams struct {
 	Width            int     `json:"width"`
 	Height           int     `json:"height"`
 	Checkpoint       string  `json:"checkpoint"`
+	// Vae and Lora are model file names. The empty string, "baked" (Vae) and
+	// "none" (Lora) all mean "leave this loader out of the graph" — see
+	// UsesVAE / UsesLoRA.
+	Vae  string `json:"vae"`
+	Lora string `json:"lora"`
 }
 
 // ObjectInfoResponse maps node type names to their definitions.

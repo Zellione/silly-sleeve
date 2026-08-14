@@ -480,3 +480,100 @@ describe('PortraitScreen', () => {
     expect(mockSaveProjectBundle).not.toHaveBeenCalled();
   });
 });
+
+describe('PortraitScreen VAE and LoRA selection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCharacters.mockResolvedValue([testChar]);
+    mockGetActiveCharacter.mockResolvedValue(testChar);
+    mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGetPortrait.mockResolvedValue([]);
+    mockGeneratePortrait.mockResolvedValue([]);
+    mockGetComfyVAEs.mockResolvedValue(['sdxl_vae.safetensors', 'other_vae.safetensors']);
+    mockGetComfyLoRAs.mockResolvedValue(['oil_painting_v3.safetensors']);
+  });
+
+  it('defaults to the baked VAE and no LoRA, and sends empty selections', async () => {
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByLabelText('VAE');
+
+    await userEvent.click(await screen.findByText('Queue generation'));
+
+    await waitFor(() => expect(mockGeneratePortrait).toHaveBeenCalled());
+    const params = mockGeneratePortrait.mock.calls[0][0];
+    // '' is the backend sentinel for "leave the loader node out of the graph".
+    expect(params.vae).toBe('');
+    expect(params.lora).toBe('');
+  });
+
+  it('sends the chosen VAE through to generation', async () => {
+    renderWithProviders(<PortraitScreen />);
+    const vaeControl = await screen.findByLabelText('VAE');
+
+    await userEvent.click(vaeControl);
+    await userEvent.click(await screen.findByText('sdxl_vae'));
+    await userEvent.click(await screen.findByText('Queue generation'));
+
+    await waitFor(() => expect(mockGeneratePortrait).toHaveBeenCalled());
+    expect(mockGeneratePortrait.mock.calls[0][0].vae).toBe('sdxl_vae.safetensors');
+  });
+
+  it('sends the chosen LoRA through to generation', async () => {
+    renderWithProviders(<PortraitScreen />);
+    const loraControl = await screen.findByLabelText('LoRA');
+
+    await userEvent.click(loraControl);
+    await userEvent.click(await screen.findByText('oil_painting_v3'));
+    await userEvent.click(await screen.findByText('Queue generation'));
+
+    await waitFor(() => expect(mockGeneratePortrait).toHaveBeenCalled());
+    expect(mockGeneratePortrait.mock.calls[0][0].lora).toBe('oil_painting_v3.safetensors');
+  });
+
+  it('keeps the selection visible after choosing it', async () => {
+    renderWithProviders(<PortraitScreen />);
+    const vaeControl = await screen.findByLabelText('VAE');
+
+    await userEvent.click(vaeControl);
+    await userEvent.click(await screen.findByText('other_vae'));
+
+    // A controlled dropdown must reflect the choice; the previous uncontrolled
+    // `defaultValue` version reverted on the next render.
+    await waitFor(() => expect(vaeControl).toHaveTextContent('other_vae'));
+  });
+});
+
+describe('PortraitScreen character switching', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGetPortrait.mockResolvedValue([]);
+  });
+
+  it('ignores a slow response for a character the user already switched away from', async () => {
+    const charA = new compose.Character({ id: 1, name: 'Elara', tags: [], quotes: [], stats: [] });
+    const charB = new compose.Character({ id: 2, name: 'Borin', tags: [], quotes: [], stats: [] });
+    mockGetCharacters.mockResolvedValue([charA, charB]);
+
+    // A's fetch resolves only after B's has already landed.
+    let releaseA: (v: compose.Character) => void = () => {};
+    mockGetActiveCharacter
+      .mockImplementationOnce(() => Promise.resolve(charA))
+      .mockImplementationOnce(() => new Promise(res => { releaseA = res; }))
+      .mockImplementationOnce(() => Promise.resolve(charB));
+
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByText('Elara');
+
+    await userEvent.click(screen.getByText('Elara'));
+    await userEvent.click(screen.getByText('Borin'));
+    await waitFor(() => expect(mockSetActiveCharacter).toHaveBeenLastCalledWith(2));
+
+    releaseA(charA);
+
+    // The stale A response must not clobber B: the header still names Borin.
+    await waitFor(() => {
+      expect(screen.getByText('Borin').closest('button')).toHaveAttribute('data-on');
+    });
+  });
+});

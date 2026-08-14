@@ -83,6 +83,9 @@ func (s *ComfyUIService) ImportComfyWorkflow(filePath string) (comfy.ComfyWorkfl
 
 // GetComfyWorkflows returns all saved ComfyUI workflows.
 func (s *ComfyUIService) GetComfyWorkflows() []comfy.ComfyWorkflow {
+	if s.settings.Comfy.Workflows == nil {
+		return []comfy.ComfyWorkflow{}
+	}
 	return s.settings.Comfy.Workflows
 }
 
@@ -135,7 +138,17 @@ func (s *ComfyUIService) generateVariants(params comfy.GenerationParams, count i
 		t = s.settings.Comfy.AuthToken
 	}
 
-	var allImages []comfy.CompletedImage
+	// The frontend fetches a workflow template when the workflow is chosen,
+	// which is before the user picks a VAE or LoRA. Re-resolve it here, now that
+	// the selection is known, so an unmodified built-in gets the graph variant
+	// carrying the matching loader nodes. A template the user has hand-edited is
+	// returned unchanged and may reference {{vae}}/{{lora}} itself.
+	params.WorkflowTemplate = comfy.ResolveWorkflowTemplate(params.WorkflowTemplate, params.Vae, params.Lora)
+
+	// A CompletedImage slice always crosses the Wails bridge, so start from an
+	// empty slice rather than a nil one (nil arrives in JS as null, the
+	// frontend's "cancelled" sentinel).
+	allImages := []comfy.CompletedImage{}
 	for i := 0; i < count; i++ {
 		variantParams := params
 		variantParams.Seed = params.Seed + i
@@ -201,13 +214,29 @@ func (s *ComfyUIService) comfyClient() (comfy.ComfyClient, error) {
 	return s.clientFactory()(url, t), nil
 }
 
+// nonNil ensures a nil slice crosses the Wails bridge as an empty []string instead of null.
+// In Wails, a Go nil slice becomes JS null, which the frontend uses as the "user cancelled"
+// sentinel value. Slice-returning App methods must never return nil on the success path
+// (error paths returning (nil, err) are fine — the frontend gets a promise rejection).
+// This helper converts nil to []string{} to let the frontend distinguish "no data" from "cancelled".
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
 // GetComfySamplers returns available sampler names from ComfyUI.
 func (s *ComfyUIService) GetComfySamplers() ([]string, error) {
 	client, err := s.comfyClient()
 	if err != nil {
 		return nil, err
 	}
-	return client.GetNodeInputList("KSampler", "sampler_name")
+	result, err := client.GetNodeInputList("KSampler", "sampler_name")
+	if err != nil {
+		return nil, err
+	}
+	return nonNil(result), nil
 }
 
 // GetComfySchedulers returns available scheduler names from ComfyUI.
@@ -216,7 +245,11 @@ func (s *ComfyUIService) GetComfySchedulers() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.GetNodeInputList("KSampler", "scheduler")
+	result, err := client.GetNodeInputList("KSampler", "scheduler")
+	if err != nil {
+		return nil, err
+	}
+	return nonNil(result), nil
 }
 
 // GetComfyCheckpoints returns available checkpoint model names from ComfyUI.
@@ -229,7 +262,7 @@ func (s *ComfyUIService) GetComfyCheckpoints() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return values, nil
+	return nonNil(values), nil
 }
 
 // GetComfyVAEs returns available VAE model names from ComfyUI.
@@ -242,7 +275,7 @@ func (s *ComfyUIService) GetComfyVAEs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return values, nil
+	return nonNil(values), nil
 }
 
 // GetComfyLoRAs returns available LoRA model names from ComfyUI.
@@ -255,7 +288,7 @@ func (s *ComfyUIService) GetComfyLoRAs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return values, nil
+	return nonNil(values), nil
 }
 
 // ParseComfyWorkflowParams extracts WorkflowParams from raw workflow JSON.

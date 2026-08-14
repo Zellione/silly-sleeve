@@ -50,6 +50,7 @@ const Harness: React.FC = () => {
       <button onClick={() => g.runGeneration({
         size: '640×480', seed: 7, steps: 25, cfg: 6, sampler: 's', scheduler: 'sc',
         denoise: 0.5, prompt: 'p', negPrompt: 'n', checkpoint: g.checkpoint,
+        vae: 'v.safetensors', lora: 'l.safetensors',
       })}>run</button>
       <button onClick={g.stop}>stop</button>
       <button onClick={g.clearVariants}>clear</button>

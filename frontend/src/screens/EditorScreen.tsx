@@ -21,6 +21,7 @@ import { TagsInput } from '../components/TagsInput';
 import { FieldEndpointChip } from '../components/FieldEndpointChip';
 import { CharacterStrip } from '../components/CharacterStrip';
 import { logError } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 import {
   FIELDS, type FieldSpec, type FieldState, type FieldValue,
   wordCountLabel, useFieldEditor,
@@ -407,7 +408,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       await refreshCharacters();
       setActiveChar(ch);
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Add failed', body: e?.message || 'Could not create character.' });
+      toast({ kind: 'bad', title: 'Add failed', body: errorMessage(e, 'Could not create character.') });
     }
   }, [toast, refreshCharacters]);
 
@@ -420,7 +421,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       const extra = res.importedEntries > 0 ? ` (+${res.importedEntries} lore entries)` : '';
       toast({ kind: 'ok', title: 'Card imported', body: `Imported "${res.character.name}"${extra}.` });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Import failed', body: e?.message || 'Could not import card.' });
+      toast({ kind: 'bad', title: 'Import failed', body: errorMessage(e, 'Could not import card.') });
     }
   }, [toast, refreshCharacters]);
 
@@ -433,7 +434,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       if (next) loadActive(next.id);
       toast({ kind: 'ok', title: 'Character deleted', body: `Removed "${activeChar.name}".` });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Delete failed', body: e?.message || 'Could not delete character.' });
+      toast({ kind: 'bad', title: 'Delete failed', body: errorMessage(e, 'Could not delete character.') });
     }
   }, [activeChar, characters.length, loadActive, toast, refreshCharacters]);
 
@@ -445,7 +446,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
         toast({ kind: 'ok', title: 'Saved', body: `"${updated.name}" · ${dirtyCount} fields written.` });
       }
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not save character.' });
+      toast({ kind: 'bad', title: 'Save failed', body: errorMessage(e, 'Could not save character.') });
     }
   }, [activeChar, dirtyCount, toast, flushActiveCharacter]);
 
@@ -488,7 +489,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       toast({ kind: 'ok', title: 'Composed', body: `"${ch.name}" generated from ${locked.length > 0 ? (FIELDS.length - locked.length) + ' of ' + FIELDS.length : 'all'} fields.` });
     } catch (e: any) {
       if (activeIdRef.current === targetId) patchAll({ rolling: false });
-      toast({ kind: 'bad', title: 'Compose failed', body: e?.message || 'Could not reach the LLM endpoint.' });
+      toast({ kind: 'bad', title: 'Compose failed', body: errorMessage(e, 'Could not reach the LLM endpoint.') });
     }
   }, [activeChar, fields, lockedIds, patchAll, patchField, applyGenerated, toast, refreshCharacters]);
 
@@ -517,7 +518,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       toast({ kind: 'ok', title: `${label} rerolled`, body: 'Field updated from LLM.' });
     } catch (e: any) {
       if (activeIdRef.current === targetId) patchField(fieldID, { rolling: false });
-      toast({ kind: 'bad', title: 'Reroll failed', body: e?.message || 'Could not reach the LLM endpoint.' });
+      toast({ kind: 'bad', title: 'Reroll failed', body: errorMessage(e, 'Could not reach the LLM endpoint.') });
     }
   }, [fields, activeChar, patchField, applyGenerated, toast, refreshCharacters]);
 

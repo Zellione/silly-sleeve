@@ -4,6 +4,7 @@ import {
 } from '../../../wailsjs/go/app/App';
 import { loreextract, lorebook, compose } from '../../../wailsjs/go/models';
 import { useToast } from '../ToastProvider';
+import { errorMessage } from '../../utils/errorMessage';
 
 /**
  * Owns the whole-project connection pass: running it, holding the proposals
@@ -43,7 +44,7 @@ export function useLoreConnections(
         });
       }
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Could not suggest connections', body: e?.message || 'The model could not be reached.' });
+      toast({ kind: 'bad', title: 'Could not suggest connections', body: errorMessage(e, 'The model could not be reached.') });
     } finally {
       setRunning(false);
     }
@@ -67,7 +68,7 @@ export function useLoreConnections(
         title: `Applied ${count} connection${count === 1 ? '' : 's'}`,
       });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Could not apply', body: e?.message || 'Nothing was changed.' });
+      toast({ kind: 'bad', title: 'Could not apply', body: errorMessage(e, 'Nothing was changed.') });
     }
   }, [suggestions, toast, onApplied]);
 

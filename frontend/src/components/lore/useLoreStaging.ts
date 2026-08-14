@@ -6,6 +6,7 @@ import {
 } from '../../../wailsjs/go/app/App';
 import { loreextract, lorebook } from '../../../wailsjs/go/models';
 import { useToast } from '../ToastProvider';
+import { errorMessage } from '../../utils/errorMessage';
 
 export type ExtractionMode = 'split' | 'summary';
 
@@ -70,7 +71,7 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void) 
         body: 'Review and edit them before approving.',
       });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Extraction failed', body: e?.message || 'The model could not be reached.' });
+      toast({ kind: 'bad', title: 'Extraction failed', body: errorMessage(e, 'The model could not be reached.') });
     } finally {
       setExtracting(null);
     }
@@ -104,7 +105,7 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void) 
         body: 'The rest were discarded.',
       });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Approve failed', body: e?.message || 'Could not add the entries.' });
+      toast({ kind: 'bad', title: 'Approve failed', body: errorMessage(e, 'Could not add the entries.') });
     }
   }, [toast, onApproved]);
 

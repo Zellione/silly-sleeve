@@ -17,6 +17,7 @@ import { CrawlerSettings } from '../components/settings/CrawlerSettings';
 import { PromptTemplateEditor } from '../components/settings/PromptTemplateEditor';
 import { GetSettings, SaveSettings, TestLLMEndpoint } from '../../wailsjs/go/app/App';
 import { settings } from '../../wailsjs/go/models';
+import { errorMessage } from '../utils/errorMessage';
 
 /* ─── Section nav ───────────────────────────────────────── */
 
@@ -69,7 +70,7 @@ const SettingsScreen: React.FC = () => {
       setSettingsState(next);
       toast({ kind: 'ok', title: 'Settings saved', body: 'Endpoints updated.' });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not write settings.' });
+      toast({ kind: 'bad', title: 'Save failed', body: errorMessage(e, 'Could not write settings.') });
     }
   };
 
@@ -172,7 +173,7 @@ const SettingsScreen: React.FC = () => {
       setSettingsState(next);
       toast({ kind: 'ok', title: 'Auto-save updated', body: `Mode set to "${mode}".` });
     }).catch((e: any) => {
-      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not update auto-save.' });
+      toast({ kind: 'bad', title: 'Save failed', body: errorMessage(e, 'Could not update auto-save.') });
     });
   };
 
@@ -187,7 +188,7 @@ const SettingsScreen: React.FC = () => {
       setSettingsState(next);
       toast({ kind: 'ok', title: 'Auto-save updated', body: `Interval set to ${interval}s.` });
     }).catch((e: any) => {
-      toast({ kind: 'bad', title: 'Save failed', body: e?.message || 'Could not update auto-save.' });
+      toast({ kind: 'bad', title: 'Save failed', body: errorMessage(e, 'Could not update auto-save.') });
     });
   };
 

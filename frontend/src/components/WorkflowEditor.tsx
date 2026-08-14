@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/app/App';
 import { useFocusTrap } from './useFocusTrap';
 import { XIcon } from '../icons';
+import { errorMessage } from '../utils/errorMessage';
 
 interface WorkflowEditorProps {
   workflow: {
@@ -173,7 +174,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
       if (e instanceof SyntaxError) {
         onSaveError?.(`Invalid JSON: ${e.message}`);
       } else {
-        onSaveError?.(e?.message || 'Could not save workflow template.');
+        onSaveError?.(errorMessage(e, 'Could not save workflow template.'));
       }
     } finally {
       setSaving(false);

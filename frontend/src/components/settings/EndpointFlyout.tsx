@@ -6,6 +6,7 @@ import { useToast } from '../ToastProvider';
 import { AuthTokenBlock } from '../AuthTokenBlock';
 import { TestLLMEndpoint } from '../../../wailsjs/go/app/App';
 import { settings } from '../../../wailsjs/go/models';
+import { errorMessage } from '../../utils/errorMessage';
 
 export type EndpointFlyoutProps = Readonly<{
   endpoint: settings.LLMEndpoint;
@@ -52,7 +53,7 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
       }
     } catch (e: any) {
       setTesting('fail');
-      toast({ kind: 'bad', title: `Couldn't reach ${draft.name}`, body: e?.message || 'Unknown error' });
+      toast({ kind: 'bad', title: `Couldn't reach ${draft.name}`, body: errorMessage(e, 'Unknown error') });
     }
   };
 

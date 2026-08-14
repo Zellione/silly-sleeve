@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -111,6 +112,44 @@ func TestProjectManager_ExportLorebook(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(dir, "world_info.json"), filepath.Clean(path))
 	assert.FileExists(t, path)
+}
+
+func TestSaveBundle_StampsTimestamps(t *testing.T) {
+	pm := newTestProjectManager()
+	path := filepath.Join(t.TempDir(), "p.slv")
+
+	m1, err := pm.SaveBundle(path, ProjectSnapshot{})
+	require.NoError(t, err)
+	created, err := time.Parse(time.RFC3339, m1.CreatedAt)
+	require.NoError(t, err, "createdAt must be RFC3339, got %q", m1.CreatedAt)
+	updated, err := time.Parse(time.RFC3339, m1.UpdatedAt)
+	require.NoError(t, err, "updatedAt must be RFC3339, got %q", m1.UpdatedAt)
+	assert.WithinDuration(t, time.Now(), created, time.Minute)
+	assert.WithinDuration(t, time.Now(), updated, time.Minute)
+
+	// Re-saving preserves the original creation time and refreshes updatedAt.
+	m2, err := pm.SaveBundle(path, ProjectSnapshot{})
+	require.NoError(t, err)
+	assert.Equal(t, m1.CreatedAt, m2.CreatedAt)
+	u2, err := time.Parse(time.RFC3339, m2.UpdatedAt)
+	require.NoError(t, err)
+	assert.False(t, u2.Before(updated))
+}
+
+func TestSaveBundle_ReplacesZeroTimeCreatedAtFromOldBundles(t *testing.T) {
+	pm := newTestProjectManager()
+	path := filepath.Join(t.TempDir(), "p.slv")
+
+	// Bundles written before timestamps existed carry the zero time.
+	require.NoError(t, bundle.WriteBundle(path, bundle.Bundle{
+		Manifest: project.ProjectManifest{Name: "Old", CreatedAt: "0001-01-01T00:00:00Z"},
+	}))
+
+	m, err := pm.SaveBundle(path, ProjectSnapshot{})
+	require.NoError(t, err)
+	created, perr := time.Parse(time.RFC3339, m.CreatedAt)
+	require.NoError(t, perr)
+	assert.WithinDuration(t, time.Now(), created, time.Minute)
 }
 
 func TestSaveBundle_RoundTripsFieldEndpoints(t *testing.T) {

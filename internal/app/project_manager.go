@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -138,6 +139,15 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		CrawlSent:        snap.CrawlSent,
 	}
 
+	now := time.Now().UTC().Format(time.RFC3339)
+	manifest.CreatedAt = now
+	manifest.UpdatedAt = now
+	// Re-saves keep the original creation time. Bundles written before
+	// timestamps existed carry "" or the zero time; both count as unset.
+	if prev, err := bundle.ReadManifest(filePath); err == nil && isRealTimestamp(prev.CreatedAt) {
+		manifest.CreatedAt = prev.CreatedAt
+	}
+
 	b := bundle.Bundle{
 		Manifest:   manifest,
 		Characters: snap.Characters,
@@ -151,6 +161,13 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 		return project.ProjectManifest{}, err
 	}
 	return manifest, nil
+}
+
+// isRealTimestamp reports whether s is a parseable RFC3339 time that is not
+// the zero value old bundles were written with.
+func isRealTimestamp(s string) bool {
+	ts, err := time.Parse(time.RFC3339, s)
+	return err == nil && ts.Year() > 1970
 }
 
 // ReadBundle loads a .slv bundle from disk.

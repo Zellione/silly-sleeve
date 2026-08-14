@@ -19,6 +19,9 @@ describe('formatRelative', () => {
   it('renders weeks', () => {
     expect(formatRelative('2026-05-23T12:00:00Z', NOW)).toBe('3 wks ago');
   });
+  it('treats zero-value Go timestamps as unknown, not "105691 wks ago"', () => {
+    expect(formatRelative('0001-01-01T00:00:00Z', NOW)).toBe('—');
+  });
   it('handles empty/invalid input', () => {
     expect(formatRelative('', NOW)).toBe('—');
     expect(formatRelative('not-a-date', NOW)).toBe('—');

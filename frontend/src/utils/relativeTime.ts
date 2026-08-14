@@ -5,7 +5,9 @@
 export function formatRelative(iso: string, now: number = Date.now()): string {
   if (!iso) return '—';
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '—';
+  // Pre-epoch dates are Go zero-value timestamps from old bundles, not real
+  // times — render them as unknown rather than "105691 wks ago".
+  if (Number.isNaN(then) || then <= 0) return '—';
 
   const secs = Math.max(0, Math.floor((now - then) / 1000));
   if (secs < 60) return 'just now';

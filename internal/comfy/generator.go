@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -64,6 +65,22 @@ func (g *Generator) markDone(err error) {
 	})
 }
 
+// sanitizePromptID removes any characters outside [A-Za-z0-9_-] to prevent path traversal.
+// Returns "image" if the result is empty after sanitization.
+func sanitizePromptID(s string) string {
+	var buf strings.Builder
+	for _, r := range s {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			buf.WriteRune(r)
+		}
+	}
+	result := buf.String()
+	if result == "" {
+		return "image"
+	}
+	return result
+}
+
 // NewGenerator creates a generation orchestrator.
 func NewGenerator(ctx context.Context, baseURL string, token *string) *Generator {
 	clientID := uuid.New().String()
@@ -113,7 +130,7 @@ func (g *Generator) Run(params GenerationParams, values map[string]any) error {
 		return fmt.Errorf("queue prompt: %w", err)
 	}
 	g.mu.Lock()
-	g.promptID = resp.PromptID
+	g.promptID = sanitizePromptID(resp.PromptID)
 	g.mu.Unlock()
 
 	// Wait for completion, but also honor context cancellation (e.g. app
@@ -264,7 +281,9 @@ func fetchImageWithRetry(client *Client, filename, subfolder, imgType string) []
 
 func saveGeneratedImage(dir, promptID string, index int, data []byte) {
 	stamp := time.Now().UnixMilli()
-	imgPath := filepath.Join(dir, fmt.Sprintf("%s-%d-%d.png", promptID, stamp, index))
+	// Sanitize promptID as a second layer of defense against path traversal.
+	safePromptID := sanitizePromptID(promptID)
+	imgPath := filepath.Join(dir, fmt.Sprintf("%s-%d-%d.png", safePromptID, stamp, index))
 	if err := os.WriteFile(imgPath, data, 0o600); err != nil {
 		fmt.Printf("[generator] failed to save image: %v\n", err)
 	}

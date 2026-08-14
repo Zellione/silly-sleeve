@@ -31,7 +31,7 @@ interface RadioGroupProps<T extends RadioGroupOption> {
 // RadioGroup renders an accessible single-select radiogroup per the WAI-ARIA
 // Authoring Practices: one tab stop (roving tabindex) and Arrow / Home / End
 // navigation that moves focus and selection together, wrapping at the ends.
-// Each option is a real <button> (Space/Enter activate natively) with
+// Each option is a real <button type="button"> (Space/Enter activate natively) with
 // role="radio".
 export function RadioGroup<T extends RadioGroupOption>({
   ariaLabel,

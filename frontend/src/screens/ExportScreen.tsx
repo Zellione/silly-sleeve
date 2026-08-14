@@ -178,10 +178,10 @@ const ExportScreen: React.FC = () => {
         title={<>Export <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>everything</em></>}
         actions={
           <>
-            <button className="btn ghost" disabled={pickedEntries.length === 0 || !destination} onClick={handleExportLorebook}>
+            <button type="button" className="btn ghost" disabled={pickedEntries.length === 0 || !destination} onClick={handleExportLorebook}>
               <BookIcon size={13} /> Export lorebook ({pickedEntries.length})
             </button>
-            <button className="btn primary" onClick={handleExport} disabled={exporting || !destReady}>
+            <button type="button" className="btn primary" onClick={handleExport} disabled={exporting || !destReady}>
               {exportLabel}
             </button>
           </>
@@ -197,15 +197,15 @@ const ExportScreen: React.FC = () => {
                 <span className="uplabel" style={{ color: 'var(--ink-3)' }}>{pickedChars.length} of {characters.length} selected</span>
               </div>
               <div className="row" style={{ gap: 6 }}>
-                <button className="btn ghost sm" onClick={() => setPickedChars(characters.map(c => c.id))}>All</button>
-                <button className="btn ghost sm" onClick={() => setPickedChars([])}>None</button>
+                <button type="button" className="btn ghost sm" onClick={() => setPickedChars(characters.map(c => c.id))}>All</button>
+                <button type="button" className="btn ghost sm" onClick={() => setPickedChars([])}>None</button>
               </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {characters.map(c => {
                 const on = pickedChars.includes(c.id);
                 return (
-                  <button key={c.id} className="btn ghost"
+                  <button type="button" key={c.id} className="btn ghost"
                     style={{
                       background: on ? 'var(--acc-soft)' : undefined,
                       borderColor: on ? 'var(--acc)' : undefined,
@@ -236,8 +236,8 @@ const ExportScreen: React.FC = () => {
                 <span className="uplabel" style={{ color: 'var(--ink-3)' }}>{pickedEntries.length} of {entries.length} selected</span>
               </div>
               <div className="row" style={{ gap: 6 }}>
-                <button className="btn ghost sm" onClick={() => setPickedEntries(entries.map(e => e.uid))}>All</button>
-                <button className="btn ghost sm" onClick={() => setPickedEntries([])}>None</button>
+                <button type="button" className="btn ghost sm" onClick={() => setPickedEntries(entries.map(e => e.uid))}>All</button>
+                <button type="button" className="btn ghost sm" onClick={() => setPickedEntries([])}>None</button>
               </div>
             </div>
             {entries.length === 0 ? (
@@ -247,7 +247,7 @@ const ExportScreen: React.FC = () => {
                 {entries.map(e => {
                   const on = pickedEntries.includes(e.uid);
                   return (
-                    <button key={e.uid} className="btn ghost"
+                    <button type="button" key={e.uid} className="btn ghost"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', justifyContent: 'flex-start',
                         background: on ? 'var(--acc-soft)' : undefined, borderColor: on ? 'var(--acc)' : undefined,
@@ -279,7 +279,7 @@ const ExportScreen: React.FC = () => {
             <h4 style={{ margin: '0 0 10px' }}>Export format</h4>
             <div className="col" style={{ gap: 6 }}>
               {FORMATS.map(f => (
-                <button key={f.id} className="btn ghost"
+                <button type="button" key={f.id} className="btn ghost"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
                     background: fmt === f.id ? 'var(--acc-soft)' : undefined,
@@ -331,7 +331,7 @@ const ExportScreen: React.FC = () => {
                   onChange={e => setDestination(e.target.value)}
                   placeholder="Choose or type a folder path…"
                   style={{ fontFamily: 'var(--f-mono)', fontSize: 12, flex: 1 }} />
-                <button className="btn ghost icon" onClick={handlePickFolder} title="Browse…">
+                <button type="button" className="btn ghost icon" onClick={handlePickFolder} title="Browse…">
                   <FolderIcon size={14} />
                 </button>
               </div>

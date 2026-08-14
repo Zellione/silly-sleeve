@@ -45,6 +45,12 @@ func BuildPlaceholderValues(p GenerationParams) map[string]any {
 		"positive_prompt": p.PositivePrompt,
 		"negative_prompt": p.NegativePrompt,
 		"model":           p.Checkpoint,
+		// Always provided, even when the built-in graph omits the loader nodes:
+		// replaceStringPlaceholder errors on an unknown placeholder, so a
+		// user-supplied workflow referencing {{vae}} or {{lora}} would fail to
+		// generate if these were conditional.
+		"vae":  p.Vae,
+		"lora": p.Lora,
 	}
 }
 

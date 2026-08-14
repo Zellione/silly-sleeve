@@ -650,3 +650,51 @@ describe('EditorScreen', () => {
     expect(screen.getByText('Characters · 1')).toBeInTheDocument();
   });
 });
+
+describe('EditorScreen field endpoint assignment', () => {
+  const endpoints = [
+    { id: 1, name: 'Local llama', url: 'http://localhost:8080', model: 'm', key: null },
+    { id: 2, name: 'Remote', url: 'http://remote', model: 'm', key: null },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCharacters.mockResolvedValue([mockCharacter]);
+    mockGetActiveCharacter.mockResolvedValue(mockCharacter);
+    mockGetCrawlForCharacter.mockResolvedValue(mockCrawlResult);
+    mockCountTokens.mockResolvedValue(10);
+    mockUpdateCharacter.mockResolvedValue(undefined);
+    mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGetProjectFieldEndpoints.mockResolvedValue({});
+    mockSetProjectFieldEndpoint.mockResolvedValue(undefined);
+    mockGetSettings.mockResolvedValue({ endpoints, fieldEndpoints: {}, autoSaveMode: 'off' });
+  });
+
+  const pickFirstEndpoint = async () => {
+    const chips = await screen.findAllByLabelText(/^Endpoint for /);
+    await userEvent.click(chips[0]);
+    await userEvent.click(await screen.findByText('Local llama'));
+    return chips[0];
+  };
+
+  it('persists the chosen endpoint for the slot', async () => {
+    renderEditor();
+
+    await pickFirstEndpoint();
+
+    await waitFor(() => expect(mockSetProjectFieldEndpoint).toHaveBeenCalledWith(expect.any(String), 1));
+  });
+
+  // Previously fire-and-forget: a rejected save left the UI showing an
+  // assignment the backend never accepted, and produced an unhandled rejection.
+  it('reports the failure and rolls the selection back when the save is rejected', async () => {
+    mockSetProjectFieldEndpoint.mockRejectedValue(new Error('backend refused'));
+    renderEditor();
+
+    const chip = await pickFirstEndpoint();
+
+    expect(await screen.findByText('Endpoint not saved')).toBeInTheDocument();
+    expect(screen.getByText('backend refused')).toBeInTheDocument();
+    await waitFor(() => expect(chip).toHaveTextContent('Use default'));
+  });
+});

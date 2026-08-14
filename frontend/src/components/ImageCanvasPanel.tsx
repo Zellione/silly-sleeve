@@ -66,7 +66,7 @@ const ImageCanvasPanel: React.FC<ImageCanvasPanelProps> = ({
         <textarea className="field" value={negPrompt} onChange={e => onNegPromptChange(e.target.value)}
           style={{ minHeight: 48, fontFamily: 'var(--f-mono)', fontSize: 11.5 }} />
         <div className="row" style={{ gap: 8, marginTop: 4 }}>
-          <button className="btn primary" onClick={onToggleGenerate} style={{ flex: 1, justifyContent: 'center' }}>
+          <button type="button" className="btn primary" onClick={onToggleGenerate} style={{ flex: 1, justifyContent: 'center' }}>
             {generating ? (
               <><XIcon size={12} /> Stop ({Math.round(progress)}%)</>
             ) : (
@@ -74,7 +74,7 @@ const ImageCanvasPanel: React.FC<ImageCanvasPanelProps> = ({
             )}
           </button>
           {onSavePreset && (
-            <button className="btn ghost icon" title="Save preset" onClick={onSavePreset}><SaveIcon size={14} /></button>
+            <button type="button" className="btn ghost icon" title="Save preset" onClick={onSavePreset}><SaveIcon size={14} /></button>
           )}
         </div>
       </div>

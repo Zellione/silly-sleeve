@@ -132,7 +132,7 @@ const GenerationParamsPanel: React.FC<GenerationParamsPanelProps> = ({
         <div className="row" style={{ gap: 6 }}>
           <input className="field" value={seed} onChange={e => onSeedChange(+e.target.value || 0)}
             style={{ flex: 1, fontSize: 12, fontFamily: 'var(--f-mono)' }} />
-          <button className="btn ghost icon" title="Randomize" onClick={() => onSeedChange(Math.floor(Math.random() * 4e9))}>
+          <button type="button" className="btn ghost icon" title="Randomize" onClick={() => onSeedChange(Math.floor(Math.random() * 4e9))}>
             <DiceIcon size={14} />
           </button>
         </div>

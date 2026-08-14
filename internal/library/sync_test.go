@@ -3,6 +3,7 @@ package library
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,4 +63,26 @@ func TestDefaultLibraryDir(t *testing.T) {
 	info, err := os.Stat(dir)
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
+}
+
+func TestConfigDir_DirectoryPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file mode bits not meaningful on Windows")
+	}
+	dir, err := ConfigDir()
+	require.NoError(t, err)
+	info, err := os.Stat(dir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm(), "config directory should be owner-only")
+}
+
+func TestDefaultLibraryDir_DirectoryPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file mode bits not meaningful on Windows")
+	}
+	dir, err := DefaultLibraryDir()
+	require.NoError(t, err)
+	info, err := os.Stat(dir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm(), "projects directory should be owner-only")
 }

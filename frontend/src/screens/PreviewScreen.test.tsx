@@ -301,3 +301,46 @@ describe('PreviewScreen', () => {
     expect(screen.getByLabelText('First message / greeting: incomplete')).toBeInTheDocument();
   });
 });
+
+describe('PreviewScreen character switch race', () => {
+  const preview = (total: number) => compose.CardPreview.createFrom({
+    tokens: { description: 0, personality: 0, scenario: 0, examples: 0, total },
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetPortrait.mockResolvedValue([]);
+    mockGetLorebook.mockResolvedValue([]);
+    mockGetActiveCharacter.mockResolvedValue(elara);
+    mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGetCharacters.mockResolvedValue([elara, bare]);
+  });
+
+  it('discards a stale preview for a character the user already switched away from', async () => {
+    // Elara's preview resolves only after Tatsumi's has already been applied.
+    // The token total identifies which response won.
+    let releaseElara: (v: compose.CardPreview) => void = () => {};
+    mockGetCardPreview
+      .mockImplementationOnce(() => Promise.resolve(preview(11)))
+      .mockImplementationOnce(() => new Promise(res => { releaseElara = res; }))
+      .mockImplementationOnce(() => Promise.resolve(preview(22)));
+
+    const { container } = render(<PreviewScreen />);
+    await screen.findByText('Tatsumi');
+    // 'Elara' also appears in the page heading and card body, so scope the
+    // clicks to the character strip.
+    const strip = within(container.querySelector('.ss-char-strip')!);
+
+    await userEvent.click(strip.getByText('Elara'));
+    await userEvent.click(strip.getByText('Tatsumi'));
+    await waitFor(() => expect(mockSetActiveCharacter).toHaveBeenLastCalledWith(2));
+    await waitFor(() => expect(screen.getByText('22 / 2,048')).toBeInTheDocument());
+
+    // The late Elara response must be dropped rather than overwriting Tatsumi.
+    releaseElara(preview(99));
+
+    await new Promise(r => setTimeout(r, 30));
+    expect(screen.queryByText('99 / 2,048')).not.toBeInTheDocument();
+    expect(screen.getByText('22 / 2,048')).toBeInTheDocument();
+  });
+});

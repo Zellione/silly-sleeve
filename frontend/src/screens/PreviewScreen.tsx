@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { CharacterStrip } from '../components/CharacterStrip';
 import { ArrowIcon, CheckIcon, XIcon } from '../icons';
@@ -237,11 +237,19 @@ const PreviewScreen: React.FC = () => {
       .catch(() => setPortrait(null));
   }, [activeId]);
 
+  // Guards the async character switch: clicking B while A's preview fetch is
+  // still in flight must not let A's late response overwrite B's preview.
+  const selectedIdRef = useRef(0);
+
   const selectChar = useCallback((id: number) => {
+    selectedIdRef.current = id;
     setActiveChar(characters.find(c => c.id === id) ?? null);
     SetActiveCharacter(id)
       .then(() => GetCardPreview())
-      .then(setCardPreview)
+      .then(preview => {
+        if (selectedIdRef.current !== id) return;
+        setCardPreview(preview);
+      })
       .catch(e => logError('PreviewScreen.selectChar', e));
   }, [characters]);
 

@@ -307,6 +307,8 @@ export namespace comfy {
 	    width: number;
 	    height: number;
 	    checkpoint: string;
+	    vae: string;
+	    lora: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GenerationParams(source);
@@ -326,6 +328,8 @@ export namespace comfy {
 	        this.width = source["width"];
 	        this.height = source["height"];
 	        this.checkpoint = source["checkpoint"];
+	        this.vae = source["vae"];
+	        this.lora = source["lora"];
 	    }
 	}
 

@@ -40,9 +40,20 @@ func NewWSListener(baseURL, clientID string, token *string, handler EventHandler
 }
 
 // Connect opens a WebSocket connection to ComfyUI.
+// If already connected, closes the previous connection first to prevent goroutine leaks.
 func (l *WSListener) Connect() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	// If a connection is already open, close it before dialling a new one.
+	// Otherwise its listen goroutine stays blocked in ReadMessage on a socket
+	// that Close() will never reach (Close only closes the current l.conn), and
+	// both goroutines would deliver events to the same handler.
+	if l.conn != nil {
+		l.conn.Close()
+		l.conn = nil
+		l.running = false
+	}
 
 	u, err := url.Parse(l.BaseURL)
 	if err != nil {
@@ -79,7 +90,9 @@ func (l *WSListener) Connect() error {
 	l.conn = conn
 	l.running = true
 
-	go l.listen()
+	// The goroutine is handed the connection it owns so a superseded listener
+	// can tell that it is no longer the current one.
+	go l.listen(conn)
 
 	return nil
 }
@@ -95,22 +108,33 @@ func (l *WSListener) Close() {
 	}
 }
 
-func (l *WSListener) listen() {
+func (l *WSListener) listen(conn *websocket.Conn) {
 	for {
-		// Snapshot conn and running together under one lock acquisition so the
-		// loop reads a consistent view even if Close() runs concurrently.
+		// Snapshot the current conn and running together under one lock
+		// acquisition so the loop reads a consistent view even if Close() or
+		// Connect() runs concurrently.
 		l.mu.Lock()
-		conn := l.conn
+		current := l.conn
 		running := l.running
 		l.mu.Unlock()
-		if !running || conn == nil {
+		// Stop if the listener was closed, or if a later Connect() replaced this
+		// goroutine's connection — a superseded goroutine must not touch shared
+		// state belonging to the connection that replaced it.
+		if !running || current != conn {
 			return
 		}
 
 		msgType, message, err := conn.ReadMessage()
 		if err != nil {
 			l.mu.Lock()
-			l.running = false
+			// Only clear running if this goroutine still owns the live
+			// connection. Without the identity check, the read error a
+			// superseded goroutine gets from its own closed socket would mark
+			// the freshly-established connection as not running, silently
+			// killing it.
+			if l.conn == conn {
+				l.running = false
+			}
 			l.mu.Unlock()
 			return
 		}

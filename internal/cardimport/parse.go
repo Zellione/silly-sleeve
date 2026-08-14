@@ -12,6 +12,17 @@ import (
 	"silly-sleeve/internal/cardexport"
 )
 
+const (
+	// maxChunkJSONBytes is the maximum size of a base64-encoded tEXt chunk value.
+	// This protects against DoS attacks with pathologically large embedded JSON.
+	// 10 MiB encoded is ~7.5 MiB decoded, far more than any legitimate character card needs.
+	maxChunkJSONBytes = 10 << 20
+
+	// maxCharacterBookEntries is the maximum number of world-info entries in a character_book.
+	// Protects against pathologically large lorebooks that would cause memory/CPU exhaustion.
+	maxCharacterBookEntries = 10000
+)
+
 // ParsedCard is the normalized intermediate between a raw card and a character.
 type ParsedCard struct {
 	Name               string
@@ -97,6 +108,12 @@ func parseJSON(data []byte) (*ParsedCard, error) {
 	if err := json.Unmarshal(raw, &c); err != nil {
 		return nil, fmt.Errorf("parse card data: %w", err)
 	}
+
+	// Validate character_book entries count to prevent DoS
+	if c.CharacterBook != nil && len(c.CharacterBook.Entries) > maxCharacterBookEntries {
+		return nil, fmt.Errorf("character_book contains %d entries, exceeds maximum of %d", len(c.CharacterBook.Entries), maxCharacterBookEntries)
+	}
+
 	notes := c.CreatorNotes
 	if notes == "" {
 		notes = c.Creatorcomment
@@ -144,6 +161,10 @@ func chunkJSON(chunks map[string]string, key string) ([]byte, bool) {
 	v, ok := chunks[key]
 	if !ok || v == "" {
 		return nil, false
+	}
+	// Reject pathologically large chunk values before attempting base64 decode.
+	if len(v) > maxChunkJSONBytes {
+		return []byte(v), true // Return raw value as fallback (doesn't match JSON pattern anyway)
 	}
 	if decoded, err := base64.StdEncoding.DecodeString(v); err == nil {
 		if t := bytes.TrimSpace(decoded); len(t) > 0 && t[0] == '{' {

@@ -12,7 +12,7 @@ export const CharacterStrip: React.FC<{
   <div className="ss-char-strip scroll">
     <span className="uplabel">Characters · {characters.length}</span>
     {characters.map(c => (
-      <button key={c.id} className="ss-char-tab"
+      <button type="button" key={c.id} className="ss-char-tab"
         data-on={c.id === activeId ? '1' : '0'}
         onClick={() => onSelect(c.id)}>
         <span className="av">{c.name[0] || '?'}</span>
@@ -21,12 +21,12 @@ export const CharacterStrip: React.FC<{
       </button>
     ))}
     {onImport && (
-      <button className="ss-char-add" onClick={onImport}>
+      <button type="button" className="ss-char-add" onClick={onImport}>
         <PlusIcon size={11} /> Import card
       </button>
     )}
     {onAdd && (
-      <button className="ss-char-add" onClick={onAdd}>
+      <button type="button" className="ss-char-add" onClick={onAdd}>
         <PlusIcon size={11} /> Add character
       </button>
     )}

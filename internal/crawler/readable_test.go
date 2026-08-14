@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,7 +21,7 @@ func TestFetchReadable_ExtractsArticle(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res := FetchReadable(srv.URL+"/story", FetchOptions{UserAgent: "UA/1"})
+	res := FetchReadable(context.Background(), srv.URL+"/story", FetchOptions{UserAgent: "UA/1"})
 	assert.NoError(t, res.Error)
 	assert.False(t, res.IsMediaWiki)
 	assert.Contains(t, res.RawHTML, "readable prose")

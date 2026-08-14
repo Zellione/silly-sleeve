@@ -6,6 +6,8 @@ import { useConfirmDialog } from '../components/ConfirmDialog';
 import { CrawlPage, GetCrawlState, SaveCrawlState, ClearCrawl, RemoveCrawlResult, SendCrawlResult, SaveProjectBundle } from '../../wailsjs/go/app/App';
 import { crawler, app } from '../../wailsjs/go/models';
 import { SectionContent } from '../components/SectionContent';
+import { Infobox } from '../components/Infobox';
+import { logError } from '../utils/log';
 import { Dropdown } from '../components/Dropdown';
 
 const RECENT_WIKIS = [
@@ -86,7 +88,9 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         }
         setPhase('crawled');
       }
-    }).catch(() => {}).finally(() => setHydrated(true));
+      // Swallowing this made a failed restore look like "my crawl results
+      // vanished" with no diagnostic anywhere.
+    }).catch(e => logError('CrawlerScreen.getCrawlState', e)).finally(() => setHydrated(true));
   }, [initializeRoles]);
 
   // Auto-commit inputs + role assignments to backend state (debounced) so they
@@ -262,25 +266,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     return (
       <>
         {selectedResult.infobox && selectedResult.infobox.length > 0 && (
-          <dl className="infobox">
-            {selectedResult.infobox.map((entry, i) => {
-              const showSection = entry.section && (i === 0 || selectedResult.infobox[i - 1].section !== entry.section);
-              return (
-                <React.Fragment key={i}>
-                  {showSection && <div className="infobox-section">{entry.section}</div>}
-                  <dt>{entry.key}</dt>
-                  <dd>
-                    {entry.value.split('\n').map((line, j) => (
-                      <React.Fragment key={j}>
-                        {j > 0 && <br />}
-                        {line}
-                      </React.Fragment>
-                    ))}
-                  </dd>
-                </React.Fragment>
-              );
-            })}
-          </dl>
+          <Infobox entries={selectedResult.infobox} />
         )}
         {hasSections && <SectionContent sections={selectedResult.sections} />}
         {!hasSections && (
@@ -300,7 +286,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         subtitle="Pull a source from the wild"
         title={<>Crawl a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>wiki page</em></>}
         actions={
-          <button className="btn ghost" disabled={results.length === 0} onClick={handleSaveCrawl}>
+          <button type="button" className="btn ghost" disabled={results.length === 0} onClick={handleSaveCrawl}>
             <SaveIcon size={14} /> Save crawl
           </button>
         }
@@ -329,17 +315,17 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
               <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
                 <span className="helpr">Fandom / MediaWiki pages are parsed natively. Other URLs fall back to readable-mode HTML.</span>
                 {phase === 'idle' && (
-                  <button className="btn primary" onClick={startCrawl}>
+                  <button type="button" className="btn primary" onClick={startCrawl}>
                     <GlobeIcon size={14} /> Crawl page
                   </button>
                 )}
                 {phase === 'fetching' && (
-                  <button className="btn primary" disabled style={{ opacity: 0.7 }}>
+                  <button type="button" className="btn primary" disabled style={{ opacity: 0.7 }}>
                     <div className="dot warn" style={{ boxShadow: 'none' }} /> Fetching…
                   </button>
                 )}
                 {phase === 'crawled' && (
-                  <button className="btn ghost" onClick={startCrawl}>
+                  <button type="button" className="btn ghost" onClick={startCrawl}>
                     <RerollIcon size={14} /> Re-crawl
                   </button>
                 )}

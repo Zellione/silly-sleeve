@@ -8,8 +8,9 @@ import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
   GetComfyVAEs, GetComfyLoRAs,
-  GetPortrait, SavePortrait, SaveProjectBundle,
+  GetPortrait, SavePortrait,
 } from '../../wailsjs/go/app/App';
+import { useBundleSave } from '../components/useBundleSave';
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
@@ -62,8 +63,16 @@ function checkpointOpts(list: string[]): string[] {
   return list.length > 0 ? list : ['sd_xl_base_1.0', 'juggernautXL_v9', 'ponyDiffusion_v6'];
 }
 
-function modelOpts(list: string[], fallback: string[]): string[] {
-  return (['— none —'] as string[]).concat(list.length > 0 ? list : fallback);
+/**
+ * Builds dropdown options for an optional model (VAE / LoRA). The leading
+ * option carries an empty value: the backend reads '' as "leave this loader out
+ * of the workflow graph", which is how "baked VAE" and "no LoRA" are expressed.
+ */
+function modelOpts(list: string[], fallback: string[], noneLabel: string) {
+  const names = list.length > 0 ? list : fallback;
+  return [{ value: '', label: noneLabel }].concat(
+    names.map(n => ({ value: n, label: n.replace(/\.safetensors$/, '') })),
+  );
 }
 
 function variantUrl(images: string[], index: number): string | null {
@@ -88,11 +97,12 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   const [negPrompt, setNegPrompt] = useState('');
   const [vaes, setVaes] = useState<string[]>([]);
   const [loras, setLoras] = useState<string[]>([]);
+  // '' means "use the checkpoint's baked VAE" / "no LoRA" — see modelOpts.
+  const [vae, setVae] = useState('');
+  const [lora, setLora] = useState('');
   const [savedPortrait, setSavedPortrait] = useState<string | null>(null);
   const { toast } = useToast();
-  const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => { if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current); }, []);
+  const scheduleBundleSave = useBundleSave(projectPath, bundleSaveDelay, 'Portrait');
 
   const {
     samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
@@ -132,6 +142,25 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
       .catch(() => {});
   }, [activeCharId]);
 
+  // Guards the async character switch: clicking B while A's fetch is still in
+  // flight must not let A's late response overwrite B. Only the most recently
+  // requested id is allowed to commit its result.
+  const activeIdRef = useRef(0);
+
+  const selectCharacter = async (id: number) => {
+    activeIdRef.current = id;
+    setActiveCharId(id);
+    try {
+      await SetActiveCharacter(id);
+      const ch = await GetActiveCharacter();
+      if (activeIdRef.current !== id) return;
+      setActiveChar(ch);
+    } catch (e) {
+      if (activeIdRef.current !== id) return;
+      toast({ kind: 'bad', title: 'Could not switch character', body: String(e) });
+    }
+  };
+
   const persistPortrait = async (dataUrl: string) => {
     if (!dataUrl || !activeCharId) return;
     try {
@@ -141,14 +170,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
       // SavePortrait only updates the in-memory character; without also
       // writing the project bundle to disk, the portrait is lost the next
       // time the project is opened.
-      if (projectPath) {
-        if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current);
-        bundleSaveTimer.current = setTimeout(() => {
-          SaveProjectBundle(projectPath).catch(e => {
-            console.error('Portrait bundle save failed:', e);
-          });
-        }, bundleSaveDelay);
-      }
+      scheduleBundleSave();
     } catch (e) {
       toast({ kind: 'bad', title: 'Save failed', body: String(e) });
     }
@@ -164,10 +186,10 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
         title={<>Conjure a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>portrait</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">
-              <button data-on={activeState(mode, 'generate')} onClick={() => setMode('generate')}>
+              <button type="button" data-on={activeState(mode, 'generate')} onClick={() => setMode('generate')}>
                 <SparksIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Generate
               </button>
-              <button data-on={activeState(mode, 'upload')} onClick={() => setMode('upload')}>
+              <button type="button" data-on={activeState(mode, 'upload')} onClick={() => setMode('upload')}>
                 <UploadIcon size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Upload
               </button>
             </div>
@@ -175,8 +197,8 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
 
       <div className="character-strip">
         {characters.map(c => (
-          <button key={c.id} className="cs-pill" data-on={activeState(activeCharId, c.id)}
-            onClick={async () => { setActiveCharId(c.id); await SetActiveCharacter(c.id); const ch = await GetActiveCharacter(); setActiveChar(ch); }}>
+          <button type="button" key={c.id} className="cs-pill" data-on={activeState(activeCharId, c.id)}
+            onClick={() => selectCharacter(c.id)}>
             <span className="cs-av">{getInitial(c.name)}</span>
             <span>{c.name}</span>
           </button>
@@ -214,15 +236,17 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
                 <Dropdown
                   id="portrait-vae"
                   aria-label="VAE"
-                  defaultValue={modelOpts(vaes, ['sdxl_vae_fp16_fix', 'baked'])[0]}
-                  options={modelOpts(vaes, ['sdxl_vae_fp16_fix', 'baked']).map(v => ({ value: v, label: v.replace(/\.safetensors$/, '') }))}
+                  value={vae}
+                  onChange={setVae}
+                  options={modelOpts(vaes, ['sdxl_vae_fp16_fix'], '— baked VAE —')}
                 />
                 <label htmlFor="portrait-lora">LoRA</label>
                 <Dropdown
                   id="portrait-lora"
                   aria-label="LoRA"
-                  defaultValue={modelOpts(loras, ['oil_painting_v3'])[0]}
-                  options={modelOpts(loras, ['oil_painting_v3']).map(l => ({ value: l, label: l.replace(/\.safetensors$/, '') }))}
+                  value={lora}
+                  onChange={setLora}
+                  options={modelOpts(loras, ['oil_painting_v3'], '— no LoRA —')}
                 />
               </div>
             </GenerationParamsPanel>
@@ -262,7 +286,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
               }
               autoFillButton={
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt)}>
+                  <button type="button" className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt)}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
                   <Dropdown
@@ -281,7 +305,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint })}
+              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, vae, lora })}
               onSavePreset={() => {}}
             />
 

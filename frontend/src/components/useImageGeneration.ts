@@ -21,6 +21,16 @@ export interface GenerationRequest {
   prompt: string;
   negPrompt: string;
   checkpoint: string;
+  /**
+   * VAE model file, or '' to use the checkpoint's baked VAE. The backend omits
+   * the VAELoader node from the built-in workflow when this is empty.
+   */
+  vae: string;
+  /**
+   * LoRA model file, or '' for no LoRA. The backend omits the LoraLoader node
+   * from the built-in workflow when this is empty.
+   */
+  lora: string;
 }
 
 export interface UseImageGenerationOptions {
@@ -126,6 +136,8 @@ export function useImageGeneration({
         width,
         height,
         checkpoint: req.checkpoint,
+        vae: req.vae,
+        lora: req.lora,
       });
       const images = await generate(params);
       setVariantImages(images.map(img => arrayBufferToDataURL(img.data)));

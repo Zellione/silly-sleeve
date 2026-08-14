@@ -88,15 +88,33 @@ func GenerateBulkWith(ctx context.Context, completer llm.Completer, result crawl
 }
 
 func applyResponse(ch *Character, gr generateResponse) {
-	if gr.Name != "" {
-		ch.Name = gr.Name
-	}
-	if gr.Epithet != "" {
-		ch.Epithet = gr.Epithet
-	}
+	// Apply simple scalar fields (name, epithet always; appearance, etc. only if non-empty)
+	applyResponseStringFields(ch, gr)
+
+	// Apply slice fields
 	if len(gr.Tags) > 0 {
 		ch.Tags = gr.Tags
 	}
+	if len(gr.Quotes) > 0 {
+		ch.Quotes = gr.Quotes
+	}
+	if len(gr.AltGreetings) > 0 {
+		ch.AltGreetings = gr.AltGreetings
+	}
+
+	// Apply stats field
+	if len(gr.Stats) > 0 {
+		applyResponseStats(ch, gr.Stats)
+	}
+}
+
+// applyResponseStringFields applies string fields from generateResponse to Character.
+func applyResponseStringFields(ch *Character, gr generateResponse) {
+	// Fields with no validation (name, epithet always apply)
+	ch.Name = gr.Name
+	ch.Epithet = gr.Epithet
+
+	// Text fields (only apply if non-empty)
 	if gr.Appearance != "" {
 		ch.Appearance = gr.Appearance
 	}
@@ -112,24 +130,20 @@ func applyResponse(ch *Character, gr generateResponse) {
 	if gr.Relationships != "" {
 		ch.Relationships = gr.Relationships
 	}
-	if len(gr.Quotes) > 0 {
-		ch.Quotes = gr.Quotes
-	}
-	if len(gr.AltGreetings) > 0 {
-		ch.AltGreetings = gr.AltGreetings
-	}
-	if len(gr.Stats) > 0 {
-		ch.Stats = make([]StatKV, len(gr.Stats))
-		for i, pair := range gr.Stats {
-			k, v := "", ""
-			if len(pair) > 0 {
-				k = pair[0]
-			}
-			if len(pair) > 1 {
-				v = pair[1]
-			}
-			ch.Stats[i] = StatKV{Key: k, Value: v}
+}
+
+// applyResponseStats converts and applies stats from response format to Character format.
+func applyResponseStats(ch *Character, stats [][]string) {
+	ch.Stats = make([]StatKV, len(stats))
+	for i, pair := range stats {
+		k, v := "", ""
+		if len(pair) > 0 {
+			k = pair[0]
 		}
+		if len(pair) > 1 {
+			v = pair[1]
+		}
+		ch.Stats[i] = StatKV{Key: k, Value: v}
 	}
 }
 

@@ -64,3 +64,145 @@ func TestBuiltInTemplateHasPlaceholders(t *testing.T) {
 	assert.Contains(t, templateStr, "VAEDecode")
 	assert.Contains(t, templateStr, "SaveImage")
 }
+
+// decodeGraph parses a rendered template back into a node graph for assertions.
+func decodeGraph(t *testing.T, tmpl string) map[string]map[string]any {
+	t.Helper()
+	var raw map[string]map[string]any
+	require.NoError(t, json.Unmarshal([]byte(tmpl), &raw))
+	return raw
+}
+
+func nodeInput(t *testing.T, graph map[string]map[string]any, node, input string) any {
+	t.Helper()
+	inputs, ok := graph[node]["inputs"].(map[string]any)
+	require.True(t, ok, "node %s has no inputs map", node)
+	return inputs[input]
+}
+
+func TestBuildWorkflowTemplate_BaselineHasNoLoaderNodes(t *testing.T) {
+	graph := decodeGraph(t, buildWorkflowTemplate(false, false))
+
+	assert.NotContains(t, graph, nodeVAELoader, "baked VAE must not add a VAELoader")
+	assert.NotContains(t, graph, nodeLoRALoader, "no LoRA must not add a LoraLoader")
+	// VAEDecode falls back to the checkpoint's third output (the baked VAE).
+	assert.Equal(t, []any{nodeCheckpoint, float64(2)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
+	assert.Equal(t, []any{nodeCheckpoint, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+	assert.Equal(t, []any{nodeCheckpoint, float64(1)}, nodeInput(t, graph, nodePositive, "clip"))
+}
+
+func TestBuildWorkflowTemplate_VAELoaderRewiresDecode(t *testing.T) {
+	graph := decodeGraph(t, buildWorkflowTemplate(true, false))
+
+	require.Contains(t, graph, nodeVAELoader)
+	assert.Equal(t, "VAELoader", graph[nodeVAELoader]["class_type"])
+	assert.Equal(t, "{{vae}}", nodeInput(t, graph, nodeVAELoader, "vae_name"))
+	assert.Equal(t, []any{nodeVAELoader, float64(0)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
+	// The model path is untouched by a VAE selection.
+	assert.Equal(t, []any{nodeCheckpoint, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+}
+
+func TestBuildWorkflowTemplate_LoRARewiresModelAndClip(t *testing.T) {
+	graph := decodeGraph(t, buildWorkflowTemplate(false, true))
+
+	require.Contains(t, graph, nodeLoRALoader)
+	assert.Equal(t, "LoraLoader", graph[nodeLoRALoader]["class_type"])
+	assert.Equal(t, "{{lora}}", nodeInput(t, graph, nodeLoRALoader, "lora_name"))
+	// Sampler takes the LoRA-patched model, encoders take the LoRA-patched clip.
+	assert.Equal(t, []any{nodeLoRALoader, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+	assert.Equal(t, []any{nodeLoRALoader, float64(1)}, nodeInput(t, graph, nodePositive, "clip"))
+	assert.Equal(t, []any{nodeLoRALoader, float64(1)}, nodeInput(t, graph, nodeNegative, "clip"))
+	// The LoRA loader itself still reads from the checkpoint.
+	assert.Equal(t, []any{nodeCheckpoint, float64(0)}, nodeInput(t, graph, nodeLoRALoader, "model"))
+	// VAE path untouched by a LoRA selection.
+	assert.Equal(t, []any{nodeCheckpoint, float64(2)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
+}
+
+func TestBuildWorkflowTemplate_BothLoadersCoexist(t *testing.T) {
+	graph := decodeGraph(t, buildWorkflowTemplate(true, true))
+
+	require.Contains(t, graph, nodeVAELoader)
+	require.Contains(t, graph, nodeLoRALoader)
+	assert.Equal(t, []any{nodeVAELoader, float64(0)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
+	assert.Equal(t, []any{nodeLoRALoader, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+}
+
+func TestBuildWorkflowTemplate_EveryVariantIsValidJSONAndComplete(t *testing.T) {
+	for _, tc := range []struct{ vae, lora bool }{
+		{false, false}, {true, false}, {false, true}, {true, true},
+	} {
+		graph := decodeGraph(t, buildWorkflowTemplate(tc.vae, tc.lora))
+		for _, required := range []string{
+			nodeCheckpoint, nodeLatent, nodePositive, nodeNegative,
+			nodeSampler, nodeVAEDecode, nodeSaveImage,
+		} {
+			assert.Contains(t, graph, required, "variant vae=%t lora=%t missing node %s", tc.vae, tc.lora, required)
+		}
+	}
+}
+
+func TestUsesVAEAndUsesLoRA_SentinelsMeanOmitTheNode(t *testing.T) {
+	assert.False(t, UsesVAE(""), "empty selection means baked VAE")
+	assert.False(t, UsesVAE("baked"))
+	assert.True(t, UsesVAE("sdxl_vae_fp16_fix.safetensors"))
+
+	assert.False(t, UsesLoRA(""), "empty selection means no LoRA")
+	assert.False(t, UsesLoRA("none"))
+	assert.True(t, UsesLoRA("oil_painting_v3.safetensors"))
+}
+
+func TestIsBuiltInTemplate(t *testing.T) {
+	for _, tc := range []struct{ vae, lora bool }{
+		{false, false}, {true, false}, {false, true}, {true, true},
+	} {
+		assert.True(t, IsBuiltInTemplate(buildWorkflowTemplate(tc.vae, tc.lora)),
+			"variant vae=%t lora=%t should be recognised as built-in", tc.vae, tc.lora)
+	}
+	assert.False(t, IsBuiltInTemplate(`{"1":{"class_type":"CheckpointLoaderSimple"}}`))
+	assert.False(t, IsBuiltInTemplate(""))
+}
+
+func TestResolveWorkflowTemplate_SwapsBuiltInVariant(t *testing.T) {
+	base := buildWorkflowTemplate(false, false)
+
+	assert.Equal(t, buildWorkflowTemplate(true, false),
+		ResolveWorkflowTemplate(base, "sdxl_vae.safetensors", "none"))
+	assert.Equal(t, buildWorkflowTemplate(false, true),
+		ResolveWorkflowTemplate(base, "baked", "oil.safetensors"))
+	assert.Equal(t, buildWorkflowTemplate(true, true),
+		ResolveWorkflowTemplate(base, "sdxl_vae.safetensors", "oil.safetensors"))
+	assert.Equal(t, base, ResolveWorkflowTemplate(base, "baked", "none"))
+}
+
+func TestResolveWorkflowTemplate_LeavesUserEditedTemplateAlone(t *testing.T) {
+	custom := `{"1":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":"{{model}}","vae":"{{vae}}"}}}`
+
+	assert.Equal(t, custom, ResolveWorkflowTemplate(custom, "sdxl_vae.safetensors", "oil.safetensors"),
+		"a hand-edited template must never be silently replaced")
+}
+
+func TestBuildPlaceholderValues_AlwaysSuppliesVaeAndLora(t *testing.T) {
+	// Even with no selection the keys must exist: replaceStringPlaceholder
+	// errors on an unknown placeholder, so a custom workflow referencing
+	// {{vae}} would fail to generate if these were conditional.
+	values := BuildPlaceholderValues(GenerationParams{})
+	assert.Contains(t, values, "vae")
+	assert.Contains(t, values, "lora")
+
+	values = BuildPlaceholderValues(GenerationParams{Vae: "v.safetensors", Lora: "l.safetensors"})
+	assert.Equal(t, "v.safetensors", values["vae"])
+	assert.Equal(t, "l.safetensors", values["lora"])
+}
+
+func TestReplacePlaceholders_ResolvesVaeAndLoraInCustomWorkflow(t *testing.T) {
+	tmpl := `{"9":{"class_type":"VAELoader","inputs":{"vae_name":"{{vae}}"}},` +
+		`"8":{"class_type":"LoraLoader","inputs":{"lora_name":"{{lora}}"}}}`
+	values := BuildPlaceholderValues(GenerationParams{Vae: "v.safetensors", Lora: "l.safetensors"})
+
+	out, err := ReplacePlaceholders(json.RawMessage(tmpl), nil, values)
+	require.NoError(t, err)
+
+	graph := decodeGraph(t, string(out))
+	assert.Equal(t, "v.safetensors", nodeInput(t, graph, "9", "vae_name"))
+	assert.Equal(t, "l.safetensors", nodeInput(t, graph, "8", "lora_name"))
+}

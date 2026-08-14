@@ -29,6 +29,19 @@ func TestSaveProject_FilePermissions(t *testing.T) {
 	assert.Equal(t, os.FileMode(0o600), cInfo.Mode().Perm(), "character file")
 }
 
+func TestSaveProject_DirectoryPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file mode bits not meaningful on Windows")
+	}
+	dir := t.TempDir()
+	require.NoError(t, SaveProject(dir, sampleManifest(), sampleCharacters()))
+
+	// Characters directory created by SaveProject should be owner-only (0o700)
+	cDirInfo, err := os.Stat(filepath.Join(dir, charsDir))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), cDirInfo.Mode().Perm(), "characters directory")
+}
+
 func sampleManifest() ProjectManifest {
 	return ProjectManifest{
 		Version:      ManifestVersion,

@@ -252,6 +252,17 @@ func (a *App) ParseComfyWorkflowParams(jsonData string) (comfy.WorkflowParams, e
 	return a.comfy.ParseComfyWorkflowParams(jsonData)
 }
 
+// crawlContext returns the context a crawl should be bound to. a.ctx is only
+// set once Wails calls startup, so callers that run before that (and unit
+// tests constructing an App directly) fall back to a background context rather
+// than passing a nil one.
+func (a *App) crawlContext() context.Context {
+	if a.ctx != nil {
+		return a.ctx
+	}
+	return context.Background()
+}
+
 // CrawlPage crawls a wiki page (and optionally followed links) and returns the
 // resulting set.
 func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.CrawlSet {
@@ -260,7 +271,7 @@ func (a *App) CrawlPage(pageURL string, opts crawler.CrawlOptions) crawler.Crawl
 	a.mu.Unlock()
 
 	c := crawler.Crawler{UserAgent: cfg.UserAgent, RateLimitMs: cfg.RateLimitMs, MaxPages: cfg.MaxPages}
-	set, err := c.Crawl(pageURL, opts)
+	set, err := c.Crawl(a.crawlContext(), pageURL, opts)
 	if err != nil {
 		fmt.Println("[app] CrawlPage error:", err)
 		return crawler.CrawlSet{RootURL: pageURL}
@@ -866,45 +877,6 @@ func (a *App) importCardData(data []byte) (*ImportCardResult, error) {
 		a.lorebookEntries = append(a.lorebookEntries, entries[i])
 	}
 	return &ImportCardResult{Character: ch, ImportedEntries: len(entries)}, nil
-}
-
-// GetPortrait returns the portrait bytes for a character.
-func (a *App) GetPortrait(charID int) []byte {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	for _, c := range a.characters {
-		if c.ID == charID {
-			return c.Portrait
-		}
-	}
-	return nil
-}
-
-// SavePortrait stores portrait bytes for a character.
-func (a *App) SavePortrait(charID int, data []byte) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	for i, c := range a.characters {
-		if c.ID == charID {
-			a.characters[i].Portrait = data
-			return nil
-		}
-	}
-	return charNotFound(charID)
-}
-
-// GetProjectImage returns the project-level cover image.
-func (a *App) GetProjectImage() []byte {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.projectImage
-}
-
-// SaveProjectImage stores the project-level cover image.
-func (a *App) SaveProjectImage(data []byte) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.projectImage = data
 }
 
 func charNotFound(id int) error {

@@ -5,7 +5,8 @@ import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon, LinkIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, SaveProjectBundle, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/app/App';
+import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/app/App';
+import { useBundleSave } from '../components/useBundleSave';
 import { TagsInput } from '../components/TagsInput';
 import { CharacterScopeChips } from '../components/lore/CharacterScopeChips';
 import { ExtractPanel } from '../components/lore/ExtractPanel';
@@ -56,7 +57,7 @@ const TokenInput: React.FC<{
 /* ─── Toggle ────────────────────────────────────────── */
 
 const Toggle: React.FC<{ value: boolean; onChange: (v: boolean) => void }> = ({ value, onChange }) => (
-  <button className="lb-switch" data-on={value ? '1' : '0'} onClick={() => onChange(!value)}>
+  <button type="button" className="lb-switch" data-on={value ? '1' : '0'} onClick={() => onChange(!value)}>
     <i />
   </button>
 );
@@ -96,8 +97,8 @@ const LbDetail: React.FC<{
         <input className="title" value={entry.comment || ''} onChange={e => set('comment', e.target.value)}
                placeholder="Entry name…" />
         <div className="tools">
-          <button className="btn ghost icon" title="Duplicate"><CopyIcon size={14}/></button>
-          <button className="btn ghost icon" title="Delete"><TrashIcon size={14}/></button>
+          <button type="button" className="btn ghost icon" title="Duplicate"><CopyIcon size={14}/></button>
+          <button type="button" className="btn ghost icon" title="Delete"><TrashIcon size={14}/></button>
         </div>
       </div>
 
@@ -120,7 +121,7 @@ const LbDetail: React.FC<{
             <div className="lb-grid-2">
               <div className="lb-seg">
                 {SEL_LOGIC.map(o => (
-                  <button key={o.v} data-on={entry.selectiveLogic === o.v ? '1' : '0'}
+                  <button type="button" key={o.v} data-on={entry.selectiveLogic === o.v ? '1' : '0'}
                           onClick={() => set('selectiveLogic', o.v)}>
                     {o.label} <span className="k">{o.v}</span>
                   </button>
@@ -154,7 +155,7 @@ const LbDetail: React.FC<{
           <div className="lb-sect-h"><h4>Position in context</h4><hr/></div>
           <div className="lb-positions">
             {POSITIONS.map(p => (
-              <button key={p.i} className="lb-pos" data-on={entry.position === p.i ? '1' : '0'}
+              <button type="button" key={p.i} className="lb-pos" data-on={entry.position === p.i ? '1' : '0'}
                       onClick={() => set('position', p.i)}>
                 <b><span className="ix">{p.i}</span>{p.name}</b>
                 <small>{p.hint}</small>
@@ -288,7 +289,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
     setTab('extract');
     connections.suggest();
   }, [connections]);
-  const bundleSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleBundleSave = useBundleSave(projectPath, bundleSaveDelay, 'Lorebook');
 
   useEffect(() => {
     GetLorebook().then(es => {
@@ -314,22 +315,14 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
     else if (!pendingImport && dlg.open) dlg.close();
   }, [pendingImport]);
 
-  useEffect(() => () => { if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current); }, []);
 
   const persist = useCallback((es: lorebook.Entry[]) => {
     setEntries(es);
     SaveLorebook(es).catch(() => {
       toast({ kind: 'bad', title: 'Save failed', body: 'Could not persist lorebook.' });
     });
-    if (projectPath) {
-      if (bundleSaveTimer.current) clearTimeout(bundleSaveTimer.current);
-      bundleSaveTimer.current = setTimeout(() => {
-        SaveProjectBundle(projectPath).catch(e => {
-          console.error('Lorebook bundle save failed:', e);
-        });
-      }, bundleSaveDelay);
-    }
-  }, [toast, projectPath, bundleSaveDelay]);
+    scheduleBundleSave();
+  }, [toast, scheduleBundleSave]);
 
   const filtered = entries.filter(e =>
     !search ||
@@ -495,8 +488,8 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
             <button type="button" className="btn ghost" onClick={handleSuggest} disabled={connections.running || entries.length === 0}>
               <LinkIcon size={13}/> {connections.running ? 'Finding connections…' : 'Suggest connections'}
             </button>
-            <button className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
-            <button className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
+            <button type="button" className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
+            <button type="button" className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
           </>
         } />
       {tab === 'extract' ? (
@@ -531,7 +524,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
 
             <div className="lb-entries scroll">
               {filtered.sort((a, b) => (b.order || 0) - (a.order || 0)).map(e => (
-                <button key={e.uid} className="lb-entry"
+                <button type="button" key={e.uid} className="lb-entry"
                         data-uid={e.uid}
                         data-on={selectedUid === e.uid ? '1' : '0'}
                         data-disabled={e.disable ? '1' : '0'}
@@ -570,11 +563,11 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
             </div>
 
             <div className="lf">
-              <button className="btn primary" onClick={addEntry}><PlusIcon size={13}/> New entry</button>
+              <button type="button" className="btn primary" onClick={addEntry}><PlusIcon size={13}/> New entry</button>
               {selected && (
                 <>
-                  <button className="btn ghost" onClick={duplicateEntry}><CopyIcon size={13}/> Duplicate</button>
-                  <button className="btn ghost" onClick={deleteSelected} style={{color: 'var(--bad)'}}><TrashIcon size={13}/> Delete</button>
+                  <button type="button" className="btn ghost" onClick={duplicateEntry}><CopyIcon size={13}/> Duplicate</button>
+                  <button type="button" className="btn ghost" onClick={deleteSelected} style={{color: 'var(--bad)'}}><TrashIcon size={13}/> Delete</button>
                 </>
               )}
             </div>
@@ -596,9 +589,9 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
             <h3>Import {pendingImport.length} entr{pendingImport.length === 1 ? 'y' : 'ies'}</h3>
             <p>Merge into the current {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}, or replace them?</p>
             <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
-              <button className="btn ghost" onClick={() => setPendingImport(null)}>Cancel</button>
-              <button className="btn ghost" onClick={() => applyImport('replace')}>Replace all</button>
-              <button className="btn primary" onClick={() => applyImport('merge')}>Merge</button>
+              <button type="button" className="btn ghost" onClick={() => setPendingImport(null)}>Cancel</button>
+              <button type="button" className="btn ghost" onClick={() => applyImport('replace')}>Replace all</button>
+              <button type="button" className="btn primary" onClick={() => applyImport('merge')}>Merge</button>
             </div>
           </div>
         )}

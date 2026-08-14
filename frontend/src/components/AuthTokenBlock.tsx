@@ -41,7 +41,7 @@ export const AuthTokenBlock: React.FC<AuthTokenBlockProps> = ({
           <b>{toggleLabel}</b>
           <small>Sent as <code>Authorization: Bearer …</code></small>
         </div>
-        <button
+        <button type="button"
           className="ep-switch"
           data-on={enabled ? '1' : '0'}
           onClick={() => onToggle(!enabled)}
@@ -62,7 +62,7 @@ export const AuthTokenBlock: React.FC<AuthTokenBlockProps> = ({
             placeholder={placeholder}
             spellCheck={false}
           />
-          <button
+          <button type="button"
             className="ep-eye"
             onClick={() => setReveal(!reveal)}
             title={reveal ? `Hide ${secretNoun}` : `Reveal ${secretNoun}`}

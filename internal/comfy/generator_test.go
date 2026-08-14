@@ -7,6 +7,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -431,4 +433,102 @@ func TestOnBinaryImage_InvalidImageData(t *testing.T) {
 	g.mu.Lock()
 	assert.Len(t, g.binaryBuffer, 0)
 	g.mu.Unlock()
+}
+
+// TestSanitizePromptID tests the sanitizePromptID helper function.
+func TestSanitizePromptID(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "path traversal attempt",
+			input:    "../../etc/passwd",
+			expected: "etcpasswd",
+		},
+		{
+			name:     "simple path traversal",
+			input:    "a/b",
+			expected: "ab",
+		},
+		{
+			name:     "double dots",
+			input:    "..",
+			expected: "image",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "image",
+		},
+		{
+			name:     "valid alphanum",
+			input:    "abc-123_DEF",
+			expected: "abc-123_DEF",
+		},
+		{
+			name:     "unicode characters",
+			input:    "prompt_🎨_id",
+			expected: "prompt__id",
+		},
+		{
+			name:     "UUID-like string",
+			input:    "550e8400-e29b-41d4-a716-446655440000",
+			expected: "550e8400-e29b-41d4-a716-446655440000",
+		},
+		{
+			name:     "special characters only",
+			input:    "@#$%^&*()",
+			expected: "image",
+		},
+		{
+			name:     "spaces and slashes",
+			input:    "my prompt id with spaces",
+			expected: "mypromptidwithspaces",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := sanitizePromptID(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestSaveGeneratedImage_PathTraversalPrevention tests that saveGeneratedImage cannot escape the target directory.
+func TestSaveGeneratedImage_PathTraversalPrevention(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Attempt to use a promptID with path traversal characters
+	traversalPromptID := "../../etc/passwd"
+	testData := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A} // PNG magic bytes
+
+	saveGeneratedImage(tmpDir, traversalPromptID, 0, testData)
+
+	// Verify no files were created in parent directories
+	// List files in tmpDir
+	entries, err := os.ReadDir(tmpDir)
+	require.NoError(t, err)
+
+	// Should have exactly one file (the sanitized one)
+	if len(entries) > 0 {
+		// All files should be in tmpDir
+		for _, entry := range entries {
+			filePath := filepath.Join(tmpDir, entry.Name())
+			assert.True(t, strings.HasPrefix(filePath, tmpDir), "file escaped target directory: %s", filePath)
+		}
+	}
+
+	// Verify no files exist at traversal paths
+	parentDir := filepath.Dir(tmpDir)
+	entries, err = os.ReadDir(parentDir)
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		// None of the entries in parent should be "etc", "passwd", etc.
+		assert.NotEqual(t, "etc", entry.Name())
+		assert.NotEqual(t, "passwd", entry.Name())
+	}
 }

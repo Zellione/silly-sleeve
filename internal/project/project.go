@@ -55,7 +55,7 @@ func SaveProject(folderPath string, m ProjectManifest, characters []compose.Char
 	}
 	v.UpdatedAt = now
 
-	if err := os.MkdirAll(folderPath, 0o755); err != nil {
+	if err := os.MkdirAll(folderPath, 0o700); err != nil {
 		return fmt.Errorf("create project folder: %w", err)
 	}
 
@@ -68,8 +68,11 @@ func SaveProject(folderPath string, m ProjectManifest, characters []compose.Char
 	}
 
 	charsPath := filepath.Join(folderPath, charsDir)
-	if err := os.MkdirAll(charsPath, 0o755); err != nil {
+	if err := os.MkdirAll(charsPath, 0o700); err != nil {
 		return fmt.Errorf("create characters dir: %w", err)
+	}
+	if err := os.Chmod(charsPath, 0o700); err != nil {
+		return fmt.Errorf("chmod characters dir: %w", err)
 	}
 	for _, ch := range characters {
 		chData, err := json.MarshalIndent(ch, "", "  ")

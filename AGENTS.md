@@ -4,7 +4,7 @@ This is a cross-platform desktop application built with **Wails v2** (Go backend
 
 ## Tech Stack
 
-- **Language:** Go 1.22+
+- **Language:** Go 1.25+
 - **Frontend:** React 18 + Vite + TypeScript
 - **Desktop bridge:** Wails v2
 - **Lint:** `golangci-lint` (Go), ESLint (React)
@@ -25,7 +25,7 @@ sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev
 # Ubuntu 20.04 / older Debian
 sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
 # Arch
-sudo pacman -S gtk3 webkit2gtk
+sudo pacman -S gtk3 webkit2gtk-4.1
 # Fedora
 sudo dnf install gtk3-devel webkit2gtk3-devel
 ```

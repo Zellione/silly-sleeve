@@ -129,6 +129,10 @@
   model above) over fake timers whenever possible.
 
 ## Workflow
+- **PRs are squash-merged** (one commit per PR on `main`, e.g. `... (#30)`). The local
+  milestone branch keeps its individual commits, which git does NOT see as merged. For a
+  follow-up PR, branch off a freshly fetched `origin/main` — do NOT reuse the merged
+  milestone branch, or the new PR will re-show the entire already-merged diff.
 - USER PREFERENCE: always `git add` newly-created/updated `.serena/memories/**` files
   and include them in the milestone commit/PR (they are tracked in this repo).
 - **STANDING RULE (explicit user directive): if a memory changes as a result of

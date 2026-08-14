@@ -58,6 +58,16 @@ func (l *LibraryManager) Register(path string, m project.ProjectManifest, active
 	if err != nil {
 		return err
 	}
+	hasThumb := ref != ""
+	if ref == "" {
+		// A bundle with no image says nothing about the cached thumbnail:
+		// opening a project re-registers it, and that must not wipe a
+		// thumbnail cached from an earlier save.
+		if prev := idx.Find(path); prev != nil {
+			ref = prev.ThumbRef
+			hasThumb = prev.HasThumbnail
+		}
+	}
 
 	idx.Upsert(library.Entry{
 		Path:         path,
@@ -67,7 +77,7 @@ func (l *LibraryManager) Register(path string, m project.ProjectManifest, active
 		SourceShort:  library.SourceShort(m.SourceURL),
 		Tags:         append([]string{}, m.Tags...),
 		Tokens:       compose.CharacterTokens(active),
-		HasThumbnail: ref != "",
+		HasThumbnail: hasThumb,
 		ThumbRef:     ref,
 	})
 	return library.Save(l.baseDir, idx)

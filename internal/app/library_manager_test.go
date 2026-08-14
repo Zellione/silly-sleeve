@@ -46,6 +46,36 @@ func TestLibraryRegisterAndList(t *testing.T) {
 	assert.Greater(t, e.Tokens, 0)
 }
 
+func TestLibraryRegister_PreservesThumbnailWhenBundleHasNoImage(t *testing.T) {
+	lm := newTestLibrary(t)
+	path := filepath.Join(lm.LibraryDir(), "Ciri.slv")
+	require.NoError(t, os.WriteFile(path, []byte("zip"), 0o600))
+
+	withImage := project.ProjectManifest{Name: "Ciri", ProjectImage: []byte{1, 2, 3}}
+	require.NoError(t, lm.Register(path, withImage, compose.Character{ID: 1}))
+
+	// Opening a project re-registers it with the bundle's manifest. A bundle
+	// with no image must not wipe the thumbnail cached at save time.
+	require.NoError(t, lm.Register(path, project.ProjectManifest{Name: "Ciri"}, compose.Character{ID: 1}))
+
+	list, err := lm.List()
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.True(t, list[0].HasThumbnail)
+	assert.Equal(t, []byte{1, 2, 3}, lm.Thumbnail(path))
+}
+
+func TestLibraryRegister_ReplacesThumbnailWhenBundleHasImage(t *testing.T) {
+	lm := newTestLibrary(t)
+	path := filepath.Join(lm.LibraryDir(), "Ciri.slv")
+	require.NoError(t, os.WriteFile(path, []byte("zip"), 0o600))
+
+	require.NoError(t, lm.Register(path, project.ProjectManifest{Name: "Ciri", ProjectImage: []byte{1}}, compose.Character{ID: 1}))
+	require.NoError(t, lm.Register(path, project.ProjectManifest{Name: "Ciri", ProjectImage: []byte{9, 9}}, compose.Character{ID: 1}))
+
+	assert.Equal(t, []byte{9, 9}, lm.Thumbnail(path))
+}
+
 func TestLibrarySetStatusAndRemove(t *testing.T) {
 	lm := newTestLibrary(t)
 	path := filepath.Join(lm.LibraryDir(), "X.slv")

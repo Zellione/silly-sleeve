@@ -71,6 +71,21 @@ describe('CharactersScreen', () => {
     mockSetActiveCharacter.mockResolvedValue(undefined);
   });
 
+  it('shows the portrait as the row thumbnail when one exists', async () => {
+    mockGetCharacters.mockResolvedValue([
+      char({ id: 1, name: 'Elara', portrait: [0xFF, 0xD8, 0xFF, 0xE0] }),
+      char({ id: 2, name: 'Olly' }),
+    ]);
+    const { container } = renderScreen();
+    await waitFor(() => expect(screen.getByText('Elara')).toBeInTheDocument());
+
+    const imgs = container.querySelectorAll('.cl-row .av img');
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/);
+    // The portraitless character keeps the initial-letter avatar.
+    expect(screen.getByText('O')).toBeInTheDocument();
+  });
+
   it('lists every character with status and summary', async () => {
     renderScreen();
     await waitFor(() => {

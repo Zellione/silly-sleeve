@@ -2672,7 +2672,9 @@ kbd {
   background: var(--acc); color: var(--acc-fg);
   display: grid; place-items: center;
   font: 600 20px/1 var(--f-sans);
+  overflow: hidden;
 }
+.cl-row .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cl-row .av[data-empty="1"] {
   background: var(--panel-2);
   color: var(--ink-3);

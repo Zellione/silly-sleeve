@@ -8,6 +8,7 @@ import {
 import EditorScreen from './EditorScreen';
 import { logError } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
+import { arrayBufferToDataURL } from '../utils/image';
 import { compose } from '../../wailsjs/go/models';
 import { estimateCharTokens, charSummary, isCharReady } from './characterList';
 
@@ -102,10 +103,13 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({ projectPath,
           {characters.map(c => {
             const ready = isCharReady(c);
             const summary = charSummary(c);
+            const thumb = arrayBufferToDataURL(c.portrait ?? []);
             return (
               <button type="button" key={c.id} className="cl-row" onClick={() => openChar(c)}>
-                <span className="av" data-empty={ready ? '0' : '1'}>
-                  {(c.name?.trim()[0] || '?').toUpperCase()}
+                <span className="av" data-empty={ready || thumb ? '0' : '1'}>
+                  {thumb
+                    ? <img src={thumb} alt="" />
+                    : (c.name?.trim()[0] || '?').toUpperCase()}
                 </span>
                 <span className="id">
                   <b>{c.name?.trim() || 'Untitled'}</b>

@@ -1,10 +1,12 @@
-# UI v2 redesign session (2026-08-17) — COMPLETE, awaiting approval
+# UI v2 redesign session (2026-08-17) — APPROVED, PR #87
 
 ## Outcome
 Phase 9 (UI v2 redesign) fully implemented on `feature/ui-redesign`
-(8 commits, `c8a5ef6`..`c849c4f`, NOT pushed). `APPROVAL_REQUEST.md`
-written at repo root (gitignored, never commit). Waiting for user approval
-before push + PR (workflow step 5: delete APPROVAL_REQUEST.md first).
+(milestone commits `c8a5ef6`..`c849c4f`). Approved by the user, pushed,
+opened as **PR #87**. Post-approval follow-ups continued on the same PR —
+see `mem:workflow/2026-08-17-ui-redesign-followups` for the full list
+(dark-mode default, portrait thumbs, native frame, summaries linkage,
+editable summaries, Sonar fixes).
 
 ## Design source
 Claude Design project id `24b2230a-2737-4c47-ba5e-0a976c2635f1`, entry
@@ -43,7 +45,11 @@ tsc clean; local eslint 0/0; vitest 845 pass / 86.70% stmts;
 - Global eslint 9.16 errors on `no-unassigned-vars`; use `./node_modules/.bin/eslint .`.
 
 ## Follow-up candidates
+- ~~Summary in-place editing~~ — DONE (`64a2115`, `UpdateCrawlSummary` +
+  `crawler.ParseSummaryText`).
 - Tab count badges (characters/lorebook counts in top bar).
-- Summary in-place editing (needs backend mutation of crawl results).
 - Self-hosted fonts for offline.
 - Design purity: hide character strip in detail view once add/import relocate.
+- Stamp `sourceUrl` when the editor composes a character from a crawl
+  (would replace the name-match fallback in SummariesScreen, see `90ceb40`).
+- Per-card "re-draft from source" action on the Summaries tab.

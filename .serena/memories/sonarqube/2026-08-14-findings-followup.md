@@ -105,7 +105,12 @@ until the PR merges — always diff it against the working tree before acting.**
 **MERGED** 2026-08-14 as `1018838` (PR #83, 83 files +5200/-1436). Main quality
 gate OK. Branch `fix/audit-findings` can be deleted.
 
-### S6479 verdict still OPEN at merge time
+### S6479 verdict — RESOLVED 2026-08-17
+Re-checked after Automatic Analysis caught up: the main-branch open-issue list
+is **empty** (0 issues project-wide). `key={key}` destructured from useRowIds
+satisfies S6479; nothing to accept. Original note kept below for context.
+
+### S6479 verdict still OPEN at merge time (historical)
 SonarCloud's main-branch issue list was still the PRE-merge snapshot minutes
 after the merge — it listed S6479 at `EditorScreen.tsx:33/97/536` and
 `CrawlerScreen.tsx:269/274` with creationDates from May, plus S9011 findings on

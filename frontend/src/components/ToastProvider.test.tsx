@@ -99,6 +99,23 @@ describe('ToastProvider', () => {
     expect(screen.queryByText('Success')).not.toBeInTheDocument();
   });
 
+  it('clears pending auto-dismiss timers on unmount', () => {
+    // A leaked timer fires after the test environment is torn down and
+    // crashes the run with "window is not defined" — see CI flake on PR #89.
+    vi.useFakeTimers();
+    const { unmount } = render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByText('Show OK'));
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('dismisses on X button click', async () => {
     const user = userEvent.setup();
     render(

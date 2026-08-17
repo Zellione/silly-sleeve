@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CogIcon, SunIcon, MoonIcon } from '../icons';
 import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
 import { TABS } from './tabs';
+import { getStoredDark, applyTheme } from '../utils/theme';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -114,19 +115,10 @@ export const StatusBar: React.FC<{
 );
 
 export const ThemeToggle: React.FC = () => {
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('ss-theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const [dark, setDark] = useState(getStoredDark);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    // Set the root's used color-scheme directly so WebKitGTK themes native
-    // controls (e.g. <select> option popups) to match — a dynamically applied
-    // CSS color-scheme does not reliably re-theme the native popup widget.
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-    localStorage.setItem('ss-theme', dark ? 'dark' : 'light');
+    applyTheme(dark);
   }, [dark]);
 
   return (

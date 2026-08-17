@@ -172,29 +172,29 @@ describe('ThemeToggle', () => {
   });
 
   it('reads saved theme from localStorage', () => {
-    localStorage.setItem('ss-theme', 'dark');
-    render(<ThemeToggle />);
-    expect(document.documentElement.dataset.theme).toBe('dark');
-  });
-
-  it('falls back to light mode when no saved theme', () => {
+    localStorage.setItem('ss-theme', 'light');
     render(<ThemeToggle />);
     expect(document.documentElement.dataset.theme).toBe('light');
+  });
+
+  it('defaults to dark mode when no saved theme', () => {
+    render(<ThemeToggle />);
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 
   it('toggles theme on click', async () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    expect(document.documentElement.dataset.theme).toBe('light');
-
-    await user.click(screen.getByRole('button'));
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('ss-theme')).toBe('dark');
 
     await user.click(screen.getByRole('button'));
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('ss-theme')).toBe('light');
+
+    await user.click(screen.getByRole('button'));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('ss-theme')).toBe('dark');
   });
 
   it('persists theme to localStorage on change', async () => {
@@ -202,6 +202,6 @@ describe('ThemeToggle', () => {
     render(<ThemeToggle />);
 
     await user.click(screen.getByRole('button'));
-    expect(localStorage.getItem('ss-theme')).toBe('dark');
+    expect(localStorage.getItem('ss-theme')).toBe('light');
   });
 });

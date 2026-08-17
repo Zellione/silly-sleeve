@@ -129,6 +129,8 @@ export function PickSaveBundle():Promise<string>;
 
 export function ReadImageFile(arg1:string):Promise<app.DroppedImage>;
 
+export function RefetchCrawlResult(arg1:string):Promise<crawler.CrawlResult>;
+
 export function RemoveCrawlResult(arg1:string):Promise<crawler.CrawlSet>;
 
 export function RemoveProject(arg1:string,arg2:boolean):Promise<void>;

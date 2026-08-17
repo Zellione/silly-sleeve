@@ -4,9 +4,11 @@ import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import {
   GlobeIcon, CheckIcon, DownIcon, CopyIcon, ArrowIcon, SparksIcon, LinkIcon, PenIcon,
+  TrashIcon, RerollIcon,
 } from '../icons';
 import {
   GetCrawlState, SaveCrawlState, SendCrawlResult, GetCharacters, UpdateCrawlSummary,
+  RemoveCrawlResult, RefetchCrawlResult,
 } from '../../wailsjs/go/app/App';
 import { SectionContent } from '../components/SectionContent';
 import { Infobox } from '../components/Infobox';
@@ -121,13 +123,15 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
   const loreResults = results.filter(r => roleOf(r) === 'lorebook');
   const list = sub === 'chars' ? charResults : loreResults;
 
-  const persistSent = useCallback((prev: app.CrawlState, sent: Record<string, string>) => {
+  const persistState = useCallback((
+    prev: app.CrawlState, roles: Record<string, string>, sent: Record<string, string>,
+  ) => {
     SaveCrawlState(new app.CrawlState({
       url: prev.url,
       followLinks: prev.followLinks,
       include: prev.include,
       selectors: prev.selectors,
-      roles: prev.roles,
+      roles,
       sent,
     })).catch(() => { /* re-saved on the crawl screen's next commit */ });
   }, []);
@@ -152,7 +156,7 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
       }
       const sent = { ...st.sent, [r.url]: role };
       setSt(app.CrawlState.createFrom({ ...st, sent }));
-      persistSent(st, sent);
+      persistState(st, st.roles ?? {}, sent);
       if (role === 'lorebook') {
         toast({
           kind: 'ok',
@@ -171,7 +175,51 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
     } finally {
       setSending(null);
     }
-  }, [st, roleOf, confirm, toast, persistSent, refreshCharacters]);
+  }, [st, roleOf, confirm, toast, persistState, refreshCharacters]);
+
+  const handleDelete = useCallback(async (r: crawler.CrawlResult) => {
+    if (!st) return;
+    const ok = await confirm(
+      `Delete "${r.title}" and its summary from the crawl? Any staged lorebook candidates from this page are discarded too.`,
+    );
+    if (!ok) return;
+    try {
+      const updated = await RemoveCrawlResult(r.url);
+      const roles = { ...st.roles };
+      delete roles[r.url];
+      const sent = { ...st.sent };
+      delete sent[r.url];
+      setSt(app.CrawlState.createFrom({ ...st, set: updated, roles, sent }));
+      setOpenUrl(null);
+      persistState(st, roles, sent);
+      toast({ kind: 'ok', title: 'Page deleted', body: `"${r.title}" was removed from the crawl.` });
+    } catch {
+      toast({ kind: 'bad', title: 'Delete failed', body: 'Could not remove the page from the crawl.' });
+    }
+  }, [st, confirm, toast, persistState]);
+
+  const [refetching, setRefetching] = useState<string | null>(null);
+
+  const handleRefetch = useCallback(async (r: crawler.CrawlResult) => {
+    const ok = await confirm(
+      `Refetch "${r.title}" from the wiki? This overwrites the stored summary, including any manual edits.`,
+    );
+    if (!ok) return;
+    setRefetching(r.url);
+    try {
+      const updated = await RefetchCrawlResult(r.url);
+      setSt(prev => {
+        if (!prev?.set) return prev;
+        const results = prev.set.results.map(x => (x.url === r.url ? updated : x));
+        return app.CrawlState.createFrom({ ...prev, set: { ...prev.set, results } });
+      });
+      toast({ kind: 'ok', title: 'Page refetched', body: `"${r.title}" was re-crawled from the wiki.` });
+    } catch (e: any) {
+      toast({ kind: 'bad', title: 'Refetch failed', body: errorMessage(e, 'Could not refetch the page.') });
+    } finally {
+      setRefetching(null);
+    }
+  }, [confirm, toast]);
 
   const handleCopy = useCallback(async (r: crawler.CrawlResult) => {
     try {
@@ -303,6 +351,12 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
                         <>
                           <button type="button" className="btn ghost icon" title="Copy summary" onClick={() => handleCopy(r)}>
                             <CopyIcon size={14} />
+                          </button>
+                          <button type="button" className="btn ghost icon" title="Delete page" onClick={() => handleDelete(r)}>
+                            <TrashIcon size={14} />
+                          </button>
+                          <button type="button" className="btn ghost sm" disabled={refetching === r.url} onClick={() => handleRefetch(r)}>
+                            <RerollIcon size={12} /> Refetch
                           </button>
                           <button type="button" className="btn ghost sm" onClick={() => startEdit(r)}>
                             <PenIcon size={12} /> Edit

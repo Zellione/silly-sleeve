@@ -174,7 +174,7 @@ const ExportScreen: React.FC = () => {
 
   return (
     <>
-      <PageHead step={7} subtitle="Ship the project"
+      <PageHead subtitle="Ship the project"
         title={<>Export <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>everything</em></>}
         actions={
           <>

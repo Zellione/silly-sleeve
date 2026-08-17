@@ -282,7 +282,6 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
   return (
     <>
       <PageHead
-        step={1}
         subtitle="Pull a source from the wild"
         title={<>Crawl a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>wiki page</em></>}
         actions={

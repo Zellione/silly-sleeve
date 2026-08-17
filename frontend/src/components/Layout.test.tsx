@@ -113,15 +113,15 @@ describe('PageHead', () => {
     expect(screen.getByText('Test Page')).toBeInTheDocument();
   });
 
-  it('renders step pill when step is provided', () => {
-    render(<PageHead step={3} subtitle="Subtitle" title="Test" />);
-    expect(screen.getByText('03')).toBeInTheDocument();
+  it('renders the subtitle under the title', () => {
+    const { container } = render(<PageHead subtitle="Subtitle" title="Test" />);
     expect(screen.getByText('Subtitle')).toBeInTheDocument();
+    expect(container.querySelector('.v2-sub')).toBeTruthy();
   });
 
-  it('does not render step pill when step is not provided', () => {
-    const { container } = render(<PageHead title="No Step" />);
-    expect(container.querySelector('.step-pill')).toBeNull();
+  it('omits the subtitle line when no subtitle is given', () => {
+    const { container } = render(<PageHead title="No sub" />);
+    expect(container.querySelector('.v2-sub')).toBeNull();
   });
 
   it('renders actions', () => {

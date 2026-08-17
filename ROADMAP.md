@@ -193,7 +193,7 @@ Summaries tab with send-to-character / send-to-lorebook actions.
 - [x] **9.5** Summaries tab: persisted crawl summaries as accordion cards with
   character / lorebook sub-tabs and send actions wired to the existing
   per-result send flow
-- [~] **9.6** Screen polish pass: PageHead v2 (no step pills), editor source panel
+- [x] **9.6** Screen polish pass: PageHead v2 (no step pills), editor source panel
   moved right and widened, infobox / heading restyles, segmented sub-tab bars
 
 ---
@@ -204,9 +204,21 @@ Summaries tab with send-to-character / send-to-lorebook actions.
 
 ### 2026-08-17
 
-- Started Phase 9 (UI v2 redesign) on `feature/ui-redesign`, working from the
-  "index v2.html" entry of the Claude Design project. Substep 9.1 (tokens &
-  typography) in progress.
+- Phase 9 (UI v2 redesign) implemented on `feature/ui-redesign`, working from
+  the "index v2.html" entry of the Claude Design project. All six substeps
+  landed: v2 tokens and Geist-only typography; tabbed top bar shell replacing
+  the sidebar (window controls integrated, sidebar-style and step-badge
+  preferences removed); route restructure (Characters list + detail page,
+  merged Images tab); full-screen projects picker with named creation
+  (NewProject now takes a name that wins the manifest derivation and round-trips
+  through open); new Summaries tab over the persisted crawl results wired to
+  the existing per-result send flow; PageHead v2 without step pills and the
+  editor source panel moved right and widened.
+- Deviations from the design mock: the character strip stays visible in the
+  character detail view (it hosts add/import and quick switching); summaries
+  are read-only views of crawl results (no in-place text editing — the backend
+  stores crawl output verbatim); the projects picker keeps the library's
+  filter/search/status/remove affordances on top of the design's simpler grid.
 
 ### 2026-08-14
 

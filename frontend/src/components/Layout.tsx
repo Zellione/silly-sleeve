@@ -74,19 +74,14 @@ export const TopBar: React.FC<{
 );
 
 export const PageHead: React.FC<{
-  step?: number;
   subtitle?: string;
   title: React.ReactNode;
   actions?: React.ReactNode;
-}> = ({ step, subtitle, title, actions }) => (
+}> = ({ subtitle, title, actions }) => (
   <header className="ss-page-head">
     <div>
-      {step && (
-        <div className="step-pill">
-          <b>{String(step).padStart(2, '0')}</b> {subtitle}
-        </div>
-      )}
       <h1>{title}</h1>
+      {subtitle && <div className="v2-sub">{subtitle}</div>}
     </div>
     <div className="ss-actions">{actions}</div>
   </header>

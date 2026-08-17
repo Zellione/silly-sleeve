@@ -182,7 +182,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
 
   return (
     <>
-      <PageHead step={5} subtitle="Make or import a face"
+      <PageHead subtitle="Make or import a face"
         title={<>Conjure a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>portrait</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">

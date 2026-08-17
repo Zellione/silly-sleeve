@@ -237,14 +237,12 @@ input, textarea, select { font-family: inherit; color: inherit; }
   letter-spacing: -0.02em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.ss-page-head .step-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  font: 500 10px/1 var(--f-mono);
-  text-transform: uppercase; letter-spacing: 0.16em;
+.ss-page-head .v2-sub {
+  font: 400 12.5px/1.4 var(--f-sans);
   color: var(--ink-3);
-  margin-bottom: 8px;
+  margin-top: 5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.ss-page-head .step-pill b { color: var(--acc); font-weight: 600; font-family: var(--f-mono); }
 .ss-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
 .ss-page-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 32px 40px; }
@@ -1179,12 +1177,14 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 /* ─── Editor layout ────────────────────────────────────── */
 .editor-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 24px;
   align-items: start;
 }
 
 .editor-source {
+  /* v2: the source panel reads on the RIGHT; field cards on the left. */
+  order: 2;
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 8px;
@@ -1206,7 +1206,7 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
 .editor-source .b {
   flex: 1; overflow-y: auto;
   padding: 16px 18px;
-  font: 13px/1.6 var(--f-sans);
+  font: 13.5px/1.65 var(--f-sans);
   color: var(--ink-2);
 }
 .editor-source .b h4 {
@@ -1227,10 +1227,10 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   display: grid; grid-template-columns: 110px 1fr;
   gap: 4px 14px;
   padding: 12px 14px;
-  background: var(--bg);
+  background: var(--panel-2);
   border: 1px solid var(--hair);
   border-radius: 4px;
-  font: 12px/1.5 var(--f-mono);
+  font: 12px/1.5 var(--f-sans);
   margin: 0 0 16px;
 }
 .editor-source .b .infobox dt {

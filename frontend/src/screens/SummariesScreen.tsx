@@ -5,12 +5,12 @@ import { useConfirmDialog } from '../components/ConfirmDialog';
 import {
   GlobeIcon, CheckIcon, DownIcon, CopyIcon, ArrowIcon, SparksIcon, LinkIcon,
 } from '../icons';
-import { GetCrawlState, SaveCrawlState, SendCrawlResult } from '../../wailsjs/go/app/App';
+import { GetCrawlState, SaveCrawlState, SendCrawlResult, GetCharacters } from '../../wailsjs/go/app/App';
 import { SectionContent } from '../components/SectionContent';
 import { Infobox } from '../components/Infobox';
 import { logError } from '../utils/log';
 import { pageSlug } from '../utils/pageSlug';
-import { app, crawler } from '../../wailsjs/go/models';
+import { app, compose, crawler } from '../../wailsjs/go/models';
 
 type Sub = 'chars' | 'lore';
 type RoleValue = 'character' | 'lorebook';
@@ -28,18 +28,42 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
   const [sub, setSub] = useState<Sub>('chars');
   const [openUrl, setOpenUrl] = useState<string | null>(null); // at most one expanded
   const [st, setSt] = useState<app.CrawlState | null>(null);
+  const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [sending, setSending] = useState<string | null>(null);
+
+  const refreshCharacters = useCallback(() => {
+    GetCharacters()
+      .then(cs => setCharacters(cs ?? []))
+      .catch(e => logError('SummariesScreen.getCharacters', e));
+  }, []);
 
   useEffect(() => {
     GetCrawlState()
       .then(setSt)
       .catch(e => logError('SummariesScreen.getCrawlState', e));
-  }, []);
+    refreshCharacters();
+  }, [refreshCharacters]);
 
   const results = st?.set?.results ?? [];
+
+  /** The character this page created, if any — the permanent link back. */
+  const linkedChar = useCallback(
+    (url: string): compose.Character | null =>
+      characters.find(c => c.sourceUrl === url) ?? null,
+    [characters],
+  );
+
+  // What a page IS beats what the crawl screen planned for it: a character
+  // linked by sourceUrl, or the role it was actually sent as, wins over the
+  // crawl screen's role dropdown.
   const roleOf = useCallback(
-    (url: string): RoleValue => normalizeRole(st?.roles?.[url]),
-    [st],
+    (url: string): RoleValue => {
+      if (linkedChar(url)) return 'character';
+      const sentRole = st?.sent?.[url];
+      if (sentRole) return normalizeRole(sentRole);
+      return normalizeRole(st?.roles?.[url]);
+    },
+    [st, linkedChar],
   );
   const charResults = results.filter(r => roleOf(r.url) === 'character');
   const loreResults = results.filter(r => roleOf(r.url) === 'lorebook');
@@ -86,13 +110,16 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
       } else {
         const verb = outcome.status === 'overwritten' ? 'Overwrote' : 'Sent to';
         toast({ kind: 'ok', title: `${verb} character`, body: `"${r.title}" → Character` });
+        // The send created or updated a character carrying this page as its
+        // sourceUrl — refetch so the card shows the link.
+        refreshCharacters();
       }
     } catch {
       toast({ kind: 'bad', title: 'Send failed', body: 'Could not send the page to the project.' });
     } finally {
       setSending(null);
     }
-  }, [st, roleOf, confirm, toast, persistSent]);
+  }, [st, roleOf, confirm, toast, persistSent, refreshCharacters]);
 
   const handleCopy = useCallback(async (r: crawler.CrawlResult) => {
     const text = (r.sections ?? [])
@@ -157,11 +184,15 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
           )}
 
           {list.map(r => {
-            const isSent = Boolean(st?.sent?.[r.url]);
+            const link = linkedChar(r.url);
+            const isSent = Boolean(st?.sent?.[r.url]) || Boolean(link);
             const open = openUrl === r.url;
             const isChar = roleOf(r.url) === 'character';
             let sentLabel = 'unlinked';
-            if (isSent) sentLabel = isChar ? 'character' : 'staged';
+            if (isSent) {
+              if (link) sentLabel = `→ ${link.name || 'Untitled'}`;
+              else sentLabel = isChar ? 'character' : 'staged';
+            }
             return (
               <div key={r.url} className="sum-card" data-open={open ? '1' : '0'}>
                 <button type="button" className="head" onClick={() => setOpenUrl(open ? null : r.url)}>

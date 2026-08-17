@@ -9,12 +9,14 @@ import { pageSlug } from '../utils/pageSlug';
 const mockGetCrawlState = vi.fn();
 const mockSaveCrawlState = vi.fn();
 const mockSendCrawlResult = vi.fn();
+const mockGetCharacters = vi.fn();
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCrawlState: () => mockGetCrawlState(),
   SaveCrawlState: (st: unknown) => mockSaveCrawlState(st),
   SendCrawlResult: (url: string, role: string, overwrite: boolean) =>
     mockSendCrawlResult(url, role, overwrite),
+  GetCharacters: () => mockGetCharacters(),
 }));
 
 const result = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -71,6 +73,7 @@ beforeEach(() => {
   mockGetCrawlState.mockResolvedValue(crawlState());
   mockSaveCrawlState.mockResolvedValue(undefined);
   mockSendCrawlResult.mockResolvedValue({ status: 'created', kind: 'character', name: 'Elara Wynd', result: 'ok' });
+  mockGetCharacters.mockResolvedValue([]);
 });
 
 describe('pageSlug', () => {
@@ -90,6 +93,38 @@ describe('SummariesScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: /Lorebook summaries/ }));
     expect(screen.getByText('Harpers')).toBeInTheDocument();
     expect(screen.queryByText('Elara Wynd')).not.toBeInTheDocument();
+  });
+
+  it('buckets by the sent role, not the crawl-screen role plan', async () => {
+    // "Mine" was planned as lorebook on the crawl screen but actually sent as
+    // a character — it belongs under Character summaries.
+    mockGetCrawlState.mockResolvedValue(crawlState({
+      roles: { 'https://bg.fandom.com/wiki/Elara_Wynd': 'lorebook' },
+      sent: { 'https://bg.fandom.com/wiki/Elara_Wynd': 'character' },
+      set: { rootUrl: '', results: [result()] },
+    }));
+    renderScreen();
+    expect(await screen.findByText('Elara Wynd')).toBeInTheDocument();
+    expect(screen.getByText('character', { selector: '.sum-link' })).toBeInTheDocument();
+  });
+
+  it('links a page to the character it created via sourceUrl', async () => {
+    mockGetCrawlState.mockResolvedValue(crawlState({
+      roles: { 'https://bg.fandom.com/wiki/Elara_Wynd': 'lorebook' },
+      sent: {},
+      set: { rootUrl: '', results: [result()] },
+    }));
+    mockGetCharacters.mockResolvedValue([
+      { id: 3, name: 'Elara', sourceUrl: 'https://bg.fandom.com/wiki/Elara_Wynd' },
+    ]);
+    renderScreen();
+    // Bucketed as a character because a character carries this sourceUrl…
+    expect(await screen.findByText('Elara Wynd')).toBeInTheDocument();
+    // …and the pill names the linked character.
+    expect(screen.getByText('→ Elara')).toBeInTheDocument();
+    // The card offers the character jump even though the sent map is empty.
+    await userEvent.click(screen.getByText('Elara Wynd'));
+    expect(screen.getByRole('button', { name: /Open character/ })).toBeInTheDocument();
   });
 
   it('expands a card into its summary body, one at a time', async () => {

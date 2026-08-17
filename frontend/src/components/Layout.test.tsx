@@ -1,13 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-vi.mock('../../wailsjs/runtime/runtime', () => ({
-  Quit: vi.fn(),
-  WindowMinimise: vi.fn(),
-  WindowToggleMaximise: vi.fn(),
-}));
-
-import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
 import { TopBar, PageHead, StatusBar, ThemeToggle } from './Layout';
 import { TABS } from './tabs';
 
@@ -16,9 +9,6 @@ describe('TopBar', () => {
 
   beforeEach(() => {
     onNav.mockClear();
-    vi.mocked(Quit).mockClear();
-    vi.mocked(WindowMinimise).mockClear();
-    vi.mocked(WindowToggleMaximise).mockClear();
   });
 
   it('renders every workflow tab', () => {
@@ -69,41 +59,11 @@ describe('TopBar', () => {
     expect(screen.getByTitle('Settings').dataset.on).toBe('1');
   });
 
-  it('quits the app when the close button is clicked', async () => {
+  it('renders no window-control buttons (the OS frame owns them)', () => {
     render(<TopBar current="crawler" onNav={onNav} />);
-    await userEvent.click(screen.getByLabelText('Close'));
-    expect(Quit).toHaveBeenCalledTimes(1);
-    expect(WindowToggleMaximise).not.toHaveBeenCalled();
-  });
-
-  it('minimises the window when the minimise button is clicked', async () => {
-    render(<TopBar current="crawler" onNav={onNav} />);
-    await userEvent.click(screen.getByLabelText('Minimise'));
-    expect(WindowMinimise).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles maximise when the maximise button is clicked', async () => {
-    render(<TopBar current="crawler" onNav={onNav} />);
-    await userEvent.click(screen.getByLabelText('Maximise'));
-    expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles maximise on top bar double-click', async () => {
-    const { container } = render(<TopBar current="crawler" onNav={onNav} />);
-    await userEvent.dblClick(container.querySelector('.v2-top')!);
-    expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not toggle maximise when a traffic button is double-clicked', async () => {
-    render(<TopBar current="crawler" onNav={onNav} />);
-    await userEvent.dblClick(screen.getByLabelText('Close'));
-    expect(WindowToggleMaximise).not.toHaveBeenCalled();
-  });
-
-  it('does not toggle maximise when a tab is double-clicked', async () => {
-    render(<TopBar current="crawler" onNav={onNav} />);
-    await userEvent.dblClick(screen.getByRole('tab', { name: 'Crawl' }));
-    expect(WindowToggleMaximise).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimise')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Maximise')).not.toBeInTheDocument();
   });
 });
 

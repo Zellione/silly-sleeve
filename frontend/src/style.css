@@ -74,9 +74,8 @@ input, textarea, select { font-family: inherit; color: inherit; }
   color: var(--ink);
 }
 
-/* Top bar (tabs + window controls) */
+/* Top bar (tabs + actions; the OS draws the window frame) */
 .v2-top {
-  --wails-draggable: drag;
   user-select: none;
   display: flex; align-items: stretch;
   gap: 18px;
@@ -85,29 +84,6 @@ input, textarea, select { font-family: inherit; color: inherit; }
   border-bottom: 1px solid var(--hair-strong);
   min-width: 0;
 }
-.ss-traffic {
-  display: flex; gap: 7px;
-  align-items: center;
-  --wails-draggable: no-drag;
-}
-.ss-traffic > button {
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--hair-strong);
-  display: inline-flex; align-items: center; justify-content: center;
-  border: none; padding: 0; margin: 0;
-  cursor: default;
-  font: 700 9px/1 var(--f-sans);
-  color: transparent;
-}
-.ss-traffic > button:nth-child(1) { background: #ed6a5f; }
-.ss-traffic > button:nth-child(2) { background: #f4be4f; }
-.ss-traffic > button:nth-child(3) { background: #61c554; }
-.ss-traffic > button:nth-child(1)::before { content: '\00d7'; }
-.ss-traffic > button:nth-child(2)::before { content: '\2212'; }
-.ss-traffic > button:nth-child(3)::before { content: '\002b'; }
-.ss-traffic:hover > button:nth-child(1) { color: #7d1a12; }
-.ss-traffic:hover > button:nth-child(2) { color: #8a5d0b; }
-.ss-traffic:hover > button:nth-child(3) { color: #1d5a14; }
 
 .v2-brand {
   appearance: none; border: 0; background: transparent;
@@ -117,7 +93,6 @@ input, textarea, select { font-family: inherit; color: inherit; }
   padding: 0;
   color: var(--ink);
   font-family: var(--f-sans);
-  --wails-draggable: no-drag;
 }
 .v2-brand .mark {
   width: 27px; height: 27px;
@@ -150,7 +125,6 @@ input, textarea, select { font-family: inherit; color: inherit; }
   flex: 1; min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  --wails-draggable: no-drag;
 }
 .v2-tab {
   appearance: none; border: 0; background: transparent;
@@ -187,7 +161,6 @@ input, textarea, select { font-family: inherit; color: inherit; }
 .v2-right {
   display: flex; align-items: center; gap: 8px;
   flex-shrink: 0;
-  --wails-draggable: no-drag;
 }
 .v2-iconbtn {
   appearance: none;

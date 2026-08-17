@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { CogIcon, SunIcon, MoonIcon } from '../icons';
-import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
 import { TABS } from './tabs';
 import { getStoredDark, applyTheme } from '../utils/theme';
 
@@ -17,27 +16,9 @@ export const TopBar: React.FC<{
   onNav: (r: Route) => void;
   projectName?: string;
 }> = ({ current, onNav, projectName }) => (
-  <div className="v2-top" onDoubleClick={() => WindowToggleMaximise()}>
-    <div className="ss-traffic">
-      <button type="button"
-        aria-label="Close"
-        onClick={(e) => { e.stopPropagation(); Quit() }}
-        onDoubleClick={(e) => e.stopPropagation()}
-      />
-      <button type="button"
-        aria-label="Minimise"
-        onClick={(e) => { e.stopPropagation(); WindowMinimise() }}
-        onDoubleClick={(e) => e.stopPropagation()}
-      />
-      <button type="button"
-        aria-label="Maximise"
-        onClick={(e) => { e.stopPropagation(); WindowToggleMaximise() }}
-        onDoubleClick={(e) => e.stopPropagation()}
-      />
-    </div>
+  <div className="v2-top">
     <button type="button" className="v2-brand" title="All projects"
       onClick={() => onNav('dashboard')}
-      onDoubleClick={(e) => e.stopPropagation()}
     >
       <span className="mark">SS</span>
       <span className="pj">
@@ -54,13 +35,12 @@ export const TopBar: React.FC<{
           aria-selected={current === t.id}
           data-on={current === t.id ? '1' : '0'}
           onClick={() => onNav(t.id)}
-          onDoubleClick={(e) => e.stopPropagation()}
         >
           {t.label}
         </button>
       ))}
     </div>
-    <div className="v2-right" onDoubleClick={(e) => e.stopPropagation()}>
+    <div className="v2-right">
       <ThemeToggle />
       <button type="button"
         className="v2-iconbtn"

@@ -17,7 +17,7 @@ describe('accent', () => {
     s.removeProperty('--acc-h');
   });
 
-  it('defaults to terracotta when nothing is stored', () => {
+  it('defaults to slate when nothing is stored', () => {
     expect(getStoredAccentId()).toBe(DEFAULT_ACCENT_ID);
   });
 
@@ -27,18 +27,18 @@ describe('accent', () => {
   });
 
   it('returns a valid stored accent id', () => {
-    localStorage.setItem('ss-accent', 'blue');
-    expect(getStoredAccentId()).toBe('blue');
+    localStorage.setItem('ss-accent', 'violet');
+    expect(getStoredAccentId()).toBe('violet');
   });
 
   it('applies an accent as three oklch props and persists it', () => {
-    applyAccent('blue');
-    const blue = ACCENTS.find(a => a.id === 'blue')!;
+    applyAccent('violet');
+    const violet = ACCENTS.find(a => a.id === 'violet')!;
     const s = document.documentElement.style;
-    expect(s.getPropertyValue('--acc-l')).toBe(String(blue.l));
-    expect(s.getPropertyValue('--acc-c')).toBe(String(blue.c));
-    expect(s.getPropertyValue('--acc-h')).toBe(String(blue.h));
-    expect(localStorage.getItem('ss-accent')).toBe('blue');
+    expect(s.getPropertyValue('--acc-l')).toBe(String(violet.l));
+    expect(s.getPropertyValue('--acc-c')).toBe(String(violet.c));
+    expect(s.getPropertyValue('--acc-h')).toBe(String(violet.h));
+    expect(localStorage.getItem('ss-accent')).toBe('violet');
   });
 
   it('falls back to the default accent for an unknown id', () => {

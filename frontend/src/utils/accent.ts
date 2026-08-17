@@ -15,17 +15,15 @@ export interface AccentPreset {
   h: number;
 }
 
-/** Available accents, in display order. */
+/** Available accents, in display order (v2 design palette). */
 export const ACCENTS: AccentPreset[] = [
-  { id: 'terracotta', label: 'Terracotta', l: 0.66, c: 0.18, h: 38 },
-  { id: 'blue', label: 'Blue', l: 0.62, c: 0.16, h: 250 },
-  { id: 'green', label: 'Green', l: 0.66, c: 0.15, h: 150 },
-  { id: 'purple', label: 'Purple', l: 0.62, c: 0.18, h: 300 },
-  { id: 'magenta', label: 'Magenta', l: 0.64, c: 0.2, h: 350 },
-  { id: 'amber', label: 'Amber', l: 0.74, c: 0.15, h: 80 },
+  { id: 'slate', label: 'Slate blue', l: 0.50, c: 0.10, h: 258 },
+  { id: 'violet', label: 'Violet', l: 0.52, c: 0.12, h: 294 },
+  { id: 'green', label: 'Green', l: 0.57, c: 0.10, h: 165 },
+  { id: 'rust', label: 'Rust', l: 0.58, c: 0.13, h: 39 },
 ];
 
-export const DEFAULT_ACCENT_ID = 'terracotta';
+export const DEFAULT_ACCENT_ID = 'slate';
 
 const STORAGE_KEY = 'ss-accent';
 

@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-14 — Codebase audit remediation (`fix/audit-findings`).
+> Last updated: 2026-08-17 — Started Phase 9, UI v2 redesign (`feature/ui-redesign`).
 
 ## Overview
 
@@ -170,9 +170,43 @@ not in a new graph model.
 
 ---
 
+## Phase 9 — UI v2 Redesign
+
+Goal: Adopt the v2 design ("index v2.html" in the Claude Design project) — a crisp
+flat visual language and a tab-based information architecture. The warm serif theme
+gives way to a neutral palette with Geist-only typography; the left sidebar becomes a
+top bar with workflow tabs; projects get a dedicated full-screen picker; characters
+get a list page with per-character detail; the two image screens merge into one
+Images tab with sub-tabs; and the crawl page's summaries become a persistent
+Summaries tab with send-to-character / send-to-lorebook actions.
+
+- [~] **9.1** Design tokens & typography v2: flat neutral palette (light + dark),
+  Geist-only type (retire Instrument Serif), flat buttons/fields/cards,
+  de-italicised headings, updated font loading
+- [ ] **9.2** App shell v2: tabbed top bar (brand + project, workflow tabs,
+  save / theme / settings actions, window controls), remove sidebar, slim status bar
+- [ ] **9.3** Route restructure: `characters` list + detail page with back bar
+  (replaces `editor`), merged `images` tab with portraits / project-cover sub-tabs
+  (replaces `projectImage` + `image`)
+- [ ] **9.4** Projects screen v2: full-screen picker with project card grid and
+  inline new-project naming card
+- [ ] **9.5** Summaries tab: persisted crawl summaries as accordion cards with
+  character / lorebook sub-tabs and send actions wired to the existing
+  per-result send flow
+- [ ] **9.6** Screen polish pass: PageHead v2 (no step pills), editor source panel
+  moved right and widened, infobox / heading restyles, segmented sub-tab bars
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-08-17
+
+- Started Phase 9 (UI v2 redesign) on `feature/ui-redesign`, working from the
+  "index v2.html" entry of the Claude Design project. Substep 9.1 (tokens &
+  typography) in progress.
 
 ### 2026-08-14
 

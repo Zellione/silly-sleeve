@@ -122,7 +122,7 @@ func parseExtraction(content string) ([]entryPayload, error) {
 		// Local models drift between {"entries":[...]} and a bare top-level
 		// array of the same objects; accept both shapes.
 		var arr []entryPayload
-		if arrErr := json.Unmarshal([]byte(cleaned), &arr); arrErr == nil {
+		if json.Unmarshal([]byte(cleaned), &arr) == nil {
 			resp.Entries, err = arr, nil
 		}
 	}

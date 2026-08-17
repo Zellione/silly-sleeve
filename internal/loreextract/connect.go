@@ -175,7 +175,7 @@ func parseSuggestions(content string) ([]suggestionPayload, error) {
 		// Same shape drift as extraction: the model may answer with a bare
 		// array instead of the {"suggestions":[...]} wrapper.
 		var arr []suggestionPayload
-		if arrErr := json.Unmarshal([]byte(cleaned), &arr); arrErr == nil {
+		if json.Unmarshal([]byte(cleaned), &arr) == nil {
 			resp.Suggestions, err = arr, nil
 		}
 	}

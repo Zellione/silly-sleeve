@@ -170,7 +170,16 @@ func parseSuggestions(content string) ([]suggestionPayload, error) {
 	cleaned := cleanJSON(content)
 
 	var resp suggestionResponse
-	if err := json.Unmarshal([]byte(cleaned), &resp); err != nil {
+	err := json.Unmarshal([]byte(cleaned), &resp)
+	if err != nil || len(resp.Suggestions) == 0 {
+		// Same shape drift as extraction: the model may answer with a bare
+		// array instead of the {"suggestions":[...]} wrapper.
+		var arr []suggestionPayload
+		if arrErr := json.Unmarshal([]byte(cleaned), &arr); arrErr == nil {
+			resp.Suggestions, err = arr, nil
+		}
+	}
+	if err != nil {
 		return nil, fmt.Errorf("parse connection response: %w (got: %s)", err, truncate(cleaned, 200))
 	}
 	return resp.Suggestions, nil

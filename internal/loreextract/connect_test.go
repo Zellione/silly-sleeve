@@ -88,6 +88,17 @@ func TestSuggest_ParsesEveryKind(t *testing.T) {
 	}
 }
 
+func TestSuggest_ToleratesTopLevelArray(t *testing.T) {
+	// Same shape drift as extraction: the model may answer with a bare array
+	// instead of the {"suggestions":[...]} wrapper.
+	resp := `[{"kind":"triggerKeys","entryUid":1,"addKeys":["the capital"],"rationale":"nothing reaches it"}]`
+
+	got, err := suggestWith(t, resp, connectRequest(testEntries()))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, KindTriggerKeys, got[0].Kind)
+}
+
 func TestSuggest_CharacterRelationshipCarriesCurrentText(t *testing.T) {
 	// The user must see what would be replaced: relationships prose may be
 	// hand-written, and the proposal overwrites it wholesale.

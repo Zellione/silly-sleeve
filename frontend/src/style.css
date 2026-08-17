@@ -2841,3 +2841,108 @@ kbd {
 }
 .proj-card.new .form .row { display: flex; gap: 8px; }
 .proj-card.new .form .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === V2 · Summaries tab === */
+.sum-wrap { display: flex; flex-direction: column; gap: 10px; max-width: 980px; }
+.sum-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.sum-toolbar .grow { flex: 1; }
+.sum-note {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 14px;
+  background: var(--acc-soft);
+  border: 1px solid var(--acc-line);
+  border-radius: 8px;
+  font: 12.5px/1.5 var(--f-sans);
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+.sum-note b { color: var(--ink); }
+.sum-card {
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sum-card[data-open="1"] { border-color: var(--hair-strong); }
+.sum-card .head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  font: 500 10.5px/1 var(--f-mono);
+  color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  cursor: pointer;
+  user-select: none;
+  border: 0; background: transparent;
+  width: 100%;
+  appearance: none;
+  text-align: left;
+}
+.sum-card .head:hover { background: var(--panel-2); }
+.sum-card[data-open="1"] .head { border-bottom: 1px solid var(--hair); }
+.sum-card .head b { color: var(--ink); font-weight: 600; }
+.sum-card .head .grow { flex: 1; }
+.sum-card .head .chev { color: var(--ink-3); transition: transform .15s; display: inline-flex; }
+.sum-card[data-open="1"] .head .chev { transform: rotate(180deg); }
+.sum-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 500 9.5px/1 var(--f-mono);
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sum-link[data-on="1"] {
+  color: var(--ok);
+  background: oklch(0.62 0.14 150 / 0.12);
+  border: 1px solid oklch(0.62 0.14 150 / 0.4);
+}
+.sum-link[data-on="0"] {
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px dashed var(--hair-strong);
+}
+.sum-card .body {
+  padding: 16px 18px;
+  font: 13px/1.6 var(--f-sans);
+  color: var(--ink-2);
+}
+.sum-card .body h4 {
+  font: 600 15px/1.3 var(--f-sans);
+  margin: 20px 0 8px;
+  color: var(--ink);
+}
+.sum-card .body h4:first-child { margin-top: 0; }
+.sum-card .body p { margin: 0 0 10px; color: var(--ink-2); white-space: pre-wrap; }
+.sum-card .body p:last-child { margin-bottom: 0; }
+.sum-card .body .section-tag {
+  display: inline-block;
+  font: 600 9px/1 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--acc);
+  background: var(--acc-soft);
+  border-radius: 3px;
+  padding: 3px 5px;
+  margin-right: 8px;
+  vertical-align: 2px;
+}
+.sum-card .foot {
+  display: flex; gap: 10px; align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hair);
+  background: var(--panel-2);
+  flex-wrap: wrap;
+}
+.sum-card .foot .meta {
+  font: 500 10.5px/1 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-3);
+  display: inline-flex; gap: 10px; align-items: center;
+}
+.sum-card .foot .meta .url {
+  text-transform: none; letter-spacing: 0.02em;
+  color: var(--ink-2);
+  max-width: 330px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sum-card .foot .grow { flex: 1; }

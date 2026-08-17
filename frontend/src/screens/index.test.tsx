@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { ToastProvider } from '../components/ToastProvider';
 import {
-  DashboardScreen, CrawlerScreen, EditorScreen, CharactersScreen,
-  ImagesScreen, LorebookScreen,
+  DashboardScreen, CrawlerScreen, EditorScreen, SummariesScreen,
+  CharactersScreen, ImagesScreen, LorebookScreen,
   ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './index';
@@ -216,13 +216,13 @@ describe('screens/index', () => {
     expect(typeof SettingsScreen).toBe('function');
   });
 
-  it('exports exactly 11 screens', () => {
+  it('exports exactly 12 screens', () => {
     const exports = {
-      DashboardScreen, CrawlerScreen, EditorScreen, CharactersScreen,
-      ImagesScreen, LorebookScreen,
+      DashboardScreen, CrawlerScreen, EditorScreen, SummariesScreen,
+      CharactersScreen, ImagesScreen, LorebookScreen,
       ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
       SettingsScreen,
     };
-    expect(Object.keys(exports)).toHaveLength(11);
+    expect(Object.keys(exports)).toHaveLength(12);
   });
 });

@@ -6,7 +6,7 @@ import { TABS } from './tabs';
 /* ─── Types ─────────────────────────────────────────────── */
 
 export type Route =
-  | 'dashboard' | 'crawler' | 'characters' | 'lorebook'
+  | 'dashboard' | 'crawler' | 'summaries' | 'characters' | 'lorebook'
   | 'images' | 'preview' | 'export' | 'settings';
 
 /* ─── Components ────────────────────────────────────────── */

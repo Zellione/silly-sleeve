@@ -7,8 +7,8 @@ import {
 import { ToastProvider } from './components/ToastProvider';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import {
-  DashboardScreen, CrawlerScreen, CharactersScreen, LorebookScreen,
-  ImagesScreen, PreviewScreen, ExportScreen,
+  DashboardScreen, CrawlerScreen, SummariesScreen, CharactersScreen,
+  LorebookScreen, ImagesScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
 import { GetSettings, NewProject } from '../wailsjs/go/app/App';
@@ -58,6 +58,7 @@ function AppShell() {
   const routeLabels: Record<Route, string> = {
     dashboard: 'PROJECTS',
     crawler: 'CRAWL',
+    summaries: 'SUMMARIES',
     characters: 'CHARACTERS',
     lorebook: 'LOREBOOK',
     images: 'IMAGES',
@@ -75,6 +76,7 @@ function AppShell() {
   const renderScreen = () => {
     switch (route) {
       case 'crawler': return <CrawlerScreen projectPath={projectPath} />;
+      case 'summaries': return <SummariesScreen onNav={setRoute} />;
       case 'characters': return <CharactersScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
       /* v8 ignore next */

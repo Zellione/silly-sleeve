@@ -8,6 +8,7 @@ export interface TabItem {
 /** Workflow tabs shown in the v2 top bar, in order. */
 export const TABS: TabItem[] = [
   { id: 'crawler', label: 'Crawl' },
+  { id: 'summaries', label: 'Summaries' },
   { id: 'characters', label: 'Characters' },
   { id: 'lorebook', label: 'Lorebook' },
   { id: 'images', label: 'Images' },

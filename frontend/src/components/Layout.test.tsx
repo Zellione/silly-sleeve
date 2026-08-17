@@ -37,8 +37,8 @@ describe('TopBar', () => {
   it('calls onNav when a tab is clicked', async () => {
     const user = userEvent.setup();
     render(<TopBar current="crawler" onNav={onNav} />);
-    await user.click(screen.getByRole('tab', { name: 'Compose' }));
-    expect(onNav).toHaveBeenCalledWith('editor');
+    await user.click(screen.getByRole('tab', { name: 'Characters' }));
+    expect(onNav).toHaveBeenCalledWith('characters');
   });
 
   it('shows the project name in the brand pill', () => {

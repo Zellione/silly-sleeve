@@ -8,6 +8,8 @@ import PreviewScreen from './PreviewScreen';
 export { default as DashboardScreen } from './DashboardScreen';
 export { CrawlerScreen };
 export { default as EditorScreen } from './EditorScreen';
+export { default as CharactersScreen } from './CharactersScreen';
+export { default as ImagesScreen } from './ImagesScreen';
 export { default as LorebookScreen } from './LorebookScreen';
 export { ProjectImageScreen };
 export { PortraitScreen };

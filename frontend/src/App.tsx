@@ -7,8 +7,8 @@ import {
 import { ToastProvider } from './components/ToastProvider';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import {
-  DashboardScreen, CrawlerScreen, EditorScreen, LorebookScreen,
-  ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
+  DashboardScreen, CrawlerScreen, CharactersScreen, LorebookScreen,
+  ImagesScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
 import { GetSettings, NewProject } from '../wailsjs/go/app/App';
@@ -23,7 +23,7 @@ function AppShell() {
 
   const handleOpenProject = (path: string) => {
     setProjectPath(path);
-    setRoute('editor');
+    setRoute('characters');
   };
 
   const handleNewProject = async () => {
@@ -53,13 +53,12 @@ function AppShell() {
 
   const routeLabels: Record<Route, string> = {
     dashboard: 'PROJECTS',
-    crawler: 'CRAWL · STEP 01',
-    editor: 'COMPOSE · STEP 02',
-    lorebook: 'LOREBOOK · STEP 03',
-    projectImage: 'PROJECT IMAGE · STEP 04',
-    image: 'PORTRAIT · STEP 05',
-    preview: 'PREVIEW · STEP 06',
-    export: 'EXPORT · STEP 07',
+    crawler: 'CRAWL',
+    characters: 'CHARACTERS',
+    lorebook: 'LOREBOOK',
+    images: 'IMAGES',
+    preview: 'PREVIEW',
+    export: 'EXPORT',
     settings: 'SETTINGS',
   };
 
@@ -73,12 +72,11 @@ function AppShell() {
     switch (route) {
       case 'dashboard': return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
       case 'crawler': return <CrawlerScreen projectPath={projectPath} />;
-      case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
+      case 'characters': return <CharactersScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
       /* v8 ignore next */
       case 'lorebook': return <LorebookScreen projectPath={projectPath} />;
-      case 'projectImage': return <ProjectImageScreen projectPath={projectPath} />;
-      case 'image': return <PortraitScreen projectPath={projectPath} />;
+      case 'images': return <ImagesScreen projectPath={projectPath} />;
       case 'preview': return <PreviewScreen />;
       case 'export': return <ExportScreen />;
       case 'settings': return <SettingsScreen />;

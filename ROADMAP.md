@@ -185,10 +185,10 @@ Summaries tab with send-to-character / send-to-lorebook actions.
   de-italicised headings, updated font loading
 - [x] **9.2** App shell v2: tabbed top bar (brand + project, workflow tabs,
   save / theme / settings actions, window controls), remove sidebar, slim status bar
-- [~] **9.3** Route restructure: `characters` list + detail page with back bar
+- [x] **9.3** Route restructure: `characters` list + detail page with back bar
   (replaces `editor`), merged `images` tab with portraits / project-cover sub-tabs
   (replaces `projectImage` + `image`)
-- [ ] **9.4** Projects screen v2: full-screen picker with project card grid and
+- [~] **9.4** Projects screen v2: full-screen picker with project card grid and
   inline new-project naming card
 - [ ] **9.5** Summaries tab: persisted crawl summaries as accordion cards with
   character / lorebook sub-tabs and send actions wired to the existing

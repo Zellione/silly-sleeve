@@ -6,8 +6,8 @@ import { TABS } from './tabs';
 /* ─── Types ─────────────────────────────────────────────── */
 
 export type Route =
-  | 'dashboard' | 'crawler' | 'editor' | 'lorebook'
-  | 'projectImage' | 'image' | 'preview' | 'export' | 'settings';
+  | 'dashboard' | 'crawler' | 'characters' | 'lorebook'
+  | 'images' | 'preview' | 'export' | 'settings';
 
 /* ─── Components ────────────────────────────────────────── */
 

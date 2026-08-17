@@ -141,7 +141,7 @@ describe('App', () => {
     });
   });
 
-  it('navigates to project image screen', async () => {
+  it('navigates to the images tab and its project-cover sub-tab', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
@@ -150,7 +150,8 @@ describe('App', () => {
       expect(document.body.textContent).toContain('projects');
     });
 
-    await user.click(screen.getByText('Project image'));
+    await user.click(screen.getByRole('tab', { name: 'Images' }));
+    await user.click(screen.getByRole('button', { name: 'Project cover' }));
     await waitFor(() => {
       expect(screen.getByText('Cover art for the whole project')).toBeInTheDocument();
     });
@@ -186,7 +187,7 @@ describe('App', () => {
     });
   });
 
-  it('navigates to portrait screen', async () => {
+  it('navigates to the images tab showing portraits by default', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
@@ -195,7 +196,7 @@ describe('App', () => {
       expect(document.body.textContent).toContain('projects');
     });
 
-    await user.click(screen.getByText('Portrait'));
+    await user.click(screen.getByRole('tab', { name: 'Images' }));
     await waitFor(() => {
       expect(screen.getByText('Make or import a face')).toBeInTheDocument();
     });
@@ -231,7 +232,7 @@ describe('App', () => {
     });
   });
 
-  it('navigates to compose screen', async () => {
+  it('navigates to the characters tab', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
@@ -240,24 +241,9 @@ describe('App', () => {
       expect(document.body.textContent).toContain('projects');
     });
 
-    await user.click(screen.getByText('Compose'));
+    await user.click(screen.getByRole('tab', { name: 'Characters' }));
     await waitFor(() => {
-      expect(screen.getByText(/Compose/)).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to compose screen', async () => {
-    const user = userEvent.setup();
-    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
-    render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
-
-    await user.click(screen.getByText('Compose'));
-    await waitFor(() => {
-      expect(screen.getByText(/Compose/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Add character/ })).toBeInTheDocument();
     });
   });
 

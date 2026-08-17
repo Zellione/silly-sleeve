@@ -1145,7 +1145,9 @@ textarea.field { resize: vertical; min-height: 80px; line-height: 1.55; }
   display: grid; place-items: center;
   font: 600 11px/1 var(--f-sans);
   flex-shrink: 0;
+  overflow: hidden;
 }
+.ss-char-tab .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ss-char-tab[data-on="1"] .av { background: var(--bg); color: var(--ink); }
 .ss-char-tab .nm {
   font-weight: 600;

@@ -4,13 +4,11 @@ import './style.css'
 import App from './App'
 import {initFontScale} from './utils/fontScale'
 import {initAccent} from './utils/accent'
-import {initSidebarStyle} from './utils/sidebarStyle'
-import {initStepBadges} from './utils/stepBadges'
+import {initTheme} from './utils/theme'
 
 initFontScale()
 initAccent()
-initSidebarStyle()
-initStepBadges()
+initTheme()
 
 const container = document.getElementById('root')
 

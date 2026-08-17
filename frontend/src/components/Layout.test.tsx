@@ -1,121 +1,69 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-vi.mock('../../wailsjs/runtime/runtime', () => ({
-  Quit: vi.fn(),
-  WindowMinimise: vi.fn(),
-  WindowToggleMaximise: vi.fn(),
-}));
+import { TopBar, PageHead, StatusBar, ThemeToggle } from './Layout';
+import { TABS } from './tabs';
 
-import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
-import { TitleBar, Sidebar, PageHead, StatusBar, ThemeToggle } from './Layout';
-
-describe('TitleBar', () => {
-  beforeEach(() => {
-    vi.mocked(Quit).mockClear();
-    vi.mocked(WindowMinimise).mockClear();
-    vi.mocked(WindowToggleMaximise).mockClear();
-  });
-
-  it('renders app name', () => {
-    render(<TitleBar />);
-    expect(screen.getByText('Silly Sleeve')).toBeInTheDocument();
-  });
-
-  it('renders project name when provided', () => {
-    render(<TitleBar projectName="My Project" />);
-    expect(screen.getByText(/My Project/)).toBeInTheDocument();
-  });
-
-  it('renders without project name', () => {
-    const { container } = render(<TitleBar />);
-    expect(container.textContent).not.toContain('·');
-  });
-
-  it('quits the app when the close button is clicked', async () => {
-    render(<TitleBar />);
-    await userEvent.click(screen.getByLabelText('Close'));
-    expect(Quit).toHaveBeenCalledTimes(1);
-    expect(WindowToggleMaximise).not.toHaveBeenCalled();
-  });
-
-  it('minimises the window when the minimise button is clicked', async () => {
-    render(<TitleBar />);
-    await userEvent.click(screen.getByLabelText('Minimise'));
-    expect(WindowMinimise).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles maximise when the maximise button is clicked', async () => {
-    render(<TitleBar />);
-    await userEvent.click(screen.getByLabelText('Maximise'));
-    expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles maximise on title bar double-click', async () => {
-    render(<TitleBar />);
-    await userEvent.dblClick(screen.getByText('Silly Sleeve'));
-    expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not toggle maximise when a traffic button is double-clicked', async () => {
-    render(<TitleBar />);
-    await userEvent.dblClick(screen.getByLabelText('Close'));
-    expect(WindowToggleMaximise).not.toHaveBeenCalled();
-  });
-});
-
-describe('Sidebar', () => {
+describe('TopBar', () => {
   const onNav = vi.fn();
 
   beforeEach(() => {
     onNav.mockClear();
   });
 
-  it('renders all nav sections', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    expect(screen.getByText('Project')).toBeInTheDocument();
-    expect(screen.getByText('Workflow')).toBeInTheDocument();
-    expect(screen.getByText('Setup')).toBeInTheDocument();
+  it('renders every workflow tab', () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    for (const t of TABS) {
+      expect(screen.getByRole('tab', { name: t.label })).toBeInTheDocument();
+    }
   });
 
-  it('renders brand name', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    expect(screen.getAllByText('Silly Sleeve').length).toBeGreaterThanOrEqual(1);
+  it('marks the active tab', () => {
+    render(<TopBar current="lorebook" onNav={onNav} />);
+    expect(screen.getByRole('tab', { name: 'Lorebook' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Crawl' })).toHaveAttribute('aria-selected', 'false');
   });
 
-  it('highlights active route', () => {
-    render(<Sidebar current="crawler" onNav={onNav} />);
-    const button = screen.getByText('Crawl').closest('button');
-    expect(button!.dataset.active).toBe('1');
-  });
-
-  it('does not highlight inactive routes', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    const button = screen.getByText('Crawl').closest('button');
-    expect(button!.dataset.active).toBe('0');
-  });
-
-  it('calls onNav when clicking a nav item', async () => {
+  it('calls onNav when a tab is clicked', async () => {
     const user = userEvent.setup();
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    await user.click(screen.getByText('Crawl'));
-    expect(onNav).toHaveBeenCalledWith('crawler');
+    render(<TopBar current="crawler" onNav={onNav} />);
+    await user.click(screen.getByRole('tab', { name: 'Characters' }));
+    expect(onNav).toHaveBeenCalledWith('characters');
   });
 
-  it('renders step numbers when showSteps is true', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} showSteps={true} />);
-    expect(screen.getByText('01')).toBeInTheDocument();
-    expect(screen.getByText('02')).toBeInTheDocument();
+  it('shows the project name in the brand pill', () => {
+    render(<TopBar current="crawler" onNav={onNav} projectName="Harper cell" />);
+    expect(screen.getByText('Harper cell')).toBeInTheDocument();
   });
 
-  it('does not render step numbers when showSteps is false', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} showSteps={false} />);
-    expect(screen.queryByText('01')).not.toBeInTheDocument();
+  it('falls back to a placeholder when no project is open', () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    expect(screen.getByText('No project open')).toBeInTheDocument();
   });
 
-  it('renders settings nav', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+  it('navigates to the projects screen when the brand is clicked', async () => {
+    const user = userEvent.setup();
+    render(<TopBar current="crawler" onNav={onNav} />);
+    await user.click(screen.getByTitle('All projects'));
+    expect(onNav).toHaveBeenCalledWith('dashboard');
+  });
+
+  it('navigates to settings via the cog button and marks it active', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<TopBar current="crawler" onNav={onNav} />);
+    const cog = screen.getByTitle('Settings');
+    expect(cog.dataset.on).toBe('0');
+    await user.click(cog);
+    expect(onNav).toHaveBeenCalledWith('settings');
+    rerender(<TopBar current="settings" onNav={onNav} />);
+    expect(screen.getByTitle('Settings').dataset.on).toBe('1');
+  });
+
+  it('renders no window-control buttons (the OS frame owns them)', () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimise')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Maximise')).not.toBeInTheDocument();
   });
 });
 
@@ -125,15 +73,15 @@ describe('PageHead', () => {
     expect(screen.getByText('Test Page')).toBeInTheDocument();
   });
 
-  it('renders step pill when step is provided', () => {
-    render(<PageHead step={3} subtitle="Subtitle" title="Test" />);
-    expect(screen.getByText('03')).toBeInTheDocument();
+  it('renders the subtitle under the title', () => {
+    const { container } = render(<PageHead subtitle="Subtitle" title="Test" />);
     expect(screen.getByText('Subtitle')).toBeInTheDocument();
+    expect(container.querySelector('.v2-sub')).toBeTruthy();
   });
 
-  it('does not render step pill when step is not provided', () => {
-    const { container } = render(<PageHead title="No Step" />);
-    expect(container.querySelector('.step-pill')).toBeNull();
+  it('omits the subtitle line when no subtitle is given', () => {
+    const { container } = render(<PageHead title="No sub" />);
+    expect(container.querySelector('.v2-sub')).toBeNull();
   });
 
   it('renders actions', () => {
@@ -184,29 +132,29 @@ describe('ThemeToggle', () => {
   });
 
   it('reads saved theme from localStorage', () => {
-    localStorage.setItem('ss-theme', 'dark');
-    render(<ThemeToggle />);
-    expect(document.documentElement.dataset.theme).toBe('dark');
-  });
-
-  it('falls back to light mode when no saved theme', () => {
+    localStorage.setItem('ss-theme', 'light');
     render(<ThemeToggle />);
     expect(document.documentElement.dataset.theme).toBe('light');
+  });
+
+  it('defaults to dark mode when no saved theme', () => {
+    render(<ThemeToggle />);
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 
   it('toggles theme on click', async () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    expect(document.documentElement.dataset.theme).toBe('light');
-
-    await user.click(screen.getByRole('button'));
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(localStorage.getItem('ss-theme')).toBe('dark');
 
     await user.click(screen.getByRole('button'));
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('ss-theme')).toBe('light');
+
+    await user.click(screen.getByRole('button'));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('ss-theme')).toBe('dark');
   });
 
   it('persists theme to localStorage on change', async () => {
@@ -214,6 +162,6 @@ describe('ThemeToggle', () => {
     render(<ThemeToggle />);
 
     await user.click(screen.getByRole('button'));
-    expect(localStorage.getItem('ss-theme')).toBe('dark');
+    expect(localStorage.getItem('ss-theme')).toBe('light');
   });
 });

@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import './style.css';
 import {
-  TitleBar, Sidebar, StatusBar, ThemeToggle,
+  TopBar, StatusBar,
   type Route,
 } from './components/Layout';
 import { ToastProvider } from './components/ToastProvider';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import {
-  DashboardScreen, CrawlerScreen, EditorScreen, LorebookScreen,
-  ProjectImageScreen, PortraitScreen, PreviewScreen, ExportScreen,
+  DashboardScreen, CrawlerScreen, SummariesScreen, CharactersScreen,
+  LorebookScreen, ImagesScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
 import { GetSettings, NewProject } from '../wailsjs/go/app/App';
@@ -19,19 +19,23 @@ function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
   const [settingsData, setSettingsData] = useState<settings.Settings | null>(null);
   const [projectPath, setProjectPath] = useState('');
+  const [projectName, setProjectName] = useState('');
   const creatingProject = useRef(false);
 
-  const handleOpenProject = (path: string) => {
+  const handleOpenProject = (path: string, name?: string) => {
     setProjectPath(path);
-    setRoute('editor');
+    // Prefer the manifest name; fall back to the bundle's file name.
+    setProjectName(name || (path.split(/[\\/]/).pop()?.replace(/\.slv$/, '') ?? ''));
+    setRoute('characters');
   };
 
-  const handleNewProject = async () => {
+  const handleNewProject = async (name: string) => {
     if (creatingProject.current) return;
     creatingProject.current = true;
     try {
-      await NewProject();
+      await NewProject(name);
       setProjectPath('');
+      setProjectName(name);
       setRoute('crawler');
     } catch (e) {
       logError('App.newProject', e);
@@ -53,13 +57,13 @@ function AppShell() {
 
   const routeLabels: Record<Route, string> = {
     dashboard: 'PROJECTS',
-    crawler: 'CRAWL · STEP 01',
-    editor: 'COMPOSE · STEP 02',
-    lorebook: 'LOREBOOK · STEP 03',
-    projectImage: 'PROJECT IMAGE · STEP 04',
-    image: 'PORTRAIT · STEP 05',
-    preview: 'PREVIEW · STEP 06',
-    export: 'EXPORT · STEP 07',
+    crawler: 'CRAWL',
+    summaries: 'SUMMARIES',
+    characters: 'CHARACTERS',
+    lorebook: 'LOREBOOK',
+    images: 'IMAGES',
+    preview: 'PREVIEW',
+    export: 'EXPORT',
     settings: 'SETTINGS',
   };
 
@@ -71,14 +75,13 @@ function AppShell() {
 
   const renderScreen = () => {
     switch (route) {
-      case 'dashboard': return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
       case 'crawler': return <CrawlerScreen projectPath={projectPath} />;
-      case 'editor': return <EditorScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
+      case 'summaries': return <SummariesScreen onNav={setRoute} />;
+      case 'characters': return <CharactersScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
       /* v8 ignore next */
       case 'lorebook': return <LorebookScreen projectPath={projectPath} />;
-      case 'projectImage': return <ProjectImageScreen projectPath={projectPath} />;
-      case 'image': return <PortraitScreen projectPath={projectPath} />;
+      case 'images': return <ImagesScreen projectPath={projectPath} />;
       case 'preview': return <PreviewScreen />;
       case 'export': return <ExportScreen />;
       case 'settings': return <SettingsScreen />;
@@ -87,21 +90,19 @@ function AppShell() {
     }
   };
 
-  return (
-    <div className="ss-app">
-      <TitleBar />
-      <div className="ss-main">
-        <Sidebar current={route} onNav={setRoute} />
-        <main className="ss-content">
-          {renderScreen()}
-        </main>
-      </div>
-      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} autoSaveMode={settingsData?.autoSaveMode} />
+  // The projects screen is a full-screen pre-screen: no top bar, no status
+  // bar. Everything else renders inside the tabbed shell.
+  if (route === 'dashboard') {
+    return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
+  }
 
-      {/* Floating theme toggle for now */}
-      <div style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 50 }}>
-        <ThemeToggle />
-      </div>
+  return (
+    <div className="ss-app-v2">
+      <TopBar current={route} onNav={setRoute} projectName={projectName || undefined} />
+      <main className="ss-content">
+        {renderScreen()}
+      </main>
+      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} autoSaveMode={settingsData?.autoSaveMode} />
     </div>
   );
 }

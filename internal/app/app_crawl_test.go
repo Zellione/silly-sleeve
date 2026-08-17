@@ -298,3 +298,31 @@ func TestProjectBundle_RestoresCrawlState(t *testing.T) {
 	require.NotNil(t, got.Set)
 	assert.Equal(t, "A", got.Set.Results[0].Title)
 }
+
+func TestUpdateCrawlSummary_ReplacesSectionsAndWordCount(t *testing.T) {
+	app := newSendApp()
+	app.cachedCrawl = &crawler.CrawlResult{URL: "https://w/wiki/Hero", Sections: []crawler.Section{{Body: "hero bio"}}}
+
+	res, err := app.UpdateCrawlSummary("https://w/wiki/Hero", "New lede.\n\n## Personality\nBrave and loud.")
+	require.NoError(t, err)
+	require.Len(t, res.Sections, 2)
+	assert.Equal(t, "New lede.", res.Sections[0].Body)
+	assert.Equal(t, "Personality", res.Sections[1].Heading)
+	assert.Equal(t, 6, res.WordCount)
+
+	// The edit lands in the cached set AND the legacy single-result cache.
+	stored, ok := app.crawlResultByURLLocked("https://w/wiki/Hero")
+	require.True(t, ok)
+	assert.Equal(t, res.Sections, stored.Sections)
+	assert.Equal(t, res.Sections, app.cachedCrawl.Sections)
+}
+
+func TestUpdateCrawlSummary_Errors(t *testing.T) {
+	app := NewApp()
+	_, err := app.UpdateCrawlSummary("https://w/wiki/Hero", "x")
+	assert.ErrorIs(t, err, errNoCrawl)
+
+	app = newSendApp()
+	_, err = app.UpdateCrawlSummary("https://w/wiki/Nope", "x")
+	assert.ErrorIs(t, err, errPageNotInCrawl)
+}

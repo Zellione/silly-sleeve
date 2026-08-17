@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import {
-  SearchIcon, GlobeIcon, UploadIcon, PlusIcon, LinkIcon, SparksIcon,
+  SearchIcon, GlobeIcon, PlusIcon, LinkIcon, SparksIcon,
   FolderIcon, TrashIcon,
 } from '../icons';
 import { formatRelative } from '../utils/relativeTime';
@@ -21,8 +20,8 @@ const FILTER_LABELS: Record<Filter, string> = {
 };
 
 export interface DashboardScreenProps {
-  onOpenProject: (path: string) => void;
-  onNewProject: () => void;
+  onOpenProject: (path: string, name?: string) => void;
+  onNewProject: (name: string) => void;
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewProject }) => {
@@ -48,8 +47,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
 
   const handleOpen = useCallback(async (path: string) => {
     try {
-      await OpenProjectBundle(path);
-      onOpenProject(path);
+      const manifest = await OpenProjectBundle(path);
+      onOpenProject(path, manifest?.name);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast({ kind: 'bad', title: 'Open failed', body: msg });
@@ -97,24 +96,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
   }, [confirm, toast]);
 
   return (
-    <>
-      <PageHead
-        subtitle="Manage your character projects"
-        title={<>Your <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>projects</em></>}
-        actions={
-          <>
-            <button type="button" className="btn ghost" disabled title="Coming in 6.6">
-              <UploadIcon size={14} /> Import .png
-            </button>
-            <button type="button" className="btn ghost" onClick={handlePickOpen}>
-              <FolderIcon size={14} /> Open project
-            </button>
-            <button type="button" className="btn primary" onClick={onNewProject}>
-              <PlusIcon size={14} /> New project
-            </button>
-          </>
-        } />
-      <div className="ss-page-body scroll">
+    <div className="v2-pre scroll">
+      <div className="brand">
+        <div className="mark">SS</div>
+        <b>Silly Sleeve</b>
+      </div>
+      <div className="sub">Pick a project to continue, or start a new one from a wiki crawl.</div>
+
+      <div className="v2-pre-toolbar">
         <div className="dash-filters">
           {(['all', 'draft', 'ready', 'archived'] as Filter[]).map(f => (
             <button type="button" key={f} className="chip" data-on={filter === f ? '1' : '0'} onClick={() => setFilter(f)}>
@@ -126,47 +115,88 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
             <SearchIcon size={14} />
             <input placeholder="Filter by name…" value={q} onChange={e => setQ(e.target.value)} />
           </div>
+          <button type="button" className="btn ghost" onClick={handlePickOpen}>
+            <FolderIcon size={14} /> Open project
+          </button>
         </div>
-
-        {filtered.length === 0 ? (
-          <div className="empty">
-            <div className="emoji"><SparksIcon size={36} /></div>
-            <h2>No characters yet. Start with a wiki page you love.</h2>
-            <p>Paste a Fandom URL on the Crawl step and Silly Sleeve will pull lore, infobox, quotes and trivia — ready for the LLM to reformat into a character card.</p>
-            <div className="row">
-              <button type="button" className="btn primary" onClick={onNewProject}><GlobeIcon size={14} /> Crawl a wiki page</button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid-cards">
-            {filtered.map(p => (
-              <ProjectCard
-                key={p.path}
-                p={p}
-                onOpen={() => handleOpen(p.path)}
-                onCycleStatus={(ev) => cycleStatus(p, ev)}
-                onRemove={(ev) => handleRemove(p, ev)}
-              />
-            ))}
-            <button
-              className="proj-card"
-              onClick={onNewProject}
-              style={{ borderStyle: 'dashed', background: 'transparent', alignItems: 'center', justifyContent: 'center', minHeight: 320, cursor: 'pointer' }}
-              type="button"
-              aria-label="Create new character project"
-            >
-              <div className="col" style={{ alignItems: 'center', textAlign: 'center', padding: 24, gap: 14 }}>
-                <div style={{ width: 48, height: 48, border: '1px dashed var(--hair-strong)', borderRadius: '50%', display: 'grid', placeItems: 'center' }}>
-                  <PlusIcon size={22} />
-                </div>
-                <div className="serif-i" style={{ fontSize: 22 }}>New character</div>
-                <div className="helpr">From a wiki URL or scratch</div>
-              </div>
-            </button>
-          </div>
-        )}
       </div>
-    </>
+
+      {filtered.length === 0 && projects.length === 0 ? (
+        <div className="empty">
+          <div className="emoji"><SparksIcon size={36} /></div>
+          <h2>No characters yet. Start with a wiki page you love.</h2>
+          <p>Paste a Fandom URL on the Crawl step and Silly Sleeve will pull lore, infobox, quotes and trivia — ready for the LLM to reformat into a character card.</p>
+          <div className="row">
+            <button type="button" className="btn primary" onClick={() => onNewProject('')}><GlobeIcon size={14} /> Crawl a wiki page</button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid">
+          {filtered.map(p => (
+            <ProjectCard
+              key={p.path}
+              p={p}
+              onOpen={() => handleOpen(p.path)}
+              onCycleStatus={(ev) => cycleStatus(p, ev)}
+              onRemove={(ev) => handleRemove(p, ev)}
+            />
+          ))}
+          <NewProjectCard onNew={onNewProject} />
+        </div>
+      )}
+      <div className="foot">silly sleeve · character workshop</div>
+    </div>
+  );
+};
+
+const NewProjectCard: React.FC<{ onNew: (name: string) => void }> = ({ onNew }) => {
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Focus the revealed name input — the user just asked for it by clicking
+  // the card, so this is intent-driven (autoFocus is flagged by jsx-a11y).
+  useEffect(() => {
+    if (naming) inputRef.current?.focus();
+  }, [naming]);
+
+  const create = () => {
+    const n = name.trim();
+    if (!n) return;
+    onNew(n);
+  };
+
+  if (!naming) {
+    return (
+      <button type="button" className="proj-card new" onClick={() => setNaming(true)} aria-label="Create new character project">
+        <span className="plus"><PlusIcon size={18} /></span>
+        <b>New project</b>
+        <span className="hint">starts on the crawl tab</span>
+      </button>
+    );
+  }
+  return (
+    <div className="proj-card new" data-naming="1">
+      <div className="form">
+        <label htmlFor="new-project-name">Project name</label>
+        <input id="new-project-name" className="field" ref={inputRef} value={name}
+          placeholder="e.g. Witcher · Kaer Morhen…"
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') create();
+            if (e.key === 'Escape') { setNaming(false); setName(''); }
+          }} />
+        <div className="row">
+          <button type="button" className="btn primary" disabled={!name.trim()} onClick={create}
+            style={{ flex: 1, justifyContent: 'center' }}>
+            <PlusIcon size={13} /> Create
+          </button>
+          <button type="button" className="btn ghost" onClick={() => { setNaming(false); setName(''); }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

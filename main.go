@@ -19,10 +19,11 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:     "silly-sleeve",
-		Width:     1400,
-		Height:    900,
-		Frameless: true,
+		// Native window frame: the OS draws the title bar and window
+		// controls; the in-app top bar only carries brand, tabs and actions.
+		Title:  "Silly Sleeve",
+		Width:  1400,
+		Height: 900,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

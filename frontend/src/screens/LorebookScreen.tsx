@@ -470,7 +470,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
 
   return (
     <>
-      <PageHead step={3} subtitle="Build the world around them"
+      <PageHead subtitle="Build the world around them"
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
         actions={
           <>

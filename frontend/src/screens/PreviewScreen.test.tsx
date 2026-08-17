@@ -61,12 +61,12 @@ describe('PreviewScreen', () => {
     mockGetLorebook.mockResolvedValue([]);
   });
 
-  it('renders the PageHead with step 6 and the active character name', async () => {
+  it('renders the PageHead with the active character name', async () => {
     renderScreen();
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Preview Elara');
     });
-    expect(screen.getByText('06')).toBeInTheDocument();
+    expect(screen.getByText('Inspect the assembled card')).toBeInTheDocument();
   });
 
   it('renders the character strip with both characters', async () => {

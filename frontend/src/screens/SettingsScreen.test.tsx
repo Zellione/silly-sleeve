@@ -67,7 +67,7 @@ describe('SettingsScreen', () => {
     expect(screen.getByText('Prompts')).toBeInTheDocument();
   });
 
-  it('shows accent, sidebar, and step-badge controls in Appearance', async () => {
+  it('shows font-scale and accent controls in Appearance', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     renderWithProviders(<SettingsScreen />);
@@ -77,9 +77,8 @@ describe('SettingsScreen', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Appearance' }));
 
+    expect(screen.getByRole('radiogroup', { name: 'Font scale' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Accent color' })).toBeInTheDocument();
-    expect(screen.getByRole('radiogroup', { name: 'Sidebar style' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Step badges' })).toBeInTheDocument();
   });
 
   it('renders "Add endpoint" button', async () => {

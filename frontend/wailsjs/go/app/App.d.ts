@@ -95,6 +95,8 @@ export function GetProjectFieldEndpoints():Promise<Record<string, number>>;
 
 export function GetProjectImage():Promise<Array<number>>;
 
+export function GetProjectName():Promise<string>;
+
 export function GetProjectThumbnail(arg1:string):Promise<Array<number>>;
 
 export function GetPromptTemplates():Promise<prompts.TemplateSet>;
@@ -113,7 +115,7 @@ export function ImportLorebook():Promise<Array<lorebook.Entry>>;
 
 export function ListProjects():Promise<Array<library.Entry>>;
 
-export function NewProject():Promise<void>;
+export function NewProject(arg1:string):Promise<void>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 
@@ -166,3 +168,5 @@ export function TestComfyUIEndpoint(arg1:string,arg2:string):Promise<llm.TestRes
 export function TestLLMEndpoint(arg1:settings.LLMEndpoint):Promise<llm.TestResult>;
 
 export function UpdateCharacter(arg1:compose.Character):Promise<void>;
+
+export function UpdateCrawlSummary(arg1:string,arg2:string):Promise<crawler.CrawlResult>;

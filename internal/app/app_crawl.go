@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"strings"
 
 	"silly-sleeve/internal/compose"
@@ -135,6 +136,38 @@ func (a *App) SendCrawlResult(pageURL, role string, overwrite bool) SendCrawlOut
 		}
 	}
 	return out
+}
+
+var (
+	errNoCrawl        = errors.New("no crawl cached")
+	errPageNotInCrawl = errors.New("page is no longer in the crawl")
+)
+
+// UpdateCrawlSummary replaces a crawled page's sections with hand-edited
+// summary text ("## Heading" lines start new sections) and returns the
+// updated result. The stored summary is what later sends, staging and
+// re-rolls read from, so an edit permanently shapes what gets generated.
+func (a *App) UpdateCrawlSummary(pageURL, text string) (crawler.CrawlResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cachedCrawlSet == nil {
+		return crawler.CrawlResult{}, errNoCrawl
+	}
+	for i := range a.cachedCrawlSet.Results {
+		if a.cachedCrawlSet.Results[i].URL != pageURL {
+			continue
+		}
+		res := &a.cachedCrawlSet.Results[i]
+		res.Sections = crawler.ParseSummaryText(text)
+		res.WordCount = crawler.TotalWordCount(res.Sections, res.Infobox)
+		// Keep the legacy single-result cache in step when it mirrors this page.
+		if a.cachedCrawl != nil && a.cachedCrawl.URL == pageURL {
+			a.cachedCrawl.Sections = res.Sections
+			a.cachedCrawl.WordCount = res.WordCount
+		}
+		return *res, nil
+	}
+	return crawler.CrawlResult{}, errPageNotInCrawl
 }
 
 // crawlResultByURLLocked finds a cached crawl result by URL. Caller holds a.mu.

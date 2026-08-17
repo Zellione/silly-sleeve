@@ -19,6 +19,7 @@ import (
 // ProjectSnapshot is the project state captured (under App's lock) for
 // serialization into a .slv bundle.
 type ProjectSnapshot struct {
+	Name           string
 	Characters     []compose.Character
 	ActiveCharID   int
 	Lorebook       []lorebook.Entry
@@ -108,6 +109,11 @@ func (p *ProjectManager) SaveBundle(filePath string, snap ProjectSnapshot) (proj
 	}
 	if snap.CrawlTitle != "" {
 		projectName = snap.CrawlTitle
+	}
+	// A name given by the user (at creation or load) always wins over the
+	// derived fallbacks above.
+	if snap.Name != "" {
+		projectName = snap.Name
 	}
 
 	status := snap.Status

@@ -76,7 +76,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
 
   return (
     <>
-      <PageHead step={4} subtitle="Cover art for the whole project"
+      <PageHead subtitle="Cover art for the whole project"
         title={<>Project <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>image</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">

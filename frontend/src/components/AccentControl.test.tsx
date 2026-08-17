@@ -22,17 +22,17 @@ describe('AccentControl', () => {
     expect(screen.getByRole('radio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('defaults the checked accent to Terracotta', () => {
+  it('defaults the checked accent to Slate blue', () => {
     render(<AccentControl />);
-    expect(screen.getByRole('radio', { name: 'Terracotta' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Slate blue' })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('applies and persists the selected accent on click', async () => {
     const user = userEvent.setup();
     render(<AccentControl />);
-    await user.click(screen.getByRole('radio', { name: 'Blue' }));
-    expect(screen.getByRole('radio', { name: 'Blue' })).toHaveAttribute('aria-checked', 'true');
-    expect(localStorage.getItem('ss-accent')).toBe('blue');
-    expect(document.documentElement.style.getPropertyValue('--acc-h')).toBe('250');
+    await user.click(screen.getByRole('radio', { name: 'Violet' }));
+    expect(screen.getByRole('radio', { name: 'Violet' })).toHaveAttribute('aria-checked', 'true');
+    expect(localStorage.getItem('ss-accent')).toBe('violet');
+    expect(document.documentElement.style.getPropertyValue('--acc-h')).toBe('294');
   });
 });

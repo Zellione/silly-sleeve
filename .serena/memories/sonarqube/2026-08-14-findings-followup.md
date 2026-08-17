@@ -102,5 +102,22 @@ crawler/sanitize.go), `godre:S8205` (crawler/fetch.go anon struct),
 until the PR merges — always diff it against the working tree before acting.**
 
 ## Status
-Committed locally, NOT pushed. `APPROVAL_REQUEST.md` written for review
-(gitignored at `.gitignore:33`, must be deleted before pushing).
+**MERGED** 2026-08-14 as `1018838` (PR #83, 83 files +5200/-1436). Main quality
+gate OK. Branch `fix/audit-findings` can be deleted.
+
+### S6479 verdict — RESOLVED 2026-08-17
+Re-checked after Automatic Analysis caught up: the main-branch open-issue list
+is **empty** (0 issues project-wide). `key={key}` destructured from useRowIds
+satisfies S6479; nothing to accept. Original note kept below for context.
+
+### S6479 verdict still OPEN at merge time (historical)
+SonarCloud's main-branch issue list was still the PRE-merge snapshot minutes
+after the merge — it listed S6479 at `EditorScreen.tsx:33/97/536` and
+`CrawlerScreen.tsx:269/274` with creationDates from May, plus S9011 findings on
+buttons that the audit remediation had ALREADY fixed. There is no Sonar scan
+step in CI (see the note in `sonar-project.properties`); this project relies on
+SonarCloud **Automatic Analysis**, which lags a push.
+**So: re-check the main-branch issues later before concluding whether
+`key={key}` (destructured from useRowIds) satisfies S6479.** If it does not, the
+fallback is marking the rule accepted — the underlying focus/DOM-reuse bug in
+the stat and quote rows is fixed regardless of what Sonar decides.

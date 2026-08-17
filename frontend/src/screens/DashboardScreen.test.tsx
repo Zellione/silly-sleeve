@@ -74,14 +74,14 @@ describe('DashboardScreen', () => {
     expect(screen.getByText('Yennefer')).toBeInTheDocument();
   });
 
-  it('opens a project when a card is clicked', async () => {
+  it('opens a project when a card is clicked, passing the manifest name', async () => {
     const onOpenProject = vi.fn();
     mockList.mockResolvedValue([entry()]);
-    mockOpen.mockResolvedValue({});
+    mockOpen.mockResolvedValue({ name: 'Ciri of Cintra' });
     renderDash({ onOpenProject });
     await userEvent.click(await screen.findByText('Ciri'));
     await waitFor(() => expect(mockOpen).toHaveBeenCalledWith('/lib/Ciri.slv'));
-    expect(onOpenProject).toHaveBeenCalledWith('/lib/Ciri.slv');
+    expect(onOpenProject).toHaveBeenCalledWith('/lib/Ciri.slv', 'Ciri of Cintra');
   });
 
   it('cycles status without opening the project', async () => {
@@ -105,12 +105,60 @@ describe('DashboardScreen', () => {
     await waitFor(() => expect(mockRemove).toHaveBeenCalledWith('/lib/Ciri.slv', false));
   });
 
-  it('calls onNewProject from the New project button', async () => {
+  it('creates a named project from the new-project card', async () => {
     const onNewProject = vi.fn();
     mockList.mockResolvedValue([entry()]);
     renderDash({ onNewProject });
     await screen.findByText('Ciri');
-    await userEvent.click(screen.getByRole('button', { name: /New project/i }));
-    expect(onNewProject).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: /Create new character project/i }));
+    await userEvent.type(screen.getByLabelText('Project name'), 'Harper cell');
+    await userEvent.click(screen.getByRole('button', { name: /Create/ }));
+    expect(onNewProject).toHaveBeenCalledWith('Harper cell');
+  });
+
+  it('creates on Enter in the name input', async () => {
+    const onNewProject = vi.fn();
+    mockList.mockResolvedValue([entry()]);
+    renderDash({ onNewProject });
+    await screen.findByText('Ciri');
+    await userEvent.click(screen.getByRole('button', { name: /Create new character project/i }));
+    await userEvent.type(screen.getByLabelText('Project name'), 'Kaer Morhen{Enter}');
+    expect(onNewProject).toHaveBeenCalledWith('Kaer Morhen');
+  });
+
+  it('does not create with an empty name', async () => {
+    const onNewProject = vi.fn();
+    mockList.mockResolvedValue([entry()]);
+    renderDash({ onNewProject });
+    await screen.findByText('Ciri');
+    await userEvent.click(screen.getByRole('button', { name: /Create new character project/i }));
+    expect(screen.getByRole('button', { name: /Create$/ })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Project name'), '{Enter}');
+    expect(onNewProject).not.toHaveBeenCalled();
+  });
+
+  it('cancels naming with Escape or the Cancel button', async () => {
+    const onNewProject = vi.fn();
+    mockList.mockResolvedValue([entry()]);
+    renderDash({ onNewProject });
+    await screen.findByText('Ciri');
+
+    await userEvent.click(screen.getByRole('button', { name: /Create new character project/i }));
+    await userEvent.type(screen.getByLabelText('Project name'), 'abc{Escape}');
+    expect(screen.queryByLabelText('Project name')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Create new character project/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByLabelText('Project name')).not.toBeInTheDocument();
+    expect(onNewProject).not.toHaveBeenCalled();
+  });
+
+  it('starts an unnamed project from the empty-state CTA', async () => {
+    const onNewProject = vi.fn();
+    mockList.mockResolvedValue([]);
+    renderDash({ onNewProject });
+    await screen.findByText(/No characters yet/i);
+    await userEvent.click(screen.getByRole('button', { name: /Crawl a wiki page/ }));
+    expect(onNewProject).toHaveBeenCalledWith('');
   });
 });

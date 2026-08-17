@@ -255,7 +255,7 @@ const PreviewScreen: React.FC = () => {
 
   return (
     <>
-      <PageHead step={6} subtitle="Inspect the assembled card"
+      <PageHead subtitle="Inspect the assembled card"
         title={<>Preview <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar?.name?.split(' ')[0] ?? ''}</em></>} />
       <CharacterStrip characters={characters} activeId={activeId} onSelect={selectChar} />
       <div className="ss-page-body scroll">

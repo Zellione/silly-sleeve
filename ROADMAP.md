@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-14 — Codebase audit remediation (`fix/audit-findings`).
+> Last updated: 2026-08-17 — Started Phase 9, UI v2 redesign (`feature/ui-redesign`).
 
 ## Overview
 
@@ -170,9 +170,55 @@ not in a new graph model.
 
 ---
 
+## Phase 9 — UI v2 Redesign
+
+Goal: Adopt the v2 design ("index v2.html" in the Claude Design project) — a crisp
+flat visual language and a tab-based information architecture. The warm serif theme
+gives way to a neutral palette with Geist-only typography; the left sidebar becomes a
+top bar with workflow tabs; projects get a dedicated full-screen picker; characters
+get a list page with per-character detail; the two image screens merge into one
+Images tab with sub-tabs; and the crawl page's summaries become a persistent
+Summaries tab with send-to-character / send-to-lorebook actions.
+
+- [x] **9.1** Design tokens & typography v2: flat neutral palette (light + dark),
+  Geist-only type (retire Instrument Serif), flat buttons/fields/cards,
+  de-italicised headings, updated font loading
+- [x] **9.2** App shell v2: tabbed top bar (brand + project, workflow tabs,
+  save / theme / settings actions, window controls), remove sidebar, slim status bar
+- [x] **9.3** Route restructure: `characters` list + detail page with back bar
+  (replaces `editor`), merged `images` tab with portraits / project-cover sub-tabs
+  (replaces `projectImage` + `image`)
+- [x] **9.4** Projects screen v2: full-screen picker with project card grid and
+  inline new-project naming card
+- [x] **9.5** Summaries tab: persisted crawl summaries as accordion cards with
+  character / lorebook sub-tabs and send actions wired to the existing
+  per-result send flow
+- [x] **9.6** Screen polish pass: PageHead v2 (no step pills), editor source panel
+  moved right and widened, infobox / heading restyles, segmented sub-tab bars
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-08-17
+
+- Phase 9 (UI v2 redesign) implemented on `feature/ui-redesign`, working from
+  the "index v2.html" entry of the Claude Design project. All six substeps
+  landed: v2 tokens and Geist-only typography; tabbed top bar shell replacing
+  the sidebar (window controls integrated, sidebar-style and step-badge
+  preferences removed); route restructure (Characters list + detail page,
+  merged Images tab); full-screen projects picker with named creation
+  (NewProject now takes a name that wins the manifest derivation and round-trips
+  through open); new Summaries tab over the persisted crawl results wired to
+  the existing per-result send flow; PageHead v2 without step pills and the
+  editor source panel moved right and widened.
+- Deviations from the design mock: the character strip stays visible in the
+  character detail view (it hosts add/import and quick switching); summaries
+  are read-only views of crawl results (no in-place text editing — the backend
+  stores crawl output verbatim); the projects picker keeps the library's
+  filter/search/status/remove affordances on top of the design's simpler grid.
 
 ### 2026-08-14
 

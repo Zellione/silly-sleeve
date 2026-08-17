@@ -7,13 +7,14 @@ Go backend + React frontend bridged by Wails (CGo + WebKit2GTK on Linux).
 
 ```
 main.go                   Wails entrypoint — creates App, calls wails.Run
-app.go                    All Wails-bound App methods (single exported struct)
-app_export.go             Export-related App methods
-app_files.go              File-read helpers (ReadImageFile, portrait/cover I/O)
-character_generator.go    Bulk character generation logic
-comfy_service.go          ComfyUI WebSocket/HTTP client
-image_prompts.go          AI image-prompt generation
-project_manager.go        Project bundle save/open
+                          (native OS frame; Frameless removed 2026-08-17)
+
+internal/app/             THE Wails-bound App package (single exported struct
+                          spread across app.go, app_crawl.go, app_export.go,
+                          app_files.go, app_library.go, app_lore.go, plus
+                          character_generator.go, comfy_service.go,
+                          image_prompts.go, library_manager.go,
+                          project_manager.go)
 
 internal/
   settings/    Persistent config — stored in os.UserConfigDir()
@@ -28,9 +29,16 @@ internal/
   prompts/     System-prompt templates
 
 frontend/src/
-  App.tsx                    Shell + tab routing (no router lib)
-  screens/index.tsx          Screen exports + DashboardScreen
-  screens/                   One file per tab screen
+  App.tsx                    Route state (no router lib); dashboard route
+                             early-returns the full-screen projects picker
+  components/Layout.tsx      v2 shell: TopBar (tabbed), PageHead, StatusBar,
+                             ThemeToggle; tab list in components/tabs.ts
+  screens/DashboardScreen.tsx  Full-screen projects picker + named creation
+  screens/                   One file per tab screen (Crawler, Summaries,
+                             Characters list→Editor detail, Lorebook, Images
+                             [Portrait/ProjectImage sub-tabs], Preview,
+                             Export, Settings)
+  utils/theme.ts             Dark default; applied at startup in main.tsx
   components/                Shared UI components and hooks
   utils/image.ts             arrayBufferToDataURL, dataURLToBytes, etc.
   utils/workflow.ts          Workflow/size helpers
@@ -38,16 +46,19 @@ frontend/src/
   icons.tsx                  SVG icon components (inline, no icon lib)
 
 frontend/wailsjs/            Auto-generated — never edit manually
-  go/main/App.d.ts / App.js  Typed JS bindings for all App methods
+  go/app/App.d.ts / App.js   Typed JS bindings for all App methods
+                             (regen: `wails generate module`)
   go/models.ts               Go struct → TypeScript type bindings
   runtime/runtime.ts         Wails runtime (events, file-drop, etc.)
 ```
 
 ## Key invariants
 
-- `app.go` is the *only* file whose exported methods appear in `wailsjs/go/main/App`.
-  Adding a new backend method requires regenerating wailsjs/ (`wails dev` does this).
-- Business logic lives in `internal/` — root Go files are thin App-method wrappers.
+- The `internal/app` package's exported App methods are what appear in
+  `wailsjs/go/app/App`. Adding a backend method requires regenerating
+  wailsjs/ (`wails generate module` or `wails dev`).
+- Business logic lives in the other `internal/` packages — `internal/app`
+  files are thin App-method wrappers.
 - Each screen fully unmounts on tab switch; persistent state must be restored in `useEffect`.
 - Config (settings) ≠ project data. Settings → `os.UserConfigDir()`; project → bundle ZIP.
 

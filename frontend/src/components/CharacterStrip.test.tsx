@@ -18,6 +18,19 @@ describe('CharacterStrip', () => {
     expect(screen.getByText('Tatsumi')).toBeInTheDocument();
   });
 
+  it('shows the portrait in the tab avatar when one exists', () => {
+    const withPortrait = [
+      compose.Character.createFrom({ id: 1, name: 'Elara', epithet: '', portrait: [0xFF, 0xD8, 0xFF, 0xE0] }),
+      compose.Character.createFrom({ id: 2, name: 'Tatsumi', epithet: '' }),
+    ];
+    const { container } = render(<CharacterStrip characters={withPortrait} activeId={1} onSelect={vi.fn()} />);
+    const imgs = container.querySelectorAll('.ss-char-tab .av img');
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/);
+    // The portraitless character keeps the initial letter.
+    expect(screen.getByText('T')).toBeInTheDocument();
+  });
+
   it('marks the active character tab', () => {
     render(<CharacterStrip characters={chars} activeId={2} onSelect={vi.fn()} />);
     const tabs = screen.getAllByRole('button', { name: /Elara|Tatsumi/ });

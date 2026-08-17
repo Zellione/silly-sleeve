@@ -1,9 +1,18 @@
 /* ─── Silly Sleeve · design tokens & base ─────────────────────────── */
 
+/* Bundled CJK fallback — Japanese glyphs render regardless of installed system fonts */
+@font-face {
+  font-family: "Noto Sans JP";
+  src: url("./assets/fonts/NotoSansJP-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --f-display: "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
-  --f-sans: "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --f-display: "Geist", -apple-system, "Segoe UI", system-ui, "Noto Sans JP", sans-serif;
+  --f-sans: "Geist", -apple-system, "Segoe UI", system-ui, "Noto Sans JP", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, "Noto Sans JP", monospace;
 
   --bg: #f2f3f5;
   --panel: #ffffff;

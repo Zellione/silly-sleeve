@@ -127,6 +127,28 @@ describe('SummariesScreen', () => {
     expect(screen.getByRole('button', { name: /Open character/ })).toBeInTheDocument();
   });
 
+  it('links a staged page to an editor-composed character by name', async () => {
+    // The "Mine" scenario: the character was composed in the editor (no
+    // sourceUrl stamped), and the page was staged to the lorebook — yet a
+    // character named like the page exists, so it is a character summary.
+    mockGetCrawlState.mockResolvedValue(crawlState({
+      roles: { 'https://bg.fandom.com/wiki/Mine': 'lorebook' },
+      sent: { 'https://bg.fandom.com/wiki/Mine': 'lorebook' },
+      set: {
+        rootUrl: '',
+        results: [result({ title: 'Mine', url: 'https://bg.fandom.com/wiki/Mine' })],
+      },
+    }));
+    mockGetCharacters.mockResolvedValue([
+      { id: 4, name: ' mine ' }, // no sourceUrl; name matches trimmed, case-insensitively
+    ]);
+    renderScreen();
+    // Appears under Character summaries (the default sub-tab)…
+    expect(await screen.findByText('Mine')).toBeInTheDocument();
+    // …with the linked-character pill.
+    expect(screen.getByText('→ mine')).toBeInTheDocument();
+  });
+
   it('expands a card into its summary body, one at a time', async () => {
     renderScreen();
     await userEvent.click(await screen.findByText('Elara Wynd'));

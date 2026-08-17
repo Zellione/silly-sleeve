@@ -46,27 +46,38 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
 
   const results = st?.set?.results ?? [];
 
-  /** The character this page created, if any — the permanent link back. */
+  /**
+   * The character this page belongs to, if any — the permanent link back.
+   * A sourceUrl match is authoritative (stamped by Send-to-character); the
+   * name fallback mirrors the backend's character dedupe (trimmed,
+   * case-insensitive) and catches characters composed in the editor, which
+   * never get a sourceUrl.
+   */
   const linkedChar = useCallback(
-    (url: string): compose.Character | null =>
-      characters.find(c => c.sourceUrl === url) ?? null,
+    (r: crawler.CrawlResult): compose.Character | null => {
+      const bySource = characters.find(c => c.sourceUrl === r.url);
+      if (bySource) return bySource;
+      const title = r.title.trim().toLowerCase();
+      if (!title) return null;
+      return characters.find(c => (c.name ?? '').trim().toLowerCase() === title) ?? null;
+    },
     [characters],
   );
 
-  // What a page IS beats what the crawl screen planned for it: a character
-  // linked by sourceUrl, or the role it was actually sent as, wins over the
-  // crawl screen's role dropdown.
+  // What a page IS beats what the crawl screen planned for it: a linked
+  // character, then the role it was actually sent as, win over the crawl
+  // screen's role dropdown.
   const roleOf = useCallback(
-    (url: string): RoleValue => {
-      if (linkedChar(url)) return 'character';
-      const sentRole = st?.sent?.[url];
+    (r: crawler.CrawlResult): RoleValue => {
+      if (linkedChar(r)) return 'character';
+      const sentRole = st?.sent?.[r.url];
       if (sentRole) return normalizeRole(sentRole);
-      return normalizeRole(st?.roles?.[url]);
+      return normalizeRole(st?.roles?.[r.url]);
     },
     [st, linkedChar],
   );
-  const charResults = results.filter(r => roleOf(r.url) === 'character');
-  const loreResults = results.filter(r => roleOf(r.url) === 'lorebook');
+  const charResults = results.filter(r => roleOf(r) === 'character');
+  const loreResults = results.filter(r => roleOf(r) === 'lorebook');
   const list = sub === 'chars' ? charResults : loreResults;
 
   const persistSent = useCallback((prev: app.CrawlState, sent: Record<string, string>) => {
@@ -82,7 +93,7 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
 
   const handleSend = useCallback(async (r: crawler.CrawlResult) => {
     if (!st) return;
-    const role = roleOf(r.url);
+    const role = roleOf(r);
     setSending(r.url);
     try {
       let outcome = await SendCrawlResult(r.url, role, false);
@@ -184,10 +195,10 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
           )}
 
           {list.map(r => {
-            const link = linkedChar(r.url);
+            const link = linkedChar(r);
             const isSent = Boolean(st?.sent?.[r.url]) || Boolean(link);
             const open = openUrl === r.url;
-            const isChar = roleOf(r.url) === 'character';
+            const isChar = roleOf(r) === 'character';
             let sentLabel = 'unlinked';
             if (isSent) {
               if (link) sentLabel = `→ ${link.name || 'Untitled'}`;

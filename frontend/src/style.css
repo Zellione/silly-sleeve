@@ -2470,7 +2470,6 @@ kbd {
 }
 .character-card .title-block h2 {
   font: 600 28px/1.2 var(--f-sans);
-  letter-spacing: -0.02em;
   margin: 0; letter-spacing: -0.01em;
 }
 .character-card .field { padding: 0; background: transparent; border: 0; }

@@ -31,6 +31,34 @@ const summaryText = (r: crawler.CrawlResult): string =>
     .map(s => (s.heading ? `## ${s.heading}\n` : '') + s.body)
     .join('\n\n');
 
+/** Label on the card head's link pill: where this page already went, if anywhere. */
+const sentLabel = (isSent: boolean, link: compose.Character | null, isChar: boolean): string => {
+  if (!isSent) return 'unlinked';
+  if (link) return `→ ${link.name || 'Untitled'}`;
+  return isChar ? 'character' : 'staged';
+};
+
+const SummaryBody: React.FC<{
+  r: crawler.CrawlResult;
+  editing: boolean;
+  draft: string;
+  onDraft: (v: string) => void;
+}> = ({ r, editing, draft, onDraft }) => (
+  <div className="body">
+    {editing ? (
+      <textarea value={draft} spellCheck={false}
+        aria-label="Summary text"
+        title="Lines starting with '## ' become section headings"
+        onChange={e => onDraft(e.target.value)} />
+    ) : (
+      <>
+        {r.infobox && r.infobox.length > 0 && <Infobox entries={r.infobox} />}
+        {r.sections && <SectionContent sections={r.sections} />}
+      </>
+    )}
+  </div>
+);
+
 interface SummariesScreenProps {
   onNav: (r: Route) => void;
 }
@@ -122,7 +150,7 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
         toast({ kind: 'bad', title: 'Send failed', body: 'That page is no longer in the crawl.' });
         return;
       }
-      const sent = { ...(st.sent ?? {}), [r.url]: role };
+      const sent = { ...st.sent, [r.url]: role };
       setSt(app.CrawlState.createFrom({ ...st, sent }));
       persistSent(st, sent);
       if (role === 'lorebook') {
@@ -235,11 +263,6 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
             const isSent = Boolean(st?.sent?.[r.url]) || Boolean(link);
             const open = openUrl === r.url;
             const isChar = roleOf(r) === 'character';
-            let sentLabel = 'unlinked';
-            if (isSent) {
-              if (link) sentLabel = `→ ${link.name || 'Untitled'}`;
-              else sentLabel = isChar ? 'character' : 'staged';
-            }
             const editing = editingUrl === r.url;
             return (
               <div key={r.url} className="sum-card" data-open={open ? '1' : '0'}>
@@ -250,26 +273,14 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
                   <span>· {pageSlug(r.url)}</span>
                   <span className="grow" />
                   <span className="sum-link" data-on={isSent ? '1' : '0'}>
-                    {isSent && <CheckIcon size={10} />} {sentLabel}
+                    {isSent && <CheckIcon size={10} />} {sentLabel(isSent, link, isChar)}
                   </span>
                   <span>{r.wordCount.toLocaleString()} words</span>
                   <span className="chev"><DownIcon size={13} /></span>
                 </button>
                 {open && (
                   <>
-                    <div className="body">
-                      {editing ? (
-                        <textarea value={draft} spellCheck={false}
-                          aria-label="Summary text"
-                          title="Lines starting with '## ' become section headings"
-                          onChange={e => setDraft(e.target.value)} />
-                      ) : (
-                        <>
-                          {r.infobox && r.infobox.length > 0 && <Infobox entries={r.infobox} />}
-                          {r.sections && <SectionContent sections={r.sections} />}
-                        </>
-                      )}
-                    </div>
+                    <SummaryBody r={r} editing={editing} draft={draft} onDraft={setDraft} />
                     <div className="foot">
                       <span className="meta">
                         <span className="url" title={r.url}>

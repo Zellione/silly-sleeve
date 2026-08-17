@@ -190,6 +190,21 @@ func TestExtract_ToleratesSurroundingProse(t *testing.T) {
 	assert.Len(t, got, 2)
 }
 
+func TestExtract_ToleratesTopLevelArray(t *testing.T) {
+	// Local models drift between {"entries":[...]} and a bare array of the same
+	// objects run to run, so the parser accepts both shapes.
+	arr := strings.TrimSuffix(strings.TrimPrefix(twoEntryResponse, `{"entries":`), "}")
+	for name, resp := range map[string]string{
+		"bare":  arr,
+		"fence": "```json\n" + arr + "\n```",
+		"prose": "Here are the entries you asked for:\n" + arr + "\nLet me know if you need more.",
+	} {
+		got, err := extractWith(t, resp, baseRequest())
+		require.NoError(t, err, name)
+		assert.Len(t, got, 2, name)
+	}
+}
+
 func TestExtract_MalformedJSONErrorsWithContext(t *testing.T) {
 	_, err := extractWith(t, "not json at all", baseRequest())
 	require.Error(t, err)

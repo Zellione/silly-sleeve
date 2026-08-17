@@ -48,7 +48,8 @@ tsc clean; local eslint 0/0; vitest 845 pass / 86.70% stmts;
 - ~~Summary in-place editing~~ — DONE (`64a2115`, `UpdateCrawlSummary` +
   `crawler.ParseSummaryText`).
 - Tab count badges (characters/lorebook counts in top bar).
-- Self-hosted fonts for offline.
+- Self-hosted fonts for offline — PARTIAL: Noto Sans JP (CJK fallback) bundled
+  in PR #88; Geist + JetBrains Mono still on Google Fonts CDN.
 - Design purity: hide character strip in detail view once add/import relocate.
 - Stamp `sourceUrl` when the editor composes a character from a crawl
   (would replace the name-match fallback in SummariesScreen, see `90ceb40`).

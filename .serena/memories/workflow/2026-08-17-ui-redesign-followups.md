@@ -34,7 +34,10 @@ Continues `mem:workflow/2026-08-17-ui-redesign-start`. Branch
 - `8520cbe` SonarCloud PR gate fixes — see `mem:sonarqube/2026-08-17-pr87-findings`.
 
 ## Status
-Ready to merge as of `8520cbe`: quality gate findings cleared (Sonar
+MERGED as squash `d5c2617` (main). Follow-up fixes (accent selected states,
+bundled CJK font) continued in PR #88 — see
+`mem:workflow/2026-08-17-pr88-contrast-cjk-loreextract`.
+Was ready to merge as of `8520cbe`: quality gate findings cleared (Sonar
 Automatic Analysis lags the push a few minutes), full local gate green
 (tsc/eslint clean, 86.9% frontend statements, Go `-race` all pass, wails
 build links). Repo uses SQUASH merges — after merging, `git fetch` + branch

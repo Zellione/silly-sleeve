@@ -117,7 +117,16 @@ func parseExtraction(content string) ([]entryPayload, error) {
 	cleaned := cleanJSON(content)
 
 	var resp extractionResponse
-	if err := json.Unmarshal([]byte(cleaned), &resp); err != nil {
+	err := json.Unmarshal([]byte(cleaned), &resp)
+	if err != nil || len(resp.Entries) == 0 {
+		// Local models drift between {"entries":[...]} and a bare top-level
+		// array of the same objects; accept both shapes.
+		var arr []entryPayload
+		if json.Unmarshal([]byte(cleaned), &arr) == nil {
+			resp.Entries, err = arr, nil
+		}
+	}
+	if err != nil {
 		return nil, fmt.Errorf("parse extraction response: %w (got: %s)", err, truncate(cleaned, 200))
 	}
 	if len(resp.Entries) == 0 {
@@ -183,11 +192,18 @@ func cleanJSON(content string) string {
 		s = strings.TrimSpace(s)
 	}
 
-	// Models often add a sentence either side of the object; keep the outermost
-	// braces so the payload still parses.
-	start := strings.Index(s, "{")
-	end := strings.LastIndex(s, "}")
-	if start >= 0 && end > start {
+	// Models often add a sentence either side of the payload; keep the
+	// outermost object or array — whichever opens first, so an array of
+	// objects is not cut down to its first element's braces.
+	start := strings.IndexAny(s, "{[")
+	if start < 0 {
+		return s
+	}
+	closer := "}"
+	if s[start] == '[' {
+		closer = "]"
+	}
+	if end := strings.LastIndex(s, closer); end > start {
 		s = s[start : end+1]
 	}
 

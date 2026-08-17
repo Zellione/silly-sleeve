@@ -29,6 +29,7 @@ type App struct {
 	characters      []compose.Character
 	activeCharID    int
 	projectDir      string
+	projectName     string
 	lorebookEntries []lorebook.Entry
 	projectImage    []byte
 	fieldEndpoints  map[string]int
@@ -624,6 +625,7 @@ func (a *App) SaveProjectBundle(filePath string) error {
 	chars := make([]compose.Character, len(a.characters))
 	copy(chars, a.characters)
 	snap := ProjectSnapshot{
+		Name:         a.projectName,
 		Characters:   chars,
 		ActiveCharID: a.activeCharID,
 	}
@@ -722,6 +724,7 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.characters = b.Characters
 	a.activeCharID = b.Manifest.ActiveCharID
 	a.projectDir = filePath
+	a.projectName = b.Manifest.Name
 	a.lorebookEntries = b.Lorebook
 	a.projectImage = b.Manifest.ProjectImage
 	a.fieldEndpoints = b.Manifest.FieldEndpoints

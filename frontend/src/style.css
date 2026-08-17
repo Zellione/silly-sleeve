@@ -2753,3 +2753,91 @@ kbd {
   display: flex; flex-direction: column;
   flex: 1; min-height: 0;
 }
+
+/* === V2 · Projects pre-screen (full-screen picker) === */
+.v2-pre {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 64px 32px 48px;
+}
+.v2-pre .brand {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 6px;
+}
+.v2-pre .brand .mark {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--acc); color: var(--acc-fg);
+  display: grid; place-items: center;
+  font: 700 14px/1 var(--f-sans);
+}
+.v2-pre .brand b { font: 600 20px/1 var(--f-sans); letter-spacing: -0.02em; }
+.v2-pre .sub {
+  font: 400 13px/1.5 var(--f-sans);
+  color: var(--ink-3);
+  margin-bottom: 28px;
+}
+.v2-pre-toolbar { width: 100%; max-width: 980px; margin-bottom: 18px; }
+.v2-pre-toolbar .dash-filters { margin-bottom: 0; }
+.v2-pre .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  width: 100%;
+  max-width: 980px;
+}
+.v2-pre .foot {
+  margin-top: auto;
+  padding-top: 40px;
+  font: 500 10px/1 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+
+/* New-project card (idle + naming states) */
+.proj-card.new {
+  border-style: dashed;
+  border-color: var(--hair-strong);
+  background: transparent;
+  align-items: center; justify-content: center;
+  min-height: 240px;
+  gap: 10px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.proj-card.new:hover { border-color: var(--acc); color: var(--acc); transform: none; box-shadow: none; }
+.proj-card.new b { font: 600 14px/1.3 var(--f-sans); }
+.proj-card.new .hint {
+  font: 500 10px/1.5 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+.proj-card.new .plus {
+  width: 38px; height: 38px;
+  border: 1px dashed currentColor;
+  border-radius: 50%;
+  display: grid; place-items: center;
+}
+.proj-card.new[data-naming="1"] {
+  border-style: solid;
+  border-color: var(--acc-line);
+  background: var(--panel);
+  cursor: default;
+  color: var(--ink);
+}
+.proj-card.new .form {
+  display: flex; flex-direction: column; gap: 10px;
+  width: 100%;
+  padding: 0 16px;
+}
+.proj-card.new .form label {
+  font: 500 10px/1 var(--f-mono);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+.proj-card.new .form .row { display: flex; gap: 8px; }
+.proj-card.new .form .btn:disabled { opacity: 0.5; cursor: not-allowed; }

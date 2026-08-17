@@ -27,13 +27,20 @@ func TestAppNewProjectResets(t *testing.T) {
 		projectImage:    []byte{1},
 		projectDir:      "/some/path.slv",
 	}
-	a.NewProject()
+	a.NewProject("  Harper cell  ")
 	require.Len(t, a.characters, 1)
 	assert.Equal(t, 1, a.characters[0].ID)
 	assert.Equal(t, "Untitled", a.characters[0].Name)
 	assert.Equal(t, 1, a.activeCharID)
 	assert.Empty(t, a.projectImage)
 	assert.Equal(t, "", a.projectDir)
+	assert.Equal(t, "Harper cell", a.GetProjectName())
+}
+
+func TestAppNewProjectEmptyNameStaysUnnamed(t *testing.T) {
+	a := &App{projectName: "Old name"}
+	a.NewProject("   ")
+	assert.Equal(t, "", a.GetProjectName())
 }
 
 func TestAppListProjectsViaLibrary(t *testing.T) {

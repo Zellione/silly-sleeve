@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import App from './App';
 import { settings } from '../wailsjs/go/models';
 
@@ -22,7 +22,7 @@ vi.mock('../wailsjs/go/app/App', () => ({
   SetActiveCharacter: vi.fn(),
   UpdateCharacter: vi.fn(),
   ListProjects: vi.fn().mockResolvedValue([]),
-  NewProject: vi.fn(),
+  NewProject: vi.fn().mockResolvedValue(undefined),
   GetComfySamplers: vi.fn().mockResolvedValue([]),
   GetComfySchedulers: vi.fn().mockResolvedValue([]),
   GetComfyCheckpoints: vi.fn().mockResolvedValue([]),
@@ -43,17 +43,32 @@ vi.mock('../wailsjs/go/app/App', () => ({
 
 vi.mock('./style.css', () => ({}));
 
+/**
+ * The projects picker is a full-screen pre-screen; the tabbed shell only
+ * appears once a project is created or opened. With no library entries the
+ * picker shows the empty state, whose CTA creates an unnamed project and
+ * lands on the crawl tab.
+ */
+const enterApp = async (user: UserEvent) => {
+  await screen.findByText(/Start with a wiki page you love/);
+  await user.click(screen.getByRole('button', { name: /Crawl a wiki page/ }));
+  await waitFor(() => {
+    expect(screen.getByRole('tab', { name: 'Crawl' })).toBeInTheDocument();
+  });
+};
+
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders without crashing', async () => {
+  it('renders the projects picker on start', async () => {
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     const { container } = render(<App />);
     await waitFor(() => {
-      expect(container.querySelector('.ss-app-v2')).toBeTruthy();
+      expect(container.querySelector('.v2-pre')).toBeTruthy();
     });
+    expect(screen.getByText('Pick a project to continue, or start a new one from a wiki crawl.')).toBeInTheDocument();
   });
 
   it('calls GetSettings on mount', async () => {
@@ -64,15 +79,27 @@ describe('App', () => {
     });
   });
 
-  it('falls back to empty settings on GetSettings error', async () => {
+  it('still renders the picker on GetSettings error', async () => {
     mockGetSettings.mockRejectedValue(new Error('fail'));
     const { container } = render(<App />);
     await waitFor(() => {
-      expect(container.querySelector('.ss-app-v2')).toBeTruthy();
+      expect(container.querySelector('.v2-pre')).toBeTruthy();
     });
   });
 
+  it('enters the tabbed shell after creating a project', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    const { container } = render(<App />);
+    await enterApp(user);
+    expect(container.querySelector('.ss-app-v2')).toBeTruthy();
+    expect(screen.getByTitle('All projects')).toBeTruthy();
+    expect(screen.getByTitle('Settings')).toBeTruthy();
+    expect(screen.getByText('Source URL')).toBeInTheDocument();
+  });
+
   it('selects default endpoint by isDefault flag', async () => {
+    const user = userEvent.setup();
     const ep = new settings.LLMEndpoint({
       id: 1, name: 'Default', isDefault: true, ok: true,
     });
@@ -84,12 +111,14 @@ describe('App', () => {
     }));
 
     render(<App />);
+    await enterApp(user);
     await waitFor(() => {
       expect(screen.getByText('Default')).toBeInTheDocument();
     });
   });
 
   it('falls back to first endpoint when no default', async () => {
+    const user = userEvent.setup();
     const ep = new settings.LLMEndpoint({
       id: 1, name: 'First', isDefault: false, ok: false,
     });
@@ -101,43 +130,21 @@ describe('App', () => {
     }));
 
     render(<App />);
+    await enterApp(user);
     await waitFor(() => {
       expect(screen.getByText('First')).toBeInTheDocument();
     });
   });
 
-  it('renders the top bar with workflow tabs', async () => {
-    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
-    render(<App />);
-    await waitFor(() => {
-      expect(screen.getByTitle('All projects')).toBeTruthy();
-    });
-    expect(screen.getByRole('tab', { name: 'Crawl' })).toBeTruthy();
-    expect(screen.getByTitle('Settings')).toBeTruthy();
-  });
-
-  it('renders default DashboardScreen', async () => {
-    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
-    const { container } = render(<App />);
-    await waitFor(() => {
-      expect(container.textContent).toContain('Your');
-      expect(container.textContent).toContain('projects');
-    });
-  });
-
-  it('navigates to other screens on sidebar click', async () => {
+  it('returns to the picker via the brand button', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     const { container } = render(<App />);
-    await waitFor(() => {
-      expect(container.textContent).toContain('Your');
-      expect(container.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
-    // Click "Crawl" which renders the crawler screen
-    await user.click(screen.getByText('Crawl'));
+    await user.click(screen.getByTitle('All projects'));
     await waitFor(() => {
-      expect(screen.getByText('Source URL')).toBeInTheDocument();
+      expect(container.querySelector('.v2-pre')).toBeTruthy();
     });
   });
 
@@ -145,10 +152,7 @@ describe('App', () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
     await user.click(screen.getByRole('tab', { name: 'Images' }));
     await user.click(screen.getByRole('button', { name: 'Project cover' }));
@@ -161,10 +165,7 @@ describe('App', () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
     await user.click(screen.getByTitle('Settings'));
     await waitFor(() => {
@@ -172,16 +173,13 @@ describe('App', () => {
     });
   });
 
-  it('navigates to preview on sidebar click', async () => {
+  it('navigates to preview', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
-    await user.click(screen.getByText('Preview'));
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
     await waitFor(() => {
       expect(screen.getByText('No characters yet')).toBeInTheDocument();
     });
@@ -191,10 +189,7 @@ describe('App', () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
     await user.click(screen.getByRole('tab', { name: 'Images' }));
     await waitFor(() => {
@@ -202,31 +197,13 @@ describe('App', () => {
     });
   });
 
-  it('navigates to export screen', async () => {
+  it('navigates to export', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
-    await user.click(screen.getByText('Export'));
-    await waitFor(() => {
-      expect(screen.getByText('Ship the project')).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to export screen', async () => {
-    const user = userEvent.setup();
-    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
-    render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
-
-    await user.click(screen.getByText('Export'));
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
     await waitFor(() => {
       expect(screen.getByText('Ship the project')).toBeInTheDocument();
     });
@@ -236,10 +213,7 @@ describe('App', () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Your');
-      expect(document.body.textContent).toContain('projects');
-    });
+    await enterApp(user);
 
     await user.click(screen.getByRole('tab', { name: 'Characters' }));
     await waitFor(() => {
@@ -247,25 +221,18 @@ describe('App', () => {
     });
   });
 
-  it('renders StatusBar', async () => {
+  it('renders StatusBar inside the shell', async () => {
+    const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
+    await enterApp(user);
     await waitFor(() => {
-      expect(screen.getByText('PROJECTS')).toBeInTheDocument();
-    });
-  });
-
-  it('renders ThemeToggle', async () => {
-    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
-    render(<App />);
-    await waitFor(() => {
-      const buttons = screen.getAllByRole('button');
-      const toggle = buttons.find(b => b.getAttribute('title'));
-      expect(toggle).toBeTruthy();
+      expect(screen.getByText('CRAWL')).toBeInTheDocument();
     });
   });
 
   it('shows LLM name in status bar when endpoint exists', async () => {
+    const user = userEvent.setup();
     const ep = new settings.LLMEndpoint({
       id: 1, name: 'MyLLM', isDefault: true, ok: true,
     });
@@ -274,6 +241,7 @@ describe('App', () => {
     }));
 
     render(<App />);
+    await enterApp(user);
     await waitFor(() => {
       expect(screen.getByText('MyLLM')).toBeInTheDocument();
     });

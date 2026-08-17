@@ -166,6 +166,10 @@ export function GetProjectImage() {
   return window['go']['app']['App']['GetProjectImage']();
 }
 
+export function GetProjectName() {
+  return window['go']['app']['App']['GetProjectName']();
+}
+
 export function GetProjectThumbnail(arg1) {
   return window['go']['app']['App']['GetProjectThumbnail'](arg1);
 }
@@ -202,8 +206,8 @@ export function ListProjects() {
   return window['go']['app']['App']['ListProjects']();
 }
 
-export function NewProject() {
-  return window['go']['app']['App']['NewProject']();
+export function NewProject(arg1) {
+  return window['go']['app']['App']['NewProject'](arg1);
 }
 
 export function OpenProjectBundle(arg1) {

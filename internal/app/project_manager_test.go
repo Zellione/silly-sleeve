@@ -55,6 +55,7 @@ func TestProjectManager_SaveBundle_ProjectNameDerivation(t *testing.T) {
 		{"first char name", ProjectSnapshot{Characters: []compose.Character{{Name: "Elara"}}}, "Elara"},
 		{"placeholder name falls back", ProjectSnapshot{Characters: []compose.Character{{Name: "Untitled"}}}, "Untitled Project"},
 		{"crawl title wins", ProjectSnapshot{Characters: []compose.Character{{Name: "Elara"}}, CrawlTitle: "Wiki Page"}, "Wiki Page"},
+		{"explicit name beats all", ProjectSnapshot{Name: "Harper cell", Characters: []compose.Character{{Name: "Elara"}}, CrawlTitle: "Wiki Page"}, "Harper cell"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

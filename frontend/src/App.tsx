@@ -19,19 +19,23 @@ function AppShell() {
   const [route, setRoute] = useState<Route>('dashboard');
   const [settingsData, setSettingsData] = useState<settings.Settings | null>(null);
   const [projectPath, setProjectPath] = useState('');
+  const [projectName, setProjectName] = useState('');
   const creatingProject = useRef(false);
 
-  const handleOpenProject = (path: string) => {
+  const handleOpenProject = (path: string, name?: string) => {
     setProjectPath(path);
+    // Prefer the manifest name; fall back to the bundle's file name.
+    setProjectName(name || (path.split(/[\\/]/).pop()?.replace(/\.slv$/, '') ?? ''));
     setRoute('characters');
   };
 
-  const handleNewProject = async () => {
+  const handleNewProject = async (name: string) => {
     if (creatingProject.current) return;
     creatingProject.current = true;
     try {
-      await NewProject();
+      await NewProject(name);
       setProjectPath('');
+      setProjectName(name);
       setRoute('crawler');
     } catch (e) {
       logError('App.newProject', e);
@@ -70,7 +74,6 @@ function AppShell() {
 
   const renderScreen = () => {
     switch (route) {
-      case 'dashboard': return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
       case 'crawler': return <CrawlerScreen projectPath={projectPath} />;
       case 'characters': return <CharactersScreen projectPath={projectPath} onProjectPathChange={setProjectPath} />;
       /* v8 ignore next */
@@ -85,13 +88,15 @@ function AppShell() {
     }
   };
 
-  const projectName = projectPath
-    ? projectPath.split(/[\\/]/).pop()?.replace(/\.slv$/, '')
-    : undefined;
+  // The projects screen is a full-screen pre-screen: no top bar, no status
+  // bar. Everything else renders inside the tabbed shell.
+  if (route === 'dashboard') {
+    return <DashboardScreen onOpenProject={handleOpenProject} onNewProject={handleNewProject} />;
+  }
 
   return (
     <div className="ss-app-v2">
-      <TopBar current={route} onNav={setRoute} projectName={projectName} />
+      <TopBar current={route} onNav={setRoute} projectName={projectName || undefined} />
       <main className="ss-content">
         {renderScreen()}
       </main>

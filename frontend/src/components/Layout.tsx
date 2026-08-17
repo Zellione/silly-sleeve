@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  DashboardIcon, GlobeIcon, PenIcon, BookIcon,
-  ImageIcon, EyeIcon, DownloadIcon, CogIcon, SunIcon, MoonIcon,
-} from '../icons';
+import { CogIcon, SunIcon, MoonIcon } from '../icons';
 import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
+import { TABS } from './tabs';
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -11,33 +9,14 @@ export type Route =
   | 'dashboard' | 'crawler' | 'editor' | 'lorebook'
   | 'projectImage' | 'image' | 'preview' | 'export' | 'settings';
 
-interface NavItem {
-  id: Route;
-  label: string;
-  icon: React.FC<any>;
-  step?: number;
-  sect?: string;
-}
-
-const NAV: NavItem[] = [
-  { id: 'dashboard', label: 'Projects', icon: DashboardIcon, sect: 'Project' },
-  { id: 'crawler', label: 'Crawl', icon: GlobeIcon, step: 1, sect: 'Workflow' },
-  { id: 'editor', label: 'Compose', icon: PenIcon, step: 2, sect: 'Workflow' },
-  { id: 'lorebook', label: 'Lorebook', icon: BookIcon, step: 3, sect: 'Workflow' },
-  { id: 'projectImage', label: 'Project image', icon: ImageIcon, step: 4, sect: 'Workflow' },
-  { id: 'image', label: 'Portrait', icon: ImageIcon, step: 5, sect: 'Workflow' },
-  { id: 'preview', label: 'Preview', icon: EyeIcon, step: 6, sect: 'Workflow' },
-  { id: 'export', label: 'Export', icon: DownloadIcon, step: 7, sect: 'Workflow' },
-];
-
-const SETUP_NAV: NavItem[] = [
-  { id: 'settings', label: 'Settings', icon: CogIcon, sect: 'Setup' },
-];
-
 /* ─── Components ────────────────────────────────────────── */
 
-export const TitleBar: React.FC<{ projectName?: string }> = ({ projectName }) => (
-  <div className="ss-title" onDoubleClick={() => WindowToggleMaximise()}>
+export const TopBar: React.FC<{
+  current: Route;
+  onNav: (r: Route) => void;
+  projectName?: string;
+}> = ({ current, onNav, projectName }) => (
+  <div className="v2-top" onDoubleClick={() => WindowToggleMaximise()}>
     <div className="ss-traffic">
       <button type="button"
         aria-label="Close"
@@ -55,61 +34,44 @@ export const TitleBar: React.FC<{ projectName?: string }> = ({ projectName }) =>
         onDoubleClick={(e) => e.stopPropagation()}
       />
     </div>
-    <span className="ss-title-c">
-      <b>Silly Sleeve</b> {projectName ? `· ${projectName}` : ''}
-    </span>
+    <button type="button" className="v2-brand" title="All projects"
+      onClick={() => onNav('dashboard')}
+      onDoubleClick={(e) => e.stopPropagation()}
+    >
+      <span className="mark">SS</span>
+      <span className="pj">
+        <b>{projectName || 'No project open'}</b>
+        <span>character workshop</span>
+      </span>
+    </button>
+    <div className="v2-tabs" role="tablist">
+      {TABS.map(t => (
+        <button type="button"
+          key={t.id}
+          role="tab"
+          className="v2-tab"
+          aria-selected={current === t.id}
+          data-on={current === t.id ? '1' : '0'}
+          onClick={() => onNav(t.id)}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+    <div className="v2-right" onDoubleClick={(e) => e.stopPropagation()}>
+      <ThemeToggle />
+      <button type="button"
+        className="v2-iconbtn"
+        title="Settings"
+        data-on={current === 'settings' ? '1' : '0'}
+        onClick={() => onNav('settings')}
+      >
+        <CogIcon size={15} />
+      </button>
+    </div>
   </div>
 );
-
-export const Sidebar: React.FC<{
-  current: Route;
-  onNav: (r: Route) => void;
-  showSteps?: boolean;
-}> = ({ current, onNav, showSteps = true }) => {
-  const renderItem = (n: NavItem) => {
-    const Icon = n.icon;
-    return (
-      <button type="button"
-        key={n.id}
-        className="ss-nav-item"
-        data-active={current === n.id ? '1' : '0'}
-        onClick={() => onNav(n.id)}
-      >
-        <Icon size={16} />
-        <span>{n.label}</span>
-        {showSteps && n.step && <span className="ss-nav-num">{String(n.step).padStart(2, '0')}</span>}
-      </button>
-    );
-  };
-
-  const workflowItems = NAV.filter(n => n.sect === 'Workflow');
-  const projectItems = NAV.filter(n => n.sect === 'Project');
-
-  return (
-    <aside className="ss-side">
-      <div className="ss-brand">
-        <div className="ss-brand-mark">S</div>
-        <div className="ss-brand-text">
-          <b>Silly Sleeve</b>
-          <span>v0.1.0</span>
-        </div>
-      </div>
-
-      <nav className="ss-nav">
-        <div className="ss-nav-sect">Project</div>
-        {projectItems.map(renderItem)}
-
-        <div className="ss-nav-sect">Workflow</div>
-        {workflowItems.map(renderItem)}
-
-        <div className="ss-nav-sect">Setup</div>
-        {SETUP_NAV.map(renderItem)}
-      </nav>
-
-      <div className="ss-side-bottom" />
-    </aside>
-  );
-};
 
 export const PageHead: React.FC<{
   step?: number;
@@ -174,7 +136,7 @@ export const ThemeToggle: React.FC = () => {
 
   return (
     <button type="button"
-      className="btn icon ghost"
+      className="v2-iconbtn"
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
       onClick={() => setDark(!dark)}
     >

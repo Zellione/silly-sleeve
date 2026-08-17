@@ -52,7 +52,7 @@ describe('App', () => {
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     const { container } = render(<App />);
     await waitFor(() => {
-      expect(container.querySelector('.ss-app')).toBeTruthy();
+      expect(container.querySelector('.ss-app-v2')).toBeTruthy();
     });
   });
 
@@ -68,7 +68,7 @@ describe('App', () => {
     mockGetSettings.mockRejectedValue(new Error('fail'));
     const { container } = render(<App />);
     await waitFor(() => {
-      expect(container.querySelector('.ss-app')).toBeTruthy();
+      expect(container.querySelector('.ss-app-v2')).toBeTruthy();
     });
   });
 
@@ -106,14 +106,14 @@ describe('App', () => {
     });
   });
 
-  it('renders Sidebar with nav items', async () => {
+  it('renders the top bar with workflow tabs', async () => {
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByText('Projects')).toBeTruthy();
+      expect(screen.getByTitle('All projects')).toBeTruthy();
     });
-    expect(screen.getByText('Crawl')).toBeTruthy();
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Crawl' })).toBeTruthy();
+    expect(screen.getByTitle('Settings')).toBeTruthy();
   });
 
   it('renders default DashboardScreen', async () => {
@@ -156,7 +156,7 @@ describe('App', () => {
     });
   });
 
-  it('navigates to Settings on sidebar click', async () => {
+  it('navigates to Settings via the top bar cog', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     render(<App />);
@@ -165,7 +165,7 @@ describe('App', () => {
       expect(document.body.textContent).toContain('projects');
     });
 
-    await user.click(screen.getByText('Settings'));
+    await user.click(screen.getByTitle('Settings'));
     await waitFor(() => {
       expect(screen.getByText('Add endpoint')).toBeInTheDocument();
     });

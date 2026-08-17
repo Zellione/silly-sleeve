@@ -8,114 +8,102 @@ vi.mock('../../wailsjs/runtime/runtime', () => ({
 }));
 
 import { Quit, WindowMinimise, WindowToggleMaximise } from '../../wailsjs/runtime/runtime';
-import { TitleBar, Sidebar, PageHead, StatusBar, ThemeToggle } from './Layout';
+import { TopBar, PageHead, StatusBar, ThemeToggle } from './Layout';
+import { TABS } from './tabs';
 
-describe('TitleBar', () => {
+describe('TopBar', () => {
+  const onNav = vi.fn();
+
   beforeEach(() => {
+    onNav.mockClear();
     vi.mocked(Quit).mockClear();
     vi.mocked(WindowMinimise).mockClear();
     vi.mocked(WindowToggleMaximise).mockClear();
   });
 
-  it('renders app name', () => {
-    render(<TitleBar />);
-    expect(screen.getByText('Silly Sleeve')).toBeInTheDocument();
+  it('renders every workflow tab', () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    for (const t of TABS) {
+      expect(screen.getByRole('tab', { name: t.label })).toBeInTheDocument();
+    }
   });
 
-  it('renders project name when provided', () => {
-    render(<TitleBar projectName="My Project" />);
-    expect(screen.getByText(/My Project/)).toBeInTheDocument();
+  it('marks the active tab', () => {
+    render(<TopBar current="lorebook" onNav={onNav} />);
+    expect(screen.getByRole('tab', { name: 'Lorebook' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Crawl' })).toHaveAttribute('aria-selected', 'false');
   });
 
-  it('renders without project name', () => {
-    const { container } = render(<TitleBar />);
-    expect(container.textContent).not.toContain('·');
+  it('calls onNav when a tab is clicked', async () => {
+    const user = userEvent.setup();
+    render(<TopBar current="crawler" onNav={onNav} />);
+    await user.click(screen.getByRole('tab', { name: 'Compose' }));
+    expect(onNav).toHaveBeenCalledWith('editor');
+  });
+
+  it('shows the project name in the brand pill', () => {
+    render(<TopBar current="crawler" onNav={onNav} projectName="Harper cell" />);
+    expect(screen.getByText('Harper cell')).toBeInTheDocument();
+  });
+
+  it('falls back to a placeholder when no project is open', () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    expect(screen.getByText('No project open')).toBeInTheDocument();
+  });
+
+  it('navigates to the projects screen when the brand is clicked', async () => {
+    const user = userEvent.setup();
+    render(<TopBar current="crawler" onNav={onNav} />);
+    await user.click(screen.getByTitle('All projects'));
+    expect(onNav).toHaveBeenCalledWith('dashboard');
+  });
+
+  it('navigates to settings via the cog button and marks it active', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<TopBar current="crawler" onNav={onNav} />);
+    const cog = screen.getByTitle('Settings');
+    expect(cog.dataset.on).toBe('0');
+    await user.click(cog);
+    expect(onNav).toHaveBeenCalledWith('settings');
+    rerender(<TopBar current="settings" onNav={onNav} />);
+    expect(screen.getByTitle('Settings').dataset.on).toBe('1');
   });
 
   it('quits the app when the close button is clicked', async () => {
-    render(<TitleBar />);
+    render(<TopBar current="crawler" onNav={onNav} />);
     await userEvent.click(screen.getByLabelText('Close'));
     expect(Quit).toHaveBeenCalledTimes(1);
     expect(WindowToggleMaximise).not.toHaveBeenCalled();
   });
 
   it('minimises the window when the minimise button is clicked', async () => {
-    render(<TitleBar />);
+    render(<TopBar current="crawler" onNav={onNav} />);
     await userEvent.click(screen.getByLabelText('Minimise'));
     expect(WindowMinimise).toHaveBeenCalledTimes(1);
   });
 
   it('toggles maximise when the maximise button is clicked', async () => {
-    render(<TitleBar />);
+    render(<TopBar current="crawler" onNav={onNav} />);
     await userEvent.click(screen.getByLabelText('Maximise'));
     expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
   });
 
-  it('toggles maximise on title bar double-click', async () => {
-    render(<TitleBar />);
-    await userEvent.dblClick(screen.getByText('Silly Sleeve'));
+  it('toggles maximise on top bar double-click', async () => {
+    const { container } = render(<TopBar current="crawler" onNav={onNav} />);
+    await userEvent.dblClick(container.querySelector('.v2-top')!);
     expect(WindowToggleMaximise).toHaveBeenCalledTimes(1);
   });
 
   it('does not toggle maximise when a traffic button is double-clicked', async () => {
-    render(<TitleBar />);
+    render(<TopBar current="crawler" onNav={onNav} />);
     await userEvent.dblClick(screen.getByLabelText('Close'));
     expect(WindowToggleMaximise).not.toHaveBeenCalled();
   });
-});
 
-describe('Sidebar', () => {
-  const onNav = vi.fn();
-
-  beforeEach(() => {
-    onNav.mockClear();
-  });
-
-  it('renders all nav sections', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    expect(screen.getByText('Project')).toBeInTheDocument();
-    expect(screen.getByText('Workflow')).toBeInTheDocument();
-    expect(screen.getByText('Setup')).toBeInTheDocument();
-  });
-
-  it('renders brand name', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    expect(screen.getAllByText('Silly Sleeve').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('highlights active route', () => {
-    render(<Sidebar current="crawler" onNav={onNav} />);
-    const button = screen.getByText('Crawl').closest('button');
-    expect(button!.dataset.active).toBe('1');
-  });
-
-  it('does not highlight inactive routes', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    const button = screen.getByText('Crawl').closest('button');
-    expect(button!.dataset.active).toBe('0');
-  });
-
-  it('calls onNav when clicking a nav item', async () => {
-    const user = userEvent.setup();
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    await user.click(screen.getByText('Crawl'));
-    expect(onNav).toHaveBeenCalledWith('crawler');
-  });
-
-  it('renders step numbers when showSteps is true', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} showSteps={true} />);
-    expect(screen.getByText('01')).toBeInTheDocument();
-    expect(screen.getByText('02')).toBeInTheDocument();
-  });
-
-  it('does not render step numbers when showSteps is false', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} showSteps={false} />);
-    expect(screen.queryByText('01')).not.toBeInTheDocument();
-  });
-
-  it('renders settings nav', () => {
-    render(<Sidebar current="dashboard" onNav={onNav} />);
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+  it('does not toggle maximise when a tab is double-clicked', async () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    await userEvent.dblClick(screen.getByRole('tab', { name: 'Crawl' }));
+    expect(WindowToggleMaximise).not.toHaveBeenCalled();
   });
 });
 

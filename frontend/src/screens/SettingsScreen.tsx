@@ -9,8 +9,6 @@ import { PerFieldDefaults } from '../components/PerFieldDefaults';
 import { Dropdown } from '../components/Dropdown';
 import { FontScaleControl } from '../components/FontScaleControl';
 import { AccentControl } from '../components/AccentControl';
-import { SidebarStyleControl } from '../components/SidebarStyleControl';
-import { StepBadgesControl } from '../components/StepBadgesControl';
 import { EndpointFlyout } from '../components/settings/EndpointFlyout';
 import { ComfyUISettings } from '../components/settings/ComfyUISettings';
 import { CrawlerSettings } from '../components/settings/CrawlerSettings';
@@ -362,14 +360,6 @@ const SettingsScreen: React.FC = () => {
                   <div className="form-row">
                     <span className="form-label">Accent color</span>
                     <AccentControl />
-                  </div>
-                  <div className="form-row">
-                    <span className="form-label">Sidebar style</span>
-                    <SidebarStyleControl />
-                  </div>
-                  <div className="form-row">
-                    <span className="form-label">Step badges</span>
-                    <StepBadgesControl />
                   </div>
                 </div>
               </div>

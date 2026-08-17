@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './style.css';
 import {
-  TitleBar, Sidebar, StatusBar, ThemeToggle,
+  TopBar, StatusBar,
   type Route,
 } from './components/Layout';
 import { ToastProvider } from './components/ToastProvider';
@@ -87,21 +87,17 @@ function AppShell() {
     }
   };
 
-  return (
-    <div className="ss-app">
-      <TitleBar />
-      <div className="ss-main">
-        <Sidebar current={route} onNav={setRoute} />
-        <main className="ss-content">
-          {renderScreen()}
-        </main>
-      </div>
-      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} autoSaveMode={settingsData?.autoSaveMode} />
+  const projectName = projectPath
+    ? projectPath.split(/[\\/]/).pop()?.replace(/\.slv$/, '')
+    : undefined;
 
-      {/* Floating theme toggle for now */}
-      <div style={{ position: 'fixed', bottom: 32, right: 32, zIndex: 50 }}>
-        <ThemeToggle />
-      </div>
+  return (
+    <div className="ss-app-v2">
+      <TopBar current={route} onNav={setRoute} projectName={projectName} />
+      <main className="ss-content">
+        {renderScreen()}
+      </main>
+      <StatusBar routeLabel={routeLabels[route]} llmStatus={llmStatus} llmName={llmName} autoSaveMode={settingsData?.autoSaveMode} />
     </div>
   );
 }

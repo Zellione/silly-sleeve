@@ -168,3 +168,5 @@ export function TestComfyUIEndpoint(arg1:string,arg2:string):Promise<llm.TestRes
 export function TestLLMEndpoint(arg1:settings.LLMEndpoint):Promise<llm.TestResult>;
 
 export function UpdateCharacter(arg1:compose.Character):Promise<void>;
+
+export function UpdateCrawlSummary(arg1:string,arg2:string):Promise<crawler.CrawlResult>;

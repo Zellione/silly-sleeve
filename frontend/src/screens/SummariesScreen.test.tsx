@@ -10,6 +10,7 @@ const mockGetCrawlState = vi.fn();
 const mockSaveCrawlState = vi.fn();
 const mockSendCrawlResult = vi.fn();
 const mockGetCharacters = vi.fn();
+const mockUpdateCrawlSummary = vi.fn();
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCrawlState: () => mockGetCrawlState(),
@@ -17,6 +18,7 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   SendCrawlResult: (url: string, role: string, overwrite: boolean) =>
     mockSendCrawlResult(url, role, overwrite),
   GetCharacters: () => mockGetCharacters(),
+  UpdateCrawlSummary: (url: string, text: string) => mockUpdateCrawlSummary(url, text),
 }));
 
 const result = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -125,6 +127,65 @@ describe('SummariesScreen', () => {
     // The card offers the character jump even though the sent map is empty.
     await userEvent.click(screen.getByText('Elara Wynd'));
     expect(screen.getByRole('button', { name: /Open character/ })).toBeInTheDocument();
+  });
+
+  it('renders the infobox above the sections, like the crawl preview', async () => {
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    const body = document.querySelector('.sum-card .body')!;
+    const infobox = body.querySelector('.infobox');
+    const heading = screen.getByText('Personality');
+    expect(infobox).toBeTruthy();
+    // The infobox precedes the section content in document order.
+    expect(infobox!.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('edits a summary and saves it through the backend', async () => {
+    mockUpdateCrawlSummary.mockResolvedValue(result({
+      sections: [{ heading: '', body: 'Rewritten lede.', level: 1 }],
+      wordCount: 2,
+    }));
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByRole('button', { name: /Edit/ }));
+
+    const box = screen.getByLabelText('Summary text');
+    // The textarea holds the crawl-format serialisation of the sections.
+    expect(box).toHaveValue('A half-elf bard on the docks.\n\n## Personality\nCheerful in taverns.');
+
+    await userEvent.clear(box);
+    await userEvent.type(box, 'Rewritten lede.');
+    await userEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    await waitFor(() => {
+      expect(mockUpdateCrawlSummary).toHaveBeenCalledWith('https://bg.fandom.com/wiki/Elara_Wynd', 'Rewritten lede.');
+    });
+    expect(await screen.findByText('Summary saved')).toBeInTheDocument();
+    // The card re-renders the backend's parsed result.
+    expect(screen.getByText(/Rewritten lede/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Summary text')).not.toBeInTheDocument();
+  });
+
+  it('cancels an edit without saving', async () => {
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByRole('button', { name: /Edit/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(mockUpdateCrawlSummary).not.toHaveBeenCalled();
+    expect(screen.getByText(/A half-elf bard on the docks/)).toBeInTheDocument();
+  });
+
+  it('reports a failed summary save', async () => {
+    mockUpdateCrawlSummary.mockRejectedValue(new Error('page is no longer in the crawl'));
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByRole('button', { name: /Edit/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    expect(await screen.findByText('Save failed')).toBeInTheDocument();
+    // The editor stays open so the draft is not lost.
+    expect(screen.getByLabelText('Summary text')).toBeInTheDocument();
   });
 
   it('links a staged page to an editor-composed character by name', async () => {

@@ -3,12 +3,15 @@ import { PageHead, type Route } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import {
-  GlobeIcon, CheckIcon, DownIcon, CopyIcon, ArrowIcon, SparksIcon, LinkIcon,
+  GlobeIcon, CheckIcon, DownIcon, CopyIcon, ArrowIcon, SparksIcon, LinkIcon, PenIcon,
 } from '../icons';
-import { GetCrawlState, SaveCrawlState, SendCrawlResult, GetCharacters } from '../../wailsjs/go/app/App';
+import {
+  GetCrawlState, SaveCrawlState, SendCrawlResult, GetCharacters, UpdateCrawlSummary,
+} from '../../wailsjs/go/app/App';
 import { SectionContent } from '../components/SectionContent';
 import { Infobox } from '../components/Infobox';
 import { logError } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 import { pageSlug } from '../utils/pageSlug';
 import { app, compose, crawler } from '../../wailsjs/go/models';
 
@@ -17,6 +20,16 @@ type RoleValue = 'character' | 'lorebook';
 
 const normalizeRole = (v: string | undefined): RoleValue =>
   v === 'character' ? 'character' : 'lorebook';
+
+/**
+ * Serialises a result's sections into editable text: "## Heading" lines start
+ * sections, blank lines separate them. crawler.ParseSummaryText is the exact
+ * inverse on the backend.
+ */
+const summaryText = (r: crawler.CrawlResult): string =>
+  (r.sections ?? [])
+    .map(s => (s.heading ? `## ${s.heading}\n` : '') + s.body)
+    .join('\n\n');
 
 interface SummariesScreenProps {
   onNav: (r: Route) => void;
@@ -133,16 +146,39 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
   }, [st, roleOf, confirm, toast, persistSent, refreshCharacters]);
 
   const handleCopy = useCallback(async (r: crawler.CrawlResult) => {
-    const text = (r.sections ?? [])
-      .map(s => (s.heading ? `## ${s.heading}\n` : '') + s.body)
-      .join('\n\n');
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(summaryText(r));
       toast({ kind: 'info', title: 'Copied', body: 'Summary copied to the clipboard.' });
     } catch {
       toast({ kind: 'bad', title: 'Copy failed', body: 'Clipboard is not available.' });
     }
   }, [toast]);
+
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+
+  const startEdit = (r: crawler.CrawlResult) => {
+    setDraft(summaryText(r));
+    setEditingUrl(r.url);
+  };
+
+  const saveEdit = useCallback(async (r: crawler.CrawlResult) => {
+    try {
+      const updated = await UpdateCrawlSummary(r.url, draft);
+      setSt(prev => {
+        if (!prev?.set) return prev;
+        const results = prev.set.results.map(x => (x.url === r.url ? updated : x));
+        return app.CrawlState.createFrom({ ...prev, set: { ...prev.set, results } });
+      });
+      setEditingUrl(null);
+      toast({
+        kind: 'ok', title: 'Summary saved',
+        body: 'Stored with the project — later sends and re-rolls read this version.',
+      });
+    } catch (e: any) {
+      toast({ kind: 'bad', title: 'Save failed', body: errorMessage(e, 'Could not save the summary.') });
+    }
+  }, [draft, toast]);
 
   return (
     <>
@@ -159,11 +195,11 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
           <div className="sum-toolbar">
             <div className="v2-subseg">
               <button type="button" data-on={sub === 'chars' ? '1' : '0'}
-                onClick={() => { setSub('chars'); setOpenUrl(null); }}>
+                onClick={() => { setSub('chars'); setOpenUrl(null); setEditingUrl(null); }}>
                 Character summaries <span className="n">{charResults.length}</span>
               </button>
               <button type="button" data-on={sub === 'lore' ? '1' : '0'}
-                onClick={() => { setSub('lore'); setOpenUrl(null); }}>
+                onClick={() => { setSub('lore'); setOpenUrl(null); setEditingUrl(null); }}>
                 Lorebook summaries <span className="n">{loreResults.length}</span>
               </button>
             </div>
@@ -204,9 +240,11 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
               if (link) sentLabel = `→ ${link.name || 'Untitled'}`;
               else sentLabel = isChar ? 'character' : 'staged';
             }
+            const editing = editingUrl === r.url;
             return (
               <div key={r.url} className="sum-card" data-open={open ? '1' : '0'}>
-                <button type="button" className="head" onClick={() => setOpenUrl(open ? null : r.url)}>
+                <button type="button" className="head"
+                  onClick={() => { setOpenUrl(open ? null : r.url); setEditingUrl(null); }}>
                   <span className={`dot ${isSent ? 'ok' : 'idle'}`} />
                   <b>{r.title}</b>
                   <span>· {pageSlug(r.url)}</span>
@@ -220,9 +258,16 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
                 {open && (
                   <>
                     <div className="body">
-                      {r.sections && <SectionContent sections={r.sections} />}
-                      {r.infobox && r.infobox.length > 0 && (
-                        <Infobox entries={r.infobox} style={{ marginTop: 16 }} />
+                      {editing ? (
+                        <textarea value={draft} spellCheck={false}
+                          aria-label="Summary text"
+                          title="Lines starting with '## ' become section headings"
+                          onChange={e => setDraft(e.target.value)} />
+                      ) : (
+                        <>
+                          {r.infobox && r.infobox.length > 0 && <Infobox entries={r.infobox} />}
+                          {r.sections && <SectionContent sections={r.sections} />}
+                        </>
                       )}
                     </div>
                     <div className="foot">
@@ -234,17 +279,33 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
                         <span>~{Math.round(r.wordCount * 1.35).toLocaleString()} tokens</span>
                       </span>
                       <span className="grow" />
-                      <button type="button" className="btn ghost icon" title="Copy summary" onClick={() => handleCopy(r)}>
-                        <CopyIcon size={14} />
-                      </button>
-                      {isSent && (
-                        <button type="button" className="btn ghost sm" onClick={() => onNav(isChar ? 'characters' : 'lorebook')}>
-                          Open {isChar ? 'character' : 'lorebook'} <ArrowIcon size={11} />
-                        </button>
+                      {editing ? (
+                        <>
+                          <button type="button" className="btn ghost sm" onClick={() => setEditingUrl(null)}>
+                            Cancel
+                          </button>
+                          <button type="button" className="btn primary sm" onClick={() => saveEdit(r)}>
+                            <CheckIcon size={12} /> Save
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" className="btn ghost icon" title="Copy summary" onClick={() => handleCopy(r)}>
+                            <CopyIcon size={14} />
+                          </button>
+                          <button type="button" className="btn ghost sm" onClick={() => startEdit(r)}>
+                            <PenIcon size={12} /> Edit
+                          </button>
+                          {isSent && (
+                            <button type="button" className="btn ghost sm" onClick={() => onNav(isChar ? 'characters' : 'lorebook')}>
+                              Open {isChar ? 'character' : 'lorebook'} <ArrowIcon size={11} />
+                            </button>
+                          )}
+                          <button type="button" className="btn primary sm" disabled={sending === r.url} onClick={() => handleSend(r)}>
+                            <SparksIcon size={12} /> {isSent ? 'Re-send' : 'Send'} to {isChar ? 'character' : 'lorebook'}
+                          </button>
+                        </>
                       )}
-                      <button type="button" className="btn primary sm" disabled={sending === r.url} onClick={() => handleSend(r)}>
-                        <SparksIcon size={12} /> {isSent ? 'Re-send' : 'Send'} to {isChar ? 'character' : 'lorebook'}
-                      </button>
                     </div>
                   </>
                 )}

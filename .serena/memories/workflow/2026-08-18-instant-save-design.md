@@ -1,24 +1,22 @@
-# Instant-save feature design + save/persistence architecture (2026-08-18)
+# Instant-save feature — IMPLEMENTED (2026-08-18)
 
-Design proposed in chat, awaiting user approval; suggested branch `feature/instant-save`.
+Branch `feature/instant-save`, commits `b05c40a` (instant save + top-bar Save button), `b3e2d42` (editor infobox order), `d33fc49` (this memory). Status: **awaiting user approval of APPROVAL_REQUEST.md before push/PR** (file exists locally in repo root, must be deleted before pushing, never committed).
 
-## Key facts
+## What shipped
 
-- `NewProject(name)` (`internal/app/app_library.go`) only resets in-memory state; nothing is written to disk. Frontend `projectPath` stays `""` until the user saves via a native dialog.
-- `SaveProjectBundle(filePath)` (`internal/app/app.go` ~line 623) snapshots all in-memory state into a `.slv` bundle, sets `a.projectDir`, and registers the project in the library index (`registerInLibrary`).
-- `PickSaveBundle()` opens the native save dialog; used by `ExportScreen.tsx` and `EditorScreen.tsx`.
-- `LibraryManager` (`internal/app/library_manager.go`) resolves `library.ConfigDir()` (index + thumbnails) and `library.DefaultLibraryDir()` — the latter is documented as "the default folder new bundles are saved into", ideal target for instant saves. `a.library` may be nil (headless/init failure); all callers nil-check.
-- Frontend: `useBundleSave.ts` is the shared debounced bundle writer — **silently no-ops when `projectPath` is empty**, so unsaved new projects get no auto-persistence at all.
-- `App.tsx` owns `route`, `projectPath`, `projectName`; `handleNewProject` calls `NewProject` then routes to crawler. Dashboard is a full-screen pre-screen (no TopBar).
-- `TopBar` (`frontend/src/components/Layout.tsx`) right group `.v2-right` contains `<ThemeToggle />` (sun/moon — what the user calls the "UI toggle") then the Settings cog. New Save button goes before ThemeToggle.
-- Wails bindings in `frontend/wailsjs/` are generated; changing a Go method signature (e.g., `NewProject` returning `(string, error)`) requires regenerating them.
+1. `App.NewProject(name)` (`internal/app/app_library.go`) now returns `(string, error)`: resets state, then immediately writes a `.slv` bundle into `a.library.LibraryDir()` via `SaveProjectBundle` and returns the path. Helpers `sanitizeBundleName` (keeps unicode/CJK, strips `/\:*?"<>|` + control chars, `Untitled` fallback) and `nextBundlePath` (`-2`/`-3` uniquify, MkdirAll 0o700). Nil library → `("", nil)`, old in-memory behavior. NewProject must NOT hold `a.mu` when calling SaveProjectBundle (it locks internally).
+2. `TopBar` (`frontend/src/components/Layout.tsx`) gained optional `onSave` prop → `.v2-savebtn` accent button rendered before `<ThemeToggle />`; CSS added next to `.v2-iconbtn` rules in `style.css`. Button only renders when `onSave` given (keeps old tests valid).
+3. `App.tsx`: `handleNewProject` adopts returned path as `projectPath`; `handleSaveProject` saves to `projectPath` with ok/bad toasts ("Project saved" / "Project not saved"), falls back to `PickSaveBundle` when path empty. `useToast` works in `AppShell` (inside ToastProvider).
+4. `EditorScreen.tsx` source panel: Infobox now renders BEFORE SectionContent (`marginBottom: 16` instead of `marginTop`), consistent with Crawler/Summaries.
 
-## Infobox placement (screenshot triage)
+## Verified gates (all green)
 
-Infobox renders FIRST in CrawlerScreen (~line 268) and SummariesScreen (`SummaryBody`, ~line 57), but LAST in the Characters tab's source panel (`EditorScreen.tsx:604-609`, sections then `<Infobox style={{marginTop:16}}>`). A screenshot with footer "N → M tokens · ✓ embedded" is the EditorScreen source panel, not the Crawl tab. `CharactersScreen` wraps `EditorScreen`. No CSS reordering exists (no `order:`/`column-reverse` on those bodies).
+go vet, golangci-lint, `go test ./... -race` (907), local `./node_modules/.bin/eslint src --max-warnings 0`, `tsc --noEmit`, vitest coverage 868 tests / 87.06% statements, `wails build -clean -tags webkit2_41`.
 
-## Pending design scope (3 items)
+## Reusable patterns learned
 
-1. `NewProject` writes a bundle immediately into the managed library dir, filename from sanitized name (`untitled` fallback, `-2`/`-3` uniquify), returns the path; frontend adopts it as `projectPath`.
-2. Prominent labeled Save button in `TopBar` left of ThemeToggle; saves to `projectPath` with toast, falls back to `PickSaveBundle` when path empty.
-3. `EditorScreen.tsx`: swap source panel order — Infobox first (`marginBottom: 16`), then `SectionContent`, for consistency with Crawl/Summaries tabs.
+- Go app tests needing full wiring: `t.Setenv("XDG_CONFIG_HOME", t.TempDir())` + `NewApp()` + `a.startup(context.Background())` gives real library + project manager (see `TestSaveProjectBundle`).
+- `wails generate module` regenerates `frontend/wailsjs/go/**` bindings after Go signature changes; this run caused NO go.mod churn (CLI v2.14.0 matches) and NO runtime file-mode flips — but always check `git status` after (see `mem:quirks/wails-cli-rewrites-gomod`, `mem:quirks/wailsjs-runtime-file-modes`).
+- rtk hook still substitutes broken global ESLint 9.16.0 for `npm run lint` — run `./node_modules/.bin/eslint` directly (see `mem:quirks/verifying-the-frontend-lint-gate`).
+- DOM-order assertions in vitest: `a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING`.
+- App.test.tsx mock pattern: module-level `const mockFn = vi.fn()` referenced lazily from the hoisted `vi.mock` factory (`NewProject: (n) => mockNewProject(n)`); set default resolved values in `beforeEach` after `vi.clearAllMocks()`.

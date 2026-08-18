@@ -33,18 +33,18 @@ export function useLoreConnections(
       if ((found?.length ?? 0) === 0) {
         toast({
           kind: 'info',
-          title: 'No new connections',
-          body: 'Everything worth linking already is.',
+          title: 'No improvements found',
+          body: 'The lorebook already follows its own rules.',
         });
       } else {
         toast({
           kind: 'ok',
-          title: `${found.length} connection${found.length === 1 ? '' : 's'} suggested`,
+          title: `${found.length} improvement${found.length === 1 ? '' : 's'} suggested`,
           body: 'Review them before applying.',
         });
       }
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Could not suggest connections', body: errorMessage(e, 'The model could not be reached.') });
+      toast({ kind: 'bad', title: 'Could not optimize the lorebook', body: errorMessage(e, 'The model could not be reached.') });
     } finally {
       setRunning(false);
     }
@@ -52,6 +52,10 @@ export function useLoreConnections(
 
   const updateSuggestion = useCallback((index: number, next: loreextract.Suggestion) => {
     setSuggestions(prev => prev.map((s, i) => (i === index ? next : s)));
+  }, []);
+
+  const setAllSelected = useCallback((selected: boolean) => {
+    setSuggestions(prev => prev.map(s => ({ ...s, selected } as loreextract.Suggestion)));
   }, []);
 
   const dismiss = useCallback(() => setSuggestions([]), []);
@@ -65,12 +69,12 @@ export function useLoreConnections(
       setSuggestions([]);
       toast({
         kind: 'ok',
-        title: `Applied ${count} connection${count === 1 ? '' : 's'}`,
+        title: `Applied ${count} improvement${count === 1 ? '' : 's'}`,
       });
     } catch (e: any) {
       toast({ kind: 'bad', title: 'Could not apply', body: errorMessage(e, 'Nothing was changed.') });
     }
   }, [suggestions, toast, onApplied]);
 
-  return { suggestions, running, suggest, updateSuggestion, dismiss, apply };
+  return { suggestions, running, suggest, updateSuggestion, setAllSelected, dismiss, apply };
 }

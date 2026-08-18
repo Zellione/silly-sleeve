@@ -114,7 +114,31 @@ const (
 	// KindCharacterCharacter records a relationship in a character's
 	// relationships text.
 	KindCharacterCharacter = "characterCharacter"
+	// KindEntryOrder re-tiers an entry's activation order so what matters
+	// survives a full context.
+	KindEntryOrder = "entryOrder"
+	// KindEntryPosition moves an entry to a different injection position (and
+	// depth, when the position is @Depth).
+	KindEntryPosition = "entryPosition"
+	// KindEntryFlags adjusts an entry's behavior: constant, selective logic,
+	// probability and recursion flags.
+	KindEntryFlags = "entryFlags"
+	// KindRemoveKeys drops trigger keys too generic or redundant to be useful.
+	KindRemoveKeys = "removeKeys"
 )
+
+// FlagChanges holds the behavior fields an entryFlags suggestion touches. A nil
+// field is untouched — only the fields actually proposed carry values, so a
+// suggestion never resets what it did not mean to change.
+type FlagChanges struct {
+	Constant         *bool `json:"constant,omitempty"`
+	Selective        *bool `json:"selective,omitempty"`
+	SelectiveLogic   *int  `json:"selectiveLogic,omitempty"`
+	Probability      *int  `json:"probability,omitempty"`
+	UseProbability   *bool `json:"useProbability,omitempty"`
+	ExcludeRecursion *bool `json:"excludeRecursion,omitempty"`
+	PreventRecursion *bool `json:"preventRecursion,omitempty"`
+}
 
 // Suggestion is a proposed connection. Every kind is additive except
 // characterCharacter, which replaces prose — and that one carries the current
@@ -137,6 +161,18 @@ type Suggestion struct {
 	// hand-written, and appending a fragment blindly would mangle it.
 	CurrentRelationships  string `json:"currentRelationships,omitempty"`
 	ProposedRelationships string `json:"proposedRelationships,omitempty"`
+
+	// Every rule-change kind carries the current value beside the proposal, so
+	// the review renders a delta instead of a bare new value.
+	CurrentOrder     int          `json:"currentOrder,omitempty"`
+	ProposedOrder    int          `json:"proposedOrder,omitempty"`
+	CurrentPosition  int          `json:"currentPosition,omitempty"`
+	ProposedPosition int          `json:"proposedPosition,omitempty"`
+	CurrentDepth     int          `json:"currentDepth,omitempty"`
+	ProposedDepth    int          `json:"proposedDepth,omitempty"`
+	CurrentFlags     *FlagChanges `json:"currentFlags,omitempty"`
+	ProposedFlags    *FlagChanges `json:"proposedFlags,omitempty"`
+	RemoveKeys       []string     `json:"removeKeys,omitempty"`
 
 	Rationale string `json:"rationale"`
 	Selected  bool   `json:"selected"`

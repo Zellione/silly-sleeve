@@ -122,11 +122,19 @@ func TestSummaryPrompt_AsksForExactlyOneEntry(t *testing.T) {
 
 func TestConnectPrompt_CoversEveryConnectionKind(t *testing.T) {
 	p := defaultLorePrompt(LoreConnect)
-	for _, kind := range []string{"entryCharacter", "triggerKeys", "entryEntry", "characterCharacter"} {
+	kinds := []string{
+		"entryCharacter", "triggerKeys", "entryEntry", "characterCharacter",
+		"entryOrder", "entryPosition", "entryFlags", "removeKeys",
+	}
+	for _, kind := range kinds {
 		assert.Contains(t, p, kind)
 	}
 	assert.Contains(t, p, "complete replacement relationships text",
 		"the prompt must ask for full text, since a fragment would clobber the existing prose")
+	for _, field := range []string{"proposedOrder", "proposedPosition", "proposedDepth", "flags"} {
+		assert.Contains(t, p, field, "the JSON contract must show the %s field", field)
+	}
+	assert.Contains(t, p, "900-999", "the prompt must restate the order tiers it should propose within")
 }
 
 func TestWithDefaults_BackfillsLorePrompts(t *testing.T) {

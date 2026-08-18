@@ -31,7 +31,7 @@ const characters = [
 
 const entries = [
   lorebook.Entry.createFrom({ uid: 1, comment: 'Denerim', key: ['Denerim'] }),
-  lorebook.Entry.createFrom({ uid: 2, comment: 'Grey Wardens', key: ['Grey Warden'] }),
+  lorebook.Entry.createFrom({ uid: 2, comment: 'Grey Wardens', key: ['Grey Warden'], characters: ['1'] }),
 ];
 
 const suggestion = (over: Partial<any> = {}) =>
@@ -42,7 +42,7 @@ const Harness: React.FC<{ onApplied?: (e: any, c: any) => void }> = ({ onApplied
   const connections = useLoreConnections(onApplied);
   return (
     <>
-      <button onClick={connections.suggest}>Suggest connections</button>
+      <button onClick={connections.suggest}>Optimize lorebook</button>
       <ExtractPanel
         characters={characters}
         onEntriesChanged={vi.fn()}
@@ -50,6 +50,7 @@ const Harness: React.FC<{ onApplied?: (e: any, c: any) => void }> = ({ onApplied
           suggestions: connections.suggestions,
           entries,
           onChange: connections.updateSuggestion,
+          onSetAll: connections.setAllSelected,
           onApply: connections.apply,
           onDismiss: connections.dismiss,
         }}
@@ -134,7 +135,7 @@ describe('connection review', () => {
       .toBe('Recruited by Duncan.');
   });
 
-  it('applies only the suggestions left ticked', async () => {
+  it('applies only the suggestions left accepted', async () => {
     mockGetLorebookSuggestions.mockResolvedValue([
       suggestion({ kind: 'triggerKeys', entryUid: 1, addKeys: ['the capital'] }),
       suggestion({ kind: 'triggerKeys', entryUid: 2, addKeys: ['the order'] }),
@@ -143,7 +144,7 @@ describe('connection review', () => {
     renderHarness();
     await screen.findByText('Add trigger keys');
 
-    await user.click(screen.getAllByRole('checkbox')[1]);
+    await user.click(screen.getByRole('button', { name: /Reject: Add trigger keys for Grey Wardens/i }));
     expect(screen.getByRole('button', { name: /Apply 1/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Apply 1/i }));
@@ -153,13 +154,141 @@ describe('connection review', () => {
     expect(sent.filter((s: any) => s.selected)).toHaveLength(1);
   });
 
-  it('cannot apply when everything is unticked', async () => {
+  it('a rejected suggestion can be accepted again', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'triggerKeys', entryUid: 1, addKeys: ['x'], selected: false }),
+    ]);
+    const user = userEvent.setup();
+    renderHarness();
+    await screen.findByText('Add trigger keys');
+
+    expect(screen.getByRole('button', { name: /Nothing accepted/i })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /Accept: Add trigger keys for Denerim/i }));
+    expect(screen.getByRole('button', { name: /Apply 1/i })).toBeEnabled();
+  });
+
+  it('accepts and rejects the whole pass at once', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'triggerKeys', entryUid: 1, addKeys: ['x'] }),
+      suggestion({ kind: 'triggerKeys', entryUid: 2, addKeys: ['y'] }),
+    ]);
+    const user = userEvent.setup();
+    renderHarness();
+    await screen.findByText('Add trigger keys');
+
+    await user.click(screen.getByRole('button', { name: /Reject all/i }));
+    expect(screen.getByRole('button', { name: /Nothing accepted/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /Accept all/i }));
+    expect(screen.getByRole('button', { name: /Apply 2/i })).toBeEnabled();
+  });
+
+  it('cannot apply when everything is rejected', async () => {
     mockGetLorebookSuggestions.mockResolvedValue([
       suggestion({ kind: 'triggerKeys', entryUid: 1, addKeys: ['x'], selected: false }),
     ]);
     renderHarness();
 
-    expect(await screen.findByRole('button', { name: /Nothing selected/i })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: /Nothing accepted/i })).toBeDisabled();
+  });
+
+  it('shows an order change as a delta', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryOrder', entryUid: 1, currentOrder: 100, proposedOrder: 950 }),
+    ]);
+    renderHarness();
+
+    expect(await screen.findByText('Re-tier order')).toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('950')).toBeInTheDocument();
+  });
+
+  it('shows a position change with names, not indices', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({
+        kind: 'entryPosition', entryUid: 1,
+        currentPosition: 0, proposedPosition: 4, currentDepth: 0, proposedDepth: 6,
+      }),
+    ]);
+    renderHarness();
+
+    expect(await screen.findByText('Move position')).toBeInTheDocument();
+    expect(screen.getByText(/Before Char Defs/)).toBeInTheDocument();
+    expect(screen.getByText(/@ Depth/)).toBeInTheDocument();
+    expect(screen.getByText(/depth 6/)).toBeInTheDocument();
+  });
+
+  it('shows only the flag fields that change', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({
+        kind: 'entryFlags', entryUid: 1,
+        currentFlags: { constant: false, probability: 50 },
+        proposedFlags: { constant: true, probability: 80 },
+      }),
+    ]);
+    renderHarness();
+
+    expect(await screen.findByText('Adjust behavior')).toBeInTheDocument();
+    expect(screen.getByText(/constant/)).toBeInTheDocument();
+    expect(screen.getByText('80')).toBeInTheDocument();
+    expect(screen.queryByText(/recursion/)).not.toBeInTheDocument();
+  });
+
+  it('shows the keys a removal would strip beside the ones that stay', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'removeKeys', entryUid: 1, removeKeys: ['city', 'sword'] }),
+    ]);
+    renderHarness();
+
+    expect(await screen.findByText('Remove keys')).toBeInTheDocument();
+    expect(screen.getByText('city')).toHaveClass('del');
+    expect(screen.getByText('sword')).toHaveClass('del');
+    const kept = screen.getByText('Denerim', { selector: '.k' });
+    expect(kept).not.toHaveClass('del');
+  });
+
+  it('shows existing keys as context and marks the additions', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'triggerKeys', entryUid: 1, addKeys: ['the capital'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Add trigger keys');
+
+    expect(screen.getByText('the capital')).toHaveClass('add');
+    const existing = screen.getByText('Denerim', { selector: '.k' });
+    expect(existing).not.toHaveClass('add');
+  });
+
+  it('shows the current scope as context and marks added characters', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryCharacter', entryUid: 2, addCharacters: ['2'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Scope to characters');
+
+    expect(screen.getByText('Duncan')).toHaveClass('add');
+    expect(screen.getByText('Alistair')).not.toHaveClass('add');
+  });
+
+  it('calls out a global entry gaining its first scope', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryCharacter', entryUid: 1, addCharacters: ['1'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Scope to characters');
+
+    expect(screen.getByText('global')).toBeInTheDocument();
+    expect(screen.getByText('Alistair')).toHaveClass('add');
+  });
+
+  it('marks added secondary keys on a link suggestion', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryEntry', entryUid: 1, targetUid: 2, addSecondary: ['Grey Warden'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Link entries');
+
+    expect(screen.getByText('Grey Warden')).toHaveClass('add');
   });
 
   it('hands the updated entries and characters back', async () => {
@@ -192,7 +321,7 @@ describe('connection review', () => {
     renderHarness();
     await screen.findByText('Add trigger keys');
 
-    await user.click(screen.getByRole('button', { name: /Dismiss all/i }));
+    await user.click(screen.getByRole('button', { name: /Discard/i }));
 
     expect(mockApplyLorebookSuggestions).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByText('Add trigger keys')).not.toBeInTheDocument());
@@ -202,9 +331,9 @@ describe('connection review', () => {
     const user = userEvent.setup();
     renderHarness();
 
-    await user.click(screen.getByRole('button', { name: 'Suggest connections' }));
+    await user.click(screen.getByRole('button', { name: 'Optimize lorebook' }));
 
-    expect(await screen.findByText('No new connections')).toBeInTheDocument();
+    expect(await screen.findByText('No improvements found')).toBeInTheDocument();
   });
 
   it('surfaces a failed pass', async () => {
@@ -212,9 +341,9 @@ describe('connection review', () => {
     const user = userEvent.setup();
     renderHarness();
 
-    await user.click(screen.getByRole('button', { name: 'Suggest connections' }));
+    await user.click(screen.getByRole('button', { name: 'Optimize lorebook' }));
 
-    expect(await screen.findByText('Could not suggest connections')).toBeInTheDocument();
+    expect(await screen.findByText('Could not optimize the lorebook')).toBeInTheDocument();
     expect(screen.getByText('context too small')).toBeInTheDocument();
   });
 
@@ -224,7 +353,7 @@ describe('connection review', () => {
     ]);
     renderHarness();
 
-    expect(await screen.findByText('Suggested connections')).toBeInTheDocument();
+    expect(await screen.findByText('Suggested improvements')).toBeInTheDocument();
     expect(screen.queryByText('Nothing to review yet.')).not.toBeInTheDocument();
   });
 });

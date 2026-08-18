@@ -421,6 +421,22 @@ describe('LorebookScreen tabs', () => {
     expect(screen.getByPlaceholderText(/Search by name or trigger key/i)).toBeInTheDocument();
   });
 
+  it('keeps the view toggle on the left, out of the header actions', async () => {
+    renderWithToast(<LorebookScreen />);
+    const tabs = await screen.findByRole('tablist', { name: 'Lorebook view' });
+
+    expect(tabs.closest('.ss-actions')).toBeNull();
+    expect(tabs.closest('.lore-tabs-row')).not.toBeNull();
+  });
+
+  it('offers the optimization pass from the header', async () => {
+    renderWithToast(<LorebookScreen />);
+    await screen.findByRole('tab', { name: 'Entries' });
+
+    expect(screen.getByRole('button', { name: /Optimize lorebook/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Suggest connections/i })).not.toBeInTheDocument();
+  });
+
   it('switches to the extraction review without disturbing the editor', async () => {
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);

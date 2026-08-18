@@ -729,11 +729,6 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.projectImage = b.Manifest.ProjectImage
 	a.fieldEndpoints = b.Manifest.FieldEndpoints
 
-	if len(a.characters) == 0 {
-		a.characters = []compose.Character{compose.NewCharacter(1)}
-		a.activeCharID = 1
-	}
-
 	if resolved := a.project.ResolveCrawlCache(b); resolved != nil {
 		a.cachedCrawl = resolved
 	}

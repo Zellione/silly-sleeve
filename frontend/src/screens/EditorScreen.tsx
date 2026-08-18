@@ -293,6 +293,7 @@ interface EditorScreenProps {
 
 const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathChange }) => {
   const [characters, setCharacters] = useState<compose.Character[]>([]);
+  const [charsLoaded, setCharsLoaded] = useState(false);
   const [activeChar, setActiveChar] = useState<compose.Character | null>(null);
   const [crawl, setCrawl] = useState<crawler.CrawlResult | null>(null);
   const [endpoints, setEndpoints] = useState<settings.LLMEndpoint[]>([]);
@@ -348,7 +349,8 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
         setActiveChar(ch);
         await SetActiveCharacter(ch.id);
       }
-    }).catch(e => logError('EditorScreen.loadCharacters', e));
+    }).catch(e => logError('EditorScreen.loadCharacters', e))
+      .finally(() => setCharsLoaded(true));
   }, []);
 
   // Load the source page the active character was sent from, refreshing whenever
@@ -548,6 +550,24 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       });
     });
   }, [toast]);
+
+  // New projects start without characters; without this gate the roster-less
+  // state would sit on "Loading character…" forever.
+  if (charsLoaded && characters.length === 0) {
+    return (
+      <div className="ss-page-body scroll" style={{ display: 'grid', placeItems: 'center' }}>
+        <div className="col" style={{ alignItems: 'center', gap: 10, textAlign: 'center' }}>
+          <div className="serif-i" style={{ fontSize: 28, color: 'var(--ink-2)' }}>No characters yet</div>
+          <p style={{ color: 'var(--ink-3)', fontSize: 13, margin: 0 }}>
+            Add one here, or send a crawled page from the Crawl tab.
+          </p>
+          <button type="button" className="btn primary" onClick={handleAdd}>
+            <PlusIcon size={13} /> Add character
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!activeChar || !ready) {
     return (

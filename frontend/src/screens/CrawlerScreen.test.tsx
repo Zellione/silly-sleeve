@@ -444,6 +444,19 @@ describe('CrawlerScreen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /^Re-send$/i })).toBeInTheDocument());
   });
 
+  it('writes the project bundle after a successful send', async () => {
+    mockCrawlPage.mockResolvedValue(singleResultSet());
+    mockSendCrawlResult.mockResolvedValue({ status: 'created', kind: 'character', name: 'A', result: { characters: [], lorebook: [], activeCharId: 1 } });
+    const user = userEvent.setup();
+    renderWithProviders(<CrawlerScreen projectPath="/p.slv" />);
+    await user.click(screen.getByText('Crawl page'));
+    await screen.findByText('Results');
+
+    await user.click(screen.getByRole('button', { name: /^Send$/i }));
+
+    await waitFor(() => expect(mockSaveProjectBundle).toHaveBeenCalledWith('/p.slv'));
+  });
+
   it('prompts to overwrite a duplicate and re-sends with overwrite=true on confirm', async () => {
     mockCrawlPage.mockResolvedValue(singleResultSet());
     mockSendCrawlResult

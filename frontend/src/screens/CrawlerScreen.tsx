@@ -147,6 +147,13 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
         return;
       }
       setSent(prev => ({ ...prev, [pageURL]: role }));
+      // A send mutates project state (character stub or staged page) that only
+      // exists in memory until the bundle is written, so write it now.
+      if (projectPath) {
+        SaveProjectBundle(projectPath).catch(() => {
+          toast({ kind: 'bad', title: 'Project not saved', body: 'The send worked but the project file could not be written.' });
+        });
+      }
       // A lorebook send stages the page for extraction rather than creating an
       // entry, so say so — otherwise the user goes looking for an entry that
       // does not exist yet.
@@ -164,7 +171,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     } catch {
       toast({ kind: 'bad', title: 'Send failed', body: 'Could not send the page to the project.' });
     }
-  }, [roles, confirm, toast]);
+  }, [roles, confirm, toast, projectPath]);
 
   const handleRemoveResult = useCallback(async (pageURL: string) => {
     try {

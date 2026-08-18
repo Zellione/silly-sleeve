@@ -253,6 +253,14 @@ func normalizeContent(e Entry, count TokenCounter, adj []string) (Entry, []strin
 	e.Content = strings.TrimSpace(e.Content)
 	e.Comment = strings.TrimSpace(e.Comment)
 
+	// SillyTavern shows the comment as the entry's memo, so an untitled entry
+	// hurts there as much as in the review UI. The first key is the entry's
+	// primary name and makes a serviceable title.
+	if e.Comment == "" && len(e.Key) > 0 {
+		e.Comment = e.Key[0]
+		adj = append(adj, "No title from the model — used the first key as the title.")
+	}
+
 	if e.Category == CategoryRule && e.Content != "" && !strings.HasPrefix(e.Content, RulePrefix) {
 		e.Content = RulePrefix + e.Content
 		adj = append(adj, "Added the \"RULE: \" prefix required for rule entries.")

@@ -97,10 +97,13 @@ func (a *App) ExtractLorebookCandidates(pageURL string) ([]loreextract.Candidate
 	}
 	req.Endpoint = toLLMEndpoint(def)
 
+	debugf("lore extract: %s (mode %s, endpoint %s)", pageURL, staged.Mode.OrDefault(), def.URL)
 	candidates, err := a.loreGen.Extract(a.ctx, req)
 	if err != nil {
+		logf("lore extract failed: %s: %v", pageURL, err)
 		return nil, err
 	}
+	debugf("lore extract: %s produced %d candidates", pageURL, len(candidates))
 
 	a.mu.Lock()
 	defer a.mu.Unlock()

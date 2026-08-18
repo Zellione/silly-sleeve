@@ -90,6 +90,13 @@ describe('EditorScreen', () => {
     mockSetProjectFieldEndpoint.mockResolvedValue(undefined);
   });
 
+  it('shows an empty state when the project has no characters', async () => {
+    mockGetCharacters.mockResolvedValue([]);
+    mockGetActiveCharacter.mockResolvedValue(compose.Character.createFrom({ id: 0 }));
+    renderEditor();
+    expect(await screen.findByText(/No characters yet/)).toBeInTheDocument();
+  });
+
   it('renders the PageHead with step 2 and character name', async () => {
     renderEditor();
     await waitFor(() => {

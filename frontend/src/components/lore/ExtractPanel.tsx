@@ -30,11 +30,12 @@ export const ExtractPanel: React.FC<{
   characters: compose.Character[];
   onEntriesChanged: (entries: lorebook.Entry[]) => void;
   connections?: ConnectionReview;
-}> = ({ characters, onEntriesChanged, connections }) => {
+  onPersist?: () => void;
+}> = ({ characters, onEntriesChanged, connections, onPersist }) => {
   const {
-    sources, candidates, activeUrl, extracting, loaded,
+    sources, candidates, activeUrl, extracting, extractError, loaded,
     setActiveUrl, setMode, removeSource, extract, updateCandidate, discard, approve,
-  } = useLoreStaging(onEntriesChanged);
+  } = useLoreStaging(onEntriesChanged, onPersist);
 
   if (!loaded) {
     return (
@@ -74,6 +75,7 @@ export const ExtractPanel: React.FC<{
             characters={characters}
             sourceUrl={activeUrl}
             extracting={extracting === activeUrl}
+            error={activeUrl ? extractError[activeUrl] : undefined}
             onChange={updateCandidate}
             onApprove={() => approve(forActive)}
             onDiscard={() => activeUrl && discard(activeUrl)}

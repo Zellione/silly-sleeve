@@ -5,6 +5,6 @@
 Why: the Stop hook (same file) requests a memory write at end-of-turn — always AFTER the turn's commits — so `.serena/memories` was perpetually left dirty and needed manual cleanup commits before pushing.
 
 Consequences:
-- Never manually commit `.serena/memories` anymore; the hook does it the moment a memory tool runs.
-- Auto-commits land on whatever branch is checked out — including `main`. Memory-only commits there are accepted by the user (explicitly requested "always committed").
+- Never manually commit `.serena/memories` on feature branches; the hook does it the moment a memory tool runs.
+- **Guard: the hook only commits on non-`main` branches** (skips on `main` and detached HEAD, per user request 2026-08-18). Memory writes made while on `main` stay uncommitted — fold them into the next feature branch's commits or commit manually.
 - If the hook's commit fails (e.g. mid-merge), the failure surfaces in the tool result; commit manually then.

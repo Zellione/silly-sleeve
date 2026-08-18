@@ -30,13 +30,31 @@ func TestAppNewProjectResets(t *testing.T) {
 		projectDir:      "/some/path.slv",
 	}
 	a.NewProject("  Harper cell  ")
-	require.Len(t, a.characters, 1)
-	assert.Equal(t, 1, a.characters[0].ID)
-	assert.Equal(t, "Untitled", a.characters[0].Name)
-	assert.Equal(t, 1, a.activeCharID)
+	// A new project starts without characters: the user adds them explicitly
+	// or sends a crawled page.
+	assert.Empty(t, a.characters)
+	assert.Equal(t, 0, a.activeCharID)
 	assert.Empty(t, a.projectImage)
 	assert.Equal(t, "", a.projectDir)
 	assert.Equal(t, "Harper cell", a.GetProjectName())
+}
+
+func TestAppNewProjectRoundTripsEmptyRoster(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	a := NewApp()
+	a.startup(context.Background())
+
+	path, err := a.NewProject("Akame")
+	require.NoError(t, err)
+	require.NotEmpty(t, path)
+
+	// Simulate editing another project, then reopening: the empty roster must
+	// not be resurrected into a blank "Untitled" character.
+	a.characters = []compose.Character{{ID: 7, Name: "Other"}}
+	_, err = a.OpenProjectBundle(path)
+	require.NoError(t, err)
+	assert.Empty(t, a.characters)
 }
 
 func TestAppNewProjectEmptyNameStaysUnnamed(t *testing.T) {

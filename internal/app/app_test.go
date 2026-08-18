@@ -1183,7 +1183,7 @@ func TestOpenProjectBundle_EmptyCharactersFromBundle(t *testing.T) {
 	_, err = app.OpenProjectBundle(filePath)
 	require.NoError(t, err)
 
-	chars := app.GetCharacters()
-	assert.Len(t, chars, 1)
-	assert.Equal(t, 1, chars[0].ID)
+	// An empty roster is a valid project state (new projects start without
+	// characters) and must not be resurrected into a blank one on open.
+	assert.Empty(t, app.GetCharacters())
 }

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/library"
 )
 
@@ -26,8 +25,10 @@ func (a *App) ListProjects() ([]library.Entry, error) {
 // returned path is empty.
 func (a *App) NewProject(name string) (string, error) {
 	a.mu.Lock()
-	a.characters = []compose.Character{compose.NewCharacter(1)}
-	a.activeCharID = 1
+	// A new project starts without characters; the user adds them explicitly
+	// or sends a crawled page from the crawler.
+	a.characters = nil
+	a.activeCharID = 0
 	a.lorebookEntries = nil
 	a.projectImage = nil
 	a.cachedCrawl = nil

@@ -366,6 +366,60 @@ func TestApplyLorebookSuggestions_ReplacesRelationshipText(t *testing.T) {
 	assert.True(t, out.Characters[0].Dirty)
 }
 
+func TestApplyLorebookSuggestions_AppliesRuleChanges(t *testing.T) {
+	a := newConnectApp(connectResponse)
+	a.lorebookEntries[0].Key = []string{"Denerim", "city"}
+	constant, probability := true, 80
+
+	out := a.ApplyLorebookSuggestions([]loreextract.Suggestion{
+		{Kind: loreextract.KindEntryOrder, EntryUID: 1, CurrentOrder: 100, ProposedOrder: 950, Selected: true},
+		{Kind: loreextract.KindEntryPosition, EntryUID: 1, ProposedPosition: 4, ProposedDepth: 6, Selected: true},
+		{Kind: loreextract.KindRemoveKeys, EntryUID: 1, RemoveKeys: []string{"City"}, Selected: true},
+		{Kind: loreextract.KindEntryFlags, EntryUID: 2,
+			ProposedFlags: &loreextract.FlagChanges{Constant: &constant, Probability: &probability}, Selected: true},
+	})
+
+	first := out.Lorebook[0]
+	assert.Equal(t, 950, first.Order)
+	assert.Equal(t, 4, first.Position)
+	assert.Equal(t, 6, first.Depth)
+	assert.Equal(t, []string{"Denerim"}, first.Key, "removal matches case-insensitively")
+
+	second := out.Lorebook[1]
+	assert.True(t, second.Constant)
+	assert.Equal(t, 80, second.Probability)
+}
+
+func TestApplyLorebookSuggestions_PositionOutsideChatLeavesDepthAlone(t *testing.T) {
+	a := newConnectApp(connectResponse)
+	a.lorebookEntries[0].Depth = 9
+
+	out := a.ApplyLorebookSuggestions([]loreextract.Suggestion{
+		{Kind: loreextract.KindEntryPosition, EntryUID: 1, ProposedPosition: 2, Selected: true},
+	})
+
+	assert.Equal(t, 2, out.Lorebook[0].Position)
+	assert.Equal(t, 9, out.Lorebook[0].Depth, "depth only matters at position 4")
+}
+
+func TestApplyLorebookSuggestions_FlagsTouchOnlyProposedFields(t *testing.T) {
+	a := newConnectApp(connectResponse)
+	a.lorebookEntries[0].Selective = true
+	a.lorebookEntries[0].UseProbability = true
+	logic, exclude := 3, true
+
+	out := a.ApplyLorebookSuggestions([]loreextract.Suggestion{
+		{Kind: loreextract.KindEntryFlags, EntryUID: 1,
+			ProposedFlags: &loreextract.FlagChanges{SelectiveLogic: &logic, ExcludeRecursion: &exclude}, Selected: true},
+	})
+
+	first := out.Lorebook[0]
+	assert.Equal(t, 3, first.SelectiveLogic)
+	assert.True(t, first.ExcludeRecursion)
+	assert.True(t, first.Selective, "an unproposed field must survive untouched")
+	assert.True(t, first.UseProbability, "an unproposed field must survive untouched")
+}
+
 func TestApplyLorebookSuggestions_IgnoresUnknownTargets(t *testing.T) {
 	a := newConnectApp(connectResponse)
 

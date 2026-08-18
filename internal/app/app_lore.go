@@ -239,6 +239,25 @@ func (a *App) ApplyLorebookSuggestions(suggestions []loreextract.Suggestion) Cra
 					break
 				}
 			}
+		case loreextract.KindEntryOrder:
+			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+				e.Order = s.ProposedOrder
+			})
+		case loreextract.KindEntryPosition:
+			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+				e.Position = s.ProposedPosition
+				if s.ProposedPosition == 4 { // @Depth — the only position that uses depth
+					e.Depth = s.ProposedDepth
+				}
+			})
+		case loreextract.KindEntryFlags:
+			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+				applyFlagChanges(e, s.ProposedFlags)
+			})
+		case loreextract.KindRemoveKeys:
+			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+				e.Key = withoutItems(e.Key, s.RemoveKeys)
+			})
 		}
 	}
 
@@ -249,6 +268,51 @@ func (a *App) ApplyLorebookSuggestions(suggestions []loreextract.Suggestion) Cra
 		Staged:       a.stagedSources,
 		ActiveCharID: a.activeCharID,
 	}
+}
+
+// applyFlagChanges copies the proposed behavior fields onto the entry. Nil
+// fields were never proposed and stay untouched.
+func applyFlagChanges(e *lorebook.Entry, flags *loreextract.FlagChanges) {
+	if flags == nil {
+		return
+	}
+	if flags.Constant != nil {
+		e.Constant = *flags.Constant
+	}
+	if flags.Selective != nil {
+		e.Selective = *flags.Selective
+	}
+	if flags.SelectiveLogic != nil {
+		e.SelectiveLogic = *flags.SelectiveLogic
+	}
+	if flags.Probability != nil {
+		e.Probability = *flags.Probability
+	}
+	if flags.UseProbability != nil {
+		e.UseProbability = *flags.UseProbability
+	}
+	if flags.ExcludeRecursion != nil {
+		e.ExcludeRecursion = *flags.ExcludeRecursion
+	}
+	if flags.PreventRecursion != nil {
+		e.PreventRecursion = *flags.PreventRecursion
+	}
+}
+
+// withoutItems returns have minus the items of drop, compared case-insensitively
+// — the counterpart of mergeUnique for removal suggestions.
+func withoutItems(have, drop []string) []string {
+	dropped := make(map[string]bool, len(drop))
+	for _, d := range drop {
+		dropped[strings.ToLower(strings.TrimSpace(d))] = true
+	}
+	out := make([]string, 0, len(have))
+	for _, h := range have {
+		if !dropped[strings.ToLower(strings.TrimSpace(h))] {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
 // updateEntryLocked applies fn to the entry with the given UID. Caller holds a.mu.

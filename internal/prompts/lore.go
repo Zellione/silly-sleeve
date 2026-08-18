@@ -26,7 +26,7 @@ var lorePromptLabels = map[string]string{
 	LoreSystem:         "Lorebook — system prompt",
 	LoreExtractSplit:   "Lorebook — split into facts",
 	LoreExtractSummary: "Lorebook — single summary",
-	LoreConnect:        "Lorebook — suggest connections",
+	LoreConnect:        "Lorebook — optimize",
 }
 
 // LoreVariableNames returns the substitution variables available to lorebook
@@ -163,14 +163,15 @@ Return ONLY a JSON object with exactly one entry. No markdown fences, no comment
 "content":"...","order":180,"constant":false,"selective":false,
 "characters":[]}]}`
 
-const loreConnectPrompt = `Find the connections missing from an existing SillyTavern lorebook.
+const loreConnectPrompt = `Review an existing SillyTavern lorebook and propose the improvements it is missing.
 
 You are given the project's characters, an index of every lorebook entry, and
-the full text of the entries currently under review. Propose links between them.
-Only propose a connection the material actually supports, and only reference
-uids and character ids that appear below.
+the full text of the entries currently under review. Propose connections between
+them and corrections to the entries' own rules. Only propose a change the
+material actually supports, and only reference uids and character ids that
+appear below. Never propose a change that leaves a value as it already is.
 
-Propose four kinds of connection:
+Propose these kinds of connection:
 - entryCharacter  the entry concerns specific characters, so it should be scoped
                   to them instead of applying to everyone
 - triggerKeys     the entry lacks keys that a chat would realistically use to
@@ -179,6 +180,24 @@ Propose four kinds of connection:
                   key as a secondary key and cascade into it
 - characterCharacter  two characters have a relationship that the character's
                   own relationships text does not yet record
+
+And these kinds of rule change:
+- entryOrder      the entry's order does not match its importance. Spread
+                  entries across the tiers: 900-999 must never be cut,
+                  500-899 scene-defining, 200-499 important, 100-199 standard,
+                  50-99 background, 10-49 expendable
+- entryPosition   the entry belongs at a different place in the context:
+                  0 before char defs, 1 after char defs, 2 before example msgs,
+                  3 after example msgs, 4 @ depth in chat (needs proposedDepth),
+                  5 before author note, 6 after author note
+- entryFlags      the entry's behavior is wrong: "constant" only for hard world
+                  rules, "selective"/"selectiveLogic" (0 AND ANY, 1 NOT ALL,
+                  2 NOT ANY, 3 AND ALL) when secondary keys exist,
+                  "probability"/"useProbability" for flavor that should not fire
+                  every time, "excludeRecursion"/"preventRecursion" to stop
+                  runaway cascades. Include ONLY the fields you want changed
+- removeKeys      the entry has trigger keys too generic to be useful ("city",
+                  "sword") or redundant duplicates of one another
 
 For characterCharacter, return the complete replacement relationships text, not
 a fragment: keep what is already there and add the new relationship, using the
@@ -198,4 +217,8 @@ Return ONLY a JSON object. No markdown fences, no commentary:
 {"kind":"entryCharacter","entryUid":4,"addCharacters":["1","3"],"rationale":"..."},
 {"kind":"triggerKeys","entryUid":7,"addKeys":["Denerim","the capital"],"rationale":"..."},
 {"kind":"entryEntry","entryUid":7,"targetUid":2,"addSecondary":["Grey Warden"],"rationale":"..."},
-{"kind":"characterCharacter","charId":1,"targetCharId":2,"proposedRelationships":"...","rationale":"..."}]}`
+{"kind":"characterCharacter","charId":1,"targetCharId":2,"proposedRelationships":"...","rationale":"..."},
+{"kind":"entryOrder","entryUid":3,"proposedOrder":950,"rationale":"..."},
+{"kind":"entryPosition","entryUid":5,"proposedPosition":4,"proposedDepth":6,"rationale":"..."},
+{"kind":"entryFlags","entryUid":9,"flags":{"constant":true,"probability":80,"useProbability":true},"rationale":"..."},
+{"kind":"removeKeys","entryUid":6,"removeKeys":["city"],"rationale":"..."}]}`

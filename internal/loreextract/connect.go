@@ -52,16 +52,21 @@ type suggestionResponse struct {
 }
 
 type suggestionPayload struct {
-	Kind                  string   `json:"kind"`
-	EntryUID              int      `json:"entryUid"`
-	TargetUID             int      `json:"targetUid"`
-	CharID                int      `json:"charId"`
-	TargetCharID          int      `json:"targetCharId"`
-	AddKeys               []string `json:"addKeys"`
-	AddSecondary          []string `json:"addSecondary"`
-	AddCharacters         []string `json:"addCharacters"`
-	ProposedRelationships string   `json:"proposedRelationships"`
-	Rationale             string   `json:"rationale"`
+	Kind                  string       `json:"kind"`
+	EntryUID              int          `json:"entryUid"`
+	TargetUID             int          `json:"targetUid"`
+	CharID                int          `json:"charId"`
+	TargetCharID          int          `json:"targetCharId"`
+	AddKeys               []string     `json:"addKeys"`
+	AddSecondary          []string     `json:"addSecondary"`
+	AddCharacters         []string     `json:"addCharacters"`
+	ProposedRelationships string       `json:"proposedRelationships"`
+	ProposedOrder         *int         `json:"proposedOrder"`
+	ProposedPosition      *int         `json:"proposedPosition"`
+	ProposedDepth         *int         `json:"proposedDepth"`
+	Flags                 *FlagChanges `json:"flags"`
+	RemoveKeys            []string     `json:"removeKeys"`
+	Rationale             string       `json:"rationale"`
 }
 
 // Suggest runs the connection pass and returns deduplicated suggestions.
@@ -219,6 +224,14 @@ func buildSuggestion(p suggestionPayload, entries map[int]lorebook.Entry, chars 
 		return buildEntryEntry(s, p, entries)
 	case KindCharacterCharacter:
 		return buildCharacterCharacter(s, p, chars)
+	case KindEntryOrder:
+		return buildEntryOrder(s, p, entries)
+	case KindEntryPosition:
+		return buildEntryPosition(s, p, entries)
+	case KindEntryFlags:
+		return buildEntryFlags(s, p, entries)
+	case KindRemoveKeys:
+		return buildRemoveKeys(s, p, entries)
 	default:
 		return s, false
 	}
@@ -290,6 +303,129 @@ func buildCharacterCharacter(s Suggestion, p suggestionPayload, chars map[int]co
 	s.CurrentRelationships = source.Relationships
 	s.ProposedRelationships = proposed
 	return s, true
+}
+
+// Bounds for proposed rule values. Order tiers top out at 999 in the prompt,
+// but SillyTavern accepts up to 1000; positions and selective logic mirror the
+// editor's own ranges.
+const (
+	maxOrder          = 1000
+	maxPosition       = 6
+	maxDepth          = 64
+	maxSelectiveLogic = 3
+	positionAtDepth   = 4
+)
+
+// buildEntryOrder re-tiers an entry's activation order.
+func buildEntryOrder(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok || p.ProposedOrder == nil {
+		return s, false
+	}
+	order := *p.ProposedOrder
+	if order < 0 || order > maxOrder || order == entry.Order {
+		return s, false
+	}
+	s.EntryUID, s.CurrentOrder, s.ProposedOrder = p.EntryUID, entry.Order, order
+	return s, true
+}
+
+// buildEntryPosition moves an entry to a different injection position. Depth
+// only matters at the @Depth position; a proposal that omits it keeps the
+// entry's own depth, so approving never resets a hand-tuned value.
+func buildEntryPosition(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok || p.ProposedPosition == nil {
+		return s, false
+	}
+	position := *p.ProposedPosition
+	if position < 0 || position > maxPosition {
+		return s, false
+	}
+	depth := entry.Depth
+	if p.ProposedDepth != nil && *p.ProposedDepth >= 0 && *p.ProposedDepth <= maxDepth {
+		depth = *p.ProposedDepth
+	}
+	if position == entry.Position && (position != positionAtDepth || depth == entry.Depth) {
+		return s, false
+	}
+	s.EntryUID = p.EntryUID
+	s.CurrentPosition, s.ProposedPosition = entry.Position, position
+	s.CurrentDepth, s.ProposedDepth = entry.Depth, depth
+	return s, true
+}
+
+// buildEntryFlags adjusts behavior flags, keeping only the fields that both
+// pass validation and actually differ from the entry's current values.
+func buildEntryFlags(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok || p.Flags == nil {
+		return s, false
+	}
+
+	var current, proposed FlagChanges
+	changed := false
+	keepBool := func(want *bool, have bool, cur, prop **bool) {
+		if want == nil || *want == have {
+			return
+		}
+		*cur, *prop = ptrTo(have), ptrTo(*want)
+		changed = true
+	}
+	keepInt := func(want *int, have, limit int, cur, prop **int) {
+		if want == nil || *want == have || *want < 0 || *want > limit {
+			return
+		}
+		*cur, *prop = ptrTo(have), ptrTo(*want)
+		changed = true
+	}
+
+	keepBool(p.Flags.Constant, entry.Constant, &current.Constant, &proposed.Constant)
+	keepBool(p.Flags.Selective, entry.Selective, &current.Selective, &proposed.Selective)
+	keepInt(p.Flags.SelectiveLogic, entry.SelectiveLogic, maxSelectiveLogic, &current.SelectiveLogic, &proposed.SelectiveLogic)
+	keepInt(p.Flags.Probability, entry.Probability, 100, &current.Probability, &proposed.Probability)
+	keepBool(p.Flags.UseProbability, entry.UseProbability, &current.UseProbability, &proposed.UseProbability)
+	keepBool(p.Flags.ExcludeRecursion, entry.ExcludeRecursion, &current.ExcludeRecursion, &proposed.ExcludeRecursion)
+	keepBool(p.Flags.PreventRecursion, entry.PreventRecursion, &current.PreventRecursion, &proposed.PreventRecursion)
+
+	if !changed {
+		return s, false
+	}
+	s.EntryUID, s.CurrentFlags, s.ProposedFlags = p.EntryUID, &current, &proposed
+	return s, true
+}
+
+// buildRemoveKeys drops trigger keys from an entry. The suggestion carries the
+// entry's own spelling of each key, and a non-constant entry must keep at
+// least one — an entry nothing can trigger is worse than a noisy one.
+func buildRemoveKeys(s Suggestion, p suggestionPayload, entries map[int]lorebook.Entry) (Suggestion, bool) {
+	entry, ok := entries[p.EntryUID]
+	if !ok {
+		return s, false
+	}
+
+	wanted := make(map[string]bool, len(p.RemoveKeys))
+	for _, k := range p.RemoveKeys {
+		wanted[strings.ToLower(strings.TrimSpace(k))] = true
+	}
+	var remove []string
+	for _, k := range entry.Key {
+		if wanted[strings.ToLower(strings.TrimSpace(k))] {
+			remove = append(remove, k)
+		}
+	}
+	if len(remove) == 0 {
+		return s, false
+	}
+	if !entry.Constant && len(remove) == len(entry.Key) {
+		return s, false
+	}
+	s.EntryUID, s.RemoveKeys = p.EntryUID, remove
+	return s, true
+}
+
+func ptrTo[T any](v T) *T {
+	return &v
 }
 
 // usableKeys drops blanks and keywords too generic to be worth triggering on,

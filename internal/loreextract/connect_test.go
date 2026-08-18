@@ -177,6 +177,151 @@ func TestSuggest_KeepsOnlyTheNewItems(t *testing.T) {
 		"the existing key and the generic one must both be filtered out")
 }
 
+func TestSuggest_ParsesOptimizationKinds(t *testing.T) {
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "Denerim", Key: []string{"Denerim", "city"}, Content: "The capital.", Order: 100},
+		{UID: 2, Comment: "Wardens", Key: []string{"Grey Warden"}, Content: "An order.", Order: 100},
+	}
+	resp := `{"suggestions":[
+{"kind":"entryOrder","entryUid":1,"proposedOrder":950,"rationale":"a hard rule"},
+{"kind":"entryPosition","entryUid":1,"proposedPosition":4,"proposedDepth":6,"rationale":"belongs in chat"},
+{"kind":"entryFlags","entryUid":2,"flags":{"constant":true,"probability":80},"rationale":"never cut"},
+{"kind":"removeKeys","entryUid":1,"removeKeys":["city"],"rationale":"too generic"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(entries))
+	require.NoError(t, err)
+	require.Len(t, got, 4)
+
+	assert.Equal(t, KindEntryOrder, got[0].Kind)
+	assert.Equal(t, 100, got[0].CurrentOrder)
+	assert.Equal(t, 950, got[0].ProposedOrder)
+
+	assert.Equal(t, KindEntryPosition, got[1].Kind)
+	assert.Equal(t, 0, got[1].CurrentPosition)
+	assert.Equal(t, 4, got[1].ProposedPosition)
+	assert.Equal(t, 6, got[1].ProposedDepth)
+
+	assert.Equal(t, KindEntryFlags, got[2].Kind)
+	require.NotNil(t, got[2].ProposedFlags)
+	require.NotNil(t, got[2].CurrentFlags)
+	require.NotNil(t, got[2].ProposedFlags.Constant)
+	assert.True(t, *got[2].ProposedFlags.Constant)
+	require.NotNil(t, got[2].CurrentFlags.Constant)
+	assert.False(t, *got[2].CurrentFlags.Constant)
+	require.NotNil(t, got[2].ProposedFlags.Probability)
+	assert.Equal(t, 80, *got[2].ProposedFlags.Probability)
+
+	assert.Equal(t, KindRemoveKeys, got[3].Kind)
+	assert.Equal(t, []string{"city"}, got[3].RemoveKeys)
+
+	for _, s := range got {
+		assert.True(t, s.Selected)
+	}
+}
+
+func TestSuggest_DropsNoOpOptimizations(t *testing.T) {
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "Denerim", Key: []string{"Denerim"}, Content: "x",
+			Order: 500, Position: 4, Depth: 6, Constant: true, Probability: 80},
+		{UID: 2, Comment: "Wardens", Key: []string{"Grey Warden"}, Content: "y", Order: 100},
+	}
+
+	tests := []struct {
+		name string
+		resp string
+	}{
+		{"same order", `{"suggestions":[{"kind":"entryOrder","entryUid":1,"proposedOrder":500}]}`},
+		{"missing order", `{"suggestions":[{"kind":"entryOrder","entryUid":1}]}`},
+		{"order above range", `{"suggestions":[{"kind":"entryOrder","entryUid":1,"proposedOrder":2000}]}`},
+		{"order below range", `{"suggestions":[{"kind":"entryOrder","entryUid":1,"proposedOrder":-5}]}`},
+		{"same position and depth", `{"suggestions":[{"kind":"entryPosition","entryUid":1,"proposedPosition":4,"proposedDepth":6}]}`},
+		{"position out of range", `{"suggestions":[{"kind":"entryPosition","entryUid":1,"proposedPosition":9}]}`},
+		{"missing position", `{"suggestions":[{"kind":"entryPosition","entryUid":1}]}`},
+		{"flags all identical", `{"suggestions":[{"kind":"entryFlags","entryUid":1,"flags":{"constant":true,"probability":80}}]}`},
+		{"missing flags", `{"suggestions":[{"kind":"entryFlags","entryUid":1}]}`},
+		{"probability out of range", `{"suggestions":[{"kind":"entryFlags","entryUid":1,"flags":{"probability":150}}]}`},
+		{"selective logic out of range", `{"suggestions":[{"kind":"entryFlags","entryUid":1,"flags":{"selectiveLogic":7}}]}`},
+		{"removing a key the entry lacks", `{"suggestions":[{"kind":"removeKeys","entryUid":1,"removeKeys":["nope"]}]}`},
+		{"removing the last trigger", `{"suggestions":[{"kind":"removeKeys","entryUid":2,"removeKeys":["Grey Warden"]}]}`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := suggestWith(t, tc.resp, connectRequest(entries))
+			require.NoError(t, err)
+			assert.Empty(t, got, "an optimization that changes nothing or cannot be applied must not be shown")
+		})
+	}
+}
+
+func TestSuggest_DepthOnlyPositionChangeIsKept(t *testing.T) {
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "Denerim", Key: []string{"Denerim"}, Content: "x", Position: 4, Depth: 4},
+	}
+	resp := `{"suggestions":[{"kind":"entryPosition","entryUid":1,"proposedPosition":4,"proposedDepth":8,"rationale":"deeper"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(entries))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, 4, got[0].ProposedPosition)
+	assert.Equal(t, 8, got[0].ProposedDepth)
+	assert.Equal(t, 4, got[0].CurrentDepth)
+}
+
+func TestSuggest_PositionFourWithoutDepthKeepsTheEntrysDepth(t *testing.T) {
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "Denerim", Key: []string{"Denerim"}, Content: "x", Position: 0, Depth: 5},
+	}
+	resp := `{"suggestions":[{"kind":"entryPosition","entryUid":1,"proposedPosition":4,"rationale":"chat level"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(entries))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, 5, got[0].ProposedDepth, "no depth proposed means the entry keeps its own")
+}
+
+func TestSuggest_FlagChangesKeepOnlyDifferingFields(t *testing.T) {
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "Denerim", Key: []string{"Denerim"}, Content: "x", Constant: true, Probability: 50},
+	}
+	resp := `{"suggestions":[{"kind":"entryFlags","entryUid":1,"flags":{"constant":true,"probability":80},"rationale":"tune"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(entries))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Nil(t, got[0].ProposedFlags.Constant, "a field already at the proposed value is not a change")
+	require.NotNil(t, got[0].ProposedFlags.Probability)
+	assert.Equal(t, 80, *got[0].ProposedFlags.Probability)
+	require.NotNil(t, got[0].CurrentFlags.Probability)
+	assert.Equal(t, 50, *got[0].CurrentFlags.Probability)
+}
+
+func TestSuggest_RemoveKeysMatchesCaseInsensitively(t *testing.T) {
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "Denerim", Key: []string{"Denerim", "The Capital"}, Content: "x"},
+	}
+	resp := `{"suggestions":[{"kind":"removeKeys","entryUid":1,"removeKeys":["the capital"],"rationale":"dup"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(entries))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, []string{"The Capital"}, got[0].RemoveKeys,
+		"the suggestion must carry the entry's own spelling")
+}
+
+func TestSuggest_RemoveKeysMayEmptyAConstantEntry(t *testing.T) {
+	// A constant entry ignores keys entirely, so stripping the last one is fine.
+	entries := []lorebook.Entry{
+		{UID: 1, Comment: "World rule", Key: []string{"magic"}, Content: "x", Constant: true},
+	}
+	resp := `{"suggestions":[{"kind":"removeKeys","entryUid":1,"removeKeys":["magic"],"rationale":"constant ignores keys"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(entries))
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, []string{"magic"}, got[0].RemoveKeys)
+}
+
 func TestSuggest_BatchesByTokenBudget(t *testing.T) {
 	// A small context forces several batches; every entry must still be seen.
 	entries := make([]lorebook.Entry, 12)

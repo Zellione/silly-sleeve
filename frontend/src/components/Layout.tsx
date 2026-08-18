@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CogIcon, SunIcon, MoonIcon } from '../icons';
+import { CogIcon, SunIcon, MoonIcon, SaveIcon } from '../icons';
 import { TABS } from './tabs';
 import { getStoredDark, applyTheme } from '../utils/theme';
 
@@ -15,7 +15,8 @@ export const TopBar: React.FC<{
   current: Route;
   onNav: (r: Route) => void;
   projectName?: string;
-}> = ({ current, onNav, projectName }) => (
+  onSave?: () => void;
+}> = ({ current, onNav, projectName, onSave }) => (
   <div className="v2-top">
     <button type="button" className="v2-brand" title="All projects"
       onClick={() => onNav('dashboard')}
@@ -41,6 +42,11 @@ export const TopBar: React.FC<{
       ))}
     </div>
     <div className="v2-right">
+      {onSave && (
+        <button type="button" className="v2-savebtn" title="Save project" onClick={onSave}>
+          <SaveIcon size={14} /> Save
+        </button>
+      )}
       <ThemeToggle />
       <button type="button"
         className="v2-iconbtn"

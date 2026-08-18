@@ -115,7 +115,7 @@ export function ImportLorebook():Promise<Array<lorebook.Entry>>;
 
 export function ListProjects():Promise<Array<library.Entry>>;
 
-export function NewProject(arg1:string):Promise<void>;
+export function NewProject(arg1:string):Promise<string>;
 
 export function OpenProjectBundle(arg1:string):Promise<project.ProjectManifest>;
 

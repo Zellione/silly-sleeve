@@ -5,9 +5,14 @@ import App from './App';
 import { settings } from '../wailsjs/go/models';
 
 const mockGetSettings = vi.fn();
+const mockNewProject = vi.fn();
+const mockSaveProjectBundle = vi.fn();
+const mockPickSaveBundle = vi.fn();
 
 vi.mock('../wailsjs/go/app/App', () => ({
   GetSettings: () => mockGetSettings(),
+  SaveProjectBundle: (p: string) => mockSaveProjectBundle(p),
+  PickSaveBundle: () => mockPickSaveBundle(),
   SaveSettings: vi.fn(),
   TestLLMEndpoint: vi.fn(),
   GetCachedCrawl: vi.fn().mockResolvedValue(null),
@@ -22,7 +27,7 @@ vi.mock('../wailsjs/go/app/App', () => ({
   SetActiveCharacter: vi.fn(),
   UpdateCharacter: vi.fn(),
   ListProjects: vi.fn().mockResolvedValue([]),
-  NewProject: vi.fn().mockResolvedValue(undefined),
+  NewProject: (name: string) => mockNewProject(name),
   GetComfySamplers: vi.fn().mockResolvedValue([]),
   GetComfySchedulers: vi.fn().mockResolvedValue([]),
   GetComfyCheckpoints: vi.fn().mockResolvedValue([]),
@@ -60,6 +65,9 @@ const enterApp = async (user: UserEvent) => {
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNewProject.mockResolvedValue('/lib/Untitled.slv');
+    mockSaveProjectBundle.mockResolvedValue(undefined);
+    mockPickSaveBundle.mockResolvedValue('/picked/path.slv');
   });
 
   it('renders the projects picker on start', async () => {
@@ -219,6 +227,45 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Add character/ })).toBeInTheDocument();
     });
+  });
+
+  it('saves the instantly-created bundle via the top-bar Save button', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    render(<App />);
+    await enterApp(user);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/lib/Untitled.slv');
+    });
+    expect(mockPickSaveBundle).not.toHaveBeenCalled();
+    expect(screen.getByText('Project saved')).toBeInTheDocument();
+  });
+
+  it('falls back to the save dialog when the project has no bundle path', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    mockNewProject.mockResolvedValue('');
+    render(<App />);
+    await enterApp(user);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/picked/path.slv');
+    });
+    expect(mockPickSaveBundle).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an error toast when saving fails', async () => {
+    const user = userEvent.setup();
+    mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
+    mockSaveProjectBundle.mockRejectedValueOnce(new Error('disk full'));
+    render(<App />);
+    await enterApp(user);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Project not saved')).toBeInTheDocument();
   });
 
   it('renders StatusBar inside the shell', async () => {

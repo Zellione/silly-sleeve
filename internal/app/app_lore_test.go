@@ -209,6 +209,40 @@ func TestSetStagedSourceMode_ChoosesThePrompt(t *testing.T) {
 	assert.Len(t, got, 1, "summary mode yields a single entry")
 }
 
+func TestSetStagedSourceStyle(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	stageLore(t, a)
+
+	require.Len(t, a.GetStagedSources(), 1)
+	assert.Equal(t, loreextract.StyleProse, a.GetStagedSources()[0].Style, "staging defaults to prose")
+
+	got := a.SetStagedSourceStyle("https://w/wiki/Lore", loreextract.StyleFactual)
+	require.Len(t, got, 1)
+	assert.Equal(t, loreextract.StyleFactual, got[0].Style)
+
+	got = a.SetStagedSourceStyle("https://w/wiki/Lore", "nonsense")
+	assert.Equal(t, loreextract.StyleProse, got[0].Style, "an unknown style falls back to prose")
+
+	got = a.SetStagedSourceStyle("https://w/wiki/Missing", loreextract.StyleFactual)
+	assert.Equal(t, loreextract.StyleProse, got[0].Style, "a miss changes nothing")
+}
+
+func TestSetStagedSourceStyle_ChoosesTheWording(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	var captured string
+	a.loreGen = loreextract.NewExtractor(llm.CompleterFunc(
+		func(_ context.Context, _ llm.LLMEndpoint, _, user string) (string, error) {
+			captured = user
+			return loreResponse, nil
+		}))
+	stageLore(t, a)
+	a.SetStagedSourceStyle("https://w/wiki/Lore", loreextract.StyleFactual)
+
+	_, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
+	require.NoError(t, err)
+	assert.Contains(t, captured, "dense, factual", "the chosen style must reach the prompt")
+}
+
 const connectResponse = `{"suggestions":[
 {"kind":"entryCharacter","entryUid":1,"addCharacters":["Alistair"],"rationale":"a"},
 {"kind":"triggerKeys","entryUid":1,"addKeys":["the capital"],"rationale":"b"},

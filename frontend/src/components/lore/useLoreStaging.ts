@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  GetStagedSources, SetStagedSourceMode, RemoveStagedSource,
+  GetStagedSources, SetStagedSourceMode, SetStagedSourceStyle, RemoveStagedSource,
   GetLorebookCandidates, DiscardLorebookCandidates, ExtractLorebookCandidates,
   ApproveLorebookCandidates,
 } from '../../../wailsjs/go/app/App';
@@ -10,6 +10,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { logError, logDebug } from '../../utils/log';
 
 export type ExtractionMode = 'split' | 'summary';
+export type ContentStyle = 'prose' | 'factual';
 
 /**
  * Owns the lorebook extraction review: which pages are staged, what has been
@@ -57,6 +58,16 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
         onPersist?.();
       })
       .catch(() => toast({ kind: 'bad', title: 'Could not change mode' }));
+  }, [toast, onPersist]);
+
+  const setStyle = useCallback((url: string, style: ContentStyle) => {
+    // Same string-alias situation as SetStagedSourceMode above.
+    SetStagedSourceStyle(url, style as unknown as Parameters<typeof SetStagedSourceStyle>[1])
+      .then(s => {
+        setSources(s || []);
+        onPersist?.();
+      })
+      .catch(() => toast({ kind: 'bad', title: 'Could not change style' }));
   }, [toast, onPersist]);
 
   const removeSource = useCallback((url: string) => {
@@ -142,6 +153,6 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
 
   return {
     sources, candidates, activeUrl, extracting, extractError, loaded,
-    setActiveUrl, setMode, removeSource, extract, updateCandidate, discard, approve,
+    setActiveUrl, setMode, setStyle, removeSource, extract, updateCandidate, discard, approve,
   };
 }

@@ -297,6 +297,44 @@ func TestExtract_ModeSelectsThePrompt(t *testing.T) {
 	}
 }
 
+func TestExtract_StyleSelectsTheWording(t *testing.T) {
+	tests := []struct {
+		style ContentStyle
+		want  string
+		avoid string
+	}{
+		{StyleProse, "evocative prose", "dense, factual"},
+		{StyleFactual, "dense, factual", "evocative prose"},
+		{ContentStyle(""), "evocative prose", "dense, factual"},
+		{ContentStyle("nonsense"), "evocative prose", "dense, factual"},
+	}
+
+	for _, tc := range tests {
+		t.Run(string(tc.style), func(t *testing.T) {
+			f := &fakeCompleter{response: twoEntryResponse}
+			req := baseRequest()
+			req.Style = tc.style
+
+			_, err := NewExtractor(f).Extract(context.Background(), req)
+			require.NoError(t, err)
+			assert.Contains(t, f.user, tc.want)
+			assert.NotContains(t, f.user, tc.avoid)
+			assert.NotContains(t, f.user, "{{style", "style placeholders must be substituted")
+		})
+	}
+}
+
+func TestExtract_SummaryModeAlsoCarriesTheStyle(t *testing.T) {
+	f := &fakeCompleter{response: twoEntryResponse}
+	req := baseRequest()
+	req.Mode = ModeSummary
+	req.Style = StyleFactual
+
+	_, err := NewExtractor(f).Extract(context.Background(), req)
+	require.NoError(t, err)
+	assert.Contains(t, f.user, "dense, factual")
+}
+
 func TestExtract_PromptCarriesProjectContext(t *testing.T) {
 	f := &fakeCompleter{response: twoEntryResponse}
 	req := baseRequest()
@@ -370,6 +408,17 @@ func TestExtractionMode(t *testing.T) {
 	assert.Equal(t, ModeSummary, ModeSummary.OrDefault())
 	assert.Equal(t, ModeSplit, ExtractionMode("").OrDefault())
 	assert.Equal(t, ModeSplit, ExtractionMode("other").OrDefault())
+}
+
+func TestContentStyle(t *testing.T) {
+	assert.True(t, StyleProse.Valid())
+	assert.True(t, StyleFactual.Valid())
+	assert.False(t, ContentStyle("").Valid())
+	assert.False(t, ContentStyle("other").Valid())
+
+	assert.Equal(t, StyleFactual, StyleFactual.OrDefault())
+	assert.Equal(t, StyleProse, ContentStyle("").OrDefault())
+	assert.Equal(t, StyleProse, ContentStyle("other").OrDefault())
 }
 
 func TestState_Empty(t *testing.T) {

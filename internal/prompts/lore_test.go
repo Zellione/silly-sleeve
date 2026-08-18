@@ -27,8 +27,8 @@ func TestDefaultLorePrompt_UnknownIsEmpty(t *testing.T) {
 
 func TestLorePrompts_DeclareTheVariablesTheyUse(t *testing.T) {
 	tests := map[string][]string{
-		LoreExtractSplit:   {"{{crawl_context}}", "{{character_roster}}", "{{entry_index}}"},
-		LoreExtractSummary: {"{{crawl_context}}", "{{character_roster}}", "{{entry_index}}"},
+		LoreExtractSplit:   {"{{crawl_context}}", "{{character_roster}}", "{{entry_index}}", "{{style.rewrite}}", "{{style.opening}}"},
+		LoreExtractSummary: {"{{crawl_context}}", "{{character_roster}}", "{{entry_index}}", "{{style.rewrite}}", "{{style.opening}}"},
 		LoreConnect:        {"{{character_roster}}", "{{entry_index}}", "{{focus_entries}}"},
 	}
 

@@ -47,10 +47,10 @@ const characters = [
   compose.Character.createFrom({ id: 2, name: 'Duncan' }),
 ];
 
-const renderPanel = (onChanged = vi.fn()) =>
+const renderPanel = (onChanged = vi.fn(), onPersist?: () => void) =>
   render(
     <ToastProvider>
-      <ExtractPanel characters={characters} onEntriesChanged={onChanged} />
+      <ExtractPanel characters={characters} onEntriesChanged={onChanged} onPersist={onPersist} />
     </ToastProvider>,
   );
 
@@ -226,6 +226,53 @@ describe('ExtractPanel', () => {
     await user.click(await screen.findByRole('option', { name: 'Single summary' }));
 
     await waitFor(() => expect(mockSetStagedSourceMode).toHaveBeenCalledWith(LORE_URL, 'summary'));
+  });
+
+  it('notifies onPersist after a successful extraction', async () => {
+    const onPersist = vi.fn();
+    const user = userEvent.setup();
+    renderPanel(vi.fn(), onPersist);
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('button', { name: /Extract facts/i }));
+
+    await waitFor(() => expect(onPersist).toHaveBeenCalled());
+  });
+
+  it('does not notify onPersist when extraction fails', async () => {
+    mockExtractLorebookCandidates.mockRejectedValue(new Error('boom'));
+    const onPersist = vi.fn();
+    const user = userEvent.setup();
+    renderPanel(vi.fn(), onPersist);
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('button', { name: /Extract facts/i }));
+
+    await screen.findByText('Extraction failed');
+    expect(onPersist).not.toHaveBeenCalled();
+  });
+
+  it('notifies onPersist after a mode change', async () => {
+    const onPersist = vi.fn();
+    const user = userEvent.setup();
+    renderPanel(vi.fn(), onPersist);
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('combobox', { name: /Extraction mode/i }));
+    await user.click(await screen.findByRole('option', { name: 'Single summary' }));
+
+    await waitFor(() => expect(onPersist).toHaveBeenCalled());
+  });
+
+  it('notifies onPersist after removing a staged source', async () => {
+    const onPersist = vi.fn();
+    const user = userEvent.setup();
+    renderPanel(vi.fn(), onPersist);
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('button', { name: /Remove Ferelden/i }));
+
+    await waitFor(() => expect(onPersist).toHaveBeenCalled());
   });
 
   it('discards a page\'s candidates but keeps it staged', async () => {

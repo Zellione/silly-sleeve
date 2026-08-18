@@ -496,7 +496,10 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
       {tab === 'extract' ? (
         <ExtractPanel
           characters={characters}
-          onEntriesChanged={setEntries}
+          // Approval stores entries backend-side; the bundle write is what
+          // puts them on disk.
+          onEntriesChanged={es => { setEntries(es); scheduleBundleSave(); }}
+          onPersist={scheduleBundleSave}
           connections={{
             suggestions: connections.suggestions,
             entries,

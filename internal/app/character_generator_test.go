@@ -56,7 +56,7 @@ func TestToLLMEndpoint_MapsAllFields(t *testing.T) {
 	ep := toLLMEndpoint(settings.LLMEndpoint{
 		ID: 1, Name: "local", URL: "http://x", Model: "m",
 		Key: &key, ContextSize: 4096, Temperature: 0.7, SystemPrompt: "sys",
-		TimeoutSeconds: 120,
+		TimeoutSeconds: 120, ForceJSON: true,
 	})
 	assert.Equal(t, 1, ep.ID)
 	assert.Equal(t, "local", ep.Name)
@@ -68,6 +68,7 @@ func TestToLLMEndpoint_MapsAllFields(t *testing.T) {
 	assert.InDelta(t, 0.7, ep.Temperature, 1e-9)
 	assert.Equal(t, "sys", ep.SystemPrompt)
 	assert.Equal(t, 120, ep.TimeoutSeconds)
+	assert.True(t, ep.ForceJSON)
 }
 
 func TestCharacterGenerator_GenerateImagePrompt(t *testing.T) {

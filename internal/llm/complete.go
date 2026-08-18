@@ -57,6 +57,25 @@ type chatRequest struct {
 	Messages    []ChatMessage `json:"messages"`
 	MaxTokens   int           `json:"max_tokens,omitempty"`
 	Temperature float64       `json:"temperature,omitempty"`
+	// ResponseFormat is only sent when the endpoint opts into ForceJSON;
+	// servers that don't know the param may reject requests carrying it.
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+}
+
+// responseFormat is the OpenAI-compatible output constraint. "json_object" is
+// the widest-supported variant (ollama, llama.cpp, koboldcpp); it guarantees
+// syntax, not schema — the parsers still normalise the content.
+type responseFormat struct {
+	Type string `json:"type"`
+}
+
+// responseFormatFor returns the response_format for an endpoint, nil when the
+// endpoint has not opted in.
+func responseFormatFor(ep LLMEndpoint) *responseFormat {
+	if ep.ForceJSON {
+		return &responseFormat{Type: "json_object"}
+	}
+	return nil
 }
 
 type chatResponse struct {
@@ -77,9 +96,10 @@ func Complete(ctx context.Context, ep LLMEndpoint, systemPrompt, userPrompt stri
 	}
 
 	payload := chatRequest{
-		Model:       ep.Model,
-		Messages:    messages,
-		Temperature: ep.Temperature,
+		Model:          ep.Model,
+		Messages:       messages,
+		Temperature:    ep.Temperature,
+		ResponseFormat: responseFormatFor(ep),
 	}
 
 	body, err := json.Marshal(payload)

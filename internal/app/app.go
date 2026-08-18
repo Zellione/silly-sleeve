@@ -119,16 +119,7 @@ func (a *App) SaveSettings(s settings.Settings) error {
 
 // TestLLMEndpoint verifies connectivity to an LLM endpoint.
 func (a *App) TestLLMEndpoint(ep settings.LLMEndpoint) llm.TestResult {
-	return llm.TestEndpoint(llm.LLMEndpoint{
-		ID:           ep.ID,
-		Name:         ep.Name,
-		URL:          ep.URL,
-		Model:        ep.Model,
-		Key:          ep.Key,
-		ContextSize:  ep.ContextSize,
-		Temperature:  ep.Temperature,
-		SystemPrompt: ep.SystemPrompt,
-	})
+	return llm.TestEndpoint(toLLMEndpoint(ep))
 }
 
 // GetComfyConfig returns the ComfyUI connection settings.

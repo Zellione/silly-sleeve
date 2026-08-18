@@ -122,6 +122,49 @@ func TestComplete_NoAuthWhenKeyNil(t *testing.T) {
 	assert.Empty(t, receivedAuth)
 }
 
+func TestComplete_ForceJSONSendsResponseFormat(t *testing.T) {
+	var req map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": "{}"}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	ep := LLMEndpoint{URL: srv.URL, Model: "model", ForceJSON: true}
+	_, err := Complete(context.Background(), ep, "sys", "user")
+	assert.NoError(t, err)
+	rf, ok := req["response_format"].(map[string]any)
+	assert.True(t, ok, "request must carry response_format")
+	assert.Equal(t, "json_object", rf["type"])
+}
+
+func TestComplete_NoResponseFormatByDefault(t *testing.T) {
+	// Some OpenAI-compatible servers reject unknown params, so the field
+	// must be absent — not null — unless the endpoint opts in.
+	var req map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": "ok"}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	ep := LLMEndpoint{URL: srv.URL, Model: "model"}
+	_, err := Complete(context.Background(), ep, "sys", "user")
+	assert.NoError(t, err)
+	_, present := req["response_format"]
+	assert.False(t, present)
+}
+
 func TestComplete_ResponseBodyParsing(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any

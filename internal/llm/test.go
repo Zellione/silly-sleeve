@@ -20,6 +20,8 @@ type LLMEndpoint struct {
 	SystemPrompt string
 	// TimeoutSeconds bounds one completion request; zero means the default.
 	TimeoutSeconds int
+	// ForceJSON constrains output to valid JSON via response_format.
+	ForceJSON bool
 }
 
 // TestResult returns the outcome of a connectivity test.
@@ -41,6 +43,11 @@ func TestEndpoint(ep LLMEndpoint) TestResult {
 		"model":      ep.Model,
 		"messages":   []map[string]string{{"role": "user", "content": "hi"}},
 		"max_tokens": 1,
+	}
+	// Included so the Test button doubles as the "does my backend support
+	// JSON mode?" probe: unsupporting servers fail the test visibly.
+	if rf := responseFormatFor(ep); rf != nil {
+		payload["response_format"] = rf
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

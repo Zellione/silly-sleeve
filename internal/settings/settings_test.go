@@ -118,6 +118,7 @@ func TestSave_Roundtrip(t *testing.T) {
 				Temperature:    0.7,
 				SystemPrompt:   "You are helpful.",
 				TimeoutSeconds: 120,
+				ForceJSON:      true,
 				Ok:             true,
 			},
 		},
@@ -140,6 +141,7 @@ func TestSave_Roundtrip(t *testing.T) {
 	assert.Equal(t, 0.7, ep.Temperature)
 	assert.Equal(t, "You are helpful.", ep.SystemPrompt)
 	assert.Equal(t, 120, ep.TimeoutSeconds)
+	assert.True(t, ep.ForceJSON)
 	assert.True(t, ep.Ok)
 }
 

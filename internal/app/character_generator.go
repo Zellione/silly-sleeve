@@ -47,6 +47,7 @@ func toLLMEndpoint(def settings.LLMEndpoint) llm.LLMEndpoint {
 		Temperature:    def.Temperature,
 		SystemPrompt:   def.SystemPrompt,
 		TimeoutSeconds: def.TimeoutSeconds,
+		ForceJSON:      def.ForceJSON,
 	}
 }
 

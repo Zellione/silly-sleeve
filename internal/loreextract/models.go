@@ -38,6 +38,47 @@ func (m ExtractionMode) OrDefault() ExtractionMode {
 	return ModeSplit
 }
 
+// ContentStyle selects how extracted entry content is written.
+type ContentStyle string
+
+const (
+	// StyleProse produces vivid, sensory entries that read like narration.
+	StyleProse ContentStyle = "prose"
+	// StyleFactual produces short declarative statements, every clause a fact.
+	// It trades atmosphere for token efficiency, which matters on small
+	// contexts where several entries trigger at once.
+	StyleFactual ContentStyle = "factual"
+)
+
+// Valid reports whether the style is one this package understands.
+func (s ContentStyle) Valid() bool {
+	return s == StyleProse || s == StyleFactual
+}
+
+// OrDefault returns the style, or StyleProse when it is unset or unrecognised.
+func (s ContentStyle) OrDefault() ContentStyle {
+	if s.Valid() {
+		return s
+	}
+	return StyleProse
+}
+
+// PromptVars returns the values for the {{style.rewrite}} and {{style.opening}}
+// template variables. The style changes only these two lines of the extraction
+// rules: how the source is rewritten, and what an entry's first line is.
+func (s ContentStyle) PromptVars() map[string]string {
+	if s.OrDefault() == StyleFactual {
+		return map[string]string{
+			"style.rewrite": "Rewrite the source into dense, factual prose: short declarative sentences, every clause carrying a fact. No atmosphere, no sensory detail.",
+			"style.opening": "Open with the entry's single most defining fact.",
+		}
+	}
+	return map[string]string{
+		"style.rewrite": "Rewrite the source into evocative prose.",
+		"style.opening": "Open with a specific, sensory line.",
+	}
+}
+
 // StagedSource is a crawled page queued for extraction. Sending a crawl to the
 // lorebook creates one of these rather than an entry: what a page should become
 // is a judgement the user makes after seeing the extracted facts.
@@ -45,6 +86,7 @@ type StagedSource struct {
 	URL       string         `json:"url"`
 	Title     string         `json:"title"`
 	Mode      ExtractionMode `json:"mode"`
+	Style     ContentStyle   `json:"style"`
 	Extracted bool           `json:"extracted"`
 }
 

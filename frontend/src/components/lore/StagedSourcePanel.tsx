@@ -2,7 +2,7 @@ import React from 'react';
 import { loreextract } from '../../../wailsjs/go/models';
 import { Dropdown } from '../Dropdown';
 import { TrashIcon, BookIcon } from '../../icons';
-import type { ExtractionMode } from './useLoreStaging';
+import type { ExtractionMode, ContentStyle } from './useLoreStaging';
 
 const MODE_OPTIONS = [
   { value: 'split', label: 'Split into facts' },
@@ -12,6 +12,16 @@ const MODE_OPTIONS = [
 const MODE_HINTS: Record<string, string> = {
   split: 'Many small entries, one concept each.',
   summary: 'One compressed entry for the whole page.',
+};
+
+const STYLE_OPTIONS = [
+  { value: 'prose', label: 'Evocative prose' },
+  { value: 'factual', label: 'Dense & factual' },
+];
+
+const STYLE_HINTS: Record<string, string> = {
+  prose: 'Vivid entries that read like narration.',
+  factual: 'Short declarative facts. Fewer tokens, no flavor.',
 };
 
 /** What a staged page is currently doing, in the order that matters most. */
@@ -30,9 +40,10 @@ function extractLabel(source: loreextract.StagedSource, extracting: string | nul
  * The staged-sources column: crawled pages queued for extraction, the mode
  * each will be extracted with, and the Extract action.
  *
- * A source stays listed after its candidates are approved, marked done, so it
- * can be extracted again — with a different mode, or after the prompts change
- * — without going back to the Crawler.
+ * Approving a page's candidates consumes it: the page leaves this list along
+ * with its review. Discarding keeps it staged so it can be extracted again —
+ * with a different mode or style, or after the prompts change — and a consumed
+ * page can always be re-staged by sending it from the Crawler again.
  */
 export const StagedSourcePanel: React.FC<{
   sources: loreextract.StagedSource[];
@@ -41,9 +52,10 @@ export const StagedSourcePanel: React.FC<{
   extracting: string | null;
   onSelect: (url: string) => void;
   onSetMode: (url: string, mode: ExtractionMode) => void;
+  onSetStyle: (url: string, style: ContentStyle) => void;
   onExtract: (url: string) => void;
   onRemove: (url: string) => void;
-}> = ({ sources, candidates, activeUrl, extracting, onSelect, onSetMode, onExtract, onRemove }) => {
+}> = ({ sources, candidates, activeUrl, extracting, onSelect, onSetMode, onSetStyle, onExtract, onRemove }) => {
   const pendingFor = (url: string) => candidates.filter(c => c.sourceUrl === url).length;
 
   if (sources.length === 0) {
@@ -113,6 +125,14 @@ export const StagedSourcePanel: React.FC<{
             aria-label={`Extraction mode for ${active.title || active.url}`}
           />
           <small className="helpr">{MODE_HINTS[active.mode || 'split']}</small>
+          <span className="lore-mode-label">How should entries be written?</span>
+          <Dropdown
+            value={active.style || 'prose'}
+            options={STYLE_OPTIONS}
+            onChange={v => onSetStyle(active.url, v as ContentStyle)}
+            aria-label={`Content style for ${active.title || active.url}`}
+          />
+          <small className="helpr">{STYLE_HINTS[active.style || 'prose']}</small>
           <button
             type="button"
             className="btn primary"

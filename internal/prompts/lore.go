@@ -41,6 +41,8 @@ func LoreVariableNames() []string {
 		"character_roster",
 		"entry_index",
 		"focus_entries",
+		"style.rewrite",
+		"style.opening",
 	}
 }
 
@@ -89,7 +91,7 @@ const loreRules = `RULES
 1. Each entry covers ONE atomic concept. Never combine unrelated things into a
    single entry.
 2. Never state anything the source does not support. Omit rather than invent.
-3. Rewrite the source into evocative prose. Never copy it verbatim.
+3. {{style.rewrite}} Never copy it verbatim.
 4. Give every entry a category. The category fixes how the entry behaves:
    character      a person
    location       a place
@@ -102,7 +104,7 @@ const loreRules = `RULES
    titles — ["Rusty Flagon", "the flagon", "the tavern", "Patches' place"].
    Never use a bare generic word such as "sword", "house", "city" or "queen";
    qualify it ("the Queen", "Queen Elara") or leave it out.
-6. Content: 30-180 tokens. Open with a specific, sensory line.
+6. Content: 30-180 tokens. {{style.opening}}
 7. Order sets what survives a full context. Spread entries across the tiers
    instead of giving them all the same number:
    900-999 must never be cut   500-899 scene-defining   200-499 important

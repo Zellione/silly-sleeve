@@ -154,6 +154,34 @@ func TestApproveLorebookCandidates_KeepsTheUsersEdits(t *testing.T) {
 	assert.Equal(t, lorebook.CategoryOrganization, entries[0].Category)
 }
 
+func TestApproveLorebookCandidates_ConsumesTheStagedSource(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	stageLore(t, a)
+	candidates, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
+	require.NoError(t, err)
+
+	candidates[1].Selected = false
+	a.ApproveLorebookCandidates(candidates)
+
+	assert.Empty(t, a.GetStagedSources(),
+		"approval consumes the page's review, so it must not linger staged")
+}
+
+func TestApproveLorebookCandidates_NothingSelectedKeepsThePageStaged(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	stageLore(t, a)
+	candidates, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
+	require.NoError(t, err)
+
+	for i := range candidates {
+		candidates[i].Selected = false
+	}
+	a.ApproveLorebookCandidates(candidates)
+
+	assert.Len(t, a.GetStagedSources(), 1, "nothing was approved, so the review is still open")
+	assert.Len(t, a.GetLorebookCandidates(), 2)
+}
+
 func TestApproveLorebookCandidates_AssignsUniqueUIDs(t *testing.T) {
 	a := newLoreApp(loreResponse, nil)
 	a.lorebookEntries = []lorebook.Entry{{UID: 7, Comment: "Existing"}}
@@ -207,6 +235,40 @@ func TestSetStagedSourceMode_ChoosesThePrompt(t *testing.T) {
 	got, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
 	require.NoError(t, err)
 	assert.Len(t, got, 1, "summary mode yields a single entry")
+}
+
+func TestSetStagedSourceStyle(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	stageLore(t, a)
+
+	require.Len(t, a.GetStagedSources(), 1)
+	assert.Equal(t, loreextract.StyleProse, a.GetStagedSources()[0].Style, "staging defaults to prose")
+
+	got := a.SetStagedSourceStyle("https://w/wiki/Lore", loreextract.StyleFactual)
+	require.Len(t, got, 1)
+	assert.Equal(t, loreextract.StyleFactual, got[0].Style)
+
+	got = a.SetStagedSourceStyle("https://w/wiki/Lore", "nonsense")
+	assert.Equal(t, loreextract.StyleProse, got[0].Style, "an unknown style falls back to prose")
+
+	got = a.SetStagedSourceStyle("https://w/wiki/Missing", loreextract.StyleFactual)
+	assert.Equal(t, loreextract.StyleProse, got[0].Style, "a miss changes nothing")
+}
+
+func TestSetStagedSourceStyle_ChoosesTheWording(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	var captured string
+	a.loreGen = loreextract.NewExtractor(llm.CompleterFunc(
+		func(_ context.Context, _ llm.LLMEndpoint, _, user string) (string, error) {
+			captured = user
+			return loreResponse, nil
+		}))
+	stageLore(t, a)
+	a.SetStagedSourceStyle("https://w/wiki/Lore", loreextract.StyleFactual)
+
+	_, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
+	require.NoError(t, err)
+	assert.Contains(t, captured, "dense, factual", "the chosen style must reach the prompt")
 }
 
 const connectResponse = `{"suggestions":[

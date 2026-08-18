@@ -35,6 +35,17 @@ func (a *App) SetStagedSourceMode(pageURL string, mode loreextract.ExtractionMod
 	return append([]loreextract.StagedSource{}, a.stagedSources...)
 }
 
+// SetStagedSourceStyle chooses how the entries extracted from a staged page
+// are written: evocative "prose", or dense "factual" statements.
+func (a *App) SetStagedSourceStyle(pageURL string, style loreextract.ContentStyle) []loreextract.StagedSource {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if i, ok := a.stagedSourceIndexLocked(pageURL); ok {
+		a.stagedSources[i].Style = style.OrDefault()
+	}
+	return append([]loreextract.StagedSource{}, a.stagedSources...)
+}
+
 // RemoveStagedSource drops a staged page and any candidates extracted from it.
 // Entries already approved into the lorebook are untouched.
 func (a *App) RemoveStagedSource(pageURL string) []loreextract.StagedSource {
@@ -85,6 +96,7 @@ func (a *App) ExtractLorebookCandidates(pageURL string) ([]loreextract.Candidate
 	req := loreextract.ExtractRequest{
 		Crawl:      crawl,
 		Mode:       staged.Mode,
+		Style:      staged.Style,
 		Characters: append([]compose.Character{}, a.characters...),
 		Existing:   append([]lorebook.Entry{}, a.lorebookEntries...),
 		Templates:  a.settings.PromptTemplates,
@@ -97,7 +109,7 @@ func (a *App) ExtractLorebookCandidates(pageURL string) ([]loreextract.Candidate
 	}
 	req.Endpoint = toLLMEndpoint(def)
 
-	debugf("lore extract: %s (mode %s, endpoint %s)", pageURL, staged.Mode.OrDefault(), def.URL)
+	debugf("lore extract: %s (mode %s, style %s, endpoint %s)", pageURL, staged.Mode.OrDefault(), staged.Style.OrDefault(), def.URL)
 	candidates, err := a.loreGen.Extract(a.ctx, req)
 	if err != nil {
 		logf("lore extract failed: %s: %v", pageURL, err)
@@ -143,10 +155,12 @@ func (a *App) ApproveLorebookCandidates(candidates []loreextract.Candidate) []lo
 		approved[c.SourceURL] = true
 	}
 
-	// Approving consumes every candidate from the pages involved: the ones the
-	// user did not tick were rejected, not deferred.
+	// Approving consumes the whole review for the pages involved: unticked
+	// candidates were rejected, not deferred, and the page itself leaves the
+	// staging queue — its facts are in the lorebook now. Re-extracting means
+	// sending the page from the Crawler again, which re-stages it.
 	for url := range approved {
-		a.dropCandidatesLocked(url)
+		a.dropStagedSourceLocked(url)
 	}
 	return append([]lorebook.Entry{}, a.lorebookEntries...)
 }

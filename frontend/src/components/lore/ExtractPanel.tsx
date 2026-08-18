@@ -34,7 +34,7 @@ export const ExtractPanel: React.FC<{
 }> = ({ characters, onEntriesChanged, connections, onPersist }) => {
   const {
     sources, candidates, activeUrl, extracting, extractError, loaded,
-    setActiveUrl, setMode, removeSource, extract, updateCandidate, discard, approve,
+    setActiveUrl, setMode, setStyle, removeSource, extract, updateCandidate, discard, approve,
   } = useLoreStaging(onEntriesChanged, onPersist);
 
   if (!loaded) {
@@ -57,6 +57,7 @@ export const ExtractPanel: React.FC<{
           extracting={extracting}
           onSelect={setActiveUrl}
           onSetMode={setMode}
+          onSetStyle={setStyle}
           onExtract={extract}
           onRemove={removeSource}
         />

@@ -302,6 +302,10 @@ export function SetStagedSourceMode(arg1, arg2) {
   return window['go']['app']['App']['SetStagedSourceMode'](arg1, arg2);
 }
 
+export function SetStagedSourceStyle(arg1, arg2) {
+  return window['go']['app']['App']['SetStagedSourceStyle'](arg1, arg2);
+}
+
 export function SuggestLorebookConnections() {
   return window['go']['app']['App']['SuggestLorebookConnections']();
 }

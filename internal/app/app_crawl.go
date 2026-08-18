@@ -228,6 +228,7 @@ func (a *App) sendLorebookLocked(res crawler.CrawlResult, overwrite bool) string
 		URL:   res.URL,
 		Title: res.Title,
 		Mode:  loreextract.ModeSplit,
+		Style: loreextract.StyleProse,
 	})
 	return "staged"
 }

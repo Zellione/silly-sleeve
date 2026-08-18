@@ -790,6 +790,7 @@ export namespace loreextract {
 	    url: string;
 	    title: string;
 	    mode: string;
+	    style: string;
 	    extracted: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -801,6 +802,7 @@ export namespace loreextract {
 	        this.url = source["url"];
 	        this.title = source["title"];
 	        this.mode = source["mode"];
+	        this.style = source["style"];
 	        this.extracted = source["extracted"];
 	    }
 	}

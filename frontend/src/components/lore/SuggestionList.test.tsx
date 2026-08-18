@@ -14,6 +14,7 @@ vi.mock('../../../wailsjs/go/app/App', () => ({
   GetStagedSources: () => Promise.resolve([]),
   GetLorebookCandidates: () => Promise.resolve([]),
   SetStagedSourceMode: () => Promise.resolve([]),
+  SetStagedSourceStyle: () => Promise.resolve([]),
   RemoveStagedSource: () => Promise.resolve([]),
   ExtractLorebookCandidates: () => Promise.resolve([]),
   DiscardLorebookCandidates: () => Promise.resolve([]),

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  GetStagedSources, SetStagedSourceMode, RemoveStagedSource,
+  GetStagedSources, SetStagedSourceMode, SetStagedSourceStyle, RemoveStagedSource,
   GetLorebookCandidates, DiscardLorebookCandidates, ExtractLorebookCandidates,
   ApproveLorebookCandidates,
 } from '../../../wailsjs/go/app/App';
@@ -10,6 +10,7 @@ import { errorMessage } from '../../utils/errorMessage';
 import { logError, logDebug } from '../../utils/log';
 
 export type ExtractionMode = 'split' | 'summary';
+export type ContentStyle = 'prose' | 'factual';
 
 /**
  * Owns the lorebook extraction review: which pages are staged, what has been
@@ -57,6 +58,16 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
         onPersist?.();
       })
       .catch(() => toast({ kind: 'bad', title: 'Could not change mode' }));
+  }, [toast, onPersist]);
+
+  const setStyle = useCallback((url: string, style: ContentStyle) => {
+    // Same string-alias situation as SetStagedSourceMode above.
+    SetStagedSourceStyle(url, style as unknown as Parameters<typeof SetStagedSourceStyle>[1])
+      .then(s => {
+        setSources(s || []);
+        onPersist?.();
+      })
+      .catch(() => toast({ kind: 'bad', title: 'Could not change style' }));
   }, [toast, onPersist]);
 
   const removeSource = useCallback((url: string) => {
@@ -128,8 +139,13 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
     try {
       const entries = await ApproveLorebookCandidates(toApprove);
       onApproved(entries || []);
-      const urls = new Set(toApprove.map(c => c.sourceUrl));
+      // Mirror the backend: approval consumes the whole review for the pages
+      // with a ticked candidate — their candidates and their staging slot.
+      const urls = new Set(toApprove.filter(c => c.selected).map(c => c.sourceUrl));
       setCandidates(prev => prev.filter(c => !urls.has(c.sourceUrl)));
+      const remaining = sources.filter(s => !urls.has(s.url));
+      setSources(remaining);
+      setActiveUrl(prev => (prev && urls.has(prev) ? (remaining[0]?.url ?? null) : prev));
       toast({
         kind: 'ok',
         title: `Added ${count} ${count === 1 ? 'entry' : 'entries'}`,
@@ -138,10 +154,10 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
     } catch (e: any) {
       toast({ kind: 'bad', title: 'Approve failed', body: errorMessage(e, 'Could not add the entries.') });
     }
-  }, [toast, onApproved]);
+  }, [toast, onApproved, sources]);
 
   return {
     sources, candidates, activeUrl, extracting, extractError, loaded,
-    setActiveUrl, setMode, removeSource, extract, updateCandidate, discard, approve,
+    setActiveUrl, setMode, setStyle, removeSource, extract, updateCandidate, discard, approve,
   };
 }

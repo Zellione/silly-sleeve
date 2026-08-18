@@ -8,6 +8,7 @@ import { compose } from '../../../wailsjs/go/models';
 const mockGetStagedSources = vi.fn();
 const mockGetLorebookCandidates = vi.fn();
 const mockSetStagedSourceMode = vi.fn();
+const mockSetStagedSourceStyle = vi.fn();
 const mockRemoveStagedSource = vi.fn();
 const mockExtractLorebookCandidates = vi.fn();
 const mockDiscardLorebookCandidates = vi.fn();
@@ -17,6 +18,7 @@ vi.mock('../../../wailsjs/go/app/App', () => ({
   GetStagedSources: () => mockGetStagedSources(),
   GetLorebookCandidates: () => mockGetLorebookCandidates(),
   SetStagedSourceMode: (...a: any[]) => mockSetStagedSourceMode(...a),
+  SetStagedSourceStyle: (...a: any[]) => mockSetStagedSourceStyle(...a),
   RemoveStagedSource: (...a: any[]) => mockRemoveStagedSource(...a),
   ExtractLorebookCandidates: (...a: any[]) => mockExtractLorebookCandidates(...a),
   DiscardLorebookCandidates: (...a: any[]) => mockDiscardLorebookCandidates(...a),
@@ -26,7 +28,7 @@ vi.mock('../../../wailsjs/go/app/App', () => ({
 const LORE_URL = 'https://w/wiki/Ferelden';
 
 const source = (over: Partial<any> = {}) => ({
-  url: LORE_URL, title: 'Ferelden', mode: 'split', extracted: false, ...over,
+  url: LORE_URL, title: 'Ferelden', mode: 'split', style: 'prose', extracted: false, ...over,
 });
 
 const candidate = (over: Partial<any> = {}) => ({
@@ -60,6 +62,7 @@ describe('ExtractPanel', () => {
     mockGetStagedSources.mockResolvedValue([source()]);
     mockGetLorebookCandidates.mockResolvedValue([]);
     mockSetStagedSourceMode.mockResolvedValue([source({ mode: 'summary' })]);
+    mockSetStagedSourceStyle.mockResolvedValue([source({ style: 'factual' })]);
     mockRemoveStagedSource.mockResolvedValue([]);
     mockExtractLorebookCandidates.mockResolvedValue([candidate()]);
     mockDiscardLorebookCandidates.mockResolvedValue([]);
@@ -218,6 +221,17 @@ describe('ExtractPanel', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith([{ uid: 0, comment: 'Denerim' }]));
   });
 
+  it('removes the staged page once its candidates are approved', async () => {
+    mockGetLorebookCandidates.mockResolvedValue([candidate()]);
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findAllByRole('checkbox', { name: /Keep Denerim/i });
+
+    await user.click(screen.getByRole('button', { name: /Add 1 to lorebook/i }));
+
+    expect(await screen.findByText('No pages staged.')).toBeInTheDocument();
+  });
+
   it('changes the extraction mode', async () => {
     const user = userEvent.setup();
     renderPanel();
@@ -227,6 +241,29 @@ describe('ExtractPanel', () => {
     await user.click(await screen.findByRole('option', { name: 'Single summary' }));
 
     await waitFor(() => expect(mockSetStagedSourceMode).toHaveBeenCalledWith(LORE_URL, 'summary'));
+  });
+
+  it('changes the content style', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('combobox', { name: /Content style/i }));
+    await user.click(await screen.findByRole('option', { name: 'Dense & factual' }));
+
+    await waitFor(() => expect(mockSetStagedSourceStyle).toHaveBeenCalledWith(LORE_URL, 'factual'));
+  });
+
+  it('notifies onPersist after a style change', async () => {
+    const onPersist = vi.fn();
+    const user = userEvent.setup();
+    renderPanel(vi.fn(), onPersist);
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('combobox', { name: /Content style/i }));
+    await user.click(await screen.findByRole('option', { name: 'Dense & factual' }));
+
+    await waitFor(() => expect(onPersist).toHaveBeenCalled());
   });
 
   it('keeps the failure reason visible in the review pane after a failed extraction', async () => {

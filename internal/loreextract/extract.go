@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -42,6 +43,7 @@ func (e *Extractor) completerOrDefault() llm.Completer {
 type ExtractRequest struct {
 	Crawl    crawler.CrawlResult
 	Mode     ExtractionMode
+	Style    ContentStyle
 	Endpoint llm.LLMEndpoint
 	// Characters and Existing are the project context. They are what makes
 	// extraction-time connections possible: the prompt carries the roster and
@@ -108,13 +110,15 @@ func (e *Extractor) Extract(ctx context.Context, req ExtractRequest) ([]Candidat
 		return nil, fmt.Errorf("no template for lore prompt %s", promptID)
 	}
 
-	userPrompt := prompts.Substitute(template, map[string]string{
+	vars := map[string]string{
 		"crawl.title":      req.Crawl.Title,
 		"crawl.url":        req.Crawl.URL,
 		"crawl_context":    compose.CrawlContext(req.Crawl),
 		"character_roster": buildCharacterRoster(req.Characters),
 		"entry_index":      buildEntryIndex(req.Existing),
-	})
+	}
+	maps.Copy(vars, req.Style.PromptVars())
+	userPrompt := prompts.Substitute(template, vars)
 
 	payloads, notes, err := llm.CompleteJSON(ctx, e.completerOrDefault(), req.Endpoint,
 		tpl.LorePrompts[prompts.LoreSystem], userPrompt, parseExtraction)

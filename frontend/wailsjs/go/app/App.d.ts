@@ -163,6 +163,8 @@ export function SetProjectStatus(arg1:string,arg2:string):Promise<void>;
 
 export function SetStagedSourceMode(arg1:string,arg2:loreextract.ExtractionMode):Promise<Array<loreextract.StagedSource>>;
 
+export function SetStagedSourceStyle(arg1:string,arg2:loreextract.ContentStyle):Promise<Array<loreextract.StagedSource>>;
+
 export function SuggestLorebookConnections():Promise<Array<loreextract.Suggestion>>;
 
 export function TestComfyUIEndpoint(arg1:string,arg2:string):Promise<llm.TestResult>;

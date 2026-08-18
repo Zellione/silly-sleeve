@@ -31,7 +31,7 @@ const characters = [
 
 const entries = [
   lorebook.Entry.createFrom({ uid: 1, comment: 'Denerim', key: ['Denerim'] }),
-  lorebook.Entry.createFrom({ uid: 2, comment: 'Grey Wardens', key: ['Grey Warden'] }),
+  lorebook.Entry.createFrom({ uid: 2, comment: 'Grey Wardens', key: ['Grey Warden'], characters: ['1'] }),
 ];
 
 const suggestion = (over: Partial<any> = {}) =>
@@ -234,15 +234,61 @@ describe('connection review', () => {
     expect(screen.queryByText(/recursion/)).not.toBeInTheDocument();
   });
 
-  it('shows the keys a removal would strip', async () => {
+  it('shows the keys a removal would strip beside the ones that stay', async () => {
     mockGetLorebookSuggestions.mockResolvedValue([
       suggestion({ kind: 'removeKeys', entryUid: 1, removeKeys: ['city', 'sword'] }),
     ]);
     renderHarness();
 
     expect(await screen.findByText('Remove keys')).toBeInTheDocument();
-    expect(screen.getByText('city')).toBeInTheDocument();
-    expect(screen.getByText('sword')).toBeInTheDocument();
+    expect(screen.getByText('city')).toHaveClass('del');
+    expect(screen.getByText('sword')).toHaveClass('del');
+    const kept = screen.getByText('Denerim', { selector: '.k' });
+    expect(kept).not.toHaveClass('del');
+  });
+
+  it('shows existing keys as context and marks the additions', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'triggerKeys', entryUid: 1, addKeys: ['the capital'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Add trigger keys');
+
+    expect(screen.getByText('the capital')).toHaveClass('add');
+    const existing = screen.getByText('Denerim', { selector: '.k' });
+    expect(existing).not.toHaveClass('add');
+  });
+
+  it('shows the current scope as context and marks added characters', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryCharacter', entryUid: 2, addCharacters: ['2'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Scope to characters');
+
+    expect(screen.getByText('Duncan')).toHaveClass('add');
+    expect(screen.getByText('Alistair')).not.toHaveClass('add');
+  });
+
+  it('calls out a global entry gaining its first scope', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryCharacter', entryUid: 1, addCharacters: ['1'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Scope to characters');
+
+    expect(screen.getByText('global')).toBeInTheDocument();
+    expect(screen.getByText('Alistair')).toHaveClass('add');
+  });
+
+  it('marks added secondary keys on a link suggestion', async () => {
+    mockGetLorebookSuggestions.mockResolvedValue([
+      suggestion({ kind: 'entryEntry', entryUid: 1, targetUid: 2, addSecondary: ['Grey Warden'] }),
+    ]);
+    renderHarness();
+    await screen.findByText('Link entries');
+
+    expect(screen.getByText('Grey Warden')).toHaveClass('add');
   });
 
   it('hands the updated entries and characters back', async () => {

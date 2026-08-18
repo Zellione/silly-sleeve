@@ -71,17 +71,32 @@ export const SuggestionList: React.FC<{
     entries.find(e => e.uid === uid)?.comment || `entry ${uid ?? '?'}`;
   const charName = (id?: number) =>
     characters.find(c => c.id === id)?.name || `character ${id ?? '?'}`;
+  const entryOf = (uid?: number) => entries.find(e => e.uid === uid);
+
+  // Additive kinds render the entry's current values as muted chips so the
+  // green additions read as a change, not as the whole state.
+  const chips = (items: string[] | undefined, kind: '' | 'add' | 'del' = '') =>
+    (items || []).map(k => <span key={`${kind}:${k}`} className={kind ? `k ${kind}` : 'k'}>{k}</span>);
 
   const describe = (s: loreextract.Suggestion) => {
     switch (s.kind) {
-      case 'entryCharacter':
+      case 'entryCharacter': {
         // addCharacters holds character *id strings*, which is what entry
         // scoping is stored as; the roster is keyed by number.
-        return <><b>{entryName(s.entryUid)}</b> → {(s.addCharacters || []).map(id => charName(Number(id))).join(', ')}</>;
+        const existing = (entryOf(s.entryUid)?.characters || []).map(id => charName(Number(id)));
+        const added = (s.addCharacters || []).map(id => charName(Number(id)));
+        return <>
+          <b>{entryName(s.entryUid)}</b> scope{' '}
+          {existing.length ? chips(existing) : <em className="ctx">global</em>}{chips(added, 'add')}
+        </>;
+      }
       case 'triggerKeys':
-        return <><b>{entryName(s.entryUid)}</b> gains {(s.addKeys || []).map(k => <span key={k} className="k">{k}</span>)}</>;
+        return <><b>{entryName(s.entryUid)}</b> keys {chips(entryOf(s.entryUid)?.key)}{chips(s.addKeys, 'add')}</>;
       case 'entryEntry':
-        return <><b>{entryName(s.entryUid)}</b> → <b>{entryName(s.targetUid)}</b> via {(s.addSecondary || []).map(k => <span key={k} className="k">{k}</span>)}</>;
+        return <>
+          <b>{entryName(s.entryUid)}</b> → <b>{entryName(s.targetUid)}</b> secondary{' '}
+          {chips(entryOf(s.entryUid)?.keysecondary)}{chips(s.addSecondary, 'add')}
+        </>;
       case 'characterCharacter':
         return <><b>{charName(s.charId)}</b> ↔ <b>{charName(s.targetCharId)}</b></>;
       case 'entryOrder':
@@ -102,8 +117,11 @@ export const SuggestionList: React.FC<{
             </span>
           ))}
         </>;
-      case 'removeKeys':
-        return <><b>{entryName(s.entryUid)}</b> loses {(s.removeKeys || []).map(k => <s key={k} className="k">{k}</s>)}</>;
+      case 'removeKeys': {
+        const removed = new Set((s.removeKeys || []).map(k => k.toLowerCase()));
+        const kept = (entryOf(s.entryUid)?.key || []).filter(k => !removed.has(k.toLowerCase()));
+        return <><b>{entryName(s.entryUid)}</b> keys {chips(kept)}{chips(s.removeKeys, 'del')}</>;
+      }
       default:
         return <b>{s.kind}</b>;
     }

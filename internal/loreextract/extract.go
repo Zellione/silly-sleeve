@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/jsonrepair"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/prompts"
@@ -70,10 +72,24 @@ type entryPayload struct {
 	Key          []string `json:"key"`
 	KeySecondary []string `json:"keysecondary"`
 	Content      string   `json:"content"`
-	Order        int      `json:"order"`
+	Order        flexInt  `json:"order"`
 	Constant     bool     `json:"constant"`
 	Selective    bool     `json:"selective"`
 	Characters   []string `json:"characters"`
+}
+
+// flexInt tolerates a number arriving as a JSON string ("order": "300"),
+// which small models emit; a type mismatch there must not kill the batch. A
+// value that is not numeric at all decodes to zero and is left for the
+// normaliser to default.
+type flexInt int
+
+func (f *flexInt) UnmarshalJSON(b []byte) error {
+	s := strings.TrimSpace(strings.Trim(string(b), `"`))
+	if v, err := strconv.ParseFloat(s, 64); err == nil {
+		*f = flexInt(v)
+	}
+	return nil
 }
 
 // Extract runs one extraction and returns reviewable candidates.
@@ -100,12 +116,8 @@ func (e *Extractor) Extract(ctx context.Context, req ExtractRequest) ([]Candidat
 		"entry_index":      buildEntryIndex(req.Existing),
 	})
 
-	content, err := e.completerOrDefault().Complete(ctx, req.Endpoint, tpl.LorePrompts[prompts.LoreSystem], userPrompt)
-	if err != nil {
-		return nil, fmt.Errorf("llm complete: %w", err)
-	}
-
-	payloads, err := parseExtraction(content)
+	payloads, notes, err := llm.CompleteJSON(ctx, e.completerOrDefault(), req.Endpoint,
+		tpl.LorePrompts[prompts.LoreSystem], userPrompt, parseExtraction)
 	if err != nil {
 		return nil, err
 	}
@@ -113,13 +125,13 @@ func (e *Extractor) Extract(ctx context.Context, req ExtractRequest) ([]Candidat
 		payloads = payloads[:1]
 	}
 
-	return buildCandidates(payloads, req), nil
+	return buildCandidates(payloads, req, notes), nil
 }
 
 // parseExtraction decodes an extraction response, tolerating the markdown
 // fences models wrap JSON in despite being told not to.
 func parseExtraction(content string) ([]entryPayload, error) {
-	cleaned := cleanJSON(content)
+	cleaned := jsonrepair.Clean(content)
 
 	var resp extractionResponse
 	err := json.Unmarshal([]byte(cleaned), &resp)
@@ -141,8 +153,10 @@ func parseExtraction(content string) ([]entryPayload, error) {
 }
 
 // buildCandidates converts payloads to entries, resolves character references
-// and normalises the batch.
-func buildCandidates(payloads []entryPayload, req ExtractRequest) []Candidate {
+// and normalises the batch. notes are batch-level recovery notes from the
+// completion; they are surfaced on every candidate so the review UI shows
+// that the model's output needed mending.
+func buildCandidates(payloads []entryPayload, req ExtractRequest, notes []string) []Candidate {
 	entries := make([]lorebook.Entry, 0, len(payloads))
 	unresolvedPerEntry := make([][]string, 0, len(payloads))
 
@@ -154,7 +168,7 @@ func buildCandidates(payloads []entryPayload, req ExtractRequest) []Candidate {
 			Key:          p.Key,
 			KeySecondary: p.KeySecondary,
 			Content:      p.Content,
-			Order:        p.Order,
+			Order:        int(p.Order),
 			Constant:     p.Constant,
 			Selective:    p.Selective,
 			Characters:   ids,
@@ -167,7 +181,8 @@ func buildCandidates(payloads []entryPayload, req ExtractRequest) []Candidate {
 
 	candidates := make([]Candidate, len(results))
 	for i, r := range results {
-		adjustments := r.Adjustments
+		adjustments := append([]string(nil), r.Adjustments...)
+		adjustments = append(adjustments, notes...)
 		if names := unresolvedPerEntry[i]; len(names) > 0 {
 			adjustments = append(adjustments, fmt.Sprintf(
 				"Could not match to a character in this project, so left unscoped: %s.",
@@ -181,38 +196,6 @@ func buildCandidates(payloads []entryPayload, req ExtractRequest) []Candidate {
 		}
 	}
 	return candidates
-}
-
-// cleanJSON strips the markdown fences models add around JSON, and any prose
-// before or after the object.
-func cleanJSON(content string) string {
-	s := strings.TrimSpace(content)
-
-	if strings.HasPrefix(s, "```") {
-		s = strings.TrimPrefix(s, "```")
-		s = strings.TrimPrefix(s, "json")
-		if idx := strings.LastIndex(s, "```"); idx >= 0 {
-			s = s[:idx]
-		}
-		s = strings.TrimSpace(s)
-	}
-
-	// Models often add a sentence either side of the payload; keep the
-	// outermost object or array — whichever opens first, so an array of
-	// objects is not cut down to its first element's braces.
-	start := strings.IndexAny(s, "{[")
-	if start < 0 {
-		return s
-	}
-	closer := "}"
-	if s[start] == '[' {
-		closer = "]"
-	}
-	if end := strings.LastIndex(s, closer); end > start {
-		s = s[start : end+1]
-	}
-
-	return strings.TrimSpace(s)
 }
 
 func firstNonEmpty(vals ...string) string {

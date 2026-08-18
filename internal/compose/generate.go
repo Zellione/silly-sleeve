@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"silly-sleeve/internal/crawler"
+	"silly-sleeve/internal/jsonrepair"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/prompts"
 )
@@ -41,16 +42,9 @@ func GenerateBulkWith(ctx context.Context, completer llm.Completer, result crawl
 		userPrompt += buildFieldMaskString(lockedFields)
 	}
 
-	content, err := completer.Complete(ctx, ep, systemPrompt, userPrompt)
+	gr, _, err := llm.CompleteJSON(ctx, completer, ep, systemPrompt, userPrompt, parseBulkResponse)
 	if err != nil {
-		return Character{}, fmt.Errorf("llm complete: %w", err)
-	}
-
-	content = cleanResponse(content)
-
-	var gr generateResponse
-	if err := json.Unmarshal([]byte(content), &gr); err != nil {
-		return Character{}, fmt.Errorf("parse response: %w (raw: %s)", err, truncate(content, 200))
+		return Character{}, err
 	}
 
 	ch := existing
@@ -147,22 +141,15 @@ func applyResponseStats(ch *Character, stats [][]string) {
 	}
 }
 
-func cleanResponse(content string) string {
-	content = strings.TrimSpace(content)
-
-	if strings.HasPrefix(content, "```json") {
-		content = strings.TrimPrefix(content, "```json")
-		if idx := strings.LastIndex(content, "```"); idx >= 0 {
-			content = content[:idx]
-		}
-	} else if strings.HasPrefix(content, "```") {
-		content = strings.TrimPrefix(content, "```")
-		if idx := strings.LastIndex(content, "```"); idx >= 0 {
-			content = content[:idx]
-		}
+// parseBulkResponse decodes the bulk-generation reply, tolerating fences and
+// surrounding prose.
+func parseBulkResponse(content string) (generateResponse, error) {
+	cleaned := jsonrepair.Clean(content)
+	var gr generateResponse
+	if err := json.Unmarshal([]byte(cleaned), &gr); err != nil {
+		return generateResponse{}, fmt.Errorf("parse response: %w (raw: %s)", err, truncate(cleaned, 200))
 	}
-
-	return strings.TrimSpace(content)
+	return gr, nil
 }
 
 func truncate(s string, n int) string {
@@ -221,12 +208,9 @@ func GenerateFieldWith(ctx context.Context, completer llm.Completer, ep llm.LLME
 		sysPrompt = systemPrompt
 	}
 
-	content, err := completer.Complete(ctx, ep, sysPrompt, userPrompt)
-	if err != nil {
-		return req.Existing, fmt.Errorf("llm complete: %w", err)
-	}
-
-	val, err := resolveFieldValue(req.FieldID, cleanResponse(content))
+	val, _, err := llm.CompleteJSON(ctx, completer, ep, sysPrompt, userPrompt, func(content string) (any, error) {
+		return resolveFieldValue(req.FieldID, jsonrepair.Clean(content))
+	})
 	if err != nil {
 		return req.Existing, err
 	}

@@ -2262,8 +2262,10 @@ kbd {
   padding: 3px 8px; border-radius: 999px;
   font: 600 9.5px/1 var(--f-mono);
   text-transform: uppercase; letter-spacing: 0.1em;
+  appearance: none; background: transparent;
   border: 1px solid var(--hair); color: var(--ink-2); cursor: pointer;
 }
+.proj-status:hover { background: var(--hair); color: var(--ink); }
 .proj-status[data-status="ready"] { color: var(--acc); border-color: var(--acc-line); }
 .proj-status[data-status="archived"] { color: var(--ink-3); opacity: 0.75; }
 

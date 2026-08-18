@@ -7,6 +7,7 @@ import {
 import { loreextract, lorebook } from '../../../wailsjs/go/models';
 import { useToast } from '../ToastProvider';
 import { errorMessage } from '../../utils/errorMessage';
+import { logError, logDebug } from '../../utils/log';
 
 export type ExtractionMode = 'split' | 'summary';
 
@@ -29,6 +30,9 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
   const [candidates, setCandidates] = useState<loreextract.Candidate[]>([]);
   const [activeUrl, setActiveUrl] = useState<string | null>(null);
   const [extracting, setExtracting] = useState<string | null>(null);
+  // Why the last extraction of a page failed, keyed by page URL. Kept until a
+  // retry starts so the reason outlives the transient failure toast.
+  const [extractError, setExtractError] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const { toast } = useToast();
 
@@ -61,6 +65,12 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
         setSources(s || []);
         setCandidates(prev => prev.filter(c => c.sourceUrl !== url));
         setActiveUrl(prev => (prev === url ? (s?.[0]?.url ?? null) : prev));
+        setExtractError(prev => {
+          if (!(url in prev)) return prev;
+          const next = { ...prev };
+          delete next[url];
+          return next;
+        });
         onPersist?.();
       })
       .catch(() => toast({ kind: 'bad', title: 'Could not remove source' }));
@@ -68,6 +78,13 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
 
   const extract = useCallback(async (url: string) => {
     setExtracting(url);
+    setExtractError(prev => {
+      if (!(url in prev)) return prev;
+      const next = { ...prev };
+      delete next[url];
+      return next;
+    });
+    logDebug('LoreStaging.extract', 'extracting', url);
     try {
       const fresh = await ExtractLorebookCandidates(url);
       // Replace this page's candidates rather than appending: the backend does
@@ -82,7 +99,10 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
         body: 'Review and edit them before approving.',
       });
     } catch (e: any) {
-      toast({ kind: 'bad', title: 'Extraction failed', body: errorMessage(e, 'The model could not be reached.') });
+      const reason = errorMessage(e, 'The model could not be reached.');
+      logError('LoreStaging.extract', e);
+      setExtractError(prev => ({ ...prev, [url]: reason }));
+      toast({ kind: 'bad', title: 'Extraction failed', body: reason });
     } finally {
       setExtracting(null);
     }
@@ -121,7 +141,7 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
   }, [toast, onApproved]);
 
   return {
-    sources, candidates, activeUrl, extracting, loaded,
+    sources, candidates, activeUrl, extracting, extractError, loaded,
     setActiveUrl, setMode, removeSource, extract, updateCandidate, discard, approve,
   };
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { loreextract, compose } from '../../../wailsjs/go/models';
 import { CandidateRow } from './CandidateRow';
-import { SparksIcon } from '../../icons';
+import { SparksIcon, BoltIcon } from '../../icons';
 
 /**
  * Approving is destructive to whatever is left unticked, so the button says
@@ -26,10 +26,13 @@ export const CandidateList: React.FC<{
   characters: compose.Character[];
   sourceUrl: string | null;
   extracting: boolean;
+  /** Why the last extraction of this page failed; shown in place of the
+   * loading state so the reason outlives the transient failure toast. */
+  error?: string;
   onChange: (index: number, next: loreextract.Candidate) => void;
   onApprove: () => void;
   onDiscard: () => void;
-}> = ({ candidates, characters, sourceUrl, extracting, onChange, onApprove, onDiscard }) => {
+}> = ({ candidates, characters, sourceUrl, extracting, error, onChange, onApprove, onDiscard }) => {
   const forSource = candidates
     .map((c, index) => ({ c, index }))
     .filter(({ c }) => c.sourceUrl === sourceUrl);
@@ -40,6 +43,19 @@ export const CandidateList: React.FC<{
         <div className="lore-empty">
           <div className="shimmer" style={{ width: 200, height: 16 }} />
           <p className="helpr">Pulling the facts out of this page…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && forSource.length === 0) {
+    return (
+      <div className="lore-cands">
+        <div className="lore-empty">
+          <BoltIcon size={30} style={{ opacity: 0.5, color: 'var(--bad, #d66)' }} />
+          <p>Extraction failed.</p>
+          <p className="helpr">{error}</p>
+          <p className="helpr">Check the endpoint and prompt, then extract again.</p>
         </div>
       </div>
     );

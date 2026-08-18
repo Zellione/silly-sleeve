@@ -98,8 +98,9 @@ describe('ExtractPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /Extract facts/i }));
 
-    expect(await screen.findByText('Extraction failed')).toBeInTheDocument();
-    expect(screen.getByText('connection refused')).toBeInTheDocument();
+    // The failure shows twice by design: transient toast + persistent pane.
+    expect((await screen.findAllByText(/Extraction failed/)).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('connection refused').length).toBeGreaterThanOrEqual(1);
   });
 
   it('surfaces the Go error text when the backend rejects with a plain string', async () => {
@@ -111,8 +112,8 @@ describe('ExtractPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /Extract facts/i }));
 
-    expect(await screen.findByText('Extraction failed')).toBeInTheDocument();
-    expect(screen.getByText('llm complete: http request: context deadline exceeded')).toBeInTheDocument();
+    expect((await screen.findAllByText(/Extraction failed/)).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('llm complete: http request: context deadline exceeded').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows the adjustments the normaliser made', async () => {
@@ -226,6 +227,37 @@ describe('ExtractPanel', () => {
     await user.click(await screen.findByRole('option', { name: 'Single summary' }));
 
     await waitFor(() => expect(mockSetStagedSourceMode).toHaveBeenCalledWith(LORE_URL, 'summary'));
+  });
+
+  it('keeps the failure reason visible in the review pane after a failed extraction', async () => {
+    mockExtractLorebookCandidates.mockRejectedValue(new Error('connection refused'));
+    const user = userEvent.setup();
+    const { container } = renderPanel();
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('button', { name: /Extract facts/i }));
+
+    // The reason stays in the candidate pane (unlike the transient toast), so
+    // the user can still read it after the toast is gone.
+    const pane = () => container.querySelector('.lore-cands');
+    await waitFor(() => expect(pane()?.textContent).toContain('connection refused'));
+    expect(pane()?.textContent).toContain('Extraction failed');
+  });
+
+  it('clears the failure reason when a retry starts', async () => {
+    mockExtractLorebookCandidates
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockResolvedValueOnce([candidate()]);
+    const user = userEvent.setup();
+    const { container } = renderPanel();
+    await screen.findByText('Ferelden');
+
+    await user.click(screen.getByRole('button', { name: /Extract facts/i }));
+    await waitFor(() => expect(container.querySelector('.lore-cands')?.textContent).toContain('connection refused'));
+
+    await user.click(screen.getByRole('button', { name: /Extract facts/i }));
+    await screen.findAllByRole('checkbox', { name: /Keep Denerim/i });
+    expect(container.querySelector('.lore-cands')?.textContent).not.toContain('connection refused');
   });
 
   it('notifies onPersist after a successful extraction', async () => {

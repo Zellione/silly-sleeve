@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"silly-sleeve/internal/compose"
@@ -310,4 +311,74 @@ func (a *App) RemoveCrawlResult(pageURL string) crawler.CrawlSet {
 		a.cachedCrawl = nil
 	}
 	return *a.cachedCrawlSet
+}
+
+// RefetchCrawlResult re-crawls a single page and replaces its stored result in
+// place, discarding any hand-edited summary. The fetch reuses the saved
+// include/selector inputs so the refetched page is sanitized the same way the
+// original crawl was. Identity URL, depth and parent link are preserved so
+// roles, sent-markers and staged sources keyed on the URL stay valid.
+func (a *App) RefetchCrawlResult(pageURL string) (crawler.CrawlResult, error) {
+	a.mu.Lock()
+	prev, ok := a.crawlResultByURLLocked(pageURL)
+	if !ok {
+		err := errPageNotInCrawl
+		if a.cachedCrawlSet == nil {
+			err = errNoCrawl
+		}
+		a.mu.Unlock()
+		return crawler.CrawlResult{}, err
+	}
+	cfg := a.settings.Crawler.Normalized()
+	opts := crawler.CrawlOptions{
+		Include:   a.crawlInputs.Include,
+		Selectors: splitSelectors(a.crawlInputs.Selectors),
+	}
+	a.mu.Unlock()
+
+	c := crawler.Crawler{UserAgent: cfg.UserAgent, RateLimitMs: cfg.RateLimitMs, MaxPages: 1}
+	set, err := c.Crawl(a.crawlContext(), pageURL, opts)
+	if err != nil {
+		return crawler.CrawlResult{}, err
+	}
+	if len(set.Results) == 0 {
+		return crawler.CrawlResult{}, fmt.Errorf("could not fetch %s", pageURL)
+	}
+	fresh := set.Results[0]
+	fresh.URL = prev.URL
+	fresh.Depth = prev.Depth
+	fresh.ParentURL = prev.ParentURL
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cachedCrawlSet == nil {
+		return crawler.CrawlResult{}, errNoCrawl
+	}
+	for i := range a.cachedCrawlSet.Results {
+		if a.cachedCrawlSet.Results[i].URL != pageURL {
+			continue
+		}
+		a.cachedCrawlSet.Results[i] = fresh
+		// Keep the legacy single-result cache in step when it mirrors this page.
+		if a.cachedCrawl != nil && a.cachedCrawl.URL == pageURL {
+			root := fresh
+			a.cachedCrawl = &root
+		}
+		return fresh, nil
+	}
+	// The page was removed while the fetch was in flight.
+	return crawler.CrawlResult{}, errPageNotInCrawl
+}
+
+// splitSelectors parses the crawler screen's raw selector input (one selector
+// per line or comma-separated) into the crawler's selector list, mirroring the
+// frontend's parsing on the crawl screen.
+func splitSelectors(raw string) []string {
+	var out []string
+	for _, s := range strings.FieldsFunc(raw, func(r rune) bool { return r == '\n' || r == ',' }) {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

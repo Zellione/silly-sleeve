@@ -1,6 +1,9 @@
 package app
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -325,4 +328,109 @@ func TestUpdateCrawlSummary_Errors(t *testing.T) {
 	app = newSendApp()
 	_, err = app.UpdateCrawlSummary("https://w/wiki/Nope", "x")
 	assert.ErrorIs(t, err, errPageNotInCrawl)
+}
+
+// refetchServer serves a MediaWiki parse response with the given page HTML.
+func refetchServer(t *testing.T, html string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := map[string]any{
+			"parse": map[string]any{
+				"title": "Fresh",
+				"text":  map[string]any{"*": html},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(resp))
+	}))
+}
+
+func TestRefetchCrawlResult_ReplacesPageInPlace(t *testing.T) {
+	srv := refetchServer(t, "<p>fresh content from the wiki</p>")
+	defer srv.Close()
+
+	app := NewApp()
+	pageURL := srv.URL + "/wiki/Test_Page"
+	app.cachedCrawlSet = &crawler.CrawlSet{
+		RootURL: "https://w/wiki/Root",
+		Results: []crawler.CrawlResult{
+			{URL: "https://w/wiki/Root", Title: "Root"},
+			{URL: pageURL, Title: "Stale", Depth: 1, ParentURL: "https://w/wiki/Root",
+				Sections: []crawler.Section{{Body: "stale, hand-edited summary"}}},
+		},
+	}
+
+	res, err := app.RefetchCrawlResult(pageURL)
+	require.NoError(t, err)
+	assert.Equal(t, pageURL, res.URL, "the page keeps its identity URL")
+	assert.Equal(t, 1, res.Depth, "depth survives the refetch")
+	assert.Equal(t, "https://w/wiki/Root", res.ParentURL, "parent link survives the refetch")
+	require.NotEmpty(t, res.Sections)
+	assert.Contains(t, res.Sections[0].Body, "fresh content")
+
+	// Replaced in place — not appended, not reordered.
+	require.Len(t, app.cachedCrawlSet.Results, 2)
+	assert.Equal(t, "https://w/wiki/Root", app.cachedCrawlSet.Results[0].URL)
+	assert.Equal(t, res.Sections, app.cachedCrawlSet.Results[1].Sections)
+}
+
+func TestRefetchCrawlResult_RootResyncsLegacyCache(t *testing.T) {
+	srv := refetchServer(t, "<p>fresh root body</p>")
+	defer srv.Close()
+
+	app := NewApp()
+	pageURL := srv.URL + "/wiki/Root"
+	app.cachedCrawlSet = &crawler.CrawlSet{
+		RootURL: pageURL,
+		Results: []crawler.CrawlResult{{URL: pageURL, Title: "Root", Sections: []crawler.Section{{Body: "old"}}}},
+	}
+	app.cachedCrawl = &crawler.CrawlResult{URL: pageURL, Title: "Root"}
+
+	res, err := app.RefetchCrawlResult(pageURL)
+	require.NoError(t, err)
+	require.NotNil(t, app.cachedCrawl)
+	assert.Equal(t, res.Sections, app.cachedCrawl.Sections)
+}
+
+func TestRefetchCrawlResult_HonoursStoredSelectors(t *testing.T) {
+	srv := refetchServer(t, `<p class="keep">keep me</p><p class="drop">drop me</p>`)
+	defer srv.Close()
+
+	app := NewApp()
+	pageURL := srv.URL + "/wiki/Sel"
+	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{{URL: pageURL, Title: "Sel"}}}
+	app.crawlInputs.Selectors = ".keep"
+
+	res, err := app.RefetchCrawlResult(pageURL)
+	require.NoError(t, err)
+	require.Len(t, res.Sections, 1)
+	assert.Equal(t, "keep me", res.Sections[0].Body)
+}
+
+func TestRefetchCrawlResult_Errors(t *testing.T) {
+	app := NewApp()
+	_, err := app.RefetchCrawlResult("https://w/wiki/Hero")
+	assert.ErrorIs(t, err, errNoCrawl)
+
+	app = newSendApp()
+	_, err = app.RefetchCrawlResult("https://w/wiki/Nope")
+	assert.ErrorIs(t, err, errPageNotInCrawl)
+}
+
+func TestRefetchCrawlResult_FetchFailureLeavesSetUntouched(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer srv.Close()
+
+	app := NewApp()
+	pageURL := srv.URL + "/wiki/Down"
+	app.cachedCrawlSet = &crawler.CrawlSet{Results: []crawler.CrawlResult{
+		{URL: pageURL, Title: "Down", Sections: []crawler.Section{{Body: "still here"}}},
+	}}
+
+	_, err := app.RefetchCrawlResult(pageURL)
+	require.Error(t, err)
+	require.Len(t, app.cachedCrawlSet.Results, 1)
+	assert.Equal(t, "still here", app.cachedCrawlSet.Results[0].Sections[0].Body)
 }

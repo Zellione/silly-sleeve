@@ -234,6 +234,10 @@ export function ReadImageFile(arg1) {
   return window['go']['app']['App']['ReadImageFile'](arg1);
 }
 
+export function RefetchCrawlResult(arg1) {
+  return window['go']['app']['App']['RefetchCrawlResult'](arg1);
+}
+
 export function RemoveCrawlResult(arg1) {
   return window['go']['app']['App']['RemoveCrawlResult'](arg1);
 }

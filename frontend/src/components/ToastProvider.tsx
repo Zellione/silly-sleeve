@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { CheckIcon, XIcon, BoltIcon, SaveIcon } from '../icons';
 
 export type ToastKind = 'ok' | 'bad' | 'warn' | 'info';
@@ -34,12 +34,26 @@ const ToastIcon: React.FC<{ kind: ToastKind }> = ({ kind }) => {
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Auto-dismiss timers must not outlive the provider: a timer firing after
+  // unmount calls setState on a dead tree (and crashes test runs whose
+  // environment is already torn down).
+  const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach(clearTimeout);
+      pending.clear();
+    };
+  }, []);
+
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2);
     setToasts(prev => [...prev, { ...t, id }]);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      timers.current.delete(timer);
       setToasts(prev => prev.filter(x => x.id !== id));
     }, 4200);
+    timers.current.add(timer);
   }, []);
 
   const dismiss = useCallback((id: string) => {

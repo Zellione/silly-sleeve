@@ -11,6 +11,8 @@ const mockSaveCrawlState = vi.fn();
 const mockSendCrawlResult = vi.fn();
 const mockGetCharacters = vi.fn();
 const mockUpdateCrawlSummary = vi.fn();
+const mockRemoveCrawlResult = vi.fn();
+const mockRefetchCrawlResult = vi.fn();
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GetCrawlState: () => mockGetCrawlState(),
@@ -19,6 +21,8 @@ vi.mock('../../wailsjs/go/app/App', () => ({
     mockSendCrawlResult(url, role, overwrite),
   GetCharacters: () => mockGetCharacters(),
   UpdateCrawlSummary: (url: string, text: string) => mockUpdateCrawlSummary(url, text),
+  RemoveCrawlResult: (url: string) => mockRemoveCrawlResult(url),
+  RefetchCrawlResult: (url: string) => mockRefetchCrawlResult(url),
 }));
 
 const result = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -320,6 +324,92 @@ describe('SummariesScreen', () => {
     await screen.findByText('Elara Wynd');
     await userEvent.click(screen.getByRole('button', { name: /Crawl more/ }));
     expect(onNav).toHaveBeenCalledWith('crawler');
+  });
+
+  it('deletes a page after confirmation and persists the cleaned state', async () => {
+    mockRemoveCrawlResult.mockResolvedValue({
+      rootUrl: 'https://bg.fandom.com/wiki/Harpers',
+      results: [result({ title: 'Harpers', url: 'https://bg.fandom.com/wiki/Harpers', wordCount: 60 })],
+    });
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByTitle('Delete page'));
+
+    // Nothing happens until the user confirms.
+    expect(mockRemoveCrawlResult).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole('button', { name: /^Confirm$/ }));
+
+    await waitFor(() => {
+      expect(mockRemoveCrawlResult).toHaveBeenCalledWith('https://bg.fandom.com/wiki/Elara_Wynd');
+    });
+    expect(screen.queryByText('Elara Wynd')).not.toBeInTheDocument();
+    // The stale role/sent markers for the deleted page are persisted away.
+    await waitFor(() => expect(mockSaveCrawlState).toHaveBeenCalled());
+    const saved = mockSaveCrawlState.mock.calls.at(-1)![0];
+    expect(saved.roles).not.toHaveProperty('https://bg.fandom.com/wiki/Elara_Wynd');
+  });
+
+  it('does not delete when the confirmation is cancelled', async () => {
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByTitle('Delete page'));
+    await userEvent.click(await screen.findByRole('button', { name: /^Cancel$/ }));
+
+    expect(mockRemoveCrawlResult).not.toHaveBeenCalled();
+    expect(screen.getByText('Elara Wynd')).toBeInTheDocument();
+  });
+
+  it('reports a failed delete', async () => {
+    mockRemoveCrawlResult.mockRejectedValue(new Error('boom'));
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByTitle('Delete page'));
+    await userEvent.click(await screen.findByRole('button', { name: /^Confirm$/ }));
+
+    expect(await screen.findByText('Delete failed')).toBeInTheDocument();
+    expect(screen.getByText('Elara Wynd')).toBeInTheDocument();
+  });
+
+  it('refetches a page after confirmation and shows the fresh summary', async () => {
+    mockRefetchCrawlResult.mockResolvedValue(result({
+      sections: [{ heading: '', body: 'Fresh from the wiki.', level: 1 }],
+      wordCount: 4,
+    }));
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByRole('button', { name: /Refetch/ }));
+
+    // Nothing happens until the user confirms.
+    expect(mockRefetchCrawlResult).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole('button', { name: /^Confirm$/ }));
+
+    await waitFor(() => {
+      expect(mockRefetchCrawlResult).toHaveBeenCalledWith('https://bg.fandom.com/wiki/Elara_Wynd');
+    });
+    expect(await screen.findByText('Page refetched')).toBeInTheDocument();
+    expect(screen.getByText(/Fresh from the wiki/)).toBeInTheDocument();
+    expect(screen.queryByText(/A half-elf bard on the docks/)).not.toBeInTheDocument();
+  });
+
+  it('does not refetch when the confirmation is cancelled', async () => {
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByRole('button', { name: /Refetch/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /^Cancel$/ }));
+
+    expect(mockRefetchCrawlResult).not.toHaveBeenCalled();
+    expect(screen.getByText(/A half-elf bard on the docks/)).toBeInTheDocument();
+  });
+
+  it('reports a failed refetch and keeps the stored summary', async () => {
+    mockRefetchCrawlResult.mockRejectedValue(new Error('could not fetch'));
+    renderScreen();
+    await userEvent.click(await screen.findByText('Elara Wynd'));
+    await userEvent.click(screen.getByRole('button', { name: /Refetch/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /^Confirm$/ }));
+
+    expect(await screen.findByText('Refetch failed')).toBeInTheDocument();
+    expect(screen.getByText(/A half-elf bard on the docks/)).toBeInTheDocument();
   });
 
   it('shows an empty state with a crawl CTA when nothing matches', async () => {

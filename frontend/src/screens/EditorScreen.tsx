@@ -603,10 +603,10 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
             <div className="b scroll">
               {crawl ? (
                 <>
-                  {crawl.sections && <SectionContent sections={crawl.sections} />}
                   {crawl.infobox && crawl.infobox.length > 0 && (
-                    <Infobox entries={crawl.infobox} style={{ marginTop: 16 }} />
+                    <Infobox entries={crawl.infobox} style={{ marginBottom: 16 }} />
                   )}
+                  {crawl.sections && <SectionContent sections={crawl.sections} />}
                 </>
               ) : (
                 <div className="col" style={{ alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.4 }}>

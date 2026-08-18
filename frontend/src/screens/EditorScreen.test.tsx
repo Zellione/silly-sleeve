@@ -115,6 +115,18 @@ describe('EditorScreen', () => {
     });
   });
 
+  it('renders the source infobox above the section content', async () => {
+    const { container } = renderEditor();
+    await screen.findByText('Half-elf');
+    const panel = container.querySelector('.editor-source .b');
+    const infobox = panel?.querySelector('.infobox');
+    const heading = panel?.querySelector('h4');
+    expect(infobox).toBeTruthy();
+    expect(heading).toBeTruthy();
+    // The infobox must come first in document order.
+    expect(infobox!.compareDocumentPosition(heading!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('adds and removes an alternate greeting row', async () => {
     const user = userEvent.setup();
     renderEditor();

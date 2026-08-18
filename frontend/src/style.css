@@ -1582,6 +1582,7 @@ kbd {
 
 /* ─── Lorebook extraction (Extract tab) ─────────────────── */
 
+.lore-tabs-row { display: flex; padding: 14px 32px 0; }
 .lore-tabs { display: inline-flex; gap: 2px; padding: 2px; background: var(--bg); border: 1px solid var(--hair); border-radius: 5px; }
 .lore-tab {
   appearance: none; border: 0; background: transparent; cursor: pointer;
@@ -1695,8 +1696,18 @@ kbd {
 .lore-sugg { border: 1px solid var(--hair); border-radius: 5px; background: var(--bg); overflow: hidden; }
 .lore-sugg[data-on="0"] { opacity: 0.5; }
 .lore-sugg[data-on="1"] { border-color: var(--hair-strong); }
-.lore-sugg-head { display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; cursor: pointer; }
-.lore-sugg-head input[type="checkbox"] { accent-color: var(--acc); width: 14px; height: 14px; margin-top: 2px; cursor: pointer; }
+.lore-sugg-head { display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; }
+.lore-sugg-actions { display: flex; gap: 6px; margin-top: 2px; }
+.lore-sugg-verdict { display: inline-flex; gap: 4px; flex-shrink: 0; margin-top: 1px; }
+.lore-sugg-verdict .v-btn {
+  appearance: none; width: 22px; height: 22px; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--hair); border-radius: 4px;
+  background: var(--panel); color: var(--ink-3);
+}
+.lore-sugg-verdict .v-btn:hover { color: var(--ink-2); border-color: var(--hair-strong); }
+.lore-sugg-verdict .v-btn.accept[data-on="1"] { color: var(--ok); border-color: var(--ok); background: var(--acc-soft); }
+.lore-sugg-verdict .v-btn.reject[data-on="1"] { color: var(--bad); border-color: var(--bad); }
 .lore-sugg-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .lore-sugg-body .what { font: 400 12.5px/1.45 var(--f-sans); color: var(--ink); }
 .lore-sugg-body .what b { font-weight: 600; }
@@ -1704,7 +1715,16 @@ kbd {
   font: 500 10px/1 var(--f-mono); padding: 3px 6px; border-radius: 3px;
   background: var(--panel-2); color: var(--ink-2); margin: 0 2px;
 }
+.lore-sugg-body .what s.k { text-decoration: line-through; color: var(--bad); }
 .lore-sugg-body .why { font: 400 11px/1.5 var(--f-sans); color: var(--ink-3); }
+.lore-delta { white-space: nowrap; }
+.lore-delta s { color: var(--ink-3); }
+.lore-delta .arr { margin: 0 5px; color: var(--ink-3); }
+.lore-delta b { color: var(--acc); font-weight: 600; }
+.lore-flag-delta { margin-right: 10px; white-space: nowrap; }
+.lore-flag-delta .fname {
+  font: 500 10px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3);
+}
 
 .lore-sugg-diff { border-top: 1px solid var(--hair); padding: 10px 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .lore-sugg-diff .side { display: flex; flex-direction: column; gap: 5px; min-width: 0; }

@@ -474,25 +474,27 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
         actions={
           <>
-            <div className="lore-tabs" role="tablist" aria-label="Lorebook view">
-              <button
-                type="button" className="lore-tab" role="tab" data-on={tab === 'entries' ? '1' : '0'}
-                aria-selected={tab === 'entries'}
-                onClick={() => setTab('entries')}
-              >Entries</button>
-              <button
-                type="button" className="lore-tab" role="tab" data-on={tab === 'extract' ? '1' : '0'}
-                aria-selected={tab === 'extract'}
-                onClick={() => setTab('extract')}
-              >Extract</button>
-            </div>
             <button type="button" className="btn ghost" onClick={handleSuggest} disabled={connections.running || entries.length === 0}>
-              <LinkIcon size={13}/> {connections.running ? 'Finding connections…' : 'Suggest connections'}
+              <LinkIcon size={13}/> {connections.running ? 'Optimizing…' : 'Optimize lorebook'}
             </button>
             <button type="button" className="btn ghost" onClick={handleImport}><UploadIcon size={13}/> Import .json</button>
             <button type="button" className="btn ghost" onClick={handleExport}><UploadIcon size={13}/> Export world_info.json</button>
           </>
         } />
+      <div className="lore-tabs-row">
+        <div className="lore-tabs" role="tablist" aria-label="Lorebook view">
+          <button
+            type="button" className="lore-tab" role="tab" data-on={tab === 'entries' ? '1' : '0'}
+            aria-selected={tab === 'entries'}
+            onClick={() => setTab('entries')}
+          >Entries</button>
+          <button
+            type="button" className="lore-tab" role="tab" data-on={tab === 'extract' ? '1' : '0'}
+            aria-selected={tab === 'extract'}
+            onClick={() => setTab('extract')}
+          >Extract</button>
+        </div>
+      </div>
       {tab === 'extract' ? (
         <ExtractPanel
           characters={characters}
@@ -504,6 +506,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
             suggestions: connections.suggestions,
             entries,
             onChange: connections.updateSuggestion,
+            onSetAll: connections.setAllSelected,
             onApply: connections.apply,
             onDismiss: connections.dismiss,
           }}

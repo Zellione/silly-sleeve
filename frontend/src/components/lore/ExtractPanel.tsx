@@ -10,6 +10,7 @@ export type ConnectionReview = {
   suggestions: loreextract.Suggestion[];
   entries: lorebook.Entry[];
   onChange: (index: number, next: loreextract.Suggestion) => void;
+  onSetAll: (selected: boolean) => void;
   onApply: () => void;
   onDismiss: () => void;
 };
@@ -67,6 +68,7 @@ export const ExtractPanel: React.FC<{
             entries={connections.entries}
             characters={characters}
             onChange={connections.onChange}
+            onSetAll={connections.onSetAll}
             onApply={connections.onApply}
             onDismiss={connections.onDismiss}
           />

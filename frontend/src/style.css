@@ -2549,6 +2549,7 @@ kbd {
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 6px;
+  padding: 16px;
 }
 .bar { height: 3px; background: var(--hair); border-radius: 2px; overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--acc); }

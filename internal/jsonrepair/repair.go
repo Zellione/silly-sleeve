@@ -69,53 +69,83 @@ type repairer struct {
 
 func (r *repairer) run() {
 	for r.i < len(r.src) {
-		c := r.src[r.i]
-		switch {
-		case c == '"':
-			r.flushPending()
-			r.copyString('"')
-		case c == '\'':
-			r.flushPending()
-			r.copyString('\'')
-		case c == '/' && r.i+1 < len(r.src) && (r.src[r.i+1] == '/' || r.src[r.i+1] == '*'):
-			r.skipComment()
-		case c == ',':
-			// A repeated comma collapses into the one already pending.
-			if !strings.Contains(r.pending, ",") {
-				r.pending += ","
-			}
-			r.i++
-		case c == '}' || c == ']':
-			r.dropPendingComma()
-			r.out.WriteByte(c)
-			if len(r.stack) > 0 {
-				r.stack = r.stack[:len(r.stack)-1]
-			}
-			r.i++
-		case c == '{' || c == '[':
-			r.flushPending()
-			r.stack = append(r.stack, c)
-			r.out.WriteByte(c)
-			r.i++
-		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
-			if r.pending != "" {
-				r.pending += string(c)
-			} else {
-				r.out.WriteByte(c)
-			}
-			r.i++
-		case isWordChar(c):
-			r.flushPending()
-			r.copyWord()
-		default:
-			r.flushPending()
-			r.out.WriteByte(c)
-			r.i++
-		}
+		r.step(r.src[r.i])
 	}
 
 	// Truncated output: a dangling comma is dropped, open containers closed.
 	r.dropPendingComma()
+	r.closeOpenContainers()
+}
+
+// step consumes at least one input byte, dispatching on its character class.
+func (r *repairer) step(c byte) {
+	switch {
+	case c == '"' || c == '\'':
+		r.flushPending()
+		r.copyString(c)
+	case r.atComment():
+		r.skipComment()
+	case c == ',':
+		r.holdComma()
+	case c == '}' || c == ']':
+		r.closeContainer(c)
+	case c == '{' || c == '[':
+		r.openContainer(c)
+	case c == ' ' || c == '\t' || c == '\n' || c == '\r':
+		r.copyWhitespace(c)
+	case isWordChar(c):
+		r.flushPending()
+		r.copyWord()
+	default:
+		r.flushPending()
+		r.out.WriteByte(c)
+		r.i++
+	}
+}
+
+func (r *repairer) atComment() bool {
+	return r.src[r.i] == '/' && r.i+1 < len(r.src) &&
+		(r.src[r.i+1] == '/' || r.src[r.i+1] == '*')
+}
+
+// holdComma parks a comma in pending; a repeated comma collapses into the one
+// already held.
+func (r *repairer) holdComma() {
+	if !strings.Contains(r.pending, ",") {
+		r.pending += ","
+	}
+	r.i++
+}
+
+func (r *repairer) closeContainer(c byte) {
+	r.dropPendingComma()
+	r.out.WriteByte(c)
+	if len(r.stack) > 0 {
+		r.stack = r.stack[:len(r.stack)-1]
+	}
+	r.i++
+}
+
+func (r *repairer) openContainer(c byte) {
+	r.flushPending()
+	r.stack = append(r.stack, c)
+	r.out.WriteByte(c)
+	r.i++
+}
+
+// copyWhitespace emits whitespace, or parks it behind a held comma so the
+// comma can still be dropped should a closer follow.
+func (r *repairer) copyWhitespace(c byte) {
+	if r.pending != "" {
+		r.pending += string(c)
+	} else {
+		r.out.WriteByte(c)
+	}
+	r.i++
+}
+
+// closeOpenContainers unwinds the bracket stack after truncated output.
+func (r *repairer) closeOpenContainers() {
 	for j := len(r.stack) - 1; j >= 0; j-- {
 		if r.stack[j] == '{' {
 			r.out.WriteByte('}')

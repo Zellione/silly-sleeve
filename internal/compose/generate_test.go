@@ -75,22 +75,38 @@ func TestBuildFieldMaskString_WithFields(t *testing.T) {
 	assert.Contains(t, s, "appearance")
 }
 
-func TestCleanResponse_PlainJSON(t *testing.T) {
-	input := `{"name":"Elara"}`
-	output := cleanResponse(input)
-	assert.Equal(t, input, output)
+// scriptedCompleter returns a different response per call and records prompts.
+type scriptedCompleter struct {
+	responses []string
+	prompts   []string
 }
 
-func TestCleanResponse_CodeFence(t *testing.T) {
-	input := "```json\n{\"name\":\"Elara\"}\n```"
-	output := cleanResponse(input)
-	assert.Equal(t, "{\"name\":\"Elara\"}", output)
+func (s *scriptedCompleter) Complete(_ context.Context, _ llm.LLMEndpoint, _, user string) (string, error) {
+	s.prompts = append(s.prompts, user)
+	i := len(s.prompts) - 1
+	if i >= len(s.responses) {
+		i = len(s.responses) - 1
+	}
+	return s.responses[i], nil
 }
 
-func TestCleanResponse_GenericFence(t *testing.T) {
-	input := "```\n{\"name\":\"Elara\"}\n```"
-	output := cleanResponse(input)
-	assert.Equal(t, "{\"name\":\"Elara\"}", output)
+func TestGenerateBulk_RepairsMalformedJSONWithoutRetry(t *testing.T) {
+	c := &scriptedCompleter{responses: []string{`{"name": "Elara", "epithet": "The Lark",}`}}
+	ch, err := GenerateBulkWith(context.Background(), c, crawler.CrawlResult{Title: "Elara"},
+		llm.LLMEndpoint{}, nil, Character{})
+	require.NoError(t, err)
+	assert.Equal(t, "Elara", ch.Name)
+	assert.Len(t, c.prompts, 1, "repair must not cost a second request")
+}
+
+func TestGenerateBulk_RetriesOnceWithErrorFeedback(t *testing.T) {
+	c := &scriptedCompleter{responses: []string{"I refuse.", `{"name": "Elara"}`}}
+	ch, err := GenerateBulkWith(context.Background(), c, crawler.CrawlResult{Title: "Elara"},
+		llm.LLMEndpoint{}, nil, Character{})
+	require.NoError(t, err)
+	assert.Equal(t, "Elara", ch.Name)
+	require.Len(t, c.prompts, 2)
+	assert.Contains(t, c.prompts[1], "I refuse.", "retry shows the model its bad reply")
 }
 
 func TestGenerateBulk_Success(t *testing.T) {
@@ -330,6 +346,35 @@ func TestGenerateField_NoTemplate(t *testing.T) {
 	_, err := GenerateField(context.Background(), "name", result, llm.LLMEndpoint{}, "", Character{}, tmpl)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no template")
+}
+
+func TestGenerateField_RetriesForStructuredField(t *testing.T) {
+	c := &scriptedCompleter{responses: []string{"utter garbage", `{"tags": ["bard"]}`}}
+	tmpl := prompts.Defaults()
+	tmpl.FieldPrompts["tags"] = "List tags."
+
+	ch, err := GenerateFieldWith(context.Background(), c, llm.LLMEndpoint{}, FieldRequest{
+		FieldID: "tags", Result: crawler.CrawlResult{Title: "T"}, Templates: tmpl,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"bard"}, ch.Tags)
+	require.Len(t, c.prompts, 2)
+	assert.Contains(t, c.prompts[1], "utter garbage", "retry shows the model its bad reply")
+}
+
+func TestGenerateField_TextFieldRawFallbackSkipsRetry(t *testing.T) {
+	// A freeform field accepts the reply as plain text, so a non-JSON reply
+	// is not a failure and must not trigger a retry.
+	c := &scriptedCompleter{responses: []string{"Just plain prose."}}
+	tmpl := prompts.Defaults()
+	tmpl.FieldPrompts["appearance"] = "Describe."
+
+	ch, err := GenerateFieldWith(context.Background(), c, llm.LLMEndpoint{}, FieldRequest{
+		FieldID: "appearance", Result: crawler.CrawlResult{Title: "T"}, Templates: tmpl,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "Just plain prose.", ch.Appearance)
+	assert.Len(t, c.prompts, 1)
 }
 
 func TestGenerateField_LLMError(t *testing.T) {

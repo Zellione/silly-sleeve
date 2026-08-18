@@ -47,6 +47,7 @@ export const AuthTokenBlock: React.FC<AuthTokenBlockProps> = ({
           onClick={() => onToggle(!enabled)}
           role="switch"
           aria-checked={enabled}
+          aria-label={toggleLabel}
         >
           <i />
         </button>

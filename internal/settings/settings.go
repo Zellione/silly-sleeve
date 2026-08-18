@@ -23,8 +23,12 @@ type LLMEndpoint struct {
 	SystemPrompt string  `json:"systemPrompt"`
 	// TimeoutSeconds bounds one completion request against this endpoint.
 	// Zero means "use the built-in default".
-	TimeoutSeconds int  `json:"timeoutSeconds,omitempty"`
-	Ok             bool `json:"ok"`
+	TimeoutSeconds int `json:"timeoutSeconds,omitempty"`
+	// ForceJSON asks the backend to constrain output to valid JSON via
+	// response_format. Off by default: not every OpenAI-compatible server
+	// supports it, and some reject requests carrying it.
+	ForceJSON bool `json:"forceJson,omitempty"`
+	Ok        bool `json:"ok"`
 }
 
 // ComfyConfig holds ComfyUI backend connection settings.

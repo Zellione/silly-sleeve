@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"silly-sleeve/internal/compose"
+	"silly-sleeve/internal/jsonrepair"
 	"silly-sleeve/internal/llm"
 	"silly-sleeve/internal/lorebook"
 	"silly-sleeve/internal/prompts"
@@ -105,14 +106,8 @@ func (c *Connector) Suggest(ctx context.Context, req ConnectRequest) ([]Suggesti
 		ok       int
 	)
 	for _, batch := range batchEntries(req.Entries, available) {
-		content, err := c.completerOrDefault().Complete(ctx, req.Endpoint, tpl.LorePrompts[prompts.LoreSystem], render(buildFocusEntries(batch)))
-		if err != nil {
-			if firstErr == nil {
-				firstErr = fmt.Errorf("llm complete: %w", err)
-			}
-			continue
-		}
-		payloads, err := parseSuggestions(content)
+		payloads, _, err := llm.CompleteJSON(ctx, c.completerOrDefault(), req.Endpoint,
+			tpl.LorePrompts[prompts.LoreSystem], render(buildFocusEntries(batch)), parseSuggestions)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -167,7 +162,7 @@ func batchEntries(entries []lorebook.Entry, budget int) [][]lorebook.Entry {
 }
 
 func parseSuggestions(content string) ([]suggestionPayload, error) {
-	cleaned := cleanJSON(content)
+	cleaned := jsonrepair.Clean(content)
 
 	var resp suggestionResponse
 	err := json.Unmarshal([]byte(cleaned), &resp)

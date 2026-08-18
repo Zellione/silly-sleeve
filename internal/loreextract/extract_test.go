@@ -205,6 +205,43 @@ func TestExtract_ToleratesTopLevelArray(t *testing.T) {
 	}
 }
 
+func TestExtract_RepairsMalformedJSONWithoutRetry(t *testing.T) {
+	// Trailing comma plus a literal newline in content: the two most common
+	// small-model defects. Repair must fix them without a second request.
+	resp := "{\"entries\": [{\"category\": \"location\", \"comment\": \"Ferelden\", " +
+		"\"key\": [\"ferelden\"], \"content\": \"line one\nline two\", \"order\": 300,}]}"
+
+	f := &fakeCompleter{response: resp}
+	got, err := NewExtractor(f).Extract(context.Background(), baseRequest())
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, 1, f.callCount, "repair must not cost a second request")
+	assert.Equal(t, "line one\nline two", got[0].Entry.Content)
+	assert.Contains(t, strings.Join(got[0].Adjustments, " "), "repair")
+}
+
+func TestExtract_RetriesOnceWithErrorFeedback(t *testing.T) {
+	f := &scriptedCompleter{responses: []string{"I cannot produce JSON, sorry.", twoEntryResponse}}
+	got, err := NewExtractor(f).Extract(context.Background(), baseRequest())
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Len(t, f.prompts, 2)
+	assert.Contains(t, f.prompts[1], "I cannot produce JSON, sorry.", "retry shows the model its bad reply")
+	assert.Contains(t, strings.Join(got[0].Adjustments, " "), "retr")
+}
+
+func TestExtract_ToleratesOrderAsString(t *testing.T) {
+	// Small models emit "order": "300"; a type mismatch there must not kill
+	// the whole batch.
+	resp := `{"entries":[{"category":"location","comment":"Redcliffe","key":["Redcliffe","the castle"],
+"content":"A fortress.","order":"300"}]}`
+
+	got, err := extractWith(t, resp, baseRequest())
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, 300, got[0].Entry.Order)
+}
+
 func TestExtract_MalformedJSONErrorsWithContext(t *testing.T) {
 	_, err := extractWith(t, "not json at all", baseRequest())
 	require.Error(t, err)
@@ -384,28 +421,6 @@ func TestBuildFocusEntries_EmptyListsRenderAsNone(t *testing.T) {
 	got := buildFocusEntries([]lorebook.Entry{{UID: 1, Comment: "X", Content: "y"}})
 	assert.Contains(t, got, "keys: (none)")
 	assert.Contains(t, got, "scoped to characters: (none)")
-}
-
-func TestCleanJSON(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{"plain", `{"a":1}`, `{"a":1}`},
-		{"json fence", "```json\n{\"a\":1}\n```", `{"a":1}`},
-		{"bare fence", "```\n{\"a\":1}\n```", `{"a":1}`},
-		{"leading prose", "Sure!\n{\"a\":1}", `{"a":1}`},
-		{"trailing prose", "{\"a\":1}\nHope that helps.", `{"a":1}`},
-		{"whitespace", "  \n {\"a\":1} \n ", `{"a":1}`},
-		{"not json", "nothing here", "nothing here"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, cleanJSON(tc.in))
-		})
-	}
 }
 
 func TestTruncate(t *testing.T) {

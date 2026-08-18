@@ -221,6 +221,33 @@ export const EndpointFlyout: React.FC<EndpointFlyoutProps> = ({
             </div>
           </div>
 
+          {/* Force JSON output */}
+          <div className="ep-row">
+            <span className="ep-label">
+              <span>JSON mode</span>
+              <small>
+                Constrains the model to valid JSON via <code>response_format</code>. Requires backend
+                support (ollama, llama.cpp, koboldcpp) — use Test to verify, and turn off if requests fail.
+              </small>
+            </span>
+            <div className="ep-toggle-row">
+              <div>
+                <b>Force JSON output</b>
+                <small>Recommended for small local models that produce broken JSON.</small>
+              </div>
+              <button type="button"
+                className="ep-switch"
+                data-on={draft.forceJson ? '1' : '0'}
+                onClick={() => set('forceJson', !draft.forceJson)}
+                role="switch"
+                aria-checked={!!draft.forceJson}
+                aria-label="Force JSON output"
+              >
+                <i />
+              </button>
+            </div>
+          </div>
+
           {/* Request timeout */}
           <div className="ep-row">
             <label htmlFor="ep-timeout-input">

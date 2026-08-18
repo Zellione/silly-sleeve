@@ -34,6 +34,39 @@ func TestTestEndpoint_Success(t *testing.T) {
 	assert.Empty(t, result.Error)
 }
 
+func TestTestEndpoint_ForceJSONSendsResponseFormat(t *testing.T) {
+	// The Test button doubles as the "does my backend support JSON mode?"
+	// probe: a server that rejects response_format fails the test visibly.
+	var req map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"hi"}}]}`))
+	}))
+	defer srv.Close()
+
+	result := TestEndpoint(LLMEndpoint{URL: srv.URL, Model: "m", ForceJSON: true})
+	assert.True(t, result.Ok)
+	rf, ok := req["response_format"].(map[string]any)
+	assert.True(t, ok, "request must carry response_format")
+	assert.Equal(t, "json_object", rf["type"])
+}
+
+func TestTestEndpoint_NoResponseFormatByDefault(t *testing.T) {
+	var req map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"hi"}}]}`))
+	}))
+	defer srv.Close()
+
+	result := TestEndpoint(LLMEndpoint{URL: srv.URL, Model: "m"})
+	assert.True(t, result.Ok)
+	_, present := req["response_format"]
+	assert.False(t, present)
+}
+
 func TestTestEndpoint_HTTP401(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)

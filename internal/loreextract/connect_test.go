@@ -285,15 +285,41 @@ func TestSuggest_PartialBatchFailureKeepsWhatSucceeded(t *testing.T) {
 	req := connectRequest(entries)
 	req.Endpoint.ContextSize = 4096
 
-	// First batch is unparseable, later ones are fine.
+	// First batch is unparseable on both its attempt and its retry; later
+	// batches are fine.
 	c := &scriptedCompleter{responses: []string{
 		"total nonsense",
+		"still nonsense",
 		`{"suggestions":[{"kind":"triggerKeys","entryUid":1,"addKeys":["the capital"],"rationale":"x"}]}`,
 	}}
 
 	got, err := NewConnector(c).Suggest(context.Background(), req)
 	require.NoError(t, err, "one bad batch must not discard the others")
 	assert.Len(t, got, 1)
+}
+
+func TestSuggest_RepairsMalformedJSONWithoutRetry(t *testing.T) {
+	// A trailing comma must be mended locally, not spent on a second request.
+	resp := `{"suggestions":[{"kind":"triggerKeys","entryUid":1,"addKeys":["the capital"],"rationale":"x"},]}`
+	c := &scriptedCompleter{responses: []string{resp}}
+
+	got, err := NewConnector(c).Suggest(context.Background(), connectRequest(testEntries()))
+	require.NoError(t, err)
+	assert.Len(t, got, 1)
+	assert.Len(t, c.prompts, 1, "repair must not cost a second request")
+}
+
+func TestSuggest_RetriesOnceOnUnparseableReply(t *testing.T) {
+	c := &scriptedCompleter{responses: []string{
+		"no json here",
+		`{"suggestions":[{"kind":"triggerKeys","entryUid":1,"addKeys":["the capital"],"rationale":"x"}]}`,
+	}}
+
+	got, err := NewConnector(c).Suggest(context.Background(), connectRequest(testEntries()))
+	require.NoError(t, err)
+	assert.Len(t, got, 1)
+	require.Len(t, c.prompts, 2)
+	assert.Contains(t, c.prompts[1], "no json here", "retry shows the model its bad reply")
 }
 
 func TestSuggest_ErrorsWhenEveryBatchFails(t *testing.T) {

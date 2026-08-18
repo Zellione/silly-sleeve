@@ -296,7 +296,7 @@ func buildCharacterCharacter(s Suggestion, p suggestionPayload, chars map[int]co
 		return s, false
 	}
 	proposed := strings.TrimSpace(p.ProposedRelationships)
-	if proposed == "" || proposed == strings.TrimSpace(source.Relationships) {
+	if proposed == "" || proposed == strings.TrimSpace(source.Relationships) || isFillerRelationship(proposed) {
 		return s, false
 	}
 	s.CharID, s.TargetChar = p.CharID, p.TargetCharID
@@ -426,6 +426,35 @@ func buildRemoveKeys(s Suggestion, p suggestionPayload, entries map[int]lorebook
 
 func ptrTo[T any](v T) *T {
 	return &v
+}
+
+// fillerRelationshipPhrases mark a proposal that admits it has nothing real to
+// record. Asked for a relationship it cannot support, a model tends to return
+// placeholder prose instead of omitting the suggestion — and applying that
+// would replace a character's relationships text with an apology.
+var fillerRelationshipPhrases = []string{
+	"not enough information",
+	"not contain enough",
+	"insufficient information",
+	"cannot be established",
+	"cannot establish",
+	"unable to establish",
+	"no concrete connection",
+	"no established relationship",
+	"no direct relationship",
+	"no known relationship",
+	"relationship is unclear",
+	"relationship is unknown",
+}
+
+func isFillerRelationship(text string) bool {
+	lower := strings.ToLower(text)
+	for _, phrase := range fillerRelationshipPhrases {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
+	}
+	return false
 }
 
 // usableKeys drops blanks and keywords too generic to be worth triggering on,

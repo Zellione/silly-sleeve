@@ -201,7 +201,10 @@ And these kinds of rule change:
 
 For characterCharacter, return the complete replacement relationships text, not
 a fragment: keep what is already there and add the new relationship, using the
-bracketed form [ relationships(Name(dynamic)); ] where it fits.
+bracketed form [ relationships(Name(dynamic)); ] where it fits. Only propose it
+when the material shows an actual relationship — never return placeholder text
+such as "not enough information to establish a connection"; omit the suggestion
+instead.
 
 PROJECT CHARACTERS (id · name · epithet)
 {{character_roster}}

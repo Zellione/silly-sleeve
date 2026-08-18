@@ -118,6 +118,43 @@ func TestSuggest_CharacterRelationshipCarriesCurrentText(t *testing.T) {
 	assert.Equal(t, "Wary of Loghain. Mentored by Duncan.", got[0].ProposedRelationships)
 }
 
+func TestSuggest_DropsFillerRelationshipProposals(t *testing.T) {
+	// When the model is asked for a relationship it cannot support, it tends to
+	// return placeholder prose instead of omitting the suggestion. Recording
+	// that would pollute a character's hand-written relationships text.
+	tests := []struct {
+		name string
+		text string
+	}{
+		{"admits missing information",
+			"Jinx has a complex relationship with Vi. The provided materials do not contain enough information to establish a concrete connection between them."},
+		{"insufficient information", "Insufficient information to describe this relationship."},
+		{"cannot establish", "A relationship cannot be established from the source material."},
+		{"no known relationship", "There is no known relationship between them."},
+		{"relationship is unclear", "Their relationship is unclear."},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := fmt.Sprintf(`{"suggestions":[{"kind":"characterCharacter","charId":1,"targetCharId":2,
+"proposedRelationships":%q,"rationale":"x"}]}`, tc.text)
+
+			got, err := suggestWith(t, resp, connectRequest(testEntries()))
+			require.NoError(t, err)
+			assert.Empty(t, got, "a proposal that admits it has nothing to record must not be shown")
+		})
+	}
+}
+
+func TestSuggest_KeepsSubstantiveRelationshipProposals(t *testing.T) {
+	resp := `{"suggestions":[{"kind":"characterCharacter","charId":1,"targetCharId":2,
+"proposedRelationships":"Duncan: the Grey Warden who recruited him at Ostagar.","rationale":"x"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(testEntries()))
+	require.NoError(t, err)
+	assert.Len(t, got, 1)
+}
+
 func TestSuggest_DropsSuggestionsPointingAtNothing(t *testing.T) {
 	tests := []struct {
 		name string

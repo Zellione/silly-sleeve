@@ -215,49 +215,8 @@ func (a *App) ApplyLorebookSuggestions(suggestions []loreextract.Suggestion) Cra
 	defer a.mu.Unlock()
 
 	for _, s := range suggestions {
-		if !s.Selected {
-			continue
-		}
-		switch s.Kind {
-		case loreextract.KindEntryCharacter:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				e.Characters = mergeUnique(e.Characters, s.AddCharacters)
-			})
-		case loreextract.KindTriggerKeys:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				e.Key = mergeUnique(e.Key, s.AddKeys)
-			})
-		case loreextract.KindEntryEntry:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				e.KeySecondary = mergeUnique(e.KeySecondary, s.AddSecondary)
-			})
-		case loreextract.KindCharacterCharacter:
-			for i := range a.characters {
-				if a.characters[i].ID == s.CharID {
-					a.characters[i].Relationships = s.ProposedRelationships
-					a.characters[i].Dirty = true
-					break
-				}
-			}
-		case loreextract.KindEntryOrder:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				e.Order = s.ProposedOrder
-			})
-		case loreextract.KindEntryPosition:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				e.Position = s.ProposedPosition
-				if s.ProposedPosition == 4 { // @Depth — the only position that uses depth
-					e.Depth = s.ProposedDepth
-				}
-			})
-		case loreextract.KindEntryFlags:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				applyFlagChanges(e, s.ProposedFlags)
-			})
-		case loreextract.KindRemoveKeys:
-			a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
-				e.Key = withoutItems(e.Key, s.RemoveKeys)
-			})
+		if s.Selected {
+			a.applySuggestionLocked(s)
 		}
 	}
 
@@ -267,6 +226,51 @@ func (a *App) ApplyLorebookSuggestions(suggestions []loreextract.Suggestion) Cra
 		Lorebook:     a.lorebookEntries,
 		Staged:       a.stagedSources,
 		ActiveCharID: a.activeCharID,
+	}
+}
+
+// applySuggestionLocked applies one approved proposal. Caller holds a.mu.
+func (a *App) applySuggestionLocked(s loreextract.Suggestion) {
+	switch s.Kind {
+	case loreextract.KindEntryCharacter:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			e.Characters = mergeUnique(e.Characters, s.AddCharacters)
+		})
+	case loreextract.KindTriggerKeys:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			e.Key = mergeUnique(e.Key, s.AddKeys)
+		})
+	case loreextract.KindEntryEntry:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			e.KeySecondary = mergeUnique(e.KeySecondary, s.AddSecondary)
+		})
+	case loreextract.KindCharacterCharacter:
+		for i := range a.characters {
+			if a.characters[i].ID == s.CharID {
+				a.characters[i].Relationships = s.ProposedRelationships
+				a.characters[i].Dirty = true
+				break
+			}
+		}
+	case loreextract.KindEntryOrder:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			e.Order = s.ProposedOrder
+		})
+	case loreextract.KindEntryPosition:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			e.Position = s.ProposedPosition
+			if s.ProposedPosition == 4 { // @Depth — the only position that uses depth
+				e.Depth = s.ProposedDepth
+			}
+		})
+	case loreextract.KindEntryFlags:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			applyFlagChanges(e, s.ProposedFlags)
+		})
+	case loreextract.KindRemoveKeys:
+		a.updateEntryLocked(s.EntryUID, func(e *lorebook.Entry) {
+			e.Key = withoutItems(e.Key, s.RemoveKeys)
+		})
 	}
 }
 

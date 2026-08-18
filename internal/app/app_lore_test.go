@@ -154,6 +154,34 @@ func TestApproveLorebookCandidates_KeepsTheUsersEdits(t *testing.T) {
 	assert.Equal(t, lorebook.CategoryOrganization, entries[0].Category)
 }
 
+func TestApproveLorebookCandidates_ConsumesTheStagedSource(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	stageLore(t, a)
+	candidates, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
+	require.NoError(t, err)
+
+	candidates[1].Selected = false
+	a.ApproveLorebookCandidates(candidates)
+
+	assert.Empty(t, a.GetStagedSources(),
+		"approval consumes the page's review, so it must not linger staged")
+}
+
+func TestApproveLorebookCandidates_NothingSelectedKeepsThePageStaged(t *testing.T) {
+	a := newLoreApp(loreResponse, nil)
+	stageLore(t, a)
+	candidates, err := a.ExtractLorebookCandidates("https://w/wiki/Lore")
+	require.NoError(t, err)
+
+	for i := range candidates {
+		candidates[i].Selected = false
+	}
+	a.ApproveLorebookCandidates(candidates)
+
+	assert.Len(t, a.GetStagedSources(), 1, "nothing was approved, so the review is still open")
+	assert.Len(t, a.GetLorebookCandidates(), 2)
+}
+
 func TestApproveLorebookCandidates_AssignsUniqueUIDs(t *testing.T) {
 	a := newLoreApp(loreResponse, nil)
 	a.lorebookEntries = []lorebook.Entry{{UID: 7, Comment: "Existing"}}

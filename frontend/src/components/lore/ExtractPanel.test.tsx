@@ -221,6 +221,17 @@ describe('ExtractPanel', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith([{ uid: 0, comment: 'Denerim' }]));
   });
 
+  it('removes the staged page once its candidates are approved', async () => {
+    mockGetLorebookCandidates.mockResolvedValue([candidate()]);
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findAllByRole('checkbox', { name: /Keep Denerim/i });
+
+    await user.click(screen.getByRole('button', { name: /Add 1 to lorebook/i }));
+
+    expect(await screen.findByText('No pages staged.')).toBeInTheDocument();
+  });
+
   it('changes the extraction mode', async () => {
     const user = userEvent.setup();
     renderPanel();

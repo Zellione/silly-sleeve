@@ -155,10 +155,12 @@ func (a *App) ApproveLorebookCandidates(candidates []loreextract.Candidate) []lo
 		approved[c.SourceURL] = true
 	}
 
-	// Approving consumes every candidate from the pages involved: the ones the
-	// user did not tick were rejected, not deferred.
+	// Approving consumes the whole review for the pages involved: unticked
+	// candidates were rejected, not deferred, and the page itself leaves the
+	// staging queue — its facts are in the lorebook now. Re-extracting means
+	// sending the page from the Crawler again, which re-stages it.
 	for url := range approved {
-		a.dropCandidatesLocked(url)
+		a.dropStagedSourceLocked(url)
 	}
 	return append([]lorebook.Entry{}, a.lorebookEntries...)
 }

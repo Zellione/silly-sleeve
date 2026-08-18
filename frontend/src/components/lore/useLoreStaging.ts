@@ -139,8 +139,13 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
     try {
       const entries = await ApproveLorebookCandidates(toApprove);
       onApproved(entries || []);
-      const urls = new Set(toApprove.map(c => c.sourceUrl));
+      // Mirror the backend: approval consumes the whole review for the pages
+      // with a ticked candidate — their candidates and their staging slot.
+      const urls = new Set(toApprove.filter(c => c.selected).map(c => c.sourceUrl));
       setCandidates(prev => prev.filter(c => !urls.has(c.sourceUrl)));
+      const remaining = sources.filter(s => !urls.has(s.url));
+      setSources(remaining);
+      setActiveUrl(prev => (prev && urls.has(prev) ? (remaining[0]?.url ?? null) : prev));
       toast({
         kind: 'ok',
         title: `Added ${count} ${count === 1 ? 'entry' : 'entries'}`,
@@ -149,7 +154,7 @@ export function useLoreStaging(onApproved: (entries: lorebook.Entry[]) => void, 
     } catch (e: any) {
       toast({ kind: 'bad', title: 'Approve failed', body: errorMessage(e, 'Could not add the entries.') });
     }
-  }, [toast, onApproved]);
+  }, [toast, onApproved, sources]);
 
   return {
     sources, candidates, activeUrl, extracting, extractError, loaded,

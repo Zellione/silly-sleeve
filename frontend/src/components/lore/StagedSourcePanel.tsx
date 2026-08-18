@@ -40,9 +40,10 @@ function extractLabel(source: loreextract.StagedSource, extracting: string | nul
  * The staged-sources column: crawled pages queued for extraction, the mode
  * each will be extracted with, and the Extract action.
  *
- * A source stays listed after its candidates are approved, marked done, so it
- * can be extracted again — with a different mode, or after the prompts change
- * — without going back to the Crawler.
+ * Approving a page's candidates consumes it: the page leaves this list along
+ * with its review. Discarding keeps it staged so it can be extracted again —
+ * with a different mode or style, or after the prompts change — and a consumed
+ * page can always be re-staged by sending it from the Crawler again.
  */
 export const StagedSourcePanel: React.FC<{
   sources: loreextract.StagedSource[];

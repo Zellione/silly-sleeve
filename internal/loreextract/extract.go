@@ -60,8 +60,13 @@ type extractionResponse struct {
 // by us, so accepting them here would only invite the model to fight the
 // normaliser.
 type entryPayload struct {
-	Category     string   `json:"category"`
-	Comment      string   `json:"comment"`
+	Category string `json:"category"`
+	Comment  string `json:"comment"`
+	// Local models drift on the title field's name despite the prompt asking
+	// for "comment"; the common aliases are accepted so entries never arrive
+	// untitled. Comment wins when more than one is present.
+	Title        string   `json:"title"`
+	Name         string   `json:"name"`
 	Key          []string `json:"key"`
 	KeySecondary []string `json:"keysecondary"`
 	Content      string   `json:"content"`
@@ -145,7 +150,7 @@ func buildCandidates(payloads []entryPayload, req ExtractRequest) []Candidate {
 		ids, unresolved := resolveCharacterRefs(p.Characters, req.Characters)
 		entries = append(entries, lorebook.Entry{
 			Category:     p.Category,
-			Comment:      p.Comment,
+			Comment:      firstNonEmpty(p.Comment, p.Title, p.Name),
 			Key:          p.Key,
 			KeySecondary: p.KeySecondary,
 			Content:      p.Content,
@@ -208,6 +213,15 @@ func cleanJSON(content string) string {
 	}
 
 	return strings.TrimSpace(s)
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func truncate(s string, n int) string {

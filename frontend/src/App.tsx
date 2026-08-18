@@ -4,14 +4,14 @@ import {
   TopBar, StatusBar,
   type Route,
 } from './components/Layout';
-import { ToastProvider } from './components/ToastProvider';
+import { ToastProvider, useToast } from './components/ToastProvider';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import {
   DashboardScreen, CrawlerScreen, SummariesScreen, CharactersScreen,
   LorebookScreen, ImagesScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
-import { GetSettings, NewProject } from '../wailsjs/go/app/App';
+import { GetSettings, NewProject, PickSaveBundle, SaveProjectBundle } from '../wailsjs/go/app/App';
 import { settings } from '../wailsjs/go/models';
 import { logError } from './utils/log';
 
@@ -21,6 +21,7 @@ function AppShell() {
   const [projectPath, setProjectPath] = useState('');
   const [projectName, setProjectName] = useState('');
   const creatingProject = useRef(false);
+  const { toast } = useToast();
 
   const handleOpenProject = (path: string, name?: string) => {
     setProjectPath(path);
@@ -33,14 +34,32 @@ function AppShell() {
     if (creatingProject.current) return;
     creatingProject.current = true;
     try {
-      await NewProject(name);
-      setProjectPath('');
+      // NewProject instantly writes the fresh bundle into the managed library
+      // folder; adopting its path arms the debounced auto-saves from edit one.
+      const path = await NewProject(name);
+      setProjectPath(path ?? '');
       setProjectName(name);
       setRoute('crawler');
     } catch (e) {
       logError('App.newProject', e);
     } finally {
       creatingProject.current = false;
+    }
+  };
+
+  const handleSaveProject = async () => {
+    try {
+      let path = projectPath;
+      if (!path) {
+        // No bundle path (library unavailable at creation): ask where to save.
+        path = await PickSaveBundle();
+        if (!path) return;
+        setProjectPath(path);
+      }
+      await SaveProjectBundle(path);
+      toast({ kind: 'ok', title: 'Project saved' });
+    } catch (e) {
+      toast({ kind: 'bad', title: 'Project not saved', body: String(e) });
     }
   };
 
@@ -98,7 +117,7 @@ function AppShell() {
 
   return (
     <div className="ss-app-v2">
-      <TopBar current={route} onNav={setRoute} projectName={projectName || undefined} />
+      <TopBar current={route} onNav={setRoute} projectName={projectName || undefined} onSave={handleSaveProject} />
       <main className="ss-content">
         {renderScreen()}
       </main>

@@ -65,6 +65,29 @@ describe('TopBar', () => {
     expect(screen.queryByLabelText('Minimise')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Maximise')).not.toBeInTheDocument();
   });
+
+  it('renders the Save button directly left of the theme toggle', () => {
+    const { container } = render(<TopBar current="crawler" onNav={onNav} onSave={vi.fn()} />);
+    const right = container.querySelector('.v2-right');
+    const children = Array.from(right?.children ?? []);
+    const save = screen.getByRole('button', { name: 'Save' });
+    const theme = screen.getByTitle(/Switch to (light|dark) mode/);
+    expect(children.indexOf(save)).toBeGreaterThanOrEqual(0);
+    expect(children.indexOf(theme)).toBe(children.indexOf(save) + 1);
+  });
+
+  it('calls onSave when the Save button is clicked', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<TopBar current="crawler" onNav={onNav} onSave={onSave} />);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the Save button when no save handler is given', () => {
+    render(<TopBar current="crawler" onNav={onNav} />);
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
 });
 
 describe('PageHead', () => {

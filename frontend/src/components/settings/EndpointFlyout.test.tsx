@@ -25,6 +25,33 @@ const renderFlyout = (ep = endpoint(), onSave = vi.fn()) => {
   return onSave;
 };
 
+describe('EndpointFlyout force JSON', () => {
+  it('saves forceJson when the switch is turned on', async () => {
+    const user = userEvent.setup();
+    const onSave = renderFlyout();
+
+    await user.click(screen.getByRole('switch', { name: /force json/i }));
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ forceJson: true }));
+  });
+
+  it('shows the switch on when editing an endpoint that has it enabled', () => {
+    renderFlyout(endpoint({ forceJson: true }));
+    expect(screen.getByRole('switch', { name: /force json/i })).toBeChecked();
+  });
+
+  it('is off by default so unsupporting backends are not broken', async () => {
+    const user = userEvent.setup();
+    const onSave = renderFlyout();
+
+    expect(screen.getByRole('switch', { name: /force json/i })).not.toBeChecked();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(onSave.mock.calls[0][0].forceJson ?? false).toBe(false);
+  });
+});
+
 describe('EndpointFlyout request timeout', () => {
   it('saves a configured request timeout in seconds', async () => {
     const user = userEvent.setup();

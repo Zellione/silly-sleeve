@@ -245,7 +245,7 @@ describe('SettingsScreen', () => {
       expect(screen.getByText('Edit endpoint')).toBeInTheDocument();
     });
 
-    const authSwitch = screen.getByRole('switch');
+    const authSwitch = screen.getByRole('switch', { name: /use api key|use auth token/i });
     expect(authSwitch.dataset.on).toBe('0');
 
     await user.click(authSwitch);
@@ -955,7 +955,7 @@ describe('SettingsScreen', () => {
       await user.click(screen.getByText('ComfyUI'));
       await waitFor(() => screen.getByText('Use auth token'));
 
-      const authSwitch = screen.getByRole('switch');
+      const authSwitch = screen.getByRole('switch', { name: /use api key|use auth token/i });
       await user.click(authSwitch);
       await waitFor(() => {
         expect(screen.getByPlaceholderText('Your ComfyUI auth token')).toBeInTheDocument();

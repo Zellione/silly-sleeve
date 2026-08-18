@@ -976,6 +976,7 @@ export namespace settings {
 	    temperature: number;
 	    systemPrompt: string;
 	    timeoutSeconds?: number;
+	    forceJson?: boolean;
 	    ok: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -994,6 +995,7 @@ export namespace settings {
 	        this.temperature = source["temperature"];
 	        this.systemPrompt = source["systemPrompt"];
 	        this.timeoutSeconds = source["timeoutSeconds"];
+	        this.forceJson = source["forceJson"];
 	        this.ok = source["ok"];
 	    }
 	}

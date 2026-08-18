@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# A new push supersedes the runs already in flight for the same ref, so cancel
+# them instead of letting them finish for a commit nobody cares about anymore.
+# Runs on main are never cancelled: every commit that lands there keeps its
+# full verification.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   # Decides whether the rest of the pipeline has anything to do. A change that
   # only touches documentation cannot break a lint, a test or a build, so
@@ -230,6 +238,11 @@ jobs:
     needs: [changes, test-go, test-frontend]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    # The whole job takes ~10 minutes when the runners are healthy, and ~25
+    # when the apt mirrors are degraded (observed 2026-08-18: the system
+    # dependency install alone crawled to 15+ minutes). Without a ceiling a
+    # genuinely wedged install occupies a runner for the 6-hour default.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

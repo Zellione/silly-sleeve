@@ -143,7 +143,7 @@ func (s *ComfyUIService) generateVariants(params comfy.GenerationParams, count i
 	// the selection is known, so an unmodified built-in gets the graph variant
 	// carrying the matching loader nodes. A template the user has hand-edited is
 	// returned unchanged and may reference {{vae}}/{{lora}} itself.
-	params.WorkflowTemplate = comfy.ResolveWorkflowTemplate(params.WorkflowTemplate, params.ModelKind, params.Vae, params.Lora)
+	params.WorkflowTemplate = comfy.ResolveWorkflowTemplate(params.WorkflowTemplate, params.ModelKind, params.Clip, params.Vae, params.Lora)
 
 	// A CompletedImage slice always crosses the Wails bridge, so start from an
 	// empty slice rather than a nil one (nil arrives in JS as null, the

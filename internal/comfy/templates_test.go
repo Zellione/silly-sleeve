@@ -166,18 +166,18 @@ func TestResolveWorkflowTemplate_SwapsBuiltInVariant(t *testing.T) {
 	base := buildWorkflowTemplate(false, false)
 
 	assert.Equal(t, buildWorkflowTemplate(true, false),
-		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "sdxl_vae.safetensors", "none"))
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "sdxl_vae.safetensors", "none"))
 	assert.Equal(t, buildWorkflowTemplate(false, true),
-		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "baked", "oil.safetensors"))
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "baked", "oil.safetensors"))
 	assert.Equal(t, buildWorkflowTemplate(true, true),
-		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "sdxl_vae.safetensors", "oil.safetensors"))
-	assert.Equal(t, base, ResolveWorkflowTemplate(base, ModelKindCheckpoint, "baked", "none"))
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "sdxl_vae.safetensors", "oil.safetensors"))
+	assert.Equal(t, base, ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "baked", "none"))
 }
 
 func TestResolveWorkflowTemplate_LeavesUserEditedTemplateAlone(t *testing.T) {
 	custom := `{"1":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":"{{model}}","vae":"{{vae}}"}}}`
 
-	assert.Equal(t, custom, ResolveWorkflowTemplate(custom, ModelKindCheckpoint, "sdxl_vae.safetensors", "oil.safetensors"),
+	assert.Equal(t, custom, ResolveWorkflowTemplate(custom, ModelKindCheckpoint, "", "sdxl_vae.safetensors", "oil.safetensors"),
 		"a hand-edited template must never be silently replaced")
 }
 
@@ -311,19 +311,19 @@ func TestResolveWorkflowTemplate_SwapsSplitVariants(t *testing.T) {
 
 	// A VAE selection never changes the split-file graph: the loader is always
 	// present and reads the {{vae}} placeholder.
-	assert.Equal(t, base, ResolveWorkflowTemplate(base, "", "custom_vae.safetensors", "none"))
+	assert.Equal(t, base, ResolveWorkflowTemplate(base, "", "c.safetensors", "custom_vae.safetensors", "none"))
 	assert.Equal(t, buildSplitWorkflowTemplate(zturboSpec, true),
-		ResolveWorkflowTemplate(base, "", "baked", "style.safetensors"))
-	assert.Equal(t, base, ResolveWorkflowTemplate(base, "", "baked", "none"))
+		ResolveWorkflowTemplate(base, "", "c.safetensors", "baked", "style.safetensors"))
+	assert.Equal(t, base, ResolveWorkflowTemplate(base, "", "c.safetensors", "baked", "none"))
 
 	// Resolution must stay within the family the user selected.
 	kreaBase := buildSplitWorkflowTemplate(krea2Spec, false)
 	assert.Equal(t, buildSplitWorkflowTemplate(krea2Spec, true),
-		ResolveWorkflowTemplate(kreaBase, "", "custom_vae.safetensors", "style.safetensors"))
+		ResolveWorkflowTemplate(kreaBase, "", "c.safetensors", "custom_vae.safetensors", "style.safetensors"))
 }
 
 func TestBuildSplitCheckpointTemplate_ZTurbo(t *testing.T) {
-	graph := decodeGraph(t, buildSplitCheckpointTemplate(zturboSpec, false, false))
+	graph := decodeGraph(t, buildSplitCheckpointTemplate(zturboSpec, false, false, false))
 
 	assert.Equal(t, "CheckpointLoaderSimple", graph[nodeCheckpoint]["class_type"])
 	assert.Equal(t, "{{model}}", nodeInput(t, graph, nodeCheckpoint, "ckpt_name"))
@@ -341,7 +341,7 @@ func TestBuildSplitCheckpointTemplate_ZTurbo(t *testing.T) {
 }
 
 func TestBuildSplitCheckpointTemplate_VAEAndLoRA(t *testing.T) {
-	graph := decodeGraph(t, buildSplitCheckpointTemplate(zturboSpec, true, true))
+	graph := decodeGraph(t, buildSplitCheckpointTemplate(zturboSpec, false, true, true))
 
 	assert.Equal(t, "{{vae}}", nodeInput(t, graph, nodeVAELoader, "vae_name"))
 	assert.Equal(t, []any{nodeVAELoader, float64(0)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
@@ -360,7 +360,7 @@ func TestBuildSplitCheckpointTemplate_Krea2MatchesDefaultGraph(t *testing.T) {
 		{false, false}, {true, false}, {false, true}, {true, true},
 	} {
 		assert.Equal(t, buildWorkflowTemplate(tc.vae, tc.lora),
-			buildSplitCheckpointTemplate(krea2Spec, tc.vae, tc.lora),
+			buildSplitCheckpointTemplate(krea2Spec, false, tc.vae, tc.lora),
 			"vae=%t lora=%t", tc.vae, tc.lora)
 	}
 }
@@ -369,7 +369,7 @@ func TestIsBuiltInTemplate_RecognisesSplitCheckpointVariants(t *testing.T) {
 	for _, tc := range []struct{ vae, lora bool }{
 		{false, false}, {true, false}, {false, true}, {true, true},
 	} {
-		assert.True(t, IsBuiltInTemplate(buildSplitCheckpointTemplate(zturboSpec, tc.vae, tc.lora)),
+		assert.True(t, IsBuiltInTemplate(buildSplitCheckpointTemplate(zturboSpec, false, tc.vae, tc.lora)),
 			"zturbo checkpoint variant vae=%t lora=%t should be recognised", tc.vae, tc.lora)
 	}
 }
@@ -379,13 +379,51 @@ func TestResolveWorkflowTemplate_SwapsModelKind(t *testing.T) {
 
 	// A checkpoint selection re-renders the family as the checkpoint graph,
 	// with baked VAE and the VAE-loader variant respectively.
-	assert.Equal(t, buildSplitCheckpointTemplate(zturboSpec, false, false),
-		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "baked", "none"))
-	assert.Equal(t, buildSplitCheckpointTemplate(zturboSpec, true, true),
-		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "v.safetensors", "l.safetensors"))
+	assert.Equal(t, buildSplitCheckpointTemplate(zturboSpec, false, false, false),
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "baked", "none"))
+	assert.Equal(t, buildSplitCheckpointTemplate(zturboSpec, false, true, true),
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "v.safetensors", "l.safetensors"))
 
 	// And back: a checkpoint-variant template re-renders as split files when
 	// the selection is a UNet.
-	ckptBase := buildSplitCheckpointTemplate(zturboSpec, false, false)
-	assert.Equal(t, base, ResolveWorkflowTemplate(ckptBase, "", "v.safetensors", "none"))
+	ckptBase := buildSplitCheckpointTemplate(zturboSpec, false, false, false)
+	assert.Equal(t, base, ResolveWorkflowTemplate(ckptBase, "", "c.safetensors", "v.safetensors", "none"))
+}
+
+func TestBuildSplitCheckpointTemplate_ExplicitCLIPOverride(t *testing.T) {
+	// Some community checkpoints ship without a baked text encoder: an
+	// explicit CLIP selection adds a standalone CLIPLoader with the
+	// architecture's type, and the encoders read it instead of the
+	// checkpoint's clip output.
+	graph := decodeGraph(t, buildSplitCheckpointTemplate(zturboSpec, true, false, false))
+
+	require.Contains(t, graph, nodeCLIPLoader)
+	assert.Equal(t, "CLIPLoader", graph[nodeCLIPLoader]["class_type"])
+	assert.Equal(t, "{{clip}}", nodeInput(t, graph, nodeCLIPLoader, "clip_name"))
+	assert.Equal(t, "lumina2", nodeInput(t, graph, nodeCLIPLoader, "type"))
+	assert.Equal(t, []any{nodeCLIPLoader, float64(0)}, nodeInput(t, graph, nodePositive, "clip"))
+	assert.Equal(t, []any{nodeCLIPLoader, float64(0)}, nodeInput(t, graph, nodeNegative, "clip"))
+	// Model and VAE paths stay on the checkpoint.
+	assert.Equal(t, []any{nodeCheckpoint, float64(0)}, nodeInput(t, graph, nodeModelSampling, "model"))
+	assert.Equal(t, []any{nodeCheckpoint, float64(2)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
+}
+
+func TestBuildSplitCheckpointTemplate_CLIPOverrideWithLoRA(t *testing.T) {
+	// The LoRA's clip patch applies to the explicit encoder, not the
+	// checkpoint's baked one.
+	graph := decodeGraph(t, buildSplitCheckpointTemplate(zturboSpec, true, false, true))
+
+	assert.Equal(t, []any{nodeCLIPLoader, float64(0)}, nodeInput(t, graph, nodeLoRALoader, "clip"))
+	assert.Equal(t, []any{nodeLoRALoader, float64(1)}, nodeInput(t, graph, nodePositive, "clip"))
+}
+
+func TestResolveWorkflowTemplate_CheckpointCLIPSelection(t *testing.T) {
+	base := buildSplitWorkflowTemplate(zturboSpec, false)
+
+	assert.Equal(t, buildSplitCheckpointTemplate(zturboSpec, false, false, false),
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "", "baked", "none"),
+		"no clip selection means the baked encoder")
+	assert.Equal(t, buildSplitCheckpointTemplate(zturboSpec, true, false, false),
+		ResolveWorkflowTemplate(base, ModelKindCheckpoint, "qwen_3_4b.safetensors", "baked", "none"),
+		"a clip selection adds the standalone encoder")
 }

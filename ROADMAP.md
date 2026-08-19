@@ -315,6 +315,11 @@ that is guaranteed to fail server-side validation is never queued.
 - Addressed the SonarQube findings on PR #102: placeholder-token constants
   (`go:S1192`), `matchBuiltInFamily` complexity split into helpers
   (`go:S3776`), and `String.raw` for the zturbo VAE hint (`typescript:S7780`).
+- Text encoder stays selectable for checkpoint-packaged split models: some
+  community merges ship without a baked encoder, so hiding the CLIP dropdown
+  left them unusable. Empty selection still means the baked encoder; an
+  explicit pick wires a standalone `CLIPLoader` (with the architecture's CLIP
+  type) into the checkpoint graph, and a LoRA's clip patch follows it.
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

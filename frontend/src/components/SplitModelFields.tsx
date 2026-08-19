@@ -37,10 +37,10 @@ function requiredOpts(list: string[], value: string) {
  * Z-Image Turbo). The Model dropdown lists the server's diffusion-model
  * (UNet) files and its checkpoints: the official releases ship as split
  * files, community merges as all-in-one checkpoints. A split-file selection
- * needs an explicit text encoder and VAE; a checkpoint carries both baked
- * in, so the encoder row disappears and the VAE becomes an optional
- * override. Rendered inside an `.img-kv` grid in place of the checkpoint
- * fields.
+ * needs an explicit text encoder and VAE. A checkpoint usually carries both
+ * baked in, so they default to the baked ones — but stay selectable, since
+ * some merges ship without an encoder. Rendered inside an `.img-kv` grid in
+ * place of the checkpoint fields.
  */
 const SplitModelFields: React.FC<SplitModelFieldsProps> = ({
   idPrefix, unets, checkpoints, clips, vaes,
@@ -57,18 +57,16 @@ const SplitModelFields: React.FC<SplitModelFieldsProps> = ({
         onChange={onModelChange}
         options={requiredOpts([...unets, ...checkpoints], model)}
       />
-      {isUnet && (
-        <>
-          <label htmlFor={`${idPrefix}-clip`}>Text encoder</label>
-          <Dropdown
-            id={`${idPrefix}-clip`}
-            aria-label="Text encoder"
-            value={clip}
-            onChange={onClipChange}
-            options={requiredOpts(clips, clip)}
-          />
-        </>
-      )}
+      <label htmlFor={`${idPrefix}-clip`}>Text encoder</label>
+      <Dropdown
+        id={`${idPrefix}-clip`}
+        aria-label="Text encoder"
+        value={clip}
+        onChange={onClipChange}
+        options={isUnet
+          ? requiredOpts(clips, clip)
+          : [{ value: '', label: '— baked encoder —' }, ...fileOpts(clips)]}
+      />
       <label htmlFor={`${idPrefix}-vae`}>VAE</label>
       <Dropdown
         id={`${idPrefix}-vae`}

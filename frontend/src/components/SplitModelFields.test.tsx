@@ -53,10 +53,18 @@ describe('SplitModelFields', () => {
     expect(screen.getByLabelText('VAE')).toHaveTextContent('— select —');
   });
 
-  it('hides the text encoder and offers the baked VAE for a checkpoint selection', () => {
+  it('defaults to the baked encoder and VAE for a checkpoint selection', () => {
+    // The encoder stays selectable: some community merges ship without one.
     render(<Harness initialModel="ZImageTurbo/beretMixZIT_v50.safetensors" />);
-    expect(screen.queryByLabelText('Text encoder')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Text encoder')).toHaveTextContent('— baked encoder —');
     expect(screen.getByLabelText('VAE')).toHaveTextContent('— baked VAE —');
+  });
+
+  it('lets a checkpoint selection override the baked encoder', async () => {
+    render(<Harness initialModel="ZImageTurbo/beretMixZIT_v50.safetensors" />);
+    await userEvent.click(screen.getByLabelText('Text encoder'));
+    await userEvent.click(await screen.findByText('qwen_3_4b'));
+    expect(screen.getByLabelText('Text encoder')).toHaveTextContent('qwen_3_4b');
   });
 
   it('shows the preselected file without a placeholder option', async () => {

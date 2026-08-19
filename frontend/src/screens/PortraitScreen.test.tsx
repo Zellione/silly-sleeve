@@ -693,8 +693,9 @@ describe('PortraitScreen split-model workflows', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Diffusion model')).toHaveTextContent('ZImageTurbo/beretMixZIT_v50'));
 
-    // Baked encoder and VAE: no text-encoder dropdown, VAE defaults to baked.
-    expect(screen.queryByLabelText('Text encoder')).not.toBeInTheDocument();
+    // Encoder and VAE default to the checkpoint's baked ones but stay
+    // selectable — some community merges ship without a baked encoder.
+    expect(screen.getByLabelText('Text encoder')).toHaveTextContent('— baked encoder —');
     expect(screen.getByLabelText('VAE')).toHaveTextContent('— baked VAE —');
 
     await userEvent.click(await screen.findByText('Queue generation'));

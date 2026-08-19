@@ -15,6 +15,8 @@ const mockGetComfySamplers = vi.fn().mockResolvedValue(['euler', 'dpmpp_2m']);
 const mockGetComfySchedulers = vi.fn().mockResolvedValue(['karras', 'normal']);
 const mockGetComfyCheckpoints = vi.fn().mockResolvedValue(['sd_xl_base_1.0.safetensors']);
 const mockGetComfyVAEs = vi.fn().mockResolvedValue(['sdxl_vae.safetensors']);
+const mockGetComfyUNets = vi.fn().mockResolvedValue([]);
+const mockGetComfyCLIPs = vi.fn().mockResolvedValue([]);
 const mockGetComfyLoRAs = vi.fn().mockResolvedValue([]);
 const mockGetPortrait = vi.fn().mockResolvedValue([]);
 const mockSavePortrait = vi.fn().mockResolvedValue(undefined);
@@ -30,6 +32,8 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   GetComfySchedulers: () => mockGetComfySchedulers(),
   GetComfyCheckpoints: () => mockGetComfyCheckpoints(),
   GetComfyVAEs: () => mockGetComfyVAEs(),
+  GetComfyUNets: () => mockGetComfyUNets(),
+  GetComfyCLIPs: () => mockGetComfyCLIPs(),
   GetComfyLoRAs: () => mockGetComfyLoRAs(),
   GetPortrait: (charID: number) => mockGetPortrait(charID),
   SavePortrait: (charID: number, data: number[]) => mockSavePortrait(charID, data),
@@ -596,5 +600,82 @@ describe('PortraitScreen character switching', () => {
     await waitFor(() => {
       expect(screen.getByText('Borin').closest('button')).toHaveAttribute('data-on');
     });
+  });
+});
+
+describe('PortraitScreen split-model workflows', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCharacters.mockResolvedValue([testChar]);
+    mockGetActiveCharacter.mockResolvedValue(testChar);
+    mockSetActiveCharacter.mockResolvedValue(undefined);
+    mockGetPortrait.mockResolvedValue([]);
+    mockGeneratePortrait.mockResolvedValue([]);
+    mockGetComfyUNets.mockResolvedValue(['wan_t2v.safetensors', 'z_image_turbo_bf16.safetensors']);
+    mockGetComfyCLIPs.mockResolvedValue(['qwen3vl_4b.safetensors', 'qwen_3_4b.safetensors']);
+    mockGetComfyVAEs.mockResolvedValue(['qwen_image_vae.safetensors', 'ae.safetensors']);
+    mockGetComfyLoRAs.mockResolvedValue([]);
+  });
+
+  const switchToWorkflow = async (label: string) => {
+    await userEvent.click(await screen.findByLabelText('Workflow'));
+    await userEvent.click(await screen.findByText(label));
+  };
+
+  it('swaps the checkpoint dropdown for split-model dropdowns on a split workflow', async () => {
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow('z_image_turbo — 832×1216');
+
+    expect(await screen.findByLabelText('Diffusion model')).toBeInTheDocument();
+    expect(screen.getByLabelText('Text encoder')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Checkpoint')).not.toBeInTheDocument();
+    // LoRA stays available: split graphs support LoraLoaderModelOnly.
+    expect(screen.getByLabelText('LoRA')).toBeInTheDocument();
+  });
+
+  it('preselects the split files by hint and sends them to generation', async () => {
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow('z_image_turbo — 832×1216');
+    await waitFor(() =>
+      expect(screen.getByLabelText('Diffusion model')).toHaveTextContent('z_image_turbo_bf16'));
+
+    await userEvent.click(await screen.findByText('Queue generation'));
+
+    await waitFor(() => expect(mockGeneratePortrait).toHaveBeenCalled());
+    const params = mockGeneratePortrait.mock.calls[0][0];
+    expect(params.checkpoint).toBe('z_image_turbo_bf16.safetensors');
+    expect(params.clip).toBe('qwen_3_4b.safetensors');
+    expect(params.vae).toBe('ae.safetensors');
+  });
+
+  it('blocks generation and warns when no server file matches the hints', async () => {
+    mockGetComfyUNets.mockResolvedValue(['wan_t2v.safetensors']);
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow('z_image_turbo — 832×1216');
+    await screen.findByLabelText('Diffusion model');
+
+    await userEvent.click(await screen.findByText('Queue generation'));
+
+    expect(mockGeneratePortrait).not.toHaveBeenCalled();
+    expect(await screen.findByText(/select a diffusion model/)).toBeInTheDocument();
+  });
+
+  it('restores the checkpoint dropdown when switching back', async () => {
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow('z_image_turbo — 832×1216');
+    await screen.findByLabelText('Diffusion model');
+
+    await switchToWorkflow('portrait_sdxl_v3 — 832×1216');
+
+    expect(await screen.findByLabelText('Checkpoint')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Diffusion model')).not.toBeInTheDocument();
   });
 });

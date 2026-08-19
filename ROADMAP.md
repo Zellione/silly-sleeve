@@ -250,12 +250,12 @@ that is guaranteed to fail server-side validation is never queued.
 - [x] **11.1** Backend: placeholder-driven split templates (`{{model}}`,
   `{{clip}}`, always-present `{{vae}}` loader), `Clip` in `GenerationParams` and
   placeholder values
-- [~] **11.2** Backend: `GetComfyUNets` / `GetComfyCLIPs` service + app methods and
+- [x] **11.2** Backend: `GetComfyUNets` / `GetComfyCLIPs` service + app methods and
   Wails bindings
-- [ ] **11.3** Frontend: shared model-selection state in `useImageGeneration`
+- [x] **11.3** Frontend: shared model-selection state in `useImageGeneration`
   (unet/clip/vae lists, hint-based preselection on workflow switch, split-workflow
   validation before queueing)
-- [ ] **11.4** Frontend: Portrait and Project Image screens render Model / CLIP /
+- [x] **11.4** Frontend: Portrait and Project Image screens render Model / CLIP /
   VAE dropdowns for split workflows
 
 ---
@@ -273,6 +273,16 @@ that is guaranteed to fail server-side validation is never queued.
   HTTP 400 `value_not_in_list`. The UNet / CLIP / VAE become dropdown selections
   substituted via template placeholders, with hint-based preselection. Four
   substeps defined (11.1–11.4).
+- Completed Phase 11 — Split-Model Selection for Built-in Workflows: split
+  templates now render `{{model}}` / `{{clip}}` / `{{vae}}` placeholders (11.1),
+  the backend exposes `GetComfyUNets` / `GetComfyCLIPs` (11.2),
+  `useImageGeneration` owns the model/clip/vae/lora selections with hint-based
+  preselection and blocks a split generation with missing picks (11.3), and both
+  image screens swap the checkpoint dropdown for Model / Text encoder / VAE
+  dropdowns fed from the server's actual file lists (11.4). 11.3 and 11.4 landed
+  as one commit: the required `clip` request field spans the hook and both
+  screens, so splitting them would have produced a non-compiling intermediate
+  commit.
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

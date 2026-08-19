@@ -58,7 +58,7 @@ func NewApp() *App {
 		settings: &a.settings,
 		ctx:      ctxFn,
 	}
-	a.charGen = &CharacterGenerator{ctx: ctxFn, completer: llm.DefaultCompleter}
+	a.charGen = NewCharacterGenerator(ctxFn, llm.DefaultCompleter)
 	a.project = &ProjectManager{ctx: ctxFn}
 	a.loreGen = loreextract.NewExtractor(llm.DefaultCompleter)
 	a.loreConn = loreextract.NewConnector(llm.DefaultCompleter)

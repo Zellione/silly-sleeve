@@ -26,6 +26,13 @@ type CharacterGenerator struct {
 	completer llm.Completer
 }
 
+// NewCharacterGenerator builds a generator with an explicit context source and
+// completer, so callers outside this package (like the llmtest harness) can
+// drive the production generation paths.
+func NewCharacterGenerator(ctx func() context.Context, completer llm.Completer) *CharacterGenerator {
+	return &CharacterGenerator{ctx: ctx, completer: completer}
+}
+
 // completerOrDefault returns the injected completer, or the production
 // HTTP-backed completer when none was set.
 func (g *CharacterGenerator) completerOrDefault() llm.Completer {

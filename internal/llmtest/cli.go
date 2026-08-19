@@ -25,7 +25,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("llmtest", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	endpoint := fs.String("endpoint", DefaultEndpointURL, "OpenAI-compatible endpoint URL to test against")
-	model := fs.String("model", "", "model name sent with every request")
+	model := fs.String("model", "", "model name sent with every request (default: first model listed by the endpoint's /models)")
 	apiKey := fs.String("api-key", "", "bearer token, if the endpoint needs one")
 	runs := fs.Int("runs", 3, "how often each scenario repeats for consistency analysis")
 	only := fs.String("only", "", "comma-separated scenario IDs to run (default: all)")
@@ -58,9 +58,20 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	baseURL := strings.TrimRight(*endpoint, "/")
+	if *model == "" {
+		discovered, err := fetchDefaultModel(baseURL, *apiKey)
+		if err != nil {
+			fmt.Fprintf(stderr, "llmtest: no -model given and model discovery failed (%v); pass -model explicitly\n", err)
+			return 1
+		}
+		*model = discovered
+		fmt.Fprintf(stdout, "No -model given; using %q from the models endpoint\n", *model)
+	}
+
 	cfg := Config{
 		Endpoint: llm.LLMEndpoint{
-			URL:            strings.TrimRight(*endpoint, "/"),
+			URL:            baseURL,
 			Model:          *model,
 			TimeoutSeconds: *timeout,
 			ForceJSON:      *forceJSON,

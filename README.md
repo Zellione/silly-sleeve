@@ -163,8 +163,10 @@ image prompts, lore extraction, connections, optimize suggestions) against a
 live endpoint and documents format and consistency problems.
 
 ```bash
-# Test the default local endpoint (http://localhost:8001/v1), 3 runs per scenario
-go run ./cmd/llmtest -model qwen2.5:7b
+# Test the default local endpoint (http://localhost:8001/v1), 3 runs per scenario.
+# Without -model, the harness asks the endpoint's /models listing and uses the
+# first model it reports.
+go run ./cmd/llmtest
 
 # Different endpoint, fewer runs, one scenario only
 go run ./cmd/llmtest -endpoint http://localhost:11434/v1 -model llama3 -runs 1 -only bulk-generate

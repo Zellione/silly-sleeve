@@ -88,6 +88,7 @@ func TestRunCLI_ReportsFindingCounts(t *testing.T) {
 
 	code, stdout, _ := runCLI(t,
 		"-endpoint", ep.URL,
+		"-model", "stub-model",
 		"-runs", "1",
 		"-only", "bulk-generate",
 		"-out", filepath.Join(t.TempDir(), "reports"),
@@ -104,6 +105,7 @@ func TestRunCLI_FailsWhenReportCannotBeWritten(t *testing.T) {
 
 	code, _, stderr := runCLI(t,
 		"-endpoint", ep.URL,
+		"-model", "stub-model",
 		"-runs", "1",
 		"-only", "bulk-generate",
 		"-out", blocker,
@@ -130,6 +132,7 @@ func TestRunCLI_ForceJSONReachesTheEndpoint(t *testing.T) {
 
 	code, _, _ := runCLI(t,
 		"-endpoint", srv.URL,
+		"-model", "stub-model",
 		"-runs", "1",
 		"-only", "bulk-generate",
 		"-force-json",

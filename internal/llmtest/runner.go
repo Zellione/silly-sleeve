@@ -38,6 +38,7 @@ func executeScenario(ctx context.Context, cfg Config, s Scenario) ScenarioResult
 		res.Findings = append(res.Findings, analyzeRun(s, run)...)
 		res.Runs = append(res.Runs, run)
 	}
+	res.Findings = append(res.Findings, analyzeConsistency(res)...)
 	return res
 }
 

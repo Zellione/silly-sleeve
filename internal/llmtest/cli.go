@@ -84,13 +84,14 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		cfg.Endpoint.Key = apiKey
 	}
 
+	cfg.Progress = func(r ScenarioResult) { printScenarioSummary(stdout, r) }
+
 	fmt.Fprintf(stdout, "Testing %s (model %q), %d run(s) per scenario\n", cfg.Endpoint.URL, *model, *runs)
 	results := Execute(context.Background(), cfg, scenarios)
 
 	total := 0
 	for _, r := range results {
 		total += len(r.Findings)
-		fmt.Fprintf(stdout, "%-22s %d finding(s) in %d run(s)\n", r.Scenario, len(r.Findings), len(r.Runs))
 	}
 
 	meta := RunMeta{EndpointURL: cfg.Endpoint.URL, Model: *model, Runs: *runs, Started: time.Now()}
@@ -101,6 +102,31 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "\n%d finding(s) total — report written to %s\n", total, dir)
 	return 0
+}
+
+// maxListedFindings caps the per-scenario console summary; the full list is
+// always in report.md.
+const maxListedFindings = 8
+
+// printScenarioSummary writes one scenario's outcome as soon as it finishes:
+// the finding count, then the first findings as bullet lines.
+func printScenarioSummary(w io.Writer, r ScenarioResult) {
+	if len(r.Findings) == 0 {
+		fmt.Fprintf(w, "%-22s no findings in %d run(s)\n", r.Scenario, len(r.Runs))
+		return
+	}
+	fmt.Fprintf(w, "%-22s %d finding(s) in %d run(s)\n", r.Scenario, len(r.Findings), len(r.Runs))
+	for i, f := range r.Findings {
+		if i == maxListedFindings {
+			fmt.Fprintf(w, "  ... and %d more finding(s), see report.md\n", len(r.Findings)-maxListedFindings)
+			break
+		}
+		if f.Run > 0 {
+			fmt.Fprintf(w, "  - [%s] run %d: %s\n", f.Kind, f.Run, f.Msg)
+		} else {
+			fmt.Fprintf(w, "  - [%s] %s\n", f.Kind, f.Msg)
+		}
+	}
 }
 
 // parseOnly validates a comma-separated scenario filter against the registry.

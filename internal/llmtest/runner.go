@@ -15,7 +15,11 @@ func Execute(ctx context.Context, cfg Config, scenarios []Scenario) []ScenarioRe
 		if len(cfg.Only) > 0 && !slices.Contains(cfg.Only, s.ID) {
 			continue
 		}
-		results = append(results, executeScenario(ctx, cfg, s))
+		res := executeScenario(ctx, cfg, s)
+		if cfg.Progress != nil {
+			cfg.Progress(res)
+		}
+		results = append(results, res)
 	}
 	return results
 }

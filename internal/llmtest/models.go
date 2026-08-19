@@ -25,6 +25,9 @@ type Config struct {
 	// Completer is the base completer scenarios talk through; nil means the
 	// production HTTP completer.
 	Completer llm.Completer
+	// Progress, when set, receives each scenario's finished result as soon as
+	// that scenario completes.
+	Progress func(ScenarioResult)
 }
 
 func (c Config) completerOrDefault() llm.Completer {

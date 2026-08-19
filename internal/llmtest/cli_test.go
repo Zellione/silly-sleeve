@@ -149,3 +149,65 @@ func TestRunCLI_UsageMentionsDefaults(t *testing.T) {
 	assert.Equal(t, 0, code, "asking for help is not an error")
 	assert.True(t, strings.Contains(stderr, DefaultEndpointURL), "usage documents the default endpoint")
 }
+
+func TestPrintScenarioSummary_CleanScenario(t *testing.T) {
+	var buf bytes.Buffer
+
+	printScenarioSummary(&buf, ScenarioResult{
+		Scenario: "endpoint-test",
+		Runs:     []RunResult{{Run: 1}},
+	})
+
+	out := buf.String()
+	assert.Contains(t, out, "endpoint-test")
+	assert.Contains(t, out, "no findings")
+}
+
+func TestPrintScenarioSummary_ListsFindings(t *testing.T) {
+	var buf bytes.Buffer
+
+	printScenarioSummary(&buf, ScenarioResult{
+		Scenario: "bulk-generate",
+		Runs:     []RunResult{{Run: 1}, {Run: 2}},
+		Findings: []Finding{
+			{Scenario: "bulk-generate", Run: 1, Kind: "format", Msg: "invalid JSON forced a retry"},
+			{Scenario: "bulk-generate", Kind: "consistency", Msg: "candidates varied across runs: 2, 5"},
+		},
+	})
+
+	out := buf.String()
+	assert.Contains(t, out, "2 finding(s) in 2 run(s)")
+	assert.Contains(t, out, "[format] run 1: invalid JSON forced a retry")
+	assert.Contains(t, out, "[consistency] candidates varied across runs: 2, 5")
+}
+
+func TestPrintScenarioSummary_CapsLongFindingLists(t *testing.T) {
+	findings := make([]Finding, 12)
+	for i := range findings {
+		findings[i] = Finding{Scenario: "s", Run: 1, Kind: "format", Msg: "problem"}
+	}
+	var buf bytes.Buffer
+
+	printScenarioSummary(&buf, ScenarioResult{Scenario: "s", Runs: []RunResult{{Run: 1}}, Findings: findings})
+
+	out := buf.String()
+	assert.Equal(t, maxListedFindings, strings.Count(out, "[format]"))
+	assert.Contains(t, out, "and 4 more")
+}
+
+func TestRunCLI_StreamsFindingSummaries(t *testing.T) {
+	_, ep := stubLLM(t, func(int, string) string {
+		return "```json\n" + fullBulkJSON() + "\n```"
+	})
+
+	code, stdout, _ := runCLI(t,
+		"-endpoint", ep.URL,
+		"-model", "stub-model",
+		"-runs", "1",
+		"-only", "bulk-generate",
+		"-out", filepath.Join(t.TempDir(), "reports"),
+	)
+
+	assert.Equal(t, 0, code)
+	assert.Contains(t, stdout, "[format] run 1: response is not bare JSON")
+}

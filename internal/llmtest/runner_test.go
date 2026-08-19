@@ -102,3 +102,19 @@ func TestExecute_ClassifiesParseFailureAsFormatFinding(t *testing.T) {
 	require.NotEmpty(t, results[0].Findings)
 	assert.Equal(t, "format", results[0].Findings[0].Kind)
 }
+
+func TestExecute_ReportsProgressAfterEachScenario(t *testing.T) {
+	var order []string
+	cfg := Config{
+		Runs:      2,
+		Completer: staticCompleter("ok"),
+		Progress: func(r ScenarioResult) {
+			order = append(order, r.Scenario)
+			assert.Len(t, r.Runs, 2, "the callback receives the finished result")
+		},
+	}
+
+	Execute(context.Background(), cfg, []Scenario{okScenario("a"), okScenario("b")})
+
+	assert.Equal(t, []string{"a", "b"}, order)
+}

@@ -1,18 +1,21 @@
 # llmtest report triage — 2026-08-19 post-#99 run (gemma-4-e4b)
 
-Report: `docs/llm-reports/2026-08-19-150746-google-gemma-4-e4b/` (gitignored). Ran 3 min after PR #99 merged; field-reroll + both image-prompt scenarios now clean, confirming #99's prompt fixes took effect. 35 findings remain across 5 scenarios.
+Report: `docs/llm-reports/2026-08-19-150746-google-gemma-4-e4b/` (gitignored). Ran 3 min after PR #99 merged; field-reroll + both image-prompt scenarios clean, confirming #99 took effect. 35 findings remained; actions 1 and 2 below are now IMPLEMENTED on branch `fix/llmtest-report-followups` (awaiting user approval to push as of session end).
 
-## Necessary actions (agreed assessment, not yet implemented)
+## Implemented (TDD, all gates green)
 
-1. **bulk-generate hard-fails 3/3 runs (real bug, highest priority).** Model wraps `quotes`-array elements in backslash-escaped quotes *outside* string context: `..., \"'You look lost...'\", ...` → Go error `invalid character '\' looking for beginning of value`. Retry reproduces the same mistake; `internal/jsonrepair/repair.go` has no rule for it. Fix: extend the repairer state machine — a `\` outside a string at a value/key position followed by `"` → drop the backslash. Optional prompt rule: never backslash-escape string-delimiting quotes; use single quotes for nested speech.
-2. **Brittle unmarshals lose whole runs (medium).** lore-optimize: model returns `"entryUid": "1"` but `internal/loreextract/connect.go:56` declares `EntryUID int` — add flexible-int unmarshal (accept quoted ints). lore-extract-summary: objects inside `characters` array vs `[]string` at `internal/loreextract/extract.go:80` — lower value, retry + repairer mostly covers it.
-3. **Optional:** lore-extract-split noise dominated by "Only 1 keyword" normaliser corrections (6–15/run) despite prompt already saying "Keys: 2-5 per entry" (`internal/prompts/lore.go:115`). Model non-compliance, autofixed; leave and re-measure with a stronger model, or exclude from llmtest counting like #99's `IsCategoryMandated` approach.
+1. **jsonrepair (a536f2d):** model wrapped `quotes`-array elements in `\"…\"` — backslash-escaped delimiters outside string context — hard-failing bulk-generate 3/3 runs incl. retry. `Repair` now treats `\"` at a value/key position as an over-escaped opener (backslash outside a string is never valid JSON, so valid input can't be affected), closes on the matching `\"`, escapes bare inner `"`, closes on truncation. Verified against the real failing response from `runs.jsonl`.
+2. **loreextract (635a836):** `"entryUid":"1"` killed a lore-optimize batch. `suggestionPayload` gained `UnmarshalJSON` using the **existing** `flexInt` (extract.go:87 — it already existed for entryPayload.Order; check before adding one) via the alias-struct + shadowed-flexInt-fields pattern, so all use sites keep plain `int`. Covers entryUid/targetUid/charId/targetCharId/proposed{Order,Position,Depth}.
+3. **prompts (8f31819):** default system prompt rule 4 extended — never backslash the quotes that open/close a string; single quotes for quoted speech inside values. Tested via `assert.Contains` like #99's precedent.
 
-## Harness gaps discovered
+## Still deferred
 
-- llmtest never sets `Temperature`; `internal/llm/complete.go:59` uses `json:"temperature,omitempty"` so 0 is dropped and the server samples at its own default (~0.8 in LM Studio). All "[consistency] varied across runs" findings are largely sampling variance. Consider a `-temperature` flag if consistency findings should be actionable.
-- Run didn't use `-force-json`; llama.cpp-backed JSON mode is grammar-constrained and would likely prevent finding #1 entirely — a comparison run is worthwhile.
+- Extraction `characters` array element arriving as object (vs `[]string`, extract.go:80) — low value.
+- lore-extract-split "Only 1 keyword" normaliser noise (prompt already says "Keys: 2-5", lore.go:115) — re-measure with stronger model first.
+- llmtest `-temperature` flag: harness never sets Temperature and `omitempty` drops 0 (complete.go:59), so server default (~0.8) makes "[consistency]" findings mostly sampling variance.
+- `-force-json` comparison run (grammar-constrained JSON mode would likely prevent finding 1 entirely).
 
-## Diagnostic technique
+## Machine/process notes
 
-`runs.jsonl` records full exchanges (system prompt, response per retry); extracting `exchanges[].response` with `repr()` around the failure point pinpoints exact invalid bytes the report.md preview truncates.
+- `wails build -clean` fails on this Arch box (webkit2gtk-4.1 only); always add `-tags webkit2_41`.
+- `runs.jsonl` records full exchanges; extracting `exchanges[].response` with `repr()` pinpoints exact invalid bytes the report.md preview truncates. Real failing responses make excellent scratch verification fixtures (temporary test file, then delete).

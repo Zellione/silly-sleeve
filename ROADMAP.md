@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-19 — Completed Phase 10, LLM interaction test harness (`feature/llmtest-harness`).
+> Last updated: 2026-08-19 — Started Phase 11, split-model selection for built-in workflows (`feature/split-model-dropdowns`).
 
 ## Overview
 
@@ -235,12 +235,44 @@ never part of CI or the quality gate.
 
 ---
 
+## Phase 11 — Split-Model Selection for Built-in Workflows
+
+Goal: The built-in split-file workflows (Krea 2 Turbo, Z-Image Turbo) must run with
+whatever model files the user's ComfyUI server actually has, instead of hardcoding
+the official Comfy-Org release filenames. The diffusion model, text encoder (CLIP)
+and VAE become dropdown selections fed from the server's `UNETLoader` /
+`CLIPLoader` / `VAELoader` input lists, substituted into the split templates via
+`{{model}}` / `{{clip}}` / `{{vae}}` placeholders. Dropdowns preselect a
+best-effort match for the workflow's architecture (e.g. a file containing
+`z_image` for Z-Image Turbo) and otherwise force an explicit pick, so a workflow
+that is guaranteed to fail server-side validation is never queued.
+
+- [~] **11.1** Backend: placeholder-driven split templates (`{{model}}`,
+  `{{clip}}`, always-present `{{vae}}` loader), `Clip` in `GenerationParams` and
+  placeholder values
+- [ ] **11.2** Backend: `GetComfyUNets` / `GetComfyCLIPs` service + app methods and
+  Wails bindings
+- [ ] **11.3** Frontend: shared model-selection state in `useImageGeneration`
+  (unet/clip/vae lists, hint-based preselection on workflow switch, split-workflow
+  validation before queueing)
+- [ ] **11.4** Frontend: Portrait and Project Image screens render Model / CLIP /
+  VAE dropdowns for split workflows
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
 
 ### 2026-08-19
 
+- Started Phase 11 — Split-Model Selection for Built-in Workflows
+  (`feature/split-model-dropdowns`): the Krea 2 Turbo and Z-Image Turbo built-ins
+  hardcoded the official Comfy-Org filenames, so any server whose files are named
+  differently (or organized into subfolders) failed ComfyUI prompt validation with
+  HTTP 400 `value_not_in_list`. The UNet / CLIP / VAE become dropdown selections
+  substituted via template placeholders, with hint-based preselection. Four
+  substeps defined (11.1–11.4).
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

@@ -99,6 +99,22 @@ func TestSuggest_ToleratesTopLevelArray(t *testing.T) {
 	assert.Equal(t, KindTriggerKeys, got[0].Kind)
 }
 
+func TestSuggest_ToleratesQuotedIntegerFields(t *testing.T) {
+	// Small models quote integer ids ("entryUid":"1"); every numeric payload
+	// field must accept both forms.
+	resp := `{"suggestions":[
+{"kind":"triggerKeys","entryUid":"1","addKeys":["the capital"],"rationale":"x"},
+{"kind":"entryEntry","entryUid":"1","targetUid":"2","addSecondary":["Grey Warden"],"rationale":"y"},
+{"kind":"entryOrder","entryUid":"2","proposedOrder":"950","rationale":"z"}]}`
+
+	got, err := suggestWith(t, resp, connectRequest(testEntries()))
+	require.NoError(t, err)
+	require.Len(t, got, 3)
+	assert.Equal(t, 1, got[0].EntryUID)
+	assert.Equal(t, 2, got[1].TargetUID)
+	assert.Equal(t, 950, got[2].ProposedOrder)
+}
+
 func TestSuggest_CharacterRelationshipCarriesCurrentText(t *testing.T) {
 	// The user must see what would be replaced: relationships prose may be
 	// hand-written, and the proposal overwrites it wholesale.

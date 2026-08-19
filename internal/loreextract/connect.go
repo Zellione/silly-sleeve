@@ -69,6 +69,40 @@ type suggestionPayload struct {
 	Rationale             string       `json:"rationale"`
 }
 
+// UnmarshalJSON tolerates quoted integers in the numeric fields — small
+// models sometimes answer "entryUid":"1" instead of "entryUid":1.
+func (p *suggestionPayload) UnmarshalJSON(b []byte) error {
+	type plain suggestionPayload // method-free: avoids recursing into this func
+	var raw struct {
+		plain
+		EntryUID         flexInt  `json:"entryUid"`
+		TargetUID        flexInt  `json:"targetUid"`
+		CharID           flexInt  `json:"charId"`
+		TargetCharID     flexInt  `json:"targetCharId"`
+		ProposedOrder    *flexInt `json:"proposedOrder"`
+		ProposedPosition *flexInt `json:"proposedPosition"`
+		ProposedDepth    *flexInt `json:"proposedDepth"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	*p = suggestionPayload(raw.plain)
+	p.EntryUID, p.TargetUID = int(raw.EntryUID), int(raw.TargetUID)
+	p.CharID, p.TargetCharID = int(raw.CharID), int(raw.TargetCharID)
+	p.ProposedOrder = flexIntPtr(raw.ProposedOrder)
+	p.ProposedPosition = flexIntPtr(raw.ProposedPosition)
+	p.ProposedDepth = flexIntPtr(raw.ProposedDepth)
+	return nil
+}
+
+func flexIntPtr(f *flexInt) *int {
+	if f == nil {
+		return nil
+	}
+	n := int(*f)
+	return &n
+}
+
 // Suggest runs the connection pass and returns deduplicated suggestions.
 //
 // A lorebook can easily outgrow an endpoint's context, so entries are analysed

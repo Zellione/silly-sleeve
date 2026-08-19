@@ -149,6 +149,33 @@ func TestRepairDropsDanglingCommaOnTruncation(t *testing.T) {
 	assert.Equal(t, 1.0, m["a"])
 }
 
+func TestRepairUnwrapsBackslashEscapedStringDelimiters(t *testing.T) {
+	// Models sometimes wrap string values in \"...\" — backslash-escaped
+	// delimiters outside any string context (seen on quote arrays whose
+	// elements contain nested speech).
+	in := `{"quotes": ["plain", \"'You look lost.'\", \"(With a grin) 'Safe.'\"]}`
+	out := Repair(in)
+	var m map[string][]string
+	require.NoError(t, json.Unmarshal([]byte(out), &m))
+	assert.Equal(t, []string{"plain", "'You look lost.'", "(With a grin) 'Safe.'"}, m["quotes"])
+}
+
+func TestRepairEscapedDelimiterStringWithInnerDoubleQuote(t *testing.T) {
+	in := `[\"he said "hi" aloud\"]`
+	out := Repair(in)
+	var a []string
+	require.NoError(t, json.Unmarshal([]byte(out), &a))
+	assert.Equal(t, []string{`he said "hi" aloud`}, a)
+}
+
+func TestRepairClosesTruncatedEscapedDelimiterString(t *testing.T) {
+	in := `[\"cut off`
+	out := Repair(in)
+	var a []string
+	require.NoError(t, json.Unmarshal([]byte(out), &a))
+	assert.Equal(t, []string{"cut off"}, a)
+}
+
 func TestRepairCombinedDefects(t *testing.T) {
 	in := "{'entries': [ // extracted\n{'comment': 'A', 'content': \"line one\nline two\", 'constant': True,},\n]}"
 	out := Repair(in)

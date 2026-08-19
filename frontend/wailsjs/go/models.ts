@@ -110,6 +110,20 @@ export namespace app {
 	        this.paths = source["paths"];
 	    }
 	}
+	export class ImagePromptResult {
+	    positive: string;
+	    negative: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImagePromptResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.positive = source["positive"];
+	        this.negative = source["negative"];
+	    }
+	}
 	export class ImportCardResult {
 	    character: compose.Character;
 	    importedEntries: number;

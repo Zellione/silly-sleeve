@@ -45,7 +45,7 @@ export function GenerateCharacterBulk(arg1:Array<string>):Promise<compose.Charac
 
 export function GenerateField(arg1:string,arg2:string):Promise<compose.Character>;
 
-export function GenerateImagePrompt(arg1:number,arg2:string):Promise<string>;
+export function GenerateImagePrompt(arg1:number,arg2:string):Promise<app.ImagePromptResult>;
 
 export function GeneratePortrait(arg1:comfy.GenerationParams):Promise<Array<comfy.CompletedImage>>;
 

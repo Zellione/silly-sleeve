@@ -45,9 +45,9 @@ async function autoFillImagePrompt(
   // a negative prompt the user has already customized.
   const keepNeg = negPrompt.trim().length > 0;
   try {
-    const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
-    setPrompt(positive);
-    if (!keepNeg) setNegPrompt(negative);
+    const result = await GenerateImagePrompt(activeCharId, promptStyle);
+    setPrompt(result.positive);
+    if (!keepNeg) setNegPrompt(result.negative);
   } catch (err) {
     // The fallback is a tag-style template, not what the chosen prompt style
     // produces — swapping it in without a word reads as "the LLM wrote this".

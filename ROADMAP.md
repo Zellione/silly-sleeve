@@ -302,6 +302,19 @@ that is guaranteed to fail server-side validation is never queued.
   optional for baked models. Also surfaced the Portrait screen's silent
   image-prompt auto-fill fallback as a warning toast — a failed LLM call was
   masquerading as "natural style generates tag soup".
+
+### 2026-08-20
+
+- Fixed the actual root cause behind the "natural style" complaint, exposed by
+  the new 11.6 toast: `App.GenerateImagePrompt` returned
+  `(string, string, error)`, but Wails v2 marshals at most one value plus an
+  error, so the frontend always received `null` and every auto-fill fell back
+  to the tag template. The method now returns a single `ImagePromptResult`
+  struct — auto-fill had never worked through the real bridge (tests mock it
+  and `cmd/llmtest` bypasses it, which is why both looked healthy).
+- Addressed the SonarQube findings on PR #102: placeholder-token constants
+  (`go:S1192`), `matchBuiltInFamily` complexity split into helpers
+  (`go:S3776`), and `String.raw` for the zturbo VAE hint (`typescript:S7780`).
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

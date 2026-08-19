@@ -177,9 +177,18 @@ func (a *App) GenerateProjectImage(params comfy.GenerationParams) ([]comfy.Compl
 	return a.comfy.GenerateProjectImage(params)
 }
 
+// ImagePromptResult carries a generated positive/negative image-prompt pair
+// across the Wails bridge. A single struct rather than two strings: Wails v2
+// marshals at most one return value plus an error, so a (string, string,
+// error) method reaches the frontend as null.
+type ImagePromptResult struct {
+	Positive string `json:"positive"`
+	Negative string `json:"negative"`
+}
+
 // GenerateImagePrompt uses the default LLM endpoint to generate image generation prompts.
 // style: "natural" or "danbooru".
-func (a *App) GenerateImagePrompt(charID int, style string) (string, string, error) {
+func (a *App) GenerateImagePrompt(charID int, style string) (ImagePromptResult, error) {
 	a.mu.Lock()
 	var target compose.Character
 	for _, c := range a.characters {
@@ -192,10 +201,14 @@ func (a *App) GenerateImagePrompt(charID int, style string) (string, string, err
 	a.mu.Unlock()
 
 	if def.URL == "" {
-		return "", "", fmt.Errorf("no default LLM endpoint configured")
+		return ImagePromptResult{}, fmt.Errorf("no default LLM endpoint configured")
 	}
 
-	return a.charGen.GenerateImagePrompt(target, def, style)
+	positive, negative, err := a.charGen.GenerateImagePrompt(target, def, style)
+	if err != nil {
+		return ImagePromptResult{}, err
+	}
+	return ImagePromptResult{Positive: positive, Negative: negative}, nil
 }
 
 // GetComfyWorkflowByName returns a saved workflow by name, or the first workflow if name is empty.

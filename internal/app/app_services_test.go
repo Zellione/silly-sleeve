@@ -102,17 +102,19 @@ func TestApp_GenerateImagePromptDelegator(t *testing.T) {
 	}}
 	app.charGen.completer = &fakeCompleter{resp: "POSITIVE: x\nNEGATIVE: y"}
 
-	pos, neg, err := app.GenerateImagePrompt(1, "natural")
+	res, err := app.GenerateImagePrompt(1, "natural")
 	require.NoError(t, err)
-	assert.Equal(t, "x", pos)
-	assert.Equal(t, "y", neg)
+	// A single struct return: Wails v2 only marshals one value plus an error,
+	// so (string, string, error) reached the frontend as null.
+	assert.Equal(t, "x", res.Positive)
+	assert.Equal(t, "y", res.Negative)
 }
 
 func TestApp_GenerateImagePrompt_NoEndpoint(t *testing.T) {
 	app := NewApp()
 	app.characters = []compose.Character{{ID: 1, Name: "Elara"}}
 	app.activeCharID = 1
-	_, _, err := app.GenerateImagePrompt(1, "natural")
+	_, err := app.GenerateImagePrompt(1, "natural")
 	assert.Error(t, err, "no default endpoint configured")
 }
 

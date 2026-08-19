@@ -102,7 +102,7 @@ Follow these rules:
 1. Extract or invent character details from the wiki content. If the content lacks a detail, extrapolate naturally.
 2. Use third-person present tense. Do not use "{{char}}" or "{{user}}" placeholders.
 3. Write in a compressed, sensory style — every word should convey information.
-4. Use straight quotes in all string values — never use curly quotes.
+4. Use straight quotes in all string values — never use curly quotes, and never put a backslash before the quotes that open or close a string. For quoted speech inside a string value, use single quotes.
 5. Output ONLY a valid JSON object — no preamble, no markdown fences, no explanation.`
 
 func defaultFieldPrompts() map[string]string {

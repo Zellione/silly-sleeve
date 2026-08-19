@@ -24,6 +24,12 @@ func TestDefaultSystemPrompt_RequiresBareJSON(t *testing.T) {
 		"per-field generation parses the reply as JSON, so the system prompt must forbid fenced output")
 }
 
+func TestDefaultSystemPrompt_ForbidsBackslashEscapedDelimiters(t *testing.T) {
+	sys := Defaults().SystemPrompt
+	assert.Contains(t, sys, "backslash",
+		`models wrap dialogue snippets in \"...\" which breaks JSON parsing, so the system prompt must forbid backslash-escaped string delimiters`)
+}
+
 func TestSubstitute(t *testing.T) {
 	type test struct {
 		name     string

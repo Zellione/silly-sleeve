@@ -1,6 +1,6 @@
 # llmtest report triage — 2026-08-19 post-#99 run (gemma-4-e4b)
 
-Report: `docs/llm-reports/2026-08-19-150746-google-gemma-4-e4b/` (gitignored). Ran 3 min after PR #99 merged; field-reroll + both image-prompt scenarios clean, confirming #99 took effect. 35 findings remained; actions 1 and 2 below are now IMPLEMENTED on branch `fix/llmtest-report-followups` (awaiting user approval to push as of session end).
+Report: `docs/llm-reports/2026-08-19-150746-google-gemma-4-e4b/` (gitignored). Ran 3 min after PR #99 merged; field-reroll + both image-prompt scenarios clean, confirming #99 took effect. 35 findings remained; actions 1 and 2 below are IMPLEMENTED and shipped as **PR #100** (branch `fix/llmtest-report-followups`, CI all 8 checks green; unmerged as of session end).
 
 ## Implemented (TDD, all gates green)
 
@@ -8,7 +8,7 @@ Report: `docs/llm-reports/2026-08-19-150746-google-gemma-4-e4b/` (gitignored). R
 2. **loreextract (635a836):** `"entryUid":"1"` killed a lore-optimize batch. `suggestionPayload` gained `UnmarshalJSON` using the **existing** `flexInt` (extract.go:87 — it already existed for entryPayload.Order; check before adding one) via the alias-struct + shadowed-flexInt-fields pattern, so all use sites keep plain `int`. Covers entryUid/targetUid/charId/targetCharId/proposed{Order,Position,Depth}.
 3. **prompts (8f31819):** default system prompt rule 4 extended — never backslash the quotes that open/close a string; single quotes for quoted speech inside values. Tested via `assert.Contains` like #99's precedent.
 
-## Still deferred
+## Still deferred (candidates for a follow-up after re-running llmtest post-#100)
 
 - Extraction `characters` array element arriving as object (vs `[]string`, extract.go:80) — low value.
 - lore-extract-split "Only 1 keyword" normaliser noise (prompt already says "Keys: 2-5", lore.go:115) — re-measure with stronger model first.

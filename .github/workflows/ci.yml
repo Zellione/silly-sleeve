@@ -259,15 +259,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - name: Install system dependencies
-        # DEBIAN_FRONTEND must sit after sudo (sudo resets the environment) so
-        # a future debconf prompt can never hang the job until the timeout.
-        # --no-install-recommends trims the download when the azure apt mirror
-        # is degraded (recurring; see the timeout comment above), and
-        # Acquire::Retries rides out transient mirror failures.
-        run: |
-          sudo apt-get -o Acquire::Retries=3 update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 \
-            install -y --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
+        # Caches the installed packages so later runs restore them in seconds
+        # instead of re-downloading from the azure apt mirror, whose recurring
+        # degradation is what the timeout comment above documents. Pinned to a
+        # full commit SHA (not a mutable tag) for supply-chain integrity; this
+        # is cache-apt-pkgs-action v1.6.3.
+        uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
+        with:
+          packages: libgtk-3-dev libwebkit2gtk-4.1-dev
+          version: 1.0
       - name: Install Wails CLI
         # Pinned to a full commit SHA (not a mutable tag) for supply-chain
         # integrity; this is wails v2.14.0.

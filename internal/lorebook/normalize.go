@@ -114,6 +114,18 @@ func applyCategorySettings(e Entry, s CategorySettings, adj []string) (Entry, []
 	return e, adj
 }
 
+// IsCategoryMandated reports whether an adjustment message records a
+// category-mandated setting (position, recursion prevention) rather than a
+// correction of something the model chose. The extraction prompt never asks
+// for these fields, so these adjustments fire mechanically for most
+// categories and say nothing about the quality of the model's output.
+func IsCategoryMandated(adj string) bool {
+	if !strings.Contains(adj, "(required for") {
+		return false
+	}
+	return strings.HasPrefix(adj, "Position ") || strings.HasPrefix(adj, "Recursion prevention ")
+}
+
 // applyConstant forces constant to the category default, then enforces the
 // lorebook-wide cap. Returns the running constant count.
 func applyConstant(e Entry, s CategorySettings, constants int, adj []string) (Entry, []string, int) {

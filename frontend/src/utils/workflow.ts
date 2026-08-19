@@ -12,7 +12,7 @@ export const SPLIT_WORKFLOW_HINTS: Record<string, SplitModelHints> = {
     model: 'z[-_ ]?image',
     // Z-Image uses the plain Qwen3 text encoder — not the Qwen3-VL one.
     clip: 'qwen_?3(?![-_ ]?vl)',
-    vae: '(^|[/\\\\])ae\\.safetensors$|z[-_ ]?image.*vae',
+    vae: String.raw`(^|[/\\])ae\.safetensors$|z[-_ ]?image.*vae`,
   },
 };
 

@@ -30,6 +30,17 @@ const (
 	nodeModelSampling = "11"
 )
 
+// Placeholder tokens shared by the built-in graph builders, substituted at
+// generation time (see ReplacePlaceholders).
+const (
+	phModel  = "{{model}}"
+	phClip   = "{{clip}}"
+	phVae    = "{{vae}}"
+	phLora   = "{{lora}}"
+	phWidth  = "{{width}}"
+	phHeight = "{{height}}"
+)
+
 // buildWorkflowGraph assembles the built-in workflow node graph. When withLoRA
 // is set a LoraLoader is inserted between the checkpoint and both the sampler's
 // model input and the text encoders' clip input. When withVAE is set a VAELoader
@@ -44,13 +55,13 @@ func buildWorkflowGraph(withVAE, withLoRA bool) map[string]any {
 	graph := map[string]any{
 		nodeCheckpoint: map[string]any{
 			"class_type": "CheckpointLoaderSimple",
-			"inputs":     map[string]any{"ckpt_name": "{{model}}"},
+			"inputs":     map[string]any{"ckpt_name": phModel},
 		},
 		nodeLatent: map[string]any{
 			"class_type": "EmptyLatentImage",
 			"inputs": map[string]any{
-				"width":      "{{width}}",
-				"height":     "{{height}}",
+				"width":      phWidth,
+				"height":     phHeight,
 				"batch_size": 1,
 			},
 		},
@@ -60,7 +71,7 @@ func buildWorkflowGraph(withVAE, withLoRA bool) map[string]any {
 		graph[nodeLoRALoader] = map[string]any{
 			"class_type": "LoraLoader",
 			"inputs": map[string]any{
-				"lora_name":      "{{lora}}",
+				"lora_name":      phLora,
 				"strength_model": 1.0,
 				"strength_clip":  1.0,
 				"model":          []any{nodeCheckpoint, 0},
@@ -74,7 +85,7 @@ func buildWorkflowGraph(withVAE, withLoRA bool) map[string]any {
 	if withVAE {
 		graph[nodeVAELoader] = map[string]any{
 			"class_type": "VAELoader",
-			"inputs":     map[string]any{"vae_name": "{{vae}}"},
+			"inputs":     map[string]any{"vae_name": phVae},
 		}
 		vaeSource = []any{nodeVAELoader, 0}
 	}
@@ -161,21 +172,21 @@ func buildSplitWorkflowGraph(spec splitModelSpec, withLoRA bool) map[string]any 
 	graph := map[string]any{
 		nodeUNet: map[string]any{
 			"class_type": "UNETLoader",
-			"inputs":     map[string]any{"unet_name": "{{model}}", "weight_dtype": "default"},
+			"inputs":     map[string]any{"unet_name": phModel, "weight_dtype": "default"},
 		},
 		nodeCLIPLoader: map[string]any{
 			"class_type": "CLIPLoader",
-			"inputs":     map[string]any{"clip_name": "{{clip}}", "type": spec.clipType, "device": "default"},
+			"inputs":     map[string]any{"clip_name": phClip, "type": spec.clipType, "device": "default"},
 		},
 		nodeVAELoader: map[string]any{
 			"class_type": "VAELoader",
-			"inputs":     map[string]any{"vae_name": "{{vae}}"},
+			"inputs":     map[string]any{"vae_name": phVae},
 		},
 		nodeLatent: map[string]any{
 			"class_type": spec.latentNode,
 			"inputs": map[string]any{
-				"width":      "{{width}}",
-				"height":     "{{height}}",
+				"width":      phWidth,
+				"height":     phHeight,
 				"batch_size": 1,
 			},
 		},
@@ -185,7 +196,7 @@ func buildSplitWorkflowGraph(spec splitModelSpec, withLoRA bool) map[string]any 
 		graph[nodeLoRALoader] = map[string]any{
 			"class_type": "LoraLoaderModelOnly",
 			"inputs": map[string]any{
-				"lora_name":      "{{lora}}",
+				"lora_name":      phLora,
 				"strength_model": 1.0,
 				"model":          modelSource,
 			},
@@ -230,13 +241,13 @@ func buildSplitCheckpointGraph(spec splitModelSpec, withVAE, withLoRA bool) map[
 	graph := map[string]any{
 		nodeCheckpoint: map[string]any{
 			"class_type": "CheckpointLoaderSimple",
-			"inputs":     map[string]any{"ckpt_name": "{{model}}"},
+			"inputs":     map[string]any{"ckpt_name": phModel},
 		},
 		nodeLatent: map[string]any{
 			"class_type": spec.latentNode,
 			"inputs": map[string]any{
-				"width":      "{{width}}",
-				"height":     "{{height}}",
+				"width":      phWidth,
+				"height":     phHeight,
 				"batch_size": 1,
 			},
 		},
@@ -246,7 +257,7 @@ func buildSplitCheckpointGraph(spec splitModelSpec, withVAE, withLoRA bool) map[
 		graph[nodeLoRALoader] = map[string]any{
 			"class_type": "LoraLoader",
 			"inputs": map[string]any{
-				"lora_name":      "{{lora}}",
+				"lora_name":      phLora,
 				"strength_model": 1.0,
 				"strength_clip":  1.0,
 				"model":          modelSource,
@@ -260,7 +271,7 @@ func buildSplitCheckpointGraph(spec splitModelSpec, withVAE, withLoRA bool) map[
 	if withVAE {
 		graph[nodeVAELoader] = map[string]any{
 			"class_type": "VAELoader",
-			"inputs":     map[string]any{"vae_name": "{{vae}}"},
+			"inputs":     map[string]any{"vae_name": phVae},
 		}
 		vaeSource = []any{nodeVAELoader, 0}
 	}
@@ -347,10 +358,9 @@ const ModelKindCheckpoint = "checkpoint"
 // given model kind and VAE / LoRA selection.
 type familyRenderer func(modelKind string, withVAE, withLoRA bool) string
 
-// matchBuiltInFamily returns the renderer for the template family an
-// unmodified built-in template belongs to (checkpoint-based or one of the
-// split-file specs), or nil when the template is not a built-in variant.
-func matchBuiltInFamily(tmpl string) familyRenderer {
+// builtInFamilies returns one renderer per built-in template family: the
+// checkpoint-based default plus one per split-file spec.
+func builtInFamilies() []familyRenderer {
 	families := []familyRenderer{
 		func(_ string, withVAE, withLoRA bool) string {
 			return buildWorkflowTemplate(withVAE, withLoRA)
@@ -366,15 +376,30 @@ func matchBuiltInFamily(tmpl string) familyRenderer {
 			return buildSplitWorkflowTemplate(spec, withLoRA)
 		})
 	}
-	for _, render := range families {
-		for _, kind := range []string{"", ModelKindCheckpoint} {
-			for _, withVAE := range []bool{false, true} {
-				for _, withLoRA := range []bool{false, true} {
-					if tmpl == render(kind, withVAE, withLoRA) {
-						return render
-					}
+	return families
+}
+
+// familyRenders reports whether any variant a family renders equals tmpl.
+func familyRenders(render familyRenderer, tmpl string) bool {
+	for _, kind := range []string{"", ModelKindCheckpoint} {
+		for _, withVAE := range []bool{false, true} {
+			for _, withLoRA := range []bool{false, true} {
+				if tmpl == render(kind, withVAE, withLoRA) {
+					return true
 				}
 			}
+		}
+	}
+	return false
+}
+
+// matchBuiltInFamily returns the renderer for the template family an
+// unmodified built-in template belongs to (checkpoint-based or one of the
+// split-file specs), or nil when the template is not a built-in variant.
+func matchBuiltInFamily(tmpl string) familyRenderer {
+	for _, render := range builtInFamilies() {
+		if familyRenders(render, tmpl) {
+			return render
 		}
 	}
 	return nil

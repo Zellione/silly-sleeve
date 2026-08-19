@@ -177,15 +177,16 @@ describe('useImageGeneration', () => {
     mockGetUNets.mockResolvedValue(['wan_t2v.safetensors']);
     const user = userEvent.setup();
     renderHook('split_z');
-    await waitFor(() => expect(screen.getByTestId('vae').textContent).toBe('ae.safetensors'));
+    await waitFor(() => expect(screen.getByTestId('split').textContent).toBe('true'));
+    await waitFor(() => expect(mockGetUNets).toHaveBeenCalled());
 
     await user.click(screen.getByText('run-raw'));
 
     expect(mockGenerate).not.toHaveBeenCalled();
-    expect(await screen.findByText(/select a diffusion model/)).toBeInTheDocument();
+    expect(await screen.findByText(/Pick a model/)).toBeInTheDocument();
   });
 
-  it('runs a split generation, passing the clip selection through', async () => {
+  it('runs a split generation, passing the clip selection and model kind through', async () => {
     const user = userEvent.setup();
     renderHook('split_z');
     await waitFor(() => expect(screen.getByTestId('vae').textContent).toBe('ae.safetensors'));
@@ -195,8 +196,40 @@ describe('useImageGeneration', () => {
     await waitFor(() => expect(mockGenerate).toHaveBeenCalled());
     const params = mockGenerate.mock.calls[0][0];
     expect(params.checkpoint).toBe('z_image_turbo_bf16.safetensors');
+    expect(params.modelKind).toBe('unet');
     expect(params.clip).toBe('qwen_3_4b.safetensors');
     expect(params.vae).toBe('ae.safetensors');
+  });
+
+  it('preselects a checkpoint-packaged model when no split file matches', async () => {
+    // Community merges ship as all-in-one checkpoints: the hint must search
+    // the checkpoint list too, and a checkpoint needs no clip or VAE pick.
+    mockGetUNets.mockResolvedValue(['wan_t2v.safetensors']);
+    mockGetCheckpoints.mockResolvedValue(['sd_xl_base_1.0.safetensors', 'ZImageTurbo/beretMixZIT_v50.safetensors']);
+    renderHook('split_z');
+
+    await waitFor(() => expect(screen.getByTestId('checkpoint').textContent)
+      .toBe('ZImageTurbo/beretMixZIT_v50.safetensors'));
+    expect(screen.getByTestId('clip').textContent).toBe('');
+    expect(screen.getByTestId('vae').textContent).toBe('');
+  });
+
+  it('runs a checkpoint-packaged split generation without clip or VAE', async () => {
+    mockGetUNets.mockResolvedValue(['wan_t2v.safetensors']);
+    mockGetCheckpoints.mockResolvedValue(['ZImageTurbo/beretMixZIT_v50.safetensors']);
+    const user = userEvent.setup();
+    renderHook('split_z');
+    await waitFor(() => expect(screen.getByTestId('checkpoint').textContent)
+      .toBe('ZImageTurbo/beretMixZIT_v50.safetensors'));
+
+    await user.click(screen.getByText('run-raw'));
+
+    await waitFor(() => expect(mockGenerate).toHaveBeenCalled());
+    const params = mockGenerate.mock.calls[0][0];
+    expect(params.checkpoint).toBe('ZImageTurbo/beretMixZIT_v50.safetensors');
+    expect(params.modelKind).toBe('checkpoint');
+    expect(params.clip).toBe('');
+    expect(params.vae).toBe('');
   });
 
   it('runs a generation, decoding images and parsing size into params', async () => {
@@ -212,6 +245,7 @@ describe('useImageGeneration', () => {
     expect(params.height).toBe(480);
     expect(params.seed).toBe(7);
     expect(params.checkpoint).toBe('ckpt_one');
+    expect(params.modelKind).toBe('checkpoint');
     expect(params.clip).toBe('');
     await waitFor(() => expect(screen.getByTestId('variants').textContent).toBe('data:url:IMG'));
     expect(screen.getByText('1 ready')).toBeInTheDocument();

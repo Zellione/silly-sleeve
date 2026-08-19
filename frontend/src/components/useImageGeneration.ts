@@ -120,8 +120,8 @@ export function useImageGeneration({
   // Re-preselect the model files when the selected workflow's kind changes
   // (or the server lists arrive). Non-split → non-split switches leave the
   // user's picks alone; entering a split workflow preselects by hint; leaving
-  // one restores the checkpoint default, since the split selections point at
-  // files a checkpoint graph cannot load.
+  // one restores the checkpoint default, since the split selections may point
+  // at files a plain checkpoint graph cannot load.
   const wasSplitRef = useRef(false);
   useEffect(() => {
     const wasSplit = wasSplitRef.current;
@@ -130,9 +130,14 @@ export function useImageGeneration({
     // selections track the selected workflow's kind.
     /* eslint-disable react-hooks/set-state-in-effect */
     if (splitHints) {
-      setCheckpoint(pickByHint(unets, splitHints.model));
-      setClip(pickByHint(clips, splitHints.clip));
-      setVae(pickByHint(vaes, splitHints.vae));
+      // Community Krea 2 / Z-Image models also ship as all-in-one
+      // checkpoints, so the hint searches both lists — official split files
+      // first. A checkpoint carries its own encoder and VAE.
+      const model = pickByHint([...unets, ...checkpoints], splitHints.model);
+      const isUnet = unets.includes(model);
+      setCheckpoint(model);
+      setClip(isUnet ? pickByHint(clips, splitHints.clip) : '');
+      setVae(isUnet ? pickByHint(vaes, splitHints.vae) : '');
     } else if (wasSplit) {
       setCheckpoint(checkpoints[0] ?? initialCheckpoint);
       setClip('');
@@ -170,18 +175,23 @@ export function useImageGeneration({
       toast({ kind: 'warn', title: 'Loading', body: 'Workflow template not ready yet. Try again in a moment.' });
       return;
     }
-    if (splitHints && (!req.checkpoint || !req.clip || !req.vae)) {
+    // A checkpoint selection carries a baked encoder and VAE; only the
+    // official split files need explicit text-encoder and VAE picks.
+    const usesUnet = !!splitHints && unets.includes(req.checkpoint);
+    if (splitHints) {
       const missing = [
-        !req.checkpoint && 'a diffusion model',
-        !req.clip && 'a text encoder',
-        !req.vae && 'a VAE',
+        !req.checkpoint && 'a model',
+        usesUnet && !req.clip && 'a text encoder',
+        usesUnet && !req.vae && 'a VAE',
       ].filter(Boolean).join(', ');
-      toast({
-        kind: 'warn',
-        title: 'Missing model selection',
-        body: `This workflow loads split model files — select ${missing} in the Models section.`,
-      });
-      return;
+      if (missing) {
+        toast({
+          kind: 'warn',
+          title: 'Missing model selection',
+          body: `Pick ${missing} in the Models section before generating.`,
+        });
+        return;
+      }
     }
     setGenerating(true);
     setProgress(0);
@@ -203,6 +213,7 @@ export function useImageGeneration({
         width,
         height,
         checkpoint: req.checkpoint,
+        modelKind: usesUnet ? 'unet' : 'checkpoint',
         clip: req.clip,
         vae: req.vae,
         lora: req.lora,
@@ -216,7 +227,7 @@ export function useImageGeneration({
     } finally {
       setGenerating(false);
     }
-  }, [generating, workflowTemplate, splitHints, generate, completionBody, toast]);
+  }, [generating, workflowTemplate, splitHints, unets, generate, completionBody, toast]);
 
   return {
     samplers,

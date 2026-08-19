@@ -215,6 +215,10 @@ type GenerationParams struct {
 	Width            int     `json:"width"`
 	Height           int     `json:"height"`
 	Checkpoint       string  `json:"checkpoint"`
+	// ModelKind is ModelKindCheckpoint when Checkpoint names an all-in-one
+	// checkpoint file; any other value means the official split files. Only
+	// split-model built-in families change shape on it.
+	ModelKind string `json:"modelKind"`
 	// Clip is the standalone text encoder file for split-file workflows
 	// ({{clip}}); checkpoint workflows use the baked encoder and ignore it.
 	Clip string `json:"clip"`

@@ -122,7 +122,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
                   <div className="img-kv" style={{ marginBottom: 10 }}>
                     <SplitModelFields
                       idPrefix="projimg"
-                      unets={unets} clips={clips} vaes={vaes}
+                      unets={unets} checkpoints={checkpoints} clips={clips} vaes={vaes}
                       model={checkpoint} onModelChange={setCheckpoint}
                       clip={clip} onClipChange={setClip}
                       vae={vae} onVaeChange={setVae}

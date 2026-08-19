@@ -370,6 +370,19 @@ describe('PortraitScreen', () => {
     });
   });
 
+  it('auto-fill surfaces a warning toast when prompt generation fails', async () => {
+    // The fallback is a tag-style template; without the toast, a dead LLM
+    // endpoint silently masquerades as "natural style output".
+    mockGenerateImagePrompt.mockRejectedValueOnce(new Error('no endpoint'));
+    const user = userEvent.setup();
+    renderWithProviders(<PortraitScreen />);
+    await waitFor(() => screen.getByText('auto-fill from card'));
+    await user.click(screen.getByText('auto-fill from card'));
+
+    expect(await screen.findByText('Prompt generation failed')).toBeInTheDocument();
+    expect(screen.getByText(/no endpoint/)).toBeInTheDocument();
+  });
+
   it('can find textarea elements', () => {
     renderWithProviders(<PortraitScreen />);
     const textareas = document.querySelectorAll('textarea');
@@ -663,7 +676,35 @@ describe('PortraitScreen split-model workflows', () => {
     await userEvent.click(await screen.findByText('Queue generation'));
 
     expect(mockGeneratePortrait).not.toHaveBeenCalled();
-    expect(await screen.findByText(/select a diffusion model/)).toBeInTheDocument();
+    expect(await screen.findByText(/Pick a model/)).toBeInTheDocument();
+  });
+
+  it('offers checkpoint-packaged models and skips clip/VAE for them', async () => {
+    // Community Z-Image merges live in models/checkpoints, not
+    // models/diffusion_models — the Model dropdown must offer them too.
+    mockGetComfyUNets.mockResolvedValue(['wan_t2v.safetensors']);
+    mockGetComfyCheckpoints.mockResolvedValue([
+      'sd_xl_base_1.0.safetensors', 'ZImageTurbo/beretMixZIT_v50.safetensors',
+    ]);
+    renderWithProviders(<PortraitScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow('z_image_turbo — 832×1216');
+    await waitFor(() =>
+      expect(screen.getByLabelText('Diffusion model')).toHaveTextContent('ZImageTurbo/beretMixZIT_v50'));
+
+    // Baked encoder and VAE: no text-encoder dropdown, VAE defaults to baked.
+    expect(screen.queryByLabelText('Text encoder')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('VAE')).toHaveTextContent('— baked VAE —');
+
+    await userEvent.click(await screen.findByText('Queue generation'));
+
+    await waitFor(() => expect(mockGeneratePortrait).toHaveBeenCalled());
+    const params = mockGeneratePortrait.mock.calls[0][0];
+    expect(params.checkpoint).toBe('ZImageTurbo/beretMixZIT_v50.safetensors');
+    expect(params.modelKind).toBe('checkpoint');
+    expect(params.clip).toBe('');
+    expect(params.vae).toBe('');
   });
 
   it('restores the checkpoint dropdown when switching back', async () => {

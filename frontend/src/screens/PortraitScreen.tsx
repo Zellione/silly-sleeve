@@ -38,6 +38,7 @@ async function autoFillImagePrompt(
   negPrompt: string,
   setPrompt: (v: string) => void,
   setNegPrompt: (v: string) => void,
+  toast: (t: { kind: 'ok' | 'bad' | 'warn' | 'info'; title: string; body: string }) => void,
 ): Promise<void> {
   if (!activeChar) return;
   // Auto-fill regenerates the positive prompt from the card, but never clobbers
@@ -47,7 +48,14 @@ async function autoFillImagePrompt(
     const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
     setPrompt(positive);
     if (!keepNeg) setNegPrompt(negative);
-  } catch {
+  } catch (err) {
+    // The fallback is a tag-style template, not what the chosen prompt style
+    // produces — swapping it in without a word reads as "the LLM wrote this".
+    toast({
+      kind: 'warn',
+      title: 'Prompt generation failed',
+      body: `${String(err)} — inserted a basic template prompt instead. Check the LLM endpoint in Settings.`,
+    });
     const appearance = activeChar.appearance;
     if (appearance.trim()) {
       setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
@@ -224,7 +232,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
                 {splitWorkflow ? (
                   <SplitModelFields
                     idPrefix="portrait"
-                    unets={unets} clips={clips} vaes={vaes}
+                    unets={unets} checkpoints={checkpoints} clips={clips} vaes={vaes}
                     model={checkpoint} onModelChange={setCheckpoint}
                     clip={clip} onClipChange={setClip}
                     vae={vae} onVaeChange={setVae}
@@ -295,7 +303,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
               }
               autoFillButton={
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button type="button" className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt)}>
+                  <button type="button" className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt, toast)}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
                   <Dropdown

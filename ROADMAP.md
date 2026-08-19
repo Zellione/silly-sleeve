@@ -257,6 +257,16 @@ that is guaranteed to fail server-side validation is never queued.
   validation before queueing)
 - [x] **11.4** Frontend: Portrait and Project Image screens render Model / CLIP /
   VAE dropdowns for split workflows
+- [x] **11.5** Checkpoint-packaged split models: community Krea 2 / Z-Image
+  merges ship as all-in-one checkpoints (baked encoder + VAE) in
+  `models/checkpoints`, so the Model dropdown lists checkpoints alongside UNet
+  files; picking a checkpoint renders a `CheckpointLoaderSimple` graph that keeps
+  the architecture's latent node and sampling shift, hides the CLIP dropdown and
+  makes the VAE optional (`GenerationParams.ModelKind`)
+- [x] **11.6** Surface image-prompt auto-fill failures: the Portrait screen's
+  auto-fill silently swapped in a hardcoded tag template when the LLM call
+  failed, which read as "natural style generates tag soup" — failures now raise
+  a warning toast naming the error
 
 ---
 
@@ -283,6 +293,15 @@ that is guaranteed to fail server-side validation is never queued.
   as one commit: the required `clip` request field spans the hook and both
   screens, so splitting them would have produced a non-compiling intermediate
   commit.
+- Extended Phase 11 with 11.5 and 11.6 after field testing: the user's Z-Image
+  and Krea 2 models are community all-in-one checkpoints in
+  `models/checkpoints`, invisible to the UNet-only dropdown — the Model
+  dropdown now lists checkpoints too, rendering a `CheckpointLoaderSimple`
+  graph that keeps the architecture's latent node and sampling shift
+  (`GenerationParams.ModelKind`), with the CLIP dropdown hidden and the VAE
+  optional for baked models. Also surfaced the Portrait screen's silent
+  image-prompt auto-fill fallback as a warning toast — a failed LLM call was
+  masquerading as "natural style generates tag soup".
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

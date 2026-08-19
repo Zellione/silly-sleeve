@@ -218,6 +218,78 @@ func buildSplitWorkflowTemplate(spec splitModelSpec, withLoRA bool) string {
 	return string(out)
 }
 
+// buildSplitCheckpointGraph assembles the checkpoint-packaged variant of a
+// split-model architecture: community Krea 2 / Z-Image merges ship as
+// all-in-one checkpoints with a baked encoder and VAE, but the architecture
+// still needs its latent node and sampling shift.
+func buildSplitCheckpointGraph(spec splitModelSpec, withVAE, withLoRA bool) map[string]any {
+	modelSource := []any{nodeCheckpoint, 0}
+	clipSource := []any{nodeCheckpoint, 1}
+	vaeSource := []any{nodeCheckpoint, 2}
+
+	graph := map[string]any{
+		nodeCheckpoint: map[string]any{
+			"class_type": "CheckpointLoaderSimple",
+			"inputs":     map[string]any{"ckpt_name": "{{model}}"},
+		},
+		nodeLatent: map[string]any{
+			"class_type": spec.latentNode,
+			"inputs": map[string]any{
+				"width":      "{{width}}",
+				"height":     "{{height}}",
+				"batch_size": 1,
+			},
+		},
+	}
+
+	if withLoRA {
+		graph[nodeLoRALoader] = map[string]any{
+			"class_type": "LoraLoader",
+			"inputs": map[string]any{
+				"lora_name":      "{{lora}}",
+				"strength_model": 1.0,
+				"strength_clip":  1.0,
+				"model":          modelSource,
+				"clip":           clipSource,
+			},
+		}
+		modelSource = []any{nodeLoRALoader, 0}
+		clipSource = []any{nodeLoRALoader, 1}
+	}
+
+	if withVAE {
+		graph[nodeVAELoader] = map[string]any{
+			"class_type": "VAELoader",
+			"inputs":     map[string]any{"vae_name": "{{vae}}"},
+		}
+		vaeSource = []any{nodeVAELoader, 0}
+	}
+
+	if spec.shift > 0 {
+		graph[nodeModelSampling] = map[string]any{
+			"class_type": "ModelSamplingAuraFlow",
+			"inputs":     map[string]any{"shift": spec.shift, "model": modelSource},
+		}
+		modelSource = []any{nodeModelSampling, 0}
+	}
+
+	addSamplingNodes(graph, modelSource, clipSource, vaeSource)
+
+	return graph
+}
+
+// buildSplitCheckpointTemplate renders a checkpoint-packaged split-model
+// variant as indented JSON, mirroring buildWorkflowTemplate.
+func buildSplitCheckpointTemplate(spec splitModelSpec, withVAE, withLoRA bool) string {
+	out, err := json.MarshalIndent(buildSplitCheckpointGraph(spec, withVAE, withLoRA), "", "  ")
+	if err != nil {
+		// Same reasoning as buildWorkflowTemplate: plain maps cannot fail to
+		// marshal, and a desktop app must not panic on the fallback path.
+		return ""
+	}
+	return string(out)
+}
+
 // buildWorkflowTemplate renders a workflow variant as indented JSON. The output
 // is what the user sees and edits in the workflow editor, so it is formatted
 // rather than compact.
@@ -265,23 +337,42 @@ func GetBuiltInTemplate(id string) (string, bool) {
 	return "", false
 }
 
+// ModelKindCheckpoint marks a generation whose model selection is an
+// all-in-one checkpoint. For a split-model family this selects the
+// CheckpointLoaderSimple graph; any other value means the official split
+// files (UNETLoader + CLIPLoader). The default checkpoint family ignores it.
+const ModelKindCheckpoint = "checkpoint"
+
+// familyRenderer renders one variant of a built-in template family for the
+// given model kind and VAE / LoRA selection.
+type familyRenderer func(modelKind string, withVAE, withLoRA bool) string
+
 // matchBuiltInFamily returns the renderer for the template family an
 // unmodified built-in template belongs to (checkpoint-based or one of the
 // split-file specs), or nil when the template is not a built-in variant.
-func matchBuiltInFamily(tmpl string) func(withVAE, withLoRA bool) string {
-	families := []func(bool, bool) string{buildWorkflowTemplate}
+func matchBuiltInFamily(tmpl string) familyRenderer {
+	families := []familyRenderer{
+		func(_ string, withVAE, withLoRA bool) string {
+			return buildWorkflowTemplate(withVAE, withLoRA)
+		},
+	}
 	for _, spec := range builtInSplitSpecs {
-		// Split graphs always carry a VAE loader, so the withVAE flag has no
-		// variant to select — the renderer ignores it.
-		families = append(families, func(_, withLoRA bool) string {
+		families = append(families, func(kind string, withVAE, withLoRA bool) string {
+			if kind == ModelKindCheckpoint {
+				return buildSplitCheckpointTemplate(spec, withVAE, withLoRA)
+			}
+			// Split-file graphs always carry a VAE loader, so the withVAE
+			// flag has no variant to select there.
 			return buildSplitWorkflowTemplate(spec, withLoRA)
 		})
 	}
 	for _, render := range families {
-		for _, withVAE := range []bool{false, true} {
-			for _, withLoRA := range []bool{false, true} {
-				if tmpl == render(withVAE, withLoRA) {
-					return render
+		for _, kind := range []string{"", ModelKindCheckpoint} {
+			for _, withVAE := range []bool{false, true} {
+				for _, withLoRA := range []bool{false, true} {
+					if tmpl == render(kind, withVAE, withLoRA) {
+						return render
+					}
 				}
 			}
 		}
@@ -299,14 +390,14 @@ func IsBuiltInTemplate(tmpl string) bool {
 
 // ResolveWorkflowTemplate returns the workflow JSON to generate with. An
 // unmodified built-in template is re-rendered — within its own family — for
-// the supplied VAE and LoRA selection; anything the user has edited is
-// returned untouched.
-func ResolveWorkflowTemplate(tmpl, vae, lora string) string {
+// the supplied model kind and VAE / LoRA selection; anything the user has
+// edited is returned untouched.
+func ResolveWorkflowTemplate(tmpl, modelKind, vae, lora string) string {
 	render := matchBuiltInFamily(tmpl)
 	if render == nil {
 		return tmpl
 	}
-	return render(UsesVAE(vae), UsesLoRA(lora))
+	return render(modelKind, UsesVAE(vae), UsesLoRA(lora))
 }
 
 // bakedVAE and noLoRA are the sentinel selections meaning "leave it out of the

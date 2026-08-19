@@ -211,3 +211,39 @@ func TestRunCLI_StreamsFindingSummaries(t *testing.T) {
 	assert.Equal(t, 0, code)
 	assert.Contains(t, stdout, "[format] run 1: response is not bare JSON")
 }
+
+func TestRunCLI_ReportsSkippedScenariosWhenEndpointFails(t *testing.T) {
+	srv, ep := stubLLM(t, func(int, string) string { return "hi" })
+	srv.Close() // the freed port refuses connections immediately
+
+	code, stdout, stderr := runCLI(t,
+		"-endpoint", ep.URL,
+		"-model", "stub-model",
+		"-runs", "1",
+		"-out", filepath.Join(t.TempDir(), "reports"),
+	)
+
+	assert.Equal(t, 0, code, "stderr: %s", stderr)
+	assert.Contains(t, stdout, "skipped the remaining 8 scenario(s)")
+}
+
+func TestRunCLI_WritesReportEvenWhenEndpointGateStopsTheRun(t *testing.T) {
+	srv, ep := stubLLM(t, func(int, string) string { return "hi" })
+	srv.Close()
+	out := filepath.Join(t.TempDir(), "reports")
+
+	code, _, _ := runCLI(t,
+		"-endpoint", ep.URL,
+		"-model", "stub-model",
+		"-runs", "1",
+		"-out", out,
+	)
+
+	assert.Equal(t, 0, code)
+	entries, err := os.ReadDir(out)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "the report folder exists even though the run stopped early")
+	md, err := os.ReadFile(filepath.Join(out, entries[0].Name(), "report.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(md), "endpoint-test")
+}

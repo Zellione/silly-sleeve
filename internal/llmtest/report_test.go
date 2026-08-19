@@ -138,3 +138,31 @@ func TestWriteReport_JSONLCarriesMetaRunsAndFindings(t *testing.T) {
 	assert.Equal(t, 2, types["findings"], "one findings line per scenario that has findings")
 	assert.True(t, sawExchange, "run lines carry the raw request/response exchanges")
 }
+
+func TestNewReportDir_CreatesEmptyRunFolder(t *testing.T) {
+	out := t.TempDir()
+
+	dir, err := NewReportDir(out, reportMeta())
+
+	require.NoError(t, err)
+	assert.DirExists(t, dir)
+	assert.True(t, strings.HasPrefix(filepath.Base(dir), "2026-08-19-143005-"))
+}
+
+func TestUpdateReport_OverwritesWithLatestResults(t *testing.T) {
+	dir, err := NewReportDir(t.TempDir(), reportMeta())
+	require.NoError(t, err)
+	results := reportResults()
+
+	require.NoError(t, UpdateReport(dir, reportMeta(), results[:1]))
+	md1, err := os.ReadFile(filepath.Join(dir, "report.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(md1), "Bulk character generation")
+	assert.NotContains(t, string(md1), "Endpoint connectivity test")
+
+	require.NoError(t, UpdateReport(dir, reportMeta(), results))
+	md2, err := os.ReadFile(filepath.Join(dir, "report.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(md2), "Endpoint connectivity test")
+	assert.FileExists(t, filepath.Join(dir, "runs.jsonl"))
+}

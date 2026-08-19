@@ -20,8 +20,20 @@ func Execute(ctx context.Context, cfg Config, scenarios []Scenario) []ScenarioRe
 			cfg.Progress(res)
 		}
 		results = append(results, res)
+		if s.Critical && !anyRunSucceeded(res) {
+			break
+		}
 	}
 	return results
+}
+
+func anyRunSucceeded(res ScenarioResult) bool {
+	for _, run := range res.Runs {
+		if run.Err == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func executeScenario(ctx context.Context, cfg Config, s Scenario) ScenarioResult {

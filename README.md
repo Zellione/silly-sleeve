@@ -175,10 +175,13 @@ go run ./cmd/llmtest -endpoint http://localhost:11434/v1 -model llama3 -runs 1 -
 go run ./cmd/llmtest -list
 ```
 
-Each run writes a timestamped folder under `docs/llm-reports/` (gitignored)
-containing `report.md` — findings, worst offenders first — and `runs.jsonl`
-with every raw request/response pair for later analysis. Findings never fail
-the process; they are the product.
+The endpoint connectivity test runs first; if it fails in every run, the
+remaining scenarios are skipped. Each run writes a timestamped folder under
+`docs/llm-reports/` (gitignored) containing `report.md` — findings, worst
+offenders first — and `runs.jsonl` with every raw request/response pair for
+later analysis. The report is rewritten after every scenario, so an
+interrupted run keeps everything gathered up to that point. Findings never
+fail the process; they are the product.
 
 > ⚠️ **Warning:** The harness sends real requests to the endpoint you point it
 > at. It is a manual tool — it is not part of `go test` or CI.

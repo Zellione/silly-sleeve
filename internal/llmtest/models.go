@@ -90,6 +90,9 @@ type Scenario struct {
 	// ExpectLabels lists labels every raw response must carry (checked
 	// case-insensitively), for labelled-text formats like image prompts.
 	ExpectLabels []string
+	// Critical marks a scenario whose total failure stops the remaining
+	// scenarios (the endpoint connectivity test).
+	Critical bool
 	// Check inspects a successful run's summary and returns format problems.
 	Check func(summary map[string]any) []string
 }

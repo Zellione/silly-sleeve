@@ -84,7 +84,23 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		cfg.Endpoint.Key = apiKey
 	}
 
-	cfg.Progress = func(r ScenarioResult) { printScenarioSummary(stdout, r) }
+	meta := RunMeta{EndpointURL: cfg.Endpoint.URL, Model: *model, Runs: *runs, Started: time.Now()}
+	dir, err := NewReportDir(cfg.OutDir, meta)
+	if err != nil {
+		fmt.Fprintf(stderr, "llmtest: %v\n", err)
+		return 1
+	}
+
+	// The report is rewritten after every scenario, so a crashed run keeps
+	// everything gathered up to its last completed scenario.
+	var done []ScenarioResult
+	cfg.Progress = func(r ScenarioResult) {
+		printScenarioSummary(stdout, r)
+		done = append(done, r)
+		if err := UpdateReport(dir, meta, done); err != nil {
+			fmt.Fprintf(stderr, "llmtest: update report: %v\n", err)
+		}
+	}
 
 	fmt.Fprintf(stdout, "Testing %s (model %q), %d run(s) per scenario\n", cfg.Endpoint.URL, *model, *runs)
 	results := Execute(context.Background(), cfg, scenarios)
@@ -93,12 +109,12 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	for _, r := range results {
 		total += len(r.Findings)
 	}
-
-	meta := RunMeta{EndpointURL: cfg.Endpoint.URL, Model: *model, Runs: *runs, Started: time.Now()}
-	dir, err := WriteReport(cfg.OutDir, meta, results)
-	if err != nil {
-		fmt.Fprintf(stderr, "llmtest: %v\n", err)
-		return 1
+	selected := len(scenarios)
+	if len(onlyIDs) > 0 {
+		selected = len(onlyIDs)
+	}
+	if skipped := selected - len(results); skipped > 0 {
+		fmt.Fprintf(stdout, "endpoint test failed — skipped the remaining %d scenario(s)\n", skipped)
 	}
 	fmt.Fprintf(stdout, "\n%d finding(s) total — report written to %s\n", total, dir)
 	return 0

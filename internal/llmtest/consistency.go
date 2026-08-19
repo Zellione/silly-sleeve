@@ -50,38 +50,43 @@ func analyzeConsistency(sr ScenarioResult) []Finding {
 // Counts must match exactly; text lengths only flag absence or extreme spread,
 // because generated text never has a stable length.
 func compareSummaries(scenarioID string, runs []RunResult) []Finding {
-	var findings []Finding
-	add := func(msg string) {
-		findings = append(findings, Finding{Scenario: scenarioID, Kind: "consistency", Msg: msg})
-	}
-
-	first := runs[0].Summary
-	keys := make([]string, 0, len(first))
-	for key := range first {
+	keys := make([]string, 0, len(runs[0].Summary))
+	for key := range runs[0].Summary {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 
+	var findings []Finding
 	for _, key := range keys {
-		if key == "latencyMs" {
-			continue
-		}
-		switch first[key].(type) {
-		case int:
-			if vals, ok := intValues(runs, key); ok {
-				if msg := intVarianceMessage(key, vals); msg != "" {
-					add(msg)
-				}
-			}
-		case map[string]int:
-			findings = append(findings, fieldPresenceFindings(scenarioID, runs, key)...)
-		case []string:
-			if msg := keyStabilityMessage(runs, key); msg != "" {
-				add(msg)
-			}
-		}
+		findings = append(findings, summaryKeyFindings(scenarioID, runs, key)...)
 	}
 	return findings
+}
+
+// summaryKeyFindings dispatches one summary key to the comparison that fits
+// its value type.
+func summaryKeyFindings(scenarioID string, runs []RunResult, key string) []Finding {
+	if key == "latencyMs" {
+		return nil
+	}
+	finding := func(msg string) []Finding {
+		return []Finding{{Scenario: scenarioID, Kind: "consistency", Msg: msg}}
+	}
+	switch runs[0].Summary[key].(type) {
+	case int:
+		if vals, ok := intValues(runs, key); ok {
+			if msg := intVarianceMessage(key, vals); msg != "" {
+				return finding(msg)
+			}
+		}
+	case map[string]int:
+		return fieldPresenceFindings(scenarioID, runs, key)
+	case []string:
+		if msg := keyStabilityMessage(runs, key); msg != "" {
+			return finding(msg)
+		}
+	}
+	return nil
 }
 
 // intVarianceMessage applies the count-vs-text-length rules to one int summary

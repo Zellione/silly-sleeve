@@ -215,6 +215,9 @@ type GenerationParams struct {
 	Width            int     `json:"width"`
 	Height           int     `json:"height"`
 	Checkpoint       string  `json:"checkpoint"`
+	// Clip is the standalone text encoder file for split-file workflows
+	// ({{clip}}); checkpoint workflows use the baked encoder and ignore it.
+	Clip string `json:"clip"`
 	// Vae and Lora are model file names. The empty string, "baked" (Vae) and
 	// "none" (Lora) all mean "leave this loader out of the graph" — see
 	// UsesVAE / UsesLoRA.

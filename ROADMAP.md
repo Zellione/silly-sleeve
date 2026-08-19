@@ -247,10 +247,10 @@ best-effort match for the workflow's architecture (e.g. a file containing
 `z_image` for Z-Image Turbo) and otherwise force an explicit pick, so a workflow
 that is guaranteed to fail server-side validation is never queued.
 
-- [~] **11.1** Backend: placeholder-driven split templates (`{{model}}`,
+- [x] **11.1** Backend: placeholder-driven split templates (`{{model}}`,
   `{{clip}}`, always-present `{{vae}}` loader), `Clip` in `GenerationParams` and
   placeholder values
-- [ ] **11.2** Backend: `GetComfyUNets` / `GetComfyCLIPs` service + app methods and
+- [~] **11.2** Backend: `GetComfyUNets` / `GetComfyCLIPs` service + app methods and
   Wails bindings
 - [ ] **11.3** Frontend: shared model-selection state in `useImageGeneration`
   (unet/clip/vae lists, hint-based preselection on workflow switch, split-workflow

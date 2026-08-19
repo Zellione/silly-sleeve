@@ -126,14 +126,11 @@ func addSamplingNodes(graph map[string]any, modelSource, clipSource, vaeSource [
 // splitModelSpec describes a built-in workflow for a model that ships as split
 // files (diffusion model + text encoder + VAE) instead of an all-in-one
 // checkpoint, so it cannot run through the CheckpointLoaderSimple graph. The
-// file names are the official ComfyUI release names; a user whose files differ
-// can edit the exported template. The checkpoint dropdown is deliberately not
-// wired in: it lists models/checkpoints, not models/diffusion_models.
+// model files themselves are dropdown selections substituted via the
+// {{model}}, {{clip}} and {{vae}} placeholders — file names differ between
+// installs, so the spec carries only the architecture-specific node settings.
 type splitModelSpec struct {
-	unet       string  // diffusion model file in models/diffusion_models
-	clip       string  // text encoder file in models/text_encoders
 	clipType   string  // CLIPLoader "type" for this architecture
-	vae        string  // default VAE file in models/vae
 	latentNode string  // empty-latent node class for this architecture
 	shift      float64 // ModelSamplingAuraFlow shift; 0 means no patch node
 }
@@ -141,48 +138,38 @@ type splitModelSpec struct {
 var (
 	// krea2Spec matches ComfyUI's official image_krea2_turbo_t2i template.
 	krea2Spec = splitModelSpec{
-		unet:       "krea2_turbo_fp8_scaled.safetensors",
-		clip:       "qwen3vl_4b_fp8_scaled.safetensors",
 		clipType:   "krea2",
-		vae:        "qwen_image_vae.safetensors",
 		latentNode: "EmptyLatentImage",
 	}
 	// zturboSpec matches ComfyUI's official image_z_image_turbo template.
 	zturboSpec = splitModelSpec{
-		unet:       "z_image_turbo_bf16.safetensors",
-		clip:       "qwen_3_4b.safetensors",
 		clipType:   "lumina2",
-		vae:        "ae.safetensors",
 		latentNode: "EmptySD3LatentImage",
 		shift:      3,
 	}
 )
 
-// buildSplitWorkflowGraph assembles a split-file workflow node graph. The VAE
-// loader is always present because these models have no baked VAE: customVAE
-// swaps the official file for the {{vae}} placeholder. A LoRA patches the
-// model path only (LoraLoaderModelOnly) — the text encoder is a separate
-// model, so there is no checkpoint clip to patch.
-func buildSplitWorkflowGraph(spec splitModelSpec, customVAE, withLoRA bool) map[string]any {
+// buildSplitWorkflowGraph assembles a split-file workflow node graph. The
+// diffusion model, text encoder and VAE are dropdown selections substituted
+// via {{model}}, {{clip}} and {{vae}}; the VAE loader is always present
+// because these models have no baked VAE. A LoRA patches the model path only
+// (LoraLoaderModelOnly) — the text encoder is a separate model, so there is
+// no checkpoint clip to patch.
+func buildSplitWorkflowGraph(spec splitModelSpec, withLoRA bool) map[string]any {
 	modelSource := []any{nodeUNet, 0}
-
-	vaeName := any(spec.vae)
-	if customVAE {
-		vaeName = "{{vae}}"
-	}
 
 	graph := map[string]any{
 		nodeUNet: map[string]any{
 			"class_type": "UNETLoader",
-			"inputs":     map[string]any{"unet_name": spec.unet, "weight_dtype": "default"},
+			"inputs":     map[string]any{"unet_name": "{{model}}", "weight_dtype": "default"},
 		},
 		nodeCLIPLoader: map[string]any{
 			"class_type": "CLIPLoader",
-			"inputs":     map[string]any{"clip_name": spec.clip, "type": spec.clipType, "device": "default"},
+			"inputs":     map[string]any{"clip_name": "{{clip}}", "type": spec.clipType, "device": "default"},
 		},
 		nodeVAELoader: map[string]any{
 			"class_type": "VAELoader",
-			"inputs":     map[string]any{"vae_name": vaeName},
+			"inputs":     map[string]any{"vae_name": "{{vae}}"},
 		},
 		nodeLatent: map[string]any{
 			"class_type": spec.latentNode,
@@ -221,8 +208,8 @@ func buildSplitWorkflowGraph(spec splitModelSpec, customVAE, withLoRA bool) map[
 
 // buildSplitWorkflowTemplate renders a split-file workflow variant as indented
 // JSON, mirroring buildWorkflowTemplate.
-func buildSplitWorkflowTemplate(spec splitModelSpec, customVAE, withLoRA bool) string {
-	out, err := json.MarshalIndent(buildSplitWorkflowGraph(spec, customVAE, withLoRA), "", "  ")
+func buildSplitWorkflowTemplate(spec splitModelSpec, withLoRA bool) string {
+	out, err := json.MarshalIndent(buildSplitWorkflowGraph(spec, withLoRA), "", "  ")
 	if err != nil {
 		// Same reasoning as buildWorkflowTemplate: plain maps cannot fail to
 		// marshal, and a desktop app must not panic on the fallback path.
@@ -270,7 +257,7 @@ var builtInSplitSpecs = map[string]splitModelSpec{
 // GetBuiltInTemplate returns the default workflow template for a built-in ID.
 func GetBuiltInTemplate(id string) (string, bool) {
 	if spec, ok := builtInSplitSpecs[id]; ok {
-		return buildSplitWorkflowTemplate(spec, false, false), true
+		return buildSplitWorkflowTemplate(spec, false), true
 	}
 	if builtInIDs[id] {
 		return defaultWorkflowTemplate, true
@@ -284,8 +271,10 @@ func GetBuiltInTemplate(id string) (string, bool) {
 func matchBuiltInFamily(tmpl string) func(withVAE, withLoRA bool) string {
 	families := []func(bool, bool) string{buildWorkflowTemplate}
 	for _, spec := range builtInSplitSpecs {
-		families = append(families, func(withVAE, withLoRA bool) string {
-			return buildSplitWorkflowTemplate(spec, withVAE, withLoRA)
+		// Split graphs always carry a VAE loader, so the withVAE flag has no
+		// variant to select — the renderer ignores it.
+		families = append(families, func(_, withLoRA bool) string {
+			return buildSplitWorkflowTemplate(spec, withLoRA)
 		})
 	}
 	for _, render := range families {

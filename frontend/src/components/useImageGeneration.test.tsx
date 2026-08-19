@@ -30,7 +30,7 @@ vi.mock('../utils/image', () => ({
 }));
 
 const DEFAULTS: WorkflowOption[] = [
-  { id: 'preset_a', name: 'preset_a', model: 'm', size: '512×512', steps: 20, sampler: 'euler', scheduler: 'normal' },
+  { id: 'preset_a', name: 'preset_a', model: 'm', size: '512×512', steps: 20, cfg: 7, sampler: 'euler', scheduler: 'normal' },
 ];
 
 const Harness: React.FC = () => {

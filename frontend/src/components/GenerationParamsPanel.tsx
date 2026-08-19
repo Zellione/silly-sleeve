@@ -8,6 +8,7 @@ export interface WorkflowOption {
   model: string;
   size: string;
   steps: number;
+  cfg: number;
   sampler: string;
   scheduler: string;
 }

@@ -22,6 +22,12 @@ const (
 	nodeSaveImage  = "7"
 	nodeLoRALoader = "8"
 	nodeVAELoader  = "9"
+
+	// Split-file graphs load the diffusion model where the checkpoint node
+	// sits, plus a standalone text encoder and (for Z-Image) a sampling patch.
+	nodeUNet          = "1"
+	nodeCLIPLoader    = "10"
+	nodeModelSampling = "11"
 )
 
 // buildWorkflowGraph assembles the built-in workflow node graph. When withLoRA
@@ -46,13 +52,6 @@ func buildWorkflowGraph(withVAE, withLoRA bool) map[string]any {
 				"width":      "{{width}}",
 				"height":     "{{height}}",
 				"batch_size": 1,
-			},
-		},
-		nodeSaveImage: map[string]any{
-			"class_type": "SaveImage",
-			"inputs": map[string]any{
-				"filename_prefix": "SillySleeve",
-				"images":          []any{nodeVAEDecode, 0},
 			},
 		},
 	}
@@ -80,6 +79,14 @@ func buildWorkflowGraph(withVAE, withLoRA bool) map[string]any {
 		vaeSource = []any{nodeVAELoader, 0}
 	}
 
+	addSamplingNodes(graph, modelSource, clipSource, vaeSource)
+
+	return graph
+}
+
+// addSamplingNodes appends the encode/sample/decode/save tail shared by every
+// built-in graph, wired to the given model, clip and VAE sources.
+func addSamplingNodes(graph map[string]any, modelSource, clipSource, vaeSource []any) {
 	graph[nodePositive] = map[string]any{
 		"class_type": "CLIPTextEncode",
 		"inputs":     map[string]any{"text": "{{positive_prompt}}", "clip": clipSource},
@@ -107,8 +114,121 @@ func buildWorkflowGraph(withVAE, withLoRA bool) map[string]any {
 		"class_type": "VAEDecode",
 		"inputs":     map[string]any{"samples": []any{nodeSampler, 0}, "vae": vaeSource},
 	}
+	graph[nodeSaveImage] = map[string]any{
+		"class_type": "SaveImage",
+		"inputs": map[string]any{
+			"filename_prefix": "SillySleeve",
+			"images":          []any{nodeVAEDecode, 0},
+		},
+	}
+}
+
+// splitModelSpec describes a built-in workflow for a model that ships as split
+// files (diffusion model + text encoder + VAE) instead of an all-in-one
+// checkpoint, so it cannot run through the CheckpointLoaderSimple graph. The
+// file names are the official ComfyUI release names; a user whose files differ
+// can edit the exported template. The checkpoint dropdown is deliberately not
+// wired in: it lists models/checkpoints, not models/diffusion_models.
+type splitModelSpec struct {
+	unet       string  // diffusion model file in models/diffusion_models
+	clip       string  // text encoder file in models/text_encoders
+	clipType   string  // CLIPLoader "type" for this architecture
+	vae        string  // default VAE file in models/vae
+	latentNode string  // empty-latent node class for this architecture
+	shift      float64 // ModelSamplingAuraFlow shift; 0 means no patch node
+}
+
+var (
+	// krea2Spec matches ComfyUI's official image_krea2_turbo_t2i template.
+	krea2Spec = splitModelSpec{
+		unet:       "krea2_turbo_fp8_scaled.safetensors",
+		clip:       "qwen3vl_4b_fp8_scaled.safetensors",
+		clipType:   "krea2",
+		vae:        "qwen_image_vae.safetensors",
+		latentNode: "EmptyLatentImage",
+	}
+	// zturboSpec matches ComfyUI's official image_z_image_turbo template.
+	zturboSpec = splitModelSpec{
+		unet:       "z_image_turbo_bf16.safetensors",
+		clip:       "qwen_3_4b.safetensors",
+		clipType:   "lumina2",
+		vae:        "ae.safetensors",
+		latentNode: "EmptySD3LatentImage",
+		shift:      3,
+	}
+)
+
+// buildSplitWorkflowGraph assembles a split-file workflow node graph. The VAE
+// loader is always present because these models have no baked VAE: customVAE
+// swaps the official file for the {{vae}} placeholder. A LoRA patches the
+// model path only (LoraLoaderModelOnly) — the text encoder is a separate
+// model, so there is no checkpoint clip to patch.
+func buildSplitWorkflowGraph(spec splitModelSpec, customVAE, withLoRA bool) map[string]any {
+	modelSource := []any{nodeUNet, 0}
+
+	vaeName := any(spec.vae)
+	if customVAE {
+		vaeName = "{{vae}}"
+	}
+
+	graph := map[string]any{
+		nodeUNet: map[string]any{
+			"class_type": "UNETLoader",
+			"inputs":     map[string]any{"unet_name": spec.unet, "weight_dtype": "default"},
+		},
+		nodeCLIPLoader: map[string]any{
+			"class_type": "CLIPLoader",
+			"inputs":     map[string]any{"clip_name": spec.clip, "type": spec.clipType, "device": "default"},
+		},
+		nodeVAELoader: map[string]any{
+			"class_type": "VAELoader",
+			"inputs":     map[string]any{"vae_name": vaeName},
+		},
+		nodeLatent: map[string]any{
+			"class_type": spec.latentNode,
+			"inputs": map[string]any{
+				"width":      "{{width}}",
+				"height":     "{{height}}",
+				"batch_size": 1,
+			},
+		},
+	}
+
+	if withLoRA {
+		graph[nodeLoRALoader] = map[string]any{
+			"class_type": "LoraLoaderModelOnly",
+			"inputs": map[string]any{
+				"lora_name":      "{{lora}}",
+				"strength_model": 1.0,
+				"model":          modelSource,
+			},
+		}
+		modelSource = []any{nodeLoRALoader, 0}
+	}
+
+	if spec.shift > 0 {
+		graph[nodeModelSampling] = map[string]any{
+			"class_type": "ModelSamplingAuraFlow",
+			"inputs":     map[string]any{"shift": spec.shift, "model": modelSource},
+		}
+		modelSource = []any{nodeModelSampling, 0}
+	}
+
+	addSamplingNodes(graph, modelSource, []any{nodeCLIPLoader, 0}, []any{nodeVAELoader, 0})
 
 	return graph
+}
+
+// buildSplitWorkflowTemplate renders a split-file workflow variant as indented
+// JSON, mirroring buildWorkflowTemplate.
+func buildSplitWorkflowTemplate(spec splitModelSpec, customVAE, withLoRA bool) string {
+	out, err := json.MarshalIndent(buildSplitWorkflowGraph(spec, customVAE, withLoRA), "", "  ")
+	if err != nil {
+		// Same reasoning as buildWorkflowTemplate: plain maps cannot fail to
+		// marshal, and a desktop app must not panic on the fallback path.
+		return ""
+	}
+	return string(out)
 }
 
 // buildWorkflowTemplate renders a workflow variant as indented JSON. The output
@@ -130,6 +250,7 @@ func buildWorkflowTemplate(withVAE, withLoRA bool) string {
 // and no LoRA. This is what GetBuiltInTemplate hands to the workflow editor.
 var defaultWorkflowTemplate = buildWorkflowTemplate(false, false)
 
+// builtInIDs are the built-in presets that share the checkpoint-based graph.
 var builtInIDs = map[string]bool{
 	"portrait_sdxl": true,
 	"illustrious":   true,
@@ -139,12 +260,44 @@ var builtInIDs = map[string]bool{
 	"painterly":     true,
 }
 
+// builtInSplitSpecs are the built-in presets whose models ship as split files
+// and therefore render a dedicated split-loader graph.
+var builtInSplitSpecs = map[string]splitModelSpec{
+	"krea2":  krea2Spec,
+	"zturbo": zturboSpec,
+}
+
 // GetBuiltInTemplate returns the default workflow template for a built-in ID.
 func GetBuiltInTemplate(id string) (string, bool) {
+	if spec, ok := builtInSplitSpecs[id]; ok {
+		return buildSplitWorkflowTemplate(spec, false, false), true
+	}
 	if builtInIDs[id] {
 		return defaultWorkflowTemplate, true
 	}
 	return "", false
+}
+
+// matchBuiltInFamily returns the renderer for the template family an
+// unmodified built-in template belongs to (checkpoint-based or one of the
+// split-file specs), or nil when the template is not a built-in variant.
+func matchBuiltInFamily(tmpl string) func(withVAE, withLoRA bool) string {
+	families := []func(bool, bool) string{buildWorkflowTemplate}
+	for _, spec := range builtInSplitSpecs {
+		families = append(families, func(withVAE, withLoRA bool) string {
+			return buildSplitWorkflowTemplate(spec, withVAE, withLoRA)
+		})
+	}
+	for _, render := range families {
+		for _, withVAE := range []bool{false, true} {
+			for _, withLoRA := range []bool{false, true} {
+				if tmpl == render(withVAE, withLoRA) {
+					return render
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // IsBuiltInTemplate reports whether tmpl is one of the unmodified built-in
@@ -152,24 +305,19 @@ func GetBuiltInTemplate(id string) (string, bool) {
 // LoRA choice while leaving a hand-edited template exactly as the user wrote it
 // — their template is free to reference {{vae}} and {{lora}} itself.
 func IsBuiltInTemplate(tmpl string) bool {
-	for _, withVAE := range []bool{false, true} {
-		for _, withLoRA := range []bool{false, true} {
-			if tmpl == buildWorkflowTemplate(withVAE, withLoRA) {
-				return true
-			}
-		}
-	}
-	return false
+	return matchBuiltInFamily(tmpl) != nil
 }
 
 // ResolveWorkflowTemplate returns the workflow JSON to generate with. An
-// unmodified built-in template is re-rendered for the supplied VAE and LoRA
-// selection; anything the user has edited is returned untouched.
+// unmodified built-in template is re-rendered — within its own family — for
+// the supplied VAE and LoRA selection; anything the user has edited is
+// returned untouched.
 func ResolveWorkflowTemplate(tmpl, vae, lora string) string {
-	if !IsBuiltInTemplate(tmpl) {
+	render := matchBuiltInFamily(tmpl)
+	if render == nil {
 		return tmpl
 	}
-	return buildWorkflowTemplate(UsesVAE(vae), UsesLoRA(lora))
+	return render(UsesVAE(vae), UsesLoRA(lora))
 }
 
 // bakedVAE and noLoRA are the sentinel selections meaning "leave it out of the

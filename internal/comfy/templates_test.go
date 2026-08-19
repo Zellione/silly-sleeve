@@ -206,3 +206,112 @@ func TestReplacePlaceholders_ResolvesVaeAndLoraInCustomWorkflow(t *testing.T) {
 	assert.Equal(t, "v.safetensors", nodeInput(t, graph, "9", "vae_name"))
 	assert.Equal(t, "l.safetensors", nodeInput(t, graph, "8", "lora_name"))
 }
+
+func TestGetBuiltInTemplate_Krea2SplitLoaderGraph(t *testing.T) {
+	tmpl, ok := GetBuiltInTemplate("krea2")
+	require.True(t, ok)
+	graph := decodeGraph(t, tmpl)
+
+	assert.Equal(t, "UNETLoader", graph[nodeUNet]["class_type"])
+	assert.Equal(t, "krea2_turbo_fp8_scaled.safetensors", nodeInput(t, graph, nodeUNet, "unet_name"))
+	assert.Equal(t, "CLIPLoader", graph[nodeCLIPLoader]["class_type"])
+	assert.Equal(t, "qwen3vl_4b_fp8_scaled.safetensors", nodeInput(t, graph, nodeCLIPLoader, "clip_name"))
+	assert.Equal(t, "krea2", nodeInput(t, graph, nodeCLIPLoader, "type"))
+	assert.Equal(t, "VAELoader", graph[nodeVAELoader]["class_type"])
+	assert.Equal(t, "qwen_image_vae.safetensors", nodeInput(t, graph, nodeVAELoader, "vae_name"))
+	assert.Equal(t, "EmptyLatentImage", graph[nodeLatent]["class_type"])
+	assert.NotContains(t, graph, nodeModelSampling, "krea2 has no ModelSamplingAuraFlow node")
+
+	// Sampler reads the plain UNet; encoders read the standalone text encoder;
+	// decode reads the dedicated VAE loader.
+	assert.Equal(t, []any{nodeUNet, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+	assert.Equal(t, []any{nodeCLIPLoader, float64(0)}, nodeInput(t, graph, nodePositive, "clip"))
+	assert.Equal(t, []any{nodeCLIPLoader, float64(0)}, nodeInput(t, graph, nodeNegative, "clip"))
+	assert.Equal(t, []any{nodeVAELoader, float64(0)}, nodeInput(t, graph, nodeVAEDecode, "vae"))
+}
+
+func TestGetBuiltInTemplate_ZTurboSplitLoaderGraph(t *testing.T) {
+	tmpl, ok := GetBuiltInTemplate("zturbo")
+	require.True(t, ok)
+	graph := decodeGraph(t, tmpl)
+
+	assert.Equal(t, "z_image_turbo_bf16.safetensors", nodeInput(t, graph, nodeUNet, "unet_name"))
+	assert.Equal(t, "qwen_3_4b.safetensors", nodeInput(t, graph, nodeCLIPLoader, "clip_name"))
+	assert.Equal(t, "lumina2", nodeInput(t, graph, nodeCLIPLoader, "type"))
+	assert.Equal(t, "ae.safetensors", nodeInput(t, graph, nodeVAELoader, "vae_name"))
+	assert.Equal(t, "EmptySD3LatentImage", graph[nodeLatent]["class_type"])
+
+	// Z-Image needs the AuraFlow shift patch between the UNet and the sampler.
+	require.Contains(t, graph, nodeModelSampling)
+	assert.Equal(t, "ModelSamplingAuraFlow", graph[nodeModelSampling]["class_type"])
+	assert.Equal(t, float64(3), nodeInput(t, graph, nodeModelSampling, "shift"))
+	assert.Equal(t, []any{nodeUNet, float64(0)}, nodeInput(t, graph, nodeModelSampling, "model"))
+	assert.Equal(t, []any{nodeModelSampling, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+}
+
+func TestSplitWorkflowTemplate_HasGenerationPlaceholdersButFixedModels(t *testing.T) {
+	for _, id := range []string{"krea2", "zturbo"} {
+		tmpl, ok := GetBuiltInTemplate(id)
+		require.True(t, ok, "id %q should be built-in", id)
+		for _, ph := range []string{
+			"{{seed}}", "{{steps}}", "{{cfg}}", "{{sampler}}", "{{scheduler}}",
+			"{{denoise}}", "{{width}}", "{{height}}",
+			"{{positive_prompt}}", "{{negative_prompt}}",
+		} {
+			assert.Contains(t, tmpl, ph, "%s missing from %s", ph, id)
+		}
+		// The diffusion model, text encoder and default VAE are fixed official
+		// file names: the checkpoint dropdown lists the wrong folder for these.
+		assert.NotContains(t, tmpl, "{{model}}", "%s must not take the checkpoint selection", id)
+		assert.NotContains(t, tmpl, "{{vae}}", "default %s variant uses the official VAE file", id)
+	}
+}
+
+func TestBuildSplitWorkflowTemplate_CustomVAEUsesPlaceholder(t *testing.T) {
+	graph := decodeGraph(t, buildSplitWorkflowTemplate(krea2Spec, true, false))
+	assert.Equal(t, "{{vae}}", nodeInput(t, graph, nodeVAELoader, "vae_name"))
+}
+
+func TestBuildSplitWorkflowTemplate_LoRAPatchesModelOnly(t *testing.T) {
+	// The text encoder is a separate model, so the LoRA must patch the model
+	// path only and leave the encoders reading the standalone CLIP loader.
+	graph := decodeGraph(t, buildSplitWorkflowTemplate(krea2Spec, false, true))
+	require.Contains(t, graph, nodeLoRALoader)
+	assert.Equal(t, "LoraLoaderModelOnly", graph[nodeLoRALoader]["class_type"])
+	assert.Equal(t, "{{lora}}", nodeInput(t, graph, nodeLoRALoader, "lora_name"))
+	assert.Equal(t, []any{nodeUNet, float64(0)}, nodeInput(t, graph, nodeLoRALoader, "model"))
+	assert.Equal(t, []any{nodeLoRALoader, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+	assert.Equal(t, []any{nodeCLIPLoader, float64(0)}, nodeInput(t, graph, nodePositive, "clip"))
+
+	// With a shift patch the chain is UNet -> LoRA -> ModelSampling -> sampler.
+	graph = decodeGraph(t, buildSplitWorkflowTemplate(zturboSpec, false, true))
+	assert.Equal(t, []any{nodeUNet, float64(0)}, nodeInput(t, graph, nodeLoRALoader, "model"))
+	assert.Equal(t, []any{nodeLoRALoader, float64(0)}, nodeInput(t, graph, nodeModelSampling, "model"))
+	assert.Equal(t, []any{nodeModelSampling, float64(0)}, nodeInput(t, graph, nodeSampler, "model"))
+}
+
+func TestIsBuiltInTemplate_RecognisesSplitVariants(t *testing.T) {
+	for _, spec := range []splitModelSpec{krea2Spec, zturboSpec} {
+		for _, tc := range []struct{ vae, lora bool }{
+			{false, false}, {true, false}, {false, true}, {true, true},
+		} {
+			assert.True(t, IsBuiltInTemplate(buildSplitWorkflowTemplate(spec, tc.vae, tc.lora)),
+				"%s variant vae=%t lora=%t should be recognised as built-in", spec.unet, tc.vae, tc.lora)
+		}
+	}
+}
+
+func TestResolveWorkflowTemplate_SwapsSplitVariants(t *testing.T) {
+	base := buildSplitWorkflowTemplate(zturboSpec, false, false)
+
+	assert.Equal(t, buildSplitWorkflowTemplate(zturboSpec, true, false),
+		ResolveWorkflowTemplate(base, "custom_vae.safetensors", "none"))
+	assert.Equal(t, buildSplitWorkflowTemplate(zturboSpec, false, true),
+		ResolveWorkflowTemplate(base, "baked", "style.safetensors"))
+	assert.Equal(t, base, ResolveWorkflowTemplate(base, "baked", "none"))
+
+	// Resolution must stay within the family the user selected.
+	kreaBase := buildSplitWorkflowTemplate(krea2Spec, false, false)
+	assert.Equal(t, buildSplitWorkflowTemplate(krea2Spec, true, true),
+		ResolveWorkflowTemplate(kreaBase, "custom_vae.safetensors", "style.safetensors"))
+}

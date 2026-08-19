@@ -20,10 +20,14 @@ import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
 import { DEFAULT_NEGATIVE_PROMPT, arrayBufferToDataURL, dataURLToBytes } from '../utils/image';
 
+// Guidance-distilled models (flux, krea2, zturbo) need cfg 1: real CFG makes
+// a distilled model fry the image.
 const PORTRAIT_WORKFLOWS = [
-  { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
-  { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, sampler: 'euler_ancestral', scheduler: 'normal' },
-  { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, sampler: 'euler', scheduler: 'normal' },
+  { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, cfg: 7, sampler: 'dpmpp_2m', scheduler: 'karras' },
+  { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, cfg: 7, sampler: 'euler_ancestral', scheduler: 'normal' },
+  { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, cfg: 1, sampler: 'euler', scheduler: 'normal' },
+  { id: 'krea2', name: 'krea2_turbo', model: 'krea2_turbo_fp8_scaled', size: '832×1216', steps: 8, cfg: 1, sampler: 'euler', scheduler: 'simple' },
+  { id: 'zturbo', name: 'z_image_turbo', model: 'z_image_turbo_bf16', size: '832×1216', steps: 8, cfg: 1, sampler: 'res_multistep', scheduler: 'simple' },
 ];
 
 async function autoFillImagePrompt(
@@ -212,7 +216,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
               aria-label="Portrait generation parameters"
               workflows={allWorkflows}
               selectedWorkflow={workflow}
-              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setSampler(w.sampler); setScheduler(w.scheduler); }}
+              onWorkflowChange={w => { setWorkflow(w); setSteps(w.steps); setCfg(w.cfg); setSampler(w.sampler); setScheduler(w.scheduler); }}
               steps={steps} onStepsChange={setSteps}
               cfg={cfg} onCfgChange={setCfg}
               denoise={denoise} onDenoiseChange={setDenoise}

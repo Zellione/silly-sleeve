@@ -11,6 +11,7 @@ export function mapWorkflows(wfs: comfy.ComfyWorkflow[]): WorkflowOption[] {
       ? `${wf.params.width}×${wf.params.height}`
       : 'custom',
     steps: wf.params.steps || 20,
+    cfg: wf.params.cfg || 7,
     sampler: wf.params.sampler || 'euler',
     scheduler: wf.params.scheduler || 'normal',
   }));

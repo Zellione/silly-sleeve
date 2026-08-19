@@ -7,17 +7,17 @@ describe('mapWorkflows', () => {
     const wf = comfy.ComfyWorkflow.createFrom({
       id: 'wf1',
       name: 'My Workflow.json',
-      params: { checkpoint: 'model.safetensors', width: 832, height: 1216, steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
+      params: { checkpoint: 'model.safetensors', width: 832, height: 1216, steps: 28, cfg: 4, sampler: 'dpmpp_2m', scheduler: 'karras' },
     });
     expect(mapWorkflows([wf])).toEqual([
-      { id: 'wf1', name: 'My Workflow', model: 'model.safetensors', size: '832×1216', steps: 28, sampler: 'dpmpp_2m', scheduler: 'karras' },
+      { id: 'wf1', name: 'My Workflow', model: 'model.safetensors', size: '832×1216', steps: 28, cfg: 4, sampler: 'dpmpp_2m', scheduler: 'karras' },
     ]);
   });
 
   it('falls back to defaults when params are missing', () => {
     const wf = comfy.ComfyWorkflow.createFrom({ id: 'wf2', name: 'bare', params: {} });
     expect(mapWorkflows([wf])).toEqual([
-      { id: 'wf2', name: 'bare', model: 'custom', size: 'custom', steps: 20, sampler: 'euler', scheduler: 'normal' },
+      { id: 'wf2', name: 'bare', model: 'custom', size: 'custom', steps: 20, cfg: 7, sampler: 'euler', scheduler: 'normal' },
     ]);
   });
 });

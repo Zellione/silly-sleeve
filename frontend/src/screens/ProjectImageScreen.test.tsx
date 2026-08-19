@@ -48,6 +48,25 @@ describe('ProjectImageScreen', () => {
     });
   });
 
+  it('offers the krea2 and zturbo built-in workflows', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    const combobox = await screen.findByRole('combobox', { name: 'Workflow' });
+    await user.click(combobox);
+    expect(screen.getByRole('option', { name: /krea2_turbo/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /z_image_turbo/ })).toBeInTheDocument();
+  });
+
+  it('applies the turbo cfg and steps when selecting the krea2 workflow', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    const combobox = await screen.findByRole('combobox', { name: 'Workflow' });
+    await user.click(combobox);
+    await user.click(screen.getByRole('option', { name: /krea2_turbo/ }));
+    expect(screen.getByLabelText('CFG scale')).toHaveValue(1);
+    expect(screen.getByLabelText('Steps')).toHaveValue(8);
+  });
+
   it('renders sampler params', async () => {
     renderWithProviders(<ProjectImageScreen />);
     await waitFor(() => {

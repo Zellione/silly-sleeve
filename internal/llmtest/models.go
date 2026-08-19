@@ -82,6 +82,10 @@ type Scenario struct {
 	ID    string
 	Label string
 	Run   func(ctx context.Context, cfg Config, c llm.Completer) (map[string]any, error)
+	// ExpectJSON marks scenarios whose raw responses must be bare JSON.
+	ExpectJSON bool
+	// Check inspects a successful run's summary and returns format problems.
+	Check func(summary map[string]any) []string
 }
 
 // FieldText renders one character field as text, for presence checks and

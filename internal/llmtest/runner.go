@@ -35,6 +35,7 @@ func executeScenario(ctx context.Context, cfg Config, s Scenario) ScenarioResult
 				Msg:      err.Error(),
 			})
 		}
+		res.Findings = append(res.Findings, analyzeRun(s, run)...)
 		res.Runs = append(res.Runs, run)
 	}
 	return res

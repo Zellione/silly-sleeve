@@ -108,3 +108,25 @@ func findingMessages(fs []Finding) []string {
 	}
 	return msgs
 }
+
+func TestAnalyzeRun_FlagsMissingExpectedLabels(t *testing.T) {
+	s := Scenario{ID: "img", Label: "image", ExpectLabels: []string{"POSITIVE:", "NEGATIVE:"}}
+	run := RunResult{Run: 1, Exchanges: []Exchange{
+		{User: "prompt", Response: "Here is a lovely portrait description without labels."},
+	}}
+
+	findings := analyzeRun(s, run)
+
+	require.Len(t, findings, 2)
+	assert.Contains(t, findings[0].Msg, "POSITIVE:")
+	assert.Contains(t, findings[1].Msg, "NEGATIVE:")
+}
+
+func TestAnalyzeRun_AcceptsLabelsCaseInsensitively(t *testing.T) {
+	s := Scenario{ID: "img", Label: "image", ExpectLabels: []string{"POSITIVE:", "NEGATIVE:"}}
+	run := RunResult{Run: 1, Exchanges: []Exchange{
+		{User: "prompt", Response: "positive: a portrait\nnegative: blurry"},
+	}}
+
+	assert.Empty(t, analyzeRun(s, run), "production parsing accepts lowercase labels, so the harness must too")
+}

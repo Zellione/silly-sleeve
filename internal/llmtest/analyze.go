@@ -32,6 +32,12 @@ func analyzeRun(s Scenario, run RunResult) []Finding {
 		if s.ExpectJSON && !json.Valid([]byte(strings.TrimSpace(ex.Response))) {
 			add("response is not bare JSON (repair or extraction was needed)")
 		}
+		lower := strings.ToLower(ex.Response)
+		for _, label := range s.ExpectLabels {
+			if !strings.Contains(lower, strings.ToLower(label)) {
+				add("response is missing the " + label + " label")
+			}
+		}
 	}
 
 	if run.Err == "" && s.Check != nil {

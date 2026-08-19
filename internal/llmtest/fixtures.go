@@ -174,3 +174,38 @@ func FixtureEntries() []lorebook.Entry {
 		},
 	}
 }
+
+// FixtureRuleGapEntries returns a lorebook whose rules are deliberately
+// suboptimal — a generic key, near-duplicate lantern entries and uniform
+// default orders — so the optimize pass has rule changes to propose.
+func FixtureRuleGapEntries() []lorebook.Entry {
+	return []lorebook.Entry{
+		{
+			UID:     1,
+			Comment: "Ember lanterns",
+			Key:     []string{"ember lantern", "the", "lanterns"},
+			Content: "Brass-and-glass lanterns burning ember-glass cores keep the " +
+				"Hollow Mist away from Emberfall's walls.",
+			Order: 100, Position: 0, Probability: 100, UseProbability: true, Depth: 4,
+			KeySecondary: []string{}, Characters: []string{},
+		},
+		{
+			UID:     2,
+			Comment: "Duplicate lantern lore",
+			Key:     []string{"lanterns", "lantern lore"},
+			Content: "The lanterns of Emberfall burn ember-glass cores and hold the " +
+				"mist back from the walls, tended by the lamplighters' guild.",
+			Order: 100, Position: 0, Probability: 100, UseProbability: true, Depth: 4,
+			KeySecondary: []string{}, Characters: []string{},
+		},
+		{
+			UID:     3,
+			Comment: "Emberfall walls",
+			Key:     []string{"walls of Emberfall"},
+			Content: "The city walls carry the forty-nine lantern posts and mark the " +
+				"line the Hollow Mist cannot cross while the lights burn.",
+			Order: 100, Position: 0, Probability: 100, UseProbability: true, Depth: 4,
+			KeySecondary: []string{}, Characters: []string{},
+		},
+	}
+}

@@ -7,6 +7,7 @@ import (
 
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/llm"
+	"silly-sleeve/internal/loreextract"
 	"silly-sleeve/internal/prompts"
 )
 
@@ -17,6 +18,12 @@ func Scenarios() []Scenario {
 		endpointScenario(),
 		bulkGenerateScenario(),
 		fieldRerollScenario(),
+		imagePromptScenario("natural"),
+		imagePromptScenario("danbooru"),
+		loreExtractScenario(loreextract.ModeSplit),
+		loreExtractScenario(loreextract.ModeSummary),
+		loreConnectScenario(),
+		loreOptimizeScenario(),
 	}
 }
 

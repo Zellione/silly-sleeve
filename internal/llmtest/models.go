@@ -84,6 +84,9 @@ type Scenario struct {
 	Run   func(ctx context.Context, cfg Config, c llm.Completer) (map[string]any, error)
 	// ExpectJSON marks scenarios whose raw responses must be bare JSON.
 	ExpectJSON bool
+	// ExpectLabels lists labels every raw response must carry (checked
+	// case-insensitively), for labelled-text formats like image prompts.
+	ExpectLabels []string
 	// Check inspects a successful run's summary and returns format problems.
 	Check func(summary map[string]any) []string
 }

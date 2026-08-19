@@ -191,3 +191,15 @@ func TestCharacterGenerator_GenerateImagePrompt_HTTPError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "generate image prompt")
 }
+
+func TestNewCharacterGenerator_WiresContextAndCompleter(t *testing.T) {
+	fake := &fakeCompleter{resp: "POSITIVE: a portrait\nNEGATIVE: blurry"}
+
+	gen := NewCharacterGenerator(func() context.Context { return context.Background() }, fake)
+	positive, negative, err := gen.GenerateImagePrompt(compose.Character{Name: "Mira"}, settings.LLMEndpoint{URL: "http://localhost:1234", Model: "m"}, "natural")
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, fake.calls, "the injected completer must be used")
+	assert.Equal(t, "a portrait", positive)
+	assert.Equal(t, "blurry", negative)
+}

@@ -234,6 +234,16 @@ func (a *App) GetComfyVAEs() ([]string, error) {
 	return a.comfy.GetComfyVAEs()
 }
 
+// GetComfyUNets returns available diffusion model (UNet) file names from ComfyUI.
+func (a *App) GetComfyUNets() ([]string, error) {
+	return a.comfy.GetComfyUNets()
+}
+
+// GetComfyCLIPs returns available text encoder (CLIP) file names from ComfyUI.
+func (a *App) GetComfyCLIPs() ([]string, error) {
+	return a.comfy.GetComfyCLIPs()
+}
+
 // GetComfyLoRAs returns available LoRA model names from ComfyUI.
 func (a *App) GetComfyLoRAs() ([]string, error) {
 	return a.comfy.GetComfyLoRAs()

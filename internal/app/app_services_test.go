@@ -64,6 +64,8 @@ func TestApp_ComfyDiscoveryDelegators(t *testing.T) {
 			"CheckpointLoaderSimple.ckpt_name": {"sdxl.safetensors"},
 			"VAELoader.vae_name":               {"vae.pt"},
 			"LoraLoader.lora_name":             {"lora.safetensors"},
+			"UNETLoader.unet_name":             {"unet.safetensors"},
+			"CLIPLoader.clip_name":             {"clip.safetensors"},
 		}}
 	}
 
@@ -77,6 +79,8 @@ func TestApp_ComfyDiscoveryDelegators(t *testing.T) {
 		{"checkpoints", app.GetComfyCheckpoints, []string{"sdxl.safetensors"}},
 		{"vaes", app.GetComfyVAEs, []string{"vae.pt"}},
 		{"loras", app.GetComfyLoRAs, []string{"lora.safetensors"}},
+		{"unets", app.GetComfyUNets, []string{"unet.safetensors"}},
+		{"clips", app.GetComfyCLIPs, []string{"clip.safetensors"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := tc.call()

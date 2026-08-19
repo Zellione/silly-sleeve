@@ -278,6 +278,34 @@ func (s *ComfyUIService) GetComfyVAEs() ([]string, error) {
 	return nonNil(values), nil
 }
 
+// GetComfyUNets returns available diffusion model (UNet) file names from
+// ComfyUI. Split-file workflows load these instead of checkpoints.
+func (s *ComfyUIService) GetComfyUNets() ([]string, error) {
+	client, err := s.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("UNETLoader", "unet_name")
+	if err != nil {
+		return nil, err
+	}
+	return nonNil(values), nil
+}
+
+// GetComfyCLIPs returns available standalone text encoder (CLIP) file names
+// from ComfyUI, for split-file workflows without a baked encoder.
+func (s *ComfyUIService) GetComfyCLIPs() ([]string, error) {
+	client, err := s.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("CLIPLoader", "clip_name")
+	if err != nil {
+		return nil, err
+	}
+	return nonNil(values), nil
+}
+
 // GetComfyLoRAs returns available LoRA model names from ComfyUI.
 func (s *ComfyUIService) GetComfyLoRAs() ([]string, error) {
 	client, err := s.comfyClient()

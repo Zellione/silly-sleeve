@@ -59,6 +59,8 @@ export function GetCardPreview():Promise<compose.CardPreview>;
 
 export function GetCharacters():Promise<Array<compose.Character>>;
 
+export function GetComfyCLIPs():Promise<Array<string>>;
+
 export function GetComfyCheckpoints():Promise<Array<string>>;
 
 export function GetComfyConfig():Promise<settings.ComfyConfig>;
@@ -68,6 +70,8 @@ export function GetComfyLoRAs():Promise<Array<string>>;
 export function GetComfySamplers():Promise<Array<string>>;
 
 export function GetComfySchedulers():Promise<Array<string>>;
+
+export function GetComfyUNets():Promise<Array<string>>;
 
 export function GetComfyVAEs():Promise<Array<string>>;
 

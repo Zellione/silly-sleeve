@@ -25,6 +25,9 @@ type Config struct {
 	// Completer is the base completer scenarios talk through; nil means the
 	// production HTTP completer.
 	Completer llm.Completer
+	// Progress, when set, receives each scenario's finished result as soon as
+	// that scenario completes.
+	Progress func(ScenarioResult)
 }
 
 func (c Config) completerOrDefault() llm.Completer {
@@ -87,6 +90,9 @@ type Scenario struct {
 	// ExpectLabels lists labels every raw response must carry (checked
 	// case-insensitively), for labelled-text formats like image prompts.
 	ExpectLabels []string
+	// Critical marks a scenario whose total failure stops the remaining
+	// scenarios (the endpoint connectivity test).
+	Critical bool
 	// Check inspects a successful run's summary and returns format problems.
 	Check func(summary map[string]any) []string
 }

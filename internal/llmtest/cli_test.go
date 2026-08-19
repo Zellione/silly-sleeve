@@ -22,7 +22,7 @@ func runCLI(t *testing.T, args ...string) (int, string, string) {
 }
 
 func TestDefaultEndpointURL(t *testing.T) {
-	assert.Equal(t, "http://localhost:8001", DefaultEndpointURL)
+	assert.Equal(t, "http://localhost:8001/v1", DefaultEndpointURL)
 }
 
 func TestRunCLI_ListPrintsAllScenarios(t *testing.T) {
@@ -88,6 +88,7 @@ func TestRunCLI_ReportsFindingCounts(t *testing.T) {
 
 	code, stdout, _ := runCLI(t,
 		"-endpoint", ep.URL,
+		"-model", "stub-model",
 		"-runs", "1",
 		"-only", "bulk-generate",
 		"-out", filepath.Join(t.TempDir(), "reports"),
@@ -104,6 +105,7 @@ func TestRunCLI_FailsWhenReportCannotBeWritten(t *testing.T) {
 
 	code, _, stderr := runCLI(t,
 		"-endpoint", ep.URL,
+		"-model", "stub-model",
 		"-runs", "1",
 		"-only", "bulk-generate",
 		"-out", blocker,
@@ -130,6 +132,7 @@ func TestRunCLI_ForceJSONReachesTheEndpoint(t *testing.T) {
 
 	code, _, _ := runCLI(t,
 		"-endpoint", srv.URL,
+		"-model", "stub-model",
 		"-runs", "1",
 		"-only", "bulk-generate",
 		"-force-json",
@@ -145,4 +148,102 @@ func TestRunCLI_UsageMentionsDefaults(t *testing.T) {
 
 	assert.Equal(t, 0, code, "asking for help is not an error")
 	assert.True(t, strings.Contains(stderr, DefaultEndpointURL), "usage documents the default endpoint")
+}
+
+func TestPrintScenarioSummary_CleanScenario(t *testing.T) {
+	var buf bytes.Buffer
+
+	printScenarioSummary(&buf, ScenarioResult{
+		Scenario: "endpoint-test",
+		Runs:     []RunResult{{Run: 1}},
+	})
+
+	out := buf.String()
+	assert.Contains(t, out, "endpoint-test")
+	assert.Contains(t, out, "no findings")
+}
+
+func TestPrintScenarioSummary_ListsFindings(t *testing.T) {
+	var buf bytes.Buffer
+
+	printScenarioSummary(&buf, ScenarioResult{
+		Scenario: "bulk-generate",
+		Runs:     []RunResult{{Run: 1}, {Run: 2}},
+		Findings: []Finding{
+			{Scenario: "bulk-generate", Run: 1, Kind: "format", Msg: "invalid JSON forced a retry"},
+			{Scenario: "bulk-generate", Kind: "consistency", Msg: "candidates varied across runs: 2, 5"},
+		},
+	})
+
+	out := buf.String()
+	assert.Contains(t, out, "2 finding(s) in 2 run(s)")
+	assert.Contains(t, out, "[format] run 1: invalid JSON forced a retry")
+	assert.Contains(t, out, "[consistency] candidates varied across runs: 2, 5")
+}
+
+func TestPrintScenarioSummary_CapsLongFindingLists(t *testing.T) {
+	findings := make([]Finding, 12)
+	for i := range findings {
+		findings[i] = Finding{Scenario: "s", Run: 1, Kind: "format", Msg: "problem"}
+	}
+	var buf bytes.Buffer
+
+	printScenarioSummary(&buf, ScenarioResult{Scenario: "s", Runs: []RunResult{{Run: 1}}, Findings: findings})
+
+	out := buf.String()
+	assert.Equal(t, maxListedFindings, strings.Count(out, "[format]"))
+	assert.Contains(t, out, "and 4 more")
+}
+
+func TestRunCLI_StreamsFindingSummaries(t *testing.T) {
+	_, ep := stubLLM(t, func(int, string) string {
+		return "```json\n" + fullBulkJSON() + "\n```"
+	})
+
+	code, stdout, _ := runCLI(t,
+		"-endpoint", ep.URL,
+		"-model", "stub-model",
+		"-runs", "1",
+		"-only", "bulk-generate",
+		"-out", filepath.Join(t.TempDir(), "reports"),
+	)
+
+	assert.Equal(t, 0, code)
+	assert.Contains(t, stdout, "[format] run 1: response is not bare JSON")
+}
+
+func TestRunCLI_ReportsSkippedScenariosWhenEndpointFails(t *testing.T) {
+	srv, ep := stubLLM(t, func(int, string) string { return "hi" })
+	srv.Close() // the freed port refuses connections immediately
+
+	code, stdout, stderr := runCLI(t,
+		"-endpoint", ep.URL,
+		"-model", "stub-model",
+		"-runs", "1",
+		"-out", filepath.Join(t.TempDir(), "reports"),
+	)
+
+	assert.Equal(t, 0, code, "stderr: %s", stderr)
+	assert.Contains(t, stdout, "skipped the remaining 8 scenario(s)")
+}
+
+func TestRunCLI_WritesReportEvenWhenEndpointGateStopsTheRun(t *testing.T) {
+	srv, ep := stubLLM(t, func(int, string) string { return "hi" })
+	srv.Close()
+	out := filepath.Join(t.TempDir(), "reports")
+
+	code, _, _ := runCLI(t,
+		"-endpoint", ep.URL,
+		"-model", "stub-model",
+		"-runs", "1",
+		"-out", out,
+	)
+
+	assert.Equal(t, 0, code)
+	entries, err := os.ReadDir(out)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "the report folder exists even though the run stopped early")
+	md, err := os.ReadFile(filepath.Join(out, entries[0].Name(), "report.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(md), "endpoint-test")
 }

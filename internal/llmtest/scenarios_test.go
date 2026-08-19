@@ -172,3 +172,9 @@ func TestExecute_AppendsAnalysisFindings(t *testing.T) {
 	require.NotEmpty(t, msgs)
 	assert.Contains(t, msgs[0], "not bare JSON")
 }
+
+func TestEndpointScenario_IsCritical(t *testing.T) {
+	assert.True(t, findScenario(t, "endpoint-test").Critical,
+		"an unreachable endpoint must stop the remaining scenarios")
+	assert.False(t, findScenario(t, "bulk-generate").Critical)
+}

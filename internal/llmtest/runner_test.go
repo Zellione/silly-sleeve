@@ -102,3 +102,51 @@ func TestExecute_ClassifiesParseFailureAsFormatFinding(t *testing.T) {
 	require.NotEmpty(t, results[0].Findings)
 	assert.Equal(t, "format", results[0].Findings[0].Kind)
 }
+
+func TestExecute_ReportsProgressAfterEachScenario(t *testing.T) {
+	var order []string
+	cfg := Config{
+		Runs:      2,
+		Completer: staticCompleter("ok"),
+		Progress: func(r ScenarioResult) {
+			order = append(order, r.Scenario)
+			assert.Len(t, r.Runs, 2, "the callback receives the finished result")
+		},
+	}
+
+	Execute(context.Background(), cfg, []Scenario{okScenario("a"), okScenario("b")})
+
+	assert.Equal(t, []string{"a", "b"}, order)
+}
+
+func TestExecute_StopsAfterCriticalScenarioFails(t *testing.T) {
+	failing := llm.CompleterFunc(func(context.Context, llm.LLMEndpoint, string, string) (string, error) {
+		return "", errors.New("dial tcp: connection refused")
+	})
+	critical := okScenario("gate")
+	critical.Critical = true
+	cfg := Config{Runs: 2, Completer: failing}
+
+	results := Execute(context.Background(), cfg, []Scenario{critical, okScenario("b")})
+
+	require.Len(t, results, 1, "a critical scenario with zero successful runs stops the rest")
+	assert.Equal(t, "gate", results[0].Scenario)
+}
+
+func TestExecute_ContinuesWhenCriticalScenarioPartiallySucceeds(t *testing.T) {
+	calls := 0
+	flaky := llm.CompleterFunc(func(context.Context, llm.LLMEndpoint, string, string) (string, error) {
+		calls++
+		if calls == 1 {
+			return "", errors.New("transient")
+		}
+		return "ok", nil
+	})
+	critical := okScenario("gate")
+	critical.Critical = true
+	cfg := Config{Runs: 2, Completer: flaky}
+
+	results := Execute(context.Background(), cfg, []Scenario{critical, okScenario("b")})
+
+	require.Len(t, results, 2, "a flaky critical scenario is documented, not fatal")
+}

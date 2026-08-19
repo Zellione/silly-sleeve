@@ -21,10 +21,8 @@ type RunMeta struct {
 
 var unsafeNameChars = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
-// WriteReport writes report.md (human-readable findings, worst offenders
-// first) and runs.jsonl (raw request/response pairs) into a new timestamped
-// folder under outDir, and returns that folder's path.
-func WriteReport(outDir string, meta RunMeta, results []ScenarioResult) (string, error) {
+// NewReportDir creates and returns the timestamped run folder under outDir.
+func NewReportDir(outDir string, meta RunMeta) (string, error) {
 	model := unsafeNameChars.ReplaceAllString(meta.Model, "-")
 	if model == "" {
 		model = "unknown-model"
@@ -33,16 +31,36 @@ func WriteReport(outDir string, meta RunMeta, results []ScenarioResult) (string,
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("create report folder: %w", err)
 	}
+	return dir, nil
+}
 
+// UpdateReport (re)writes report.md and runs.jsonl with the results gathered
+// so far. Calling it after every scenario means a crashed run keeps everything
+// up to its last completed scenario.
+func UpdateReport(dir string, meta RunMeta, results []ScenarioResult) error {
 	if err := os.WriteFile(filepath.Join(dir, "report.md"), []byte(renderMarkdown(meta, results)), 0o644); err != nil {
-		return "", fmt.Errorf("write report.md: %w", err)
+		return fmt.Errorf("write report.md: %w", err)
 	}
 	jsonl, err := renderJSONL(meta, results)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, "runs.jsonl"), jsonl, 0o644); err != nil {
-		return "", fmt.Errorf("write runs.jsonl: %w", err)
+		return fmt.Errorf("write runs.jsonl: %w", err)
+	}
+	return nil
+}
+
+// WriteReport writes report.md (human-readable findings, worst offenders
+// first) and runs.jsonl (raw request/response pairs) into a new timestamped
+// folder under outDir, and returns that folder's path.
+func WriteReport(outDir string, meta RunMeta, results []ScenarioResult) (string, error) {
+	dir, err := NewReportDir(outDir, meta)
+	if err != nil {
+		return "", err
+	}
+	if err := UpdateReport(dir, meta, results); err != nil {
+		return "", err
 	}
 	return dir, nil
 }

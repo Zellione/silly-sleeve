@@ -2,7 +2,7 @@
 
 User request: a test script that runs all real LLM interactions against a live
 endpoint, logging format + consistency errors for documentation and later prompt
-improvement. Endpoint is a parameter, default `http://localhost:8001`.
+improvement. Endpoint is a parameter, default `http://localhost:8001/v1`.
 
 Decisions (confirmed via AskUserQuestion, all recommended options accepted):
 
@@ -23,7 +23,7 @@ Decisions (confirmed via AskUserQuestion, all recommended options accepted):
 
 Other design points:
 
-- CLI flags: `-endpoint` (default http://localhost:8001), `-model`, `-api-key`,
+- CLI flags: `-endpoint` (default http://localhost:8001/v1), `-model`, `-api-key`,
   `-runs`, `-only <scenario,...>`, `-out` (default docs/llm-reports/), `-timeout`.
 - Format checks count `jsonloop` repair/retry firings — a repair that succeeds still
   logs a format finding; lore output also reports normaliser adjustment counts.

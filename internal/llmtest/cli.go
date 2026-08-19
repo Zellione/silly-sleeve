@@ -14,8 +14,9 @@ import (
 )
 
 // DefaultEndpointURL is where the harness looks for a local OpenAI-compatible
-// server when no -endpoint is given.
-const DefaultEndpointURL = "http://localhost:8001"
+// server when no -endpoint is given. The /v1 base matters: the completion
+// client appends /chat/completions to it.
+const DefaultEndpointURL = "http://localhost:8001/v1"
 
 // RunCLI parses args, runs the harness and writes the report. It returns the
 // process exit code: findings never fail the run — they are the product — so
@@ -24,7 +25,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("llmtest", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	endpoint := fs.String("endpoint", DefaultEndpointURL, "OpenAI-compatible endpoint URL to test against")
-	model := fs.String("model", "", "model name sent with every request")
+	model := fs.String("model", "", "model name sent with every request (default: first model listed by the endpoint's /models)")
 	apiKey := fs.String("api-key", "", "bearer token, if the endpoint needs one")
 	runs := fs.Int("runs", 3, "how often each scenario repeats for consistency analysis")
 	only := fs.String("only", "", "comma-separated scenario IDs to run (default: all)")
@@ -57,9 +58,20 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	baseURL := strings.TrimRight(*endpoint, "/")
+	if *model == "" {
+		discovered, err := fetchDefaultModel(baseURL, *apiKey)
+		if err != nil {
+			fmt.Fprintf(stderr, "llmtest: no -model given and model discovery failed (%v); pass -model explicitly\n", err)
+			return 1
+		}
+		*model = discovered
+		fmt.Fprintf(stdout, "No -model given; using %q from the models endpoint\n", *model)
+	}
+
 	cfg := Config{
 		Endpoint: llm.LLMEndpoint{
-			URL:            strings.TrimRight(*endpoint, "/"),
+			URL:            baseURL,
 			Model:          *model,
 			TimeoutSeconds: *timeout,
 			ForceJSON:      *forceJSON,
@@ -72,23 +84,65 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		cfg.Endpoint.Key = apiKey
 	}
 
+	meta := RunMeta{EndpointURL: cfg.Endpoint.URL, Model: *model, Runs: *runs, Started: time.Now()}
+	dir, err := NewReportDir(cfg.OutDir, meta)
+	if err != nil {
+		fmt.Fprintf(stderr, "llmtest: %v\n", err)
+		return 1
+	}
+
+	// The report is rewritten after every scenario, so a crashed run keeps
+	// everything gathered up to its last completed scenario.
+	var done []ScenarioResult
+	cfg.Progress = func(r ScenarioResult) {
+		printScenarioSummary(stdout, r)
+		done = append(done, r)
+		if err := UpdateReport(dir, meta, done); err != nil {
+			fmt.Fprintf(stderr, "llmtest: update report: %v\n", err)
+		}
+	}
+
 	fmt.Fprintf(stdout, "Testing %s (model %q), %d run(s) per scenario\n", cfg.Endpoint.URL, *model, *runs)
 	results := Execute(context.Background(), cfg, scenarios)
 
 	total := 0
 	for _, r := range results {
 		total += len(r.Findings)
-		fmt.Fprintf(stdout, "%-22s %d finding(s) in %d run(s)\n", r.Scenario, len(r.Findings), len(r.Runs))
 	}
-
-	meta := RunMeta{EndpointURL: cfg.Endpoint.URL, Model: *model, Runs: *runs, Started: time.Now()}
-	dir, err := WriteReport(cfg.OutDir, meta, results)
-	if err != nil {
-		fmt.Fprintf(stderr, "llmtest: %v\n", err)
-		return 1
+	selected := len(scenarios)
+	if len(onlyIDs) > 0 {
+		selected = len(onlyIDs)
+	}
+	if skipped := selected - len(results); skipped > 0 {
+		fmt.Fprintf(stdout, "endpoint test failed — skipped the remaining %d scenario(s)\n", skipped)
 	}
 	fmt.Fprintf(stdout, "\n%d finding(s) total — report written to %s\n", total, dir)
 	return 0
+}
+
+// maxListedFindings caps the per-scenario console summary; the full list is
+// always in report.md.
+const maxListedFindings = 8
+
+// printScenarioSummary writes one scenario's outcome as soon as it finishes:
+// the finding count, then the first findings as bullet lines.
+func printScenarioSummary(w io.Writer, r ScenarioResult) {
+	if len(r.Findings) == 0 {
+		fmt.Fprintf(w, "%-22s no findings in %d run(s)\n", r.Scenario, len(r.Runs))
+		return
+	}
+	fmt.Fprintf(w, "%-22s %d finding(s) in %d run(s)\n", r.Scenario, len(r.Findings), len(r.Runs))
+	for i, f := range r.Findings {
+		if i == maxListedFindings {
+			fmt.Fprintf(w, "  ... and %d more finding(s), see report.md\n", len(r.Findings)-maxListedFindings)
+			break
+		}
+		if f.Run > 0 {
+			fmt.Fprintf(w, "  - [%s] run %d: %s\n", f.Kind, f.Run, f.Msg)
+		} else {
+			fmt.Fprintf(w, "  - [%s] %s\n", f.Kind, f.Msg)
+		}
+	}
 }
 
 // parseOnly validates a comma-separated scenario filter against the registry.

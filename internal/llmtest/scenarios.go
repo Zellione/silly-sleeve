@@ -31,8 +31,9 @@ func Scenarios() []Scenario {
 // does, including the JSON-mode probe when ForceJSON is on.
 func endpointScenario() Scenario {
 	return Scenario{
-		ID:    "endpoint-test",
-		Label: "Endpoint connectivity test",
+		ID:       "endpoint-test",
+		Label:    "Endpoint connectivity test",
+		Critical: true,
 		Run: func(_ context.Context, cfg Config, _ llm.Completer) (map[string]any, error) {
 			result := llm.TestEndpoint(cfg.Endpoint)
 			if !result.Ok {

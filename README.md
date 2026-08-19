@@ -163,8 +163,10 @@ image prompts, lore extraction, connections, optimize suggestions) against a
 live endpoint and documents format and consistency problems.
 
 ```bash
-# Test the default local endpoint (http://localhost:8001), 3 runs per scenario
-go run ./cmd/llmtest -model qwen2.5:7b
+# Test the default local endpoint (http://localhost:8001/v1), 3 runs per scenario.
+# Without -model, the harness asks the endpoint's /models listing and uses the
+# first model it reports.
+go run ./cmd/llmtest
 
 # Different endpoint, fewer runs, one scenario only
 go run ./cmd/llmtest -endpoint http://localhost:11434/v1 -model llama3 -runs 1 -only bulk-generate
@@ -173,10 +175,13 @@ go run ./cmd/llmtest -endpoint http://localhost:11434/v1 -model llama3 -runs 1 -
 go run ./cmd/llmtest -list
 ```
 
-Each run writes a timestamped folder under `docs/llm-reports/` (gitignored)
-containing `report.md` — findings, worst offenders first — and `runs.jsonl`
-with every raw request/response pair for later analysis. Findings never fail
-the process; they are the product.
+The endpoint connectivity test runs first; if it fails in every run, the
+remaining scenarios are skipped. Each run writes a timestamped folder under
+`docs/llm-reports/` (gitignored) containing `report.md` — findings, worst
+offenders first — and `runs.jsonl` with every raw request/response pair for
+later analysis. The report is rewritten after every scenario, so an
+interrupted run keeps everything gathered up to that point. Findings never
+fail the process; they are the product.
 
 > ⚠️ **Warning:** The harness sends real requests to the endpoint you point it
 > at. It is a manual tool — it is not part of `go test` or CI.

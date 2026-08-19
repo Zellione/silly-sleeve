@@ -26,6 +26,14 @@ func hasAdjustment(adjustments []string, substr string) bool {
 	return false
 }
 
+func TestIsCategoryMandated(t *testing.T) {
+	assert.True(t, IsCategoryMandated("Position 0 → 1 (required for character entries)."))
+	assert.True(t, IsCategoryMandated("Recursion prevention false → true (required for rule entries)."))
+	assert.False(t, IsCategoryMandated("Only 1 keyword; 2 or more trigger more reliably."))
+	assert.False(t, IsCategoryMandated(`Added the "RULE: " prefix required for rule entries.`))
+	assert.False(t, IsCategoryMandated("Always-on false → true (rule entries are always constant)."))
+}
+
 // validEntry is a well-formed entry that should pass through untouched.
 func validEntry() Entry {
 	return Entry{

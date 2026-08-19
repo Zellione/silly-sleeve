@@ -65,7 +65,14 @@ func loreExtractScenario(mode loreextract.ExtractionMode) Scenario {
 				for _, k := range cand.Entry.Key {
 					keys = append(keys, strings.ToLower(k))
 				}
-				adjustments = append(adjustments, cand.Adjustments...)
+				for _, a := range cand.Adjustments {
+					// Category-mandated settings (position, recursion) fire for
+					// every entry of most categories; only corrections of fields
+					// the model actually chose say anything about the model.
+					if !lorebook.IsCategoryMandated(a) {
+						adjustments = append(adjustments, a)
+					}
+				}
 			}
 			sort.Strings(keys)
 			return map[string]any{

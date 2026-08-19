@@ -1,5 +1,12 @@
 package prompts
 
+import (
+	"fmt"
+	"strings"
+
+	"silly-sleeve/internal/lorebook"
+)
+
 // Lore prompt IDs. These are kept out of FieldIDs because that list drives the
 // character editor's per-field generate buttons.
 const (
@@ -82,24 +89,29 @@ Follow these rules:
 4. Use straight quotes in all string values — never curly quotes.
 5. Output only the requested JSON object: no preamble, no markdown fences, no explanation.`
 
+// categoryTable renders one line per category with the content guidance the
+// normaliser later enforces, so the model is told the rules it is held to.
+func categoryTable() string {
+	var b strings.Builder
+	for _, cat := range lorebook.Categories() {
+		s, _ := lorebook.CategoryDefaults(cat)
+		fmt.Fprintf(&b, "   %-14s %s\n", cat, s.ContentHint)
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
 // loreRules is the shared body of both extraction prompts: what an entry is,
 // how its category fixes its mechanics, and how entries link to one another.
 // Connections are expressed through the fields SillyTavern already has —
 // keyword linkage, content mentions, bracketed metadata, character scoping —
 // rather than through any separate structure.
-const loreRules = `RULES
+var loreRules = `RULES
 1. Each entry covers ONE atomic concept. Never combine unrelated things into a
    single entry.
 2. Never state anything the source does not support. Omit rather than invent.
 3. {{style.rewrite}} Never copy it verbatim.
 4. Give every entry a category. The category fixes how the entry behaves:
-   character      a person
-   location       a place
-   organization   a faction, order or group
-   item           an object or artifact
-   rule           a hard world mechanic that breaks the story if forgotten
-   event          a temporary state, scene condition or quest hook
-   concept        history, lore or doctrine
+` + categoryTable() + `
 5. Keys: 2-5 per entry. Use the name and its natural variations, possessives and
    titles — ["Rusty Flagon", "the flagon", "the tavern", "Patches' place"].
    Never use a bare generic word such as "sword", "house", "city" or "queen";
@@ -129,7 +141,7 @@ const loreContext = `PROJECT CHARACTERS (id · name · epithet)
 EXISTING LOREBOOK ENTRIES (uid · comment · keys)
 {{entry_index}}`
 
-const loreExtractSplitPrompt = `Extract atomic lorebook entries from the wiki page below, for use as SillyTavern world info.
+var loreExtractSplitPrompt = `Extract atomic lorebook entries from the wiki page below, for use as SillyTavern world info.
 
 ` + loreRules + `
 
@@ -144,7 +156,7 @@ Return ONLY a JSON object. No markdown fences, no commentary:
 "content":"...","order":340,"constant":false,"selective":false,
 "characters":["1"]}]}`
 
-const loreExtractSummaryPrompt = `Condense the wiki page below into a SINGLE lorebook entry, for use as SillyTavern world info.
+var loreExtractSummaryPrompt = `Condense the wiki page below into a SINGLE lorebook entry, for use as SillyTavern world info.
 
 Produce exactly one entry covering the whole page. Content 150-200 tokens.
 Choose the category that best fits the page's main subject, and pick keys that

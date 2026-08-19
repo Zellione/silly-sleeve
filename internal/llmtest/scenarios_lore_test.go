@@ -91,6 +91,27 @@ func TestLoreExtractSplitScenario_SummarizesCandidates(t *testing.T) {
 	require.True(t, ok, "summary records what the normaliser corrected")
 }
 
+func TestLoreExtractScenario_DropsCategoryMandatedAdjustments(t *testing.T) {
+	reply := `{"entries":[{"category":"character","comment":"Mira",` +
+		`"key":["Mira Dawnhollow"],"keysecondary":[],` +
+		`"content":"The last lamplighter of Emberfall tends the wall alone.","order":550,` +
+		`"constant":false,"selective":false,"characters":["1"]}]}`
+	_, ep := stubLLM(t, func(int, string) string { return reply })
+	s := findScenario(t, "lore-extract-split")
+
+	summary, err := s.Run(context.Background(), Config{Endpoint: ep}, NewRecorder(llm.DefaultCompleter))
+
+	require.NoError(t, err)
+	adjustments, ok := summary["adjustments"].([]string)
+	require.True(t, ok)
+	assert.Contains(t, adjustments, "Only 1 keyword; 2 or more trigger more reliably.",
+		"corrections of fields the model chose must stay visible")
+	for _, a := range adjustments {
+		assert.NotContains(t, a, "(required for",
+			"category-mandated settings fire mechanically and are not model findings")
+	}
+}
+
 func TestLoreExtractSummaryScenario_KeepsOneCandidate(t *testing.T) {
 	_, ep := stubLLM(t, func(int, string) string { return extractionJSON() })
 	s := findScenario(t, "lore-extract-summary")

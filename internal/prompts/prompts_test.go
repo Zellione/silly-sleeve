@@ -18,6 +18,12 @@ func TestDefaults(t *testing.T) {
 	}
 }
 
+func TestDefaultSystemPrompt_RequiresBareJSON(t *testing.T) {
+	sys := Defaults().SystemPrompt
+	assert.Contains(t, sys, "no markdown fences",
+		"per-field generation parses the reply as JSON, so the system prompt must forbid fenced output")
+}
+
 func TestSubstitute(t *testing.T) {
 	type test struct {
 		name     string

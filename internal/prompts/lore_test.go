@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"silly-sleeve/internal/lorebook"
 )
 
 func TestDefaults_IncludesEveryLorePrompt(t *testing.T) {
@@ -17,6 +19,18 @@ func TestDefaults_IncludesEveryLorePrompt(t *testing.T) {
 		assert.True(t, ok, "missing lore prompt %q", id)
 		assert.NotEmpty(t, prompt, "empty lore prompt %q", id)
 		assert.NotEqual(t, id, LorePromptLabel(id), "lore prompt %q has no label", id)
+	}
+}
+
+func TestDefaultExtractionPrompts_CarryCategoryContentHints(t *testing.T) {
+	for _, id := range []string{LoreExtractSplit, LoreExtractSummary} {
+		prompt := defaultLorePrompt(id)
+		for _, cat := range lorebook.Categories() {
+			s, ok := lorebook.CategoryDefaults(cat)
+			require.True(t, ok)
+			assert.Contains(t, prompt, s.ContentHint,
+				"prompt %q must carry the %s content hint the normaliser later enforces", id, cat)
+		}
 	}
 }
 

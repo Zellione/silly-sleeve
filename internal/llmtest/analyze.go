@@ -18,32 +18,41 @@ func analyzeRun(s Scenario, run RunResult) []Finding {
 	}
 
 	for _, ex := range run.Exchanges {
-		if ex.Err != "" {
-			continue // the runner already reported this as a transport finding
-		}
-		if strings.Contains(ex.User, retryMarker) {
-			add("invalid JSON forced a retry")
-			continue // the retry itself is the finding; don't double-flag its response
-		}
-		if strings.TrimSpace(ex.Response) == "" {
-			add("empty response")
-			continue
-		}
-		if s.ExpectJSON && !json.Valid([]byte(strings.TrimSpace(ex.Response))) {
-			add("response is not bare JSON (repair or extraction was needed)")
-		}
-		lower := strings.ToLower(ex.Response)
-		for _, label := range s.ExpectLabels {
-			if !strings.Contains(lower, strings.ToLower(label)) {
-				add("response is missing the " + label + " label")
-			}
+		for _, msg := range exchangeProblems(s, ex) {
+			add(msg)
 		}
 	}
-
 	if run.Err == "" && s.Check != nil {
 		for _, problem := range s.Check(run.Summary) {
 			add(problem)
 		}
 	}
 	return findings
+}
+
+// exchangeProblems judges one raw exchange against the scenario's expected
+// response shape.
+func exchangeProblems(s Scenario, ex Exchange) []string {
+	if ex.Err != "" {
+		return nil // the runner already reported this as a transport finding
+	}
+	if strings.Contains(ex.User, retryMarker) {
+		// The retry itself is the finding; don't double-flag its response.
+		return []string{"invalid JSON forced a retry"}
+	}
+	if strings.TrimSpace(ex.Response) == "" {
+		return []string{"empty response"}
+	}
+
+	var problems []string
+	if s.ExpectJSON && !json.Valid([]byte(strings.TrimSpace(ex.Response))) {
+		problems = append(problems, "response is not bare JSON (repair or extraction was needed)")
+	}
+	lower := strings.ToLower(ex.Response)
+	for _, label := range s.ExpectLabels {
+		if !strings.Contains(lower, strings.ToLower(label)) {
+			problems = append(problems, "response is missing the "+label+" label")
+		}
+	}
+	return problems
 }

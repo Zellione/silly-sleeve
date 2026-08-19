@@ -68,17 +68,10 @@ func compareSummaries(scenarioID string, runs []RunResult) []Finding {
 		}
 		switch first[key].(type) {
 		case int:
-			vals, ok := intValues(runs, key)
-			if !ok {
-				continue
-			}
-			lo, hi := minMax(vals)
-			isChars := strings.Contains(strings.ToLower(key), "chars")
-			switch {
-			case isChars && ((lo == 0 && hi > 0) || (lo > 0 && hi > 3*lo)):
-				add(fmt.Sprintf("%s varied widely across runs: %s", key, joinInts(vals)))
-			case !isChars && lo != hi:
-				add(fmt.Sprintf("%s varied across runs: %s", key, joinInts(vals)))
+			if vals, ok := intValues(runs, key); ok {
+				if msg := intVarianceMessage(key, vals); msg != "" {
+					add(msg)
+				}
 			}
 		case map[string]int:
 			findings = append(findings, fieldPresenceFindings(scenarioID, runs, key)...)
@@ -89,6 +82,22 @@ func compareSummaries(scenarioID string, runs []RunResult) []Finding {
 		}
 	}
 	return findings
+}
+
+// intVarianceMessage applies the count-vs-text-length rules to one int summary
+// key; an empty return means the values are acceptably stable.
+func intVarianceMessage(key string, vals []int) string {
+	lo, hi := minMax(vals)
+	if strings.Contains(strings.ToLower(key), "chars") {
+		if (lo == 0 && hi > 0) || (lo > 0 && hi > 3*lo) {
+			return fmt.Sprintf("%s varied widely across runs: %s", key, joinInts(vals))
+		}
+		return ""
+	}
+	if lo != hi {
+		return fmt.Sprintf("%s varied across runs: %s", key, joinInts(vals))
+	}
+	return ""
 }
 
 // fieldPresenceFindings flags fields that came back filled in some runs and

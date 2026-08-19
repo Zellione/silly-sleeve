@@ -10,10 +10,13 @@ import (
 // values rather than files so every scenario gets the exact same input on
 // every run — consistency numbers would mean nothing otherwise.
 
+// fixtureCharacterName is the canonical name of the fixture character.
+const fixtureCharacterName = "Mira Dawnhollow"
+
 // FixtureCrawl returns a canned wiki page crawl about the fixture character.
 func FixtureCrawl() crawler.CrawlResult {
 	return crawler.CrawlResult{
-		Title:  "Mira Dawnhollow",
+		Title:  fixtureCharacterName,
 		URL:    "https://emberfall.fandom.com/wiki/Mira_Dawnhollow",
 		Domain: "emberfall.fandom.com",
 		Sections: []crawler.Section{
@@ -63,7 +66,7 @@ func FixtureCrawl() crawler.CrawlResult {
 			},
 		},
 		Infobox: []crawler.InfoboxEntry{
-			{Key: "Full name", Value: "Mira Dawnhollow"},
+			{Key: "Full name", Value: fixtureCharacterName},
 			{Key: "Occupation", Value: "Lamplighter of Emberfall"},
 			{Key: "Age", Value: "22"},
 			{Key: "Affiliation", Value: "Lamplighters' Guild"},
@@ -80,7 +83,7 @@ func FixtureCrawl() crawler.CrawlResult {
 func FixtureCharacter() compose.Character {
 	return compose.Character{
 		ID:      1,
-		Name:    "Mira Dawnhollow",
+		Name:    fixtureCharacterName,
 		Epithet: "The Last Lamplighter",
 		Tags:    []string{"female", "lamplighter", "fantasy", "cheerful", "haunted"},
 		Appearance: "A wiry young woman in her early twenties with soot-grey eyes and " +

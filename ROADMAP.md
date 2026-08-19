@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-19 — Started Phase 10, LLM interaction test harness (`feature/llmtest-harness`).
+> Last updated: 2026-08-19 — Completed Phase 10, LLM interaction test harness (`feature/llmtest-harness`).
 
 ## Overview
 
@@ -218,20 +218,20 @@ pairs). Report folders are gitignored — local documentation only. The harness 
 gets unit tests against a mock completer; real-endpoint execution is manual only,
 never part of CI or the quality gate.
 
-- [~] **10.1** Scenario framework: `internal/llmtest` runner, scenario / result /
+- [x] **10.1** Scenario framework: `internal/llmtest` runner, scenario / result /
   finding models, canned fixtures (crawl text, character, lorebook entries) in
   `internal/llmtest/testdata/`
-- [ ] **10.2** Character scenarios + format checks: endpoint connectivity test
+- [x] **10.2** Character scenarios + format checks: endpoint connectivity test
   (`llm.Test`), bulk character generation (`compose.Generate`), per-field reroll
   (`compose.GenerateField`)
-- [ ] **10.3** Lore + image scenarios: extraction (split / summary modes), connection
+- [x] **10.3** Lore + image scenarios: extraction (split / summary modes), connection
   suggestions (`loreextract.Connector`), optimize / rule-change suggestions, image
   prompt generation (natural / Danbooru styles)
-- [ ] **10.4** Consistency analysis across N runs: format-validity rate,
+- [x] **10.4** Consistency analysis across N runs: format-validity rate,
   field-presence variance, entry / keyword-count variance
-- [ ] **10.5** Report writer: markdown report + JSONL raw log per timestamped run
+- [x] **10.5** Report writer: markdown report + JSONL raw log per timestamped run
   folder, gitignore entry for `docs/llm-reports/`
-- [ ] **10.6** CLI `cmd/llmtest` with flags and a short usage section in the README
+- [x] **10.6** CLI `cmd/llmtest` with flags and a short usage section in the README
 
 ---
 
@@ -249,6 +249,27 @@ never part of CI or the quality gate.
   markdown + JSONL reports under `docs/llm-reports/`. Six substeps defined
   (10.1–10.6); implementation not yet started.
 - Started Phase 10 — LLM Interaction Test Harness (`feature/llmtest-harness`).
+
+#### Completed Phase 10 — LLM Interaction Test Harness
+
+- [x] **10.1** Scenario framework: `internal/llmtest` runner, recorder wrapping
+  `llm.Completer`, scenario/result/finding models, Emberfall fixtures as Go values
+- [x] **10.2** Character scenarios + format checks: endpoint-test, bulk-generate,
+  field-reroll; not-bare-JSON / forced-retry / empty-response findings
+- [x] **10.3** Lore + image scenarios: lore-extract-split/summary, lore-connect,
+  lore-optimize (rule-gap fixture), image-prompt-natural/danbooru;
+  `app.NewCharacterGenerator` exported for the image path
+- [x] **10.4** Consistency analysis: flaky-failure and partial-format rates, count
+  variance, char-spread and field-presence variance, extracted-key stability
+- [x] **10.5** Report writer: timestamped `docs/llm-reports/<date-time>-<model>/`
+  with `report.md` (worst offenders first) + `runs.jsonl`; folder gitignored
+- [x] **10.6** CLI `go run ./cmd/llmtest` with `-endpoint` (default
+  `http://localhost:8001`), `-model`, `-api-key`, `-runs` (default 3), `-only`,
+  `-out`, `-timeout`, `-force-json`, `-list`; README usage section
+- Note: lore-connect and lore-optimize share the production `Connector.Suggest`
+  pass (the app has no separate optimize call); they differ in the lorebook
+  fixture they analyse and the summary split into connection vs rule-change kinds
+- Go: 73 llmtest tests, 94.8% package coverage; full suite 1059 tests in 19 packages
 
 ### 2026-08-17
 

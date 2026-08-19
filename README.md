@@ -163,7 +163,7 @@ image prompts, lore extraction, connections, optimize suggestions) against a
 live endpoint and documents format and consistency problems.
 
 ```bash
-# Test the default local endpoint (http://localhost:8001), 3 runs per scenario
+# Test the default local endpoint (http://localhost:8001/v1), 3 runs per scenario
 go run ./cmd/llmtest -model qwen2.5:7b
 
 # Different endpoint, fewer runs, one scenario only

@@ -22,7 +22,7 @@ func runCLI(t *testing.T, args ...string) (int, string, string) {
 }
 
 func TestDefaultEndpointURL(t *testing.T) {
-	assert.Equal(t, "http://localhost:8001", DefaultEndpointURL)
+	assert.Equal(t, "http://localhost:8001/v1", DefaultEndpointURL)
 }
 
 func TestRunCLI_ListPrintsAllScenarios(t *testing.T) {

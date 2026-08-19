@@ -14,8 +14,9 @@ import (
 )
 
 // DefaultEndpointURL is where the harness looks for a local OpenAI-compatible
-// server when no -endpoint is given.
-const DefaultEndpointURL = "http://localhost:8001"
+// server when no -endpoint is given. The /v1 base matters: the completion
+// client appends /chat/completions to it.
+const DefaultEndpointURL = "http://localhost:8001/v1"
 
 // RunCLI parses args, runs the harness and writes the report. It returns the
 // process exit code: findings never fail the run — they are the product — so

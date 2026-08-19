@@ -206,7 +206,7 @@ parsing improvements can later be made from evidence instead of anecdotes. A Go 
 (`go run ./cmd/llmtest`) reuses the production code paths — `internal/llm`,
 `internal/compose`, `internal/loreextract`, the real `TemplateSet` defaults — so the
 harness tests the exact prompts and parsing the app ships with. Flags: `-endpoint`
-(default `http://localhost:8001`), `-model`, `-api-key`, `-runs` (default 3),
+(default `http://localhost:8001/v1`), `-model`, `-api-key`, `-runs` (default 3),
 `-only <scenario,...>`, `-out` (default `docs/llm-reports/`), `-timeout`. Each
 scenario is checked for transport errors, format validity (JSON parse success,
 required fields, `jsonloop` repair/retry firings — a repair that succeeds still logs
@@ -244,7 +244,7 @@ never part of CI or the quality gate.
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize
-  suggestions) against a live endpoint (default `http://localhost:8001`), with
+  suggestions) against a live endpoint (default `http://localhost:8001/v1`), with
   format + consistency checks over N runs (default 3) and gitignored
   markdown + JSONL reports under `docs/llm-reports/`. Six substeps defined
   (10.1–10.6); implementation not yet started.
@@ -264,7 +264,7 @@ never part of CI or the quality gate.
 - [x] **10.5** Report writer: timestamped `docs/llm-reports/<date-time>-<model>/`
   with `report.md` (worst offenders first) + `runs.jsonl`; folder gitignored
 - [x] **10.6** CLI `go run ./cmd/llmtest` with `-endpoint` (default
-  `http://localhost:8001`), `-model`, `-api-key`, `-runs` (default 3), `-only`,
+  `http://localhost:8001/v1`), `-model`, `-api-key`, `-runs` (default 3), `-only`,
   `-out`, `-timeout`, `-force-json`, `-list`; README usage section
 - Note: lore-connect and lore-optimize share the production `Connector.Suggest`
   pass (the app has no separate optimize call); they differ in the lorebook

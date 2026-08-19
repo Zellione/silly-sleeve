@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-17 — Started Phase 9, UI v2 redesign (`feature/ui-redesign`).
+> Last updated: 2026-08-19 — Started Phase 10, LLM interaction test harness (`feature/llmtest-harness`).
 
 ## Overview
 
@@ -198,9 +198,57 @@ Summaries tab with send-to-character / send-to-lorebook actions.
 
 ---
 
+## Phase 10 — LLM Interaction Test Harness
+
+Goal: A repeatable, manually-run harness that executes every real LLM interaction
+against a live endpoint and documents format and consistency failures, so prompt and
+parsing improvements can later be made from evidence instead of anecdotes. A Go CLI
+(`go run ./cmd/llmtest`) reuses the production code paths — `internal/llm`,
+`internal/compose`, `internal/loreextract`, the real `TemplateSet` defaults — so the
+harness tests the exact prompts and parsing the app ships with. Flags: `-endpoint`
+(default `http://localhost:8001`), `-model`, `-api-key`, `-runs` (default 3),
+`-only <scenario,...>`, `-out` (default `docs/llm-reports/`), `-timeout`. Each
+scenario is checked for transport errors, format validity (JSON parse success,
+required fields, `jsonloop` repair/retry firings — a repair that succeeds still logs
+a format finding, normaliser adjustment counts for lore), and consistency across the
+N runs (format-validity rate, field-presence variance, entry/keyword-count variance).
+Every run writes a timestamped folder `docs/llm-reports/<date-time>-<model>/` with
+`report.md` (findings, worst offenders first) and `runs.jsonl` (raw request/response
+pairs). Report folders are gitignored — local documentation only. The harness itself
+gets unit tests against a mock completer; real-endpoint execution is manual only,
+never part of CI or the quality gate.
+
+- [~] **10.1** Scenario framework: `internal/llmtest` runner, scenario / result /
+  finding models, canned fixtures (crawl text, character, lorebook entries) in
+  `internal/llmtest/testdata/`
+- [ ] **10.2** Character scenarios + format checks: endpoint connectivity test
+  (`llm.Test`), bulk character generation (`compose.Generate`), per-field reroll
+  (`compose.GenerateField`)
+- [ ] **10.3** Lore + image scenarios: extraction (split / summary modes), connection
+  suggestions (`loreextract.Connector`), optimize / rule-change suggestions, image
+  prompt generation (natural / Danbooru styles)
+- [ ] **10.4** Consistency analysis across N runs: format-validity rate,
+  field-presence variance, entry / keyword-count variance
+- [ ] **10.5** Report writer: markdown report + JSONL raw log per timestamped run
+  folder, gitignore entry for `docs/llm-reports/`
+- [ ] **10.6** CLI `cmd/llmtest` with flags and a short usage section in the README
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-08-19
+
+- Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
+  CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
+  per-field reroll, image prompts, lore extraction, connections, optimize
+  suggestions) against a live endpoint (default `http://localhost:8001`), with
+  format + consistency checks over N runs (default 3) and gitignored
+  markdown + JSONL reports under `docs/llm-reports/`. Six substeps defined
+  (10.1–10.6); implementation not yet started.
+- Started Phase 10 — LLM Interaction Test Harness (`feature/llmtest-harness`).
 
 ### 2026-08-17
 

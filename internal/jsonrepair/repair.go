@@ -1,7 +1,8 @@
 // Package jsonrepair mends the mechanically broken JSON that small local
 // models produce: literal newlines inside strings, trailing commas,
-// single-quoted strings, Python literals, comments, and output truncated by a
-// max-token limit. Repair is best-effort — anything outside those defect
+// single-quoted strings, strings wrapped in backslash-escaped delimiters,
+// Python literals, comments, and output truncated by a max-token limit.
+// Repair is best-effort — anything outside those defect
 // classes passes through untouched and is left for the caller's retry path.
 //
 // Hand-rolled on purpose: the defect list is small and explicit, and a
@@ -83,6 +84,13 @@ func (r *repairer) step(c byte) {
 	case c == '"' || c == '\'':
 		r.flushPending()
 		r.copyString(c)
+	case c == '\\' && r.i+1 < len(r.src) && r.src[r.i+1] == '"':
+		// A backslash outside any string is never valid JSON: the model
+		// wrapped this string in \"...\" instead of "...". Drop the
+		// backslash and copy the string with escaped delimiters.
+		r.flushPending()
+		r.i++
+		r.copyEscapedDelimiterString()
 	case r.atComment():
 		r.skipComment()
 	case c == ',':
@@ -196,6 +204,43 @@ func (r *repairer) copyString(quote byte) {
 			r.i++
 			return
 		case c == '"': // only reachable for single-quoted input
+			r.out.WriteString(`\"`)
+			r.i++
+		case c < 0x20:
+			r.out.WriteString(escapeControl(c))
+			r.i++
+		default:
+			r.out.WriteByte(c)
+			r.i++
+		}
+	}
+	r.out.WriteByte('"') // unterminated: close it
+}
+
+// copyEscapedDelimiterString copies one string the model delimited with \"
+// instead of " (the opening backslash is already consumed). It closes on the
+// matching \" and escapes any bare inner double quote, mirroring the
+// single-quoted-input path. An unterminated string is closed at end of input.
+func (r *repairer) copyEscapedDelimiterString() {
+	r.out.WriteByte('"')
+	r.i++ // opening quote
+	for r.i < len(r.src) {
+		c := r.src[r.i]
+		switch {
+		case c == '\\' && r.i+1 < len(r.src) && r.src[r.i+1] == '"':
+			r.out.WriteByte('"') // the matching \" delimiter
+			r.i += 2
+			return
+		case c == '\\':
+			if r.i+1 >= len(r.src) {
+				// Truncated mid-escape: drop the dangling backslash.
+				r.i++
+				break
+			}
+			r.out.WriteByte('\\')
+			r.out.WriteByte(r.src[r.i+1])
+			r.i += 2
+		case c == '"':
 			r.out.WriteString(`\"`)
 			r.i++
 		case c < 0x20:

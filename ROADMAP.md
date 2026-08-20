@@ -320,6 +320,12 @@ that is guaranteed to fail server-side validation is never queued.
   left them unusable. Empty selection still means the baked encoder; an
   explicit pick wires a standalone `CLIPLoader` (with the architecture's CLIP
   type) into the checkpoint graph, and a LoRA's clip patch follows it.
+- Fixed the settings "Test" button for ComfyUI: it fetched
+  `<url>/system_stats` from inside the WebView, where CORS (which ComfyUI does
+  not allow by default) blocked the response — a healthy, curl-able server
+  still reported "Could not connect". The button now calls the backend's
+  `TestComfyUIEndpoint` (the same Go client generation uses, auth token
+  included) and shows the backend's actual error text on failure.
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

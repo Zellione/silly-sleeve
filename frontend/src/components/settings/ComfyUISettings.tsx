@@ -233,7 +233,7 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
                     </div>
                     <span className="grow" />
                     {settingsState.comfy?.defaultWorkflow === wf.id && (
-                      <span className="pill" style={{ color: 'var(--acc)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>default</span>
+                      <span className="pill" style={{ color: 'var(--acc-ink)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>default</span>
                     )}
                     <div className="row" style={{ gap: 4 }}>
                       <button type="button" className="btn ghost sm" onClick={() => setEditingWorkflow(wf)}>Edit</button>

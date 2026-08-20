@@ -290,7 +290,7 @@ const CrawlerScreen: React.FC<CrawlerScreenProps> = ({ projectPath = '' }) => {
     <>
       <PageHead
         subtitle="Pull a source from the wild"
-        title={<>Crawl a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>wiki page</em></>}
+        title={<>Crawl a <em style={{ fontStyle: 'normal', color: 'var(--acc-ink)' }}>wiki page</em></>}
         actions={
           <button type="button" className="btn ghost" disabled={results.length === 0} onClick={handleSaveCrawl}>
             <SaveIcon size={14} /> Save crawl

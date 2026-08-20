@@ -286,7 +286,7 @@ export const SummariesScreen: React.FC<SummariesScreenProps> = ({ onNav }) => {
           </div>
 
           <div className="sum-note">
-            <SparksIcon size={15} style={{ color: 'var(--acc)', flexShrink: 0, marginTop: 1 }} />
+            <SparksIcon size={15} style={{ color: 'var(--acc-ink)', flexShrink: 0, marginTop: 1 }} />
             <span>
               {sub === 'chars'
                 ? <><b>Send to character</b> asks the LLM to fill the card fields from this page. Each field can be re-rolled or edited by hand in the Characters tab.</>

@@ -154,7 +154,6 @@ const FieldInput: React.FC<{
         disabled={st.locked}
         placeholder="Add tag and press Enter…"
         normalize={s => s.toLowerCase()}
-        accentCount={2}
       />
     );
   }
@@ -249,7 +248,7 @@ const FieldCard: React.FC<{
 
       {st.showPrompt && (
         <div className="fc-reroll-prompt">
-          <SparksIcon size={14} style={{ color: 'var(--acc)', marginTop: 4, flexShrink: 0 }} />
+          <SparksIcon size={14} style={{ color: 'var(--acc-ink)', marginTop: 4, flexShrink: 0 }} />
           <textarea
             placeholder="Steer the re-roll · e.g. “more sinister, less courtly; keep the lark imagery”"
             value={st.prompt}
@@ -278,7 +277,7 @@ const FieldCard: React.FC<{
             </span>
           )}
           {st.locked && <span style={{ color: 'var(--ink-3)' }}><LockIcon size={11} /> locked</span>}
-          {st.dirty && <span style={{ color: 'var(--acc)' }}>· modified</span>}
+          {st.dirty && <span style={{ color: 'var(--acc-ink)' }}>· modified</span>}
         </div>
         <span style={{ color: 'var(--ink-3)' }}>{field.helper}</span>
       </div>
@@ -581,7 +580,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     <>
       <PageHead
         subtitle="Let the model format the lore"
-        title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>{activeChar.name.trim() || 'character'}</em></>}
+        title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc-ink)' }}>{activeChar.name.trim() || 'character'}</em></>}
         actions={
           <>
             <button type="button" className="btn ghost"
@@ -669,7 +668,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
               <span className="uplabel">{dirtyCount} fields modified · {totalTokens} tokens estimated</span>
               <span className="uplabel">
                 {autoSaveMode !== 'off' && (
-                  <span style={{ color: projectPath ? 'var(--acc)' : 'var(--ink-3)', marginRight: 12 }}>
+                  <span style={{ color: projectPath ? 'var(--acc-ink)' : 'var(--ink-3)', marginRight: 12 }}>
                     Auto-save: {autoSaveMode === 'timed' ? `${autoSaveMode} (${(autoSaveInterval || 30) + 's'})` : autoSaveMode}
                     {!projectPath && ' — save project first'}
                   </span>

@@ -44,7 +44,7 @@ export const LLMEndpointCard: React.FC<LLMEndpointCardProps> = ({
       </div>
       <span className="grow" />
       {e.isDefault && (
-        <span className="pill" style={{ color: 'var(--acc)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>
+        <span className="pill" style={{ color: 'var(--acc-ink)', borderColor: 'var(--acc-line)', background: 'var(--acc-soft)' }}>
           default
         </span>
       )}

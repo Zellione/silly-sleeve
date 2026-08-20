@@ -90,7 +90,7 @@ export const StatusBar: React.FC<{
     <span className="grow" />
     {autoSaveMode && autoSaveMode !== 'off' && (
       <>
-        <span className="item" style={{ color: 'var(--acc)' }}>
+        <span className="item" style={{ color: 'var(--acc-ink)' }}>
           Auto-save: {autoSaveMode}
         </span>
         <span className="sep" />

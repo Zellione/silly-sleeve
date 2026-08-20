@@ -85,7 +85,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
   return (
     <>
       <PageHead subtitle="Cover art for the whole project"
-        title={<>Project <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>image</em></>}
+        title={<>Project <em style={{ fontStyle: 'normal', color: 'var(--acc-ink)' }}>image</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">
               <button type="button" data-on={mode === 'generate' ? '1' : '0'} onClick={() => setMode('generate')}>
@@ -220,7 +220,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
                         <b>v{i + 1}</b>
                         <span>{(seed + i).toString().slice(-7)} · cfg {(cfg + i * 0.5).toFixed(1)}</span>
                       </div>
-                      {selectedVariant === i && <CheckIcon size={13} style={{ color: 'var(--acc)' }} />}
+                      {selectedVariant === i && <CheckIcon size={13} style={{ color: 'var(--acc-ink)' }} />}
                     </button>
                   ))}
                 </div>

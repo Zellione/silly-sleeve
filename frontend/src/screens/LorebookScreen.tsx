@@ -249,7 +249,7 @@ const LbDetail: React.FC<{
         <span><b>Pos</b> {POSITIONS[entry.position || 0]?.name || '—'}</span>
         <span><b>Order</b> {entry.order || 100}</span>
         <span><b>P</b> {entry.useProbability ? (entry.probability || 100) + '%' : '∞'}</span>
-        {entry.constant && <span style={{color:'var(--acc)'}}>constant</span>}
+        {entry.constant && <span style={{color:'var(--acc-ink)'}}>constant</span>}
         {entry.vectorized && <span style={{color:'oklch(0.55 0.18 280)'}}>vector</span>}
         {entry.disable && <span style={{color:'var(--bad)'}}>disabled</span>}
       </div>
@@ -471,7 +471,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   return (
     <>
       <PageHead subtitle="Build the world around them"
-        title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc)'}}>lorebook</em></>}
+        title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc-ink)'}}>lorebook</em></>}
         actions={
           <>
             <button type="button" className="btn ghost" onClick={handleSuggest} disabled={connections.running || entries.length === 0}>

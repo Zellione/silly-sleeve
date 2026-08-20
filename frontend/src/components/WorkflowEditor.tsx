@@ -234,7 +234,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow, onClose, onSa
                   <span className="helpr" style={{ fontSize: 9.5, flex: 1 }}>
                     {KNOWN_PLACEHOLDERS[name] || 'Custom placeholder'}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--acc)' }}>Insert</span>
+                  <span style={{ fontSize: 10, color: 'var(--acc-ink)' }}>Insert</span>
                 </button>
               ))}
             </div>

@@ -186,7 +186,7 @@ export const PromptTemplateEditor: React.FC<PromptTemplateEditorProps> = () => {
 
           <div className="prompt-footer">
             <span>{draft.length} chars · ~{tokenEst} tokens</span>
-            {dirty && <span className="hint" style={{ color: 'var(--acc)' }}>Unsaved changes</span>}
+            {dirty && <span className="hint" style={{ color: 'var(--acc-ink)' }}>Unsaved changes</span>}
           </div>
         </div>
       </div>

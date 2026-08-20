@@ -175,7 +175,7 @@ const ExportScreen: React.FC = () => {
   return (
     <>
       <PageHead subtitle="Ship the project"
-        title={<>Export <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>everything</em></>}
+        title={<>Export <em style={{ fontStyle: 'normal', color: 'var(--acc-ink)' }}>everything</em></>}
         actions={
           <>
             <button type="button" className="btn ghost" disabled={pickedEntries.length === 0 || !destination} onClick={handleExportLorebook}>

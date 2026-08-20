@@ -188,7 +188,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   return (
     <>
       <PageHead subtitle="Make or import a face"
-        title={<>Conjure a <em style={{ fontStyle: 'normal', color: 'var(--acc)' }}>portrait</em></>}
+        title={<>Conjure a <em style={{ fontStyle: 'normal', color: 'var(--acc-ink)' }}>portrait</em></>}
         actions={
             <div style={{ width: 240 }} className="img-tabs">
               <button type="button" data-on={activeState(mode, 'generate')} onClick={() => setMode('generate')}>

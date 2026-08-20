@@ -218,13 +218,21 @@ func (l *WSListener) handleExecutionErrorMessage(data []byte) {
 	var msg struct {
 		Data struct {
 			PromptID string `json:"prompt_id"`
+			NodeType string `json:"node_type"`
 			Error    string `json:"exception_message"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(data, &msg); err == nil {
+		errText := msg.Data.Error
+		// A bare Python exception ("tuple index out of range") is useless to
+		// the user; the failing node names the stage (VAEDecode,
+		// CLIPTextEncode, …) and usually points at the misconfigured model.
+		if msg.Data.NodeType != "" {
+			errText = msg.Data.NodeType + ": " + errText
+		}
 		l.handler.OnError(ErrorEvent{
 			PromptID: msg.Data.PromptID,
-			Error:    msg.Data.Error,
+			Error:    errText,
 		})
 	}
 }

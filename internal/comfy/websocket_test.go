@@ -180,3 +180,27 @@ func (m *mockEventHandler) OnBinaryImage(data []byte) {
 	defer m.mu.Unlock()
 	m.images = append(m.images, data)
 }
+
+func TestWSListener_ExecutionErrorCarriesNodeType(t *testing.T) {
+	// "tuple index out of range" alone is useless to the user; the failing
+	// node names the stage (VAEDecode, CLIPTextEncode, …) and points at the
+	// misconfigured model.
+	h := &mockEventHandler{}
+	l := NewWSListener("http://comfy", "client", nil, h)
+
+	l.handleMessage([]byte(`{"type":"execution_error","data":{"prompt_id":"p1","node_type":"VAEDecode","exception_message":"tuple index out of range"}}`))
+
+	require.Len(t, h.errs, 1)
+	assert.Equal(t, "p1", h.errs[0].PromptID)
+	assert.Equal(t, "VAEDecode: tuple index out of range", h.errs[0].Error)
+}
+
+func TestWSListener_ExecutionErrorWithoutNodeTypeStaysPlain(t *testing.T) {
+	h := &mockEventHandler{}
+	l := NewWSListener("http://comfy", "client", nil, h)
+
+	l.handleMessage([]byte(`{"type":"execution_error","data":{"prompt_id":"p2","exception_message":"boom"}}`))
+
+	require.Len(t, h.errs, 1)
+	assert.Equal(t, "boom", h.errs[0].Error)
+}

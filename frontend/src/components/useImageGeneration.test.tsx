@@ -67,6 +67,7 @@ const Harness: React.FC<{ initialWorkflowId?: string }> = ({ initialWorkflowId =
       <span data-testid="variants">{g.variantImages.join('|')}</span>
       <button onClick={() => setWorkflowId('split_z')}>go-split</button>
       <button onClick={() => setWorkflowId('preset_a')}>go-checkpoint</button>
+      <button onClick={() => g.setCheckpoint('ckpt_two')}>pick-ckpt-two</button>
       <button onClick={() => g.runGeneration({
         size: '640×480', seed: 7, steps: 25, cfg: 6, sampler: 's', scheduler: 'sc',
         denoise: 0.5, prompt: 'p', negPrompt: 'n', checkpoint: g.checkpoint,
@@ -152,17 +153,21 @@ describe('useImageGeneration', () => {
     expect(screen.getByTestId('checkpoint').textContent).toBe('');
   });
 
-  it('restores the checkpoint default when leaving a split workflow', async () => {
+  it('restores the previous checkpoint selection when leaving a split workflow', async () => {
+    // Falling back to the first list entry would silently swap the user's
+    // pick for an arbitrary (alphabetical) file that may not even carry a
+    // baked text encoder.
     const user = userEvent.setup();
     renderHook();
     await waitFor(() => expect(screen.getByTestId('checkpoint').textContent).toBe('ckpt_one'));
+    await user.click(screen.getByText('pick-ckpt-two'));
 
     await user.click(screen.getByText('go-split'));
     await waitFor(() => expect(screen.getByTestId('split').textContent).toBe('true'));
 
     await user.click(screen.getByText('go-checkpoint'));
     await waitFor(() => expect(screen.getByTestId('split').textContent).toBe('false'));
-    expect(screen.getByTestId('checkpoint').textContent).toBe('ckpt_one');
+    expect(screen.getByTestId('checkpoint').textContent).toBe('ckpt_two');
     expect(screen.getByTestId('clip').textContent).toBe('');
     expect(screen.getByTestId('vae').textContent).toBe('');
   });

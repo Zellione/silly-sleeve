@@ -119,10 +119,13 @@ export function useImageGeneration({
 
   // Re-preselect the model files when the selected workflow's kind changes
   // (or the server lists arrive). Non-split → non-split switches leave the
-  // user's picks alone; entering a split workflow preselects by hint; leaving
-  // one restores the checkpoint default, since the split selections may point
-  // at files a plain checkpoint graph cannot load.
+  // user's picks alone; entering a split workflow stashes the current
+  // checkpoint and preselects by hint; leaving one restores the stashed
+  // selection, since the split selections may point at files a plain
+  // checkpoint graph cannot load — and the first list entry is an arbitrary
+  // (alphabetical) file that may not even carry a baked text encoder.
   const wasSplitRef = useRef(false);
+  const stashedCheckpointRef = useRef('');
   useEffect(() => {
     const wasSplit = wasSplitRef.current;
     wasSplitRef.current = !!splitHints;
@@ -130,6 +133,7 @@ export function useImageGeneration({
     // selections track the selected workflow's kind.
     /* eslint-disable react-hooks/set-state-in-effect */
     if (splitHints) {
+      if (!wasSplit) stashedCheckpointRef.current = checkpoint;
       // Community Krea 2 / Z-Image models also ship as all-in-one
       // checkpoints, so the hint searches both lists — official split files
       // first. A checkpoint carries its own encoder and VAE.
@@ -139,13 +143,14 @@ export function useImageGeneration({
       setClip(isUnet ? pickByHint(clips, splitHints.clip) : '');
       setVae(isUnet ? pickByHint(vaes, splitHints.vae) : '');
     } else if (wasSplit) {
-      setCheckpoint(checkpoints[0] ?? initialCheckpoint);
+      setCheckpoint(stashedCheckpointRef.current || checkpoints[0] || initialCheckpoint);
       setClip('');
       setVae('');
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-    // initialCheckpoint is a per-screen constant; listing it would only widen
-    // the dependency set without changing behavior.
+    // initialCheckpoint is a per-screen constant, and checkpoint is only read
+    // to stash it at the moment of entering a split workflow — re-running on
+    // every selection change would clobber the stash.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [splitHints, unets, clips, vaes, checkpoints]);
 

@@ -45,7 +45,7 @@ export function GenerateCharacterBulk(arg1:Array<string>):Promise<compose.Charac
 
 export function GenerateField(arg1:string,arg2:string):Promise<compose.Character>;
 
-export function GenerateImagePrompt(arg1:number,arg2:string):Promise<string>;
+export function GenerateImagePrompt(arg1:number,arg2:string):Promise<app.ImagePromptResult>;
 
 export function GeneratePortrait(arg1:comfy.GenerationParams):Promise<Array<comfy.CompletedImage>>;
 
@@ -59,6 +59,8 @@ export function GetCardPreview():Promise<compose.CardPreview>;
 
 export function GetCharacters():Promise<Array<compose.Character>>;
 
+export function GetComfyCLIPs():Promise<Array<string>>;
+
 export function GetComfyCheckpoints():Promise<Array<string>>;
 
 export function GetComfyConfig():Promise<settings.ComfyConfig>;
@@ -68,6 +70,8 @@ export function GetComfyLoRAs():Promise<Array<string>>;
 export function GetComfySamplers():Promise<Array<string>>;
 
 export function GetComfySchedulers():Promise<Array<string>>;
+
+export function GetComfyUNets():Promise<Array<string>>;
 
 export function GetComfyVAEs():Promise<Array<string>>;
 

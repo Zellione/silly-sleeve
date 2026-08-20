@@ -64,6 +64,8 @@ func TestApp_ComfyDiscoveryDelegators(t *testing.T) {
 			"CheckpointLoaderSimple.ckpt_name": {"sdxl.safetensors"},
 			"VAELoader.vae_name":               {"vae.pt"},
 			"LoraLoader.lora_name":             {"lora.safetensors"},
+			"UNETLoader.unet_name":             {"unet.safetensors"},
+			"CLIPLoader.clip_name":             {"clip.safetensors"},
 		}}
 	}
 
@@ -77,6 +79,8 @@ func TestApp_ComfyDiscoveryDelegators(t *testing.T) {
 		{"checkpoints", app.GetComfyCheckpoints, []string{"sdxl.safetensors"}},
 		{"vaes", app.GetComfyVAEs, []string{"vae.pt"}},
 		{"loras", app.GetComfyLoRAs, []string{"lora.safetensors"}},
+		{"unets", app.GetComfyUNets, []string{"unet.safetensors"}},
+		{"clips", app.GetComfyCLIPs, []string{"clip.safetensors"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := tc.call()
@@ -98,17 +102,19 @@ func TestApp_GenerateImagePromptDelegator(t *testing.T) {
 	}}
 	app.charGen.completer = &fakeCompleter{resp: "POSITIVE: x\nNEGATIVE: y"}
 
-	pos, neg, err := app.GenerateImagePrompt(1, "natural")
+	res, err := app.GenerateImagePrompt(1, "natural")
 	require.NoError(t, err)
-	assert.Equal(t, "x", pos)
-	assert.Equal(t, "y", neg)
+	// A single struct return: Wails v2 only marshals one value plus an error,
+	// so (string, string, error) reached the frontend as null.
+	assert.Equal(t, "x", res.Positive)
+	assert.Equal(t, "y", res.Negative)
 }
 
 func TestApp_GenerateImagePrompt_NoEndpoint(t *testing.T) {
 	app := NewApp()
 	app.characters = []compose.Character{{ID: 1, Name: "Elara"}}
 	app.activeCharID = 1
-	_, _, err := app.GenerateImagePrompt(1, "natural")
+	_, err := app.GenerateImagePrompt(1, "natural")
 	assert.Error(t, err, "no default endpoint configured")
 }
 

@@ -4,7 +4,7 @@ import {
 } from '../../icons';
 import { useToast } from '../ToastProvider';
 import { AuthTokenBlock } from '../AuthTokenBlock';
-import { ParseComfyWorkflowParams } from '../../../wailsjs/go/app/App';
+import { ParseComfyWorkflowParams, TestComfyUIEndpoint } from '../../../wailsjs/go/app/App';
 import { settings, comfy } from '../../../wailsjs/go/models';
 import WorkflowEditor from '../WorkflowEditor';
 
@@ -56,14 +56,18 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
     setTesting(true);
     try {
       const url = draftURL.replace(/\/$/, '');
-      const res = await fetch(`${url}/system_stats`);
+      // Tested through the Go backend: a fetch from the WebView is subject to
+      // CORS, which ComfyUI does not allow by default, so a perfectly healthy
+      // server still failed the old in-page check. The backend client is also
+      // what generation actually uses, auth token included.
+      const res = await TestComfyUIEndpoint(url, authOn ? draftToken : '');
       if (res.ok) {
         toast({ kind: 'ok', title: 'ComfyUI reachable', body: `${url} responded. Connection OK.` });
       } else {
-        toast({ kind: 'bad', title: 'ComfyUI unreachable', body: `Server returned ${res.status}.` });
+        toast({ kind: 'bad', title: 'ComfyUI unreachable', body: res.error || 'Could not connect. Check the URL and make sure ComfyUI is running.' });
       }
-    } catch {
-      toast({ kind: 'bad', title: 'ComfyUI unreachable', body: 'Could not connect. Check the URL and make sure ComfyUI is running.' });
+    } catch (err) {
+      toast({ kind: 'bad', title: 'ComfyUI unreachable', body: String(err) });
     } finally {
       setTesting(false);
     }

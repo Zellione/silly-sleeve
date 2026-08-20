@@ -7,17 +7,18 @@ import {
 import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
-  GetComfyVAEs, GetComfyLoRAs,
   GetPortrait, SavePortrait,
 } from '../../wailsjs/go/app/App';
 import { useBundleSave } from '../components/useBundleSave';
 import { compose } from '../../wailsjs/go/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
+import SplitModelFields from '../components/SplitModelFields';
 import { Dropdown } from '../components/Dropdown';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
+import { SPLIT_WORKFLOW_HINTS } from '../utils/workflow';
 import { DEFAULT_NEGATIVE_PROMPT, arrayBufferToDataURL, dataURLToBytes } from '../utils/image';
 
 // Guidance-distilled models (flux, krea2, zturbo) need cfg 1: real CFG makes
@@ -26,8 +27,8 @@ const PORTRAIT_WORKFLOWS = [
   { id: 'portrait_sdxl', name: 'portrait_sdxl_v3', model: 'sd_xl_base_1.0', size: '832×1216', steps: 28, cfg: 7, sampler: 'dpmpp_2m', scheduler: 'karras' },
   { id: 'illustrious', name: 'illustrious_anime', model: 'noobaiXL_v07', size: '896×1152', steps: 30, cfg: 7, sampler: 'euler_ancestral', scheduler: 'normal' },
   { id: 'flux', name: 'flux_dev_portrait', model: 'flux1-dev-fp8', size: '1024×1024', steps: 20, cfg: 1, sampler: 'euler', scheduler: 'normal' },
-  { id: 'krea2', name: 'krea2_turbo', model: 'krea2_turbo_fp8_scaled', size: '832×1216', steps: 8, cfg: 1, sampler: 'euler', scheduler: 'simple' },
-  { id: 'zturbo', name: 'z_image_turbo', model: 'z_image_turbo_bf16', size: '832×1216', steps: 8, cfg: 1, sampler: 'res_multistep', scheduler: 'simple' },
+  { id: 'krea2', name: 'krea2_turbo', model: 'krea2_turbo_fp8_scaled', size: '832×1216', steps: 8, cfg: 1, sampler: 'euler', scheduler: 'simple', split: SPLIT_WORKFLOW_HINTS.krea2 },
+  { id: 'zturbo', name: 'z_image_turbo', model: 'z_image_turbo_bf16', size: '832×1216', steps: 8, cfg: 1, sampler: 'res_multistep', scheduler: 'simple', split: SPLIT_WORKFLOW_HINTS.zturbo },
 ];
 
 async function autoFillImagePrompt(
@@ -37,16 +38,24 @@ async function autoFillImagePrompt(
   negPrompt: string,
   setPrompt: (v: string) => void,
   setNegPrompt: (v: string) => void,
+  toast: (t: { kind: 'ok' | 'bad' | 'warn' | 'info'; title: string; body: string }) => void,
 ): Promise<void> {
   if (!activeChar) return;
   // Auto-fill regenerates the positive prompt from the card, but never clobbers
   // a negative prompt the user has already customized.
   const keepNeg = negPrompt.trim().length > 0;
   try {
-    const [positive, negative] = await GenerateImagePrompt(activeCharId, promptStyle);
-    setPrompt(positive);
-    if (!keepNeg) setNegPrompt(negative);
-  } catch {
+    const result = await GenerateImagePrompt(activeCharId, promptStyle);
+    setPrompt(result.positive);
+    if (!keepNeg) setNegPrompt(result.negative);
+  } catch (err) {
+    // The fallback is a tag-style template, not what the chosen prompt style
+    // produces — swapping it in without a word reads as "the LLM wrote this".
+    toast({
+      kind: 'warn',
+      title: 'Prompt generation failed',
+      body: `${String(err)} — inserted a basic template prompt instead. Check the LLM endpoint in Settings.`,
+    });
     const appearance = activeChar.appearance;
     if (appearance.trim()) {
       setPrompt(`(masterpiece, best quality, ultra detailed), ${appearance.trim()}, ${activeChar.name}, oil painting style, cinematic lighting`);
@@ -99,17 +108,14 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   const [promptStyle, setPromptStyle] = useState<'natural' | 'danbooru'>('natural');
   const [prompt, setPrompt] = useState('');
   const [negPrompt, setNegPrompt] = useState('');
-  const [vaes, setVaes] = useState<string[]>([]);
-  const [loras, setLoras] = useState<string[]>([]);
-  // '' means "use the checkpoint's baked VAE" / "no LoRA" — see modelOpts.
-  const [vae, setVae] = useState('');
-  const [lora, setLora] = useState('');
   const [savedPortrait, setSavedPortrait] = useState<string | null>(null);
   const { toast } = useToast();
   const scheduleBundleSave = useBundleSave(projectPath, bundleSaveDelay, 'Portrait');
 
   const {
-    samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
+    samplers, schedulers, checkpoints, unets, clips, vaes, loras,
+    checkpoint, setCheckpoint, clip, setClip, vae, setVae, lora, setLora,
+    splitWorkflow, allWorkflows,
     generating, progress, variantImages, selectedVariant, setSelectedVariant,
     clearVariants, stop, runGeneration,
   } = useImageGeneration({
@@ -128,11 +134,6 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
         setActiveChar(chars[0]);
       }
     }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    GetComfyVAEs().then(setVaes).catch(() => {});
-    GetComfyLoRAs().then(setLoras).catch(() => {});
   }, []);
 
   // Restore the character's saved portrait so it survives leaving and
@@ -228,22 +229,34 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
             >
               <span className="uplabel">Models</span>
               <div className="img-kv">
-                <label htmlFor="portrait-checkpoint">Checkpoint</label>
-                <Dropdown
-                  id="portrait-checkpoint"
-                  aria-label="Checkpoint"
-                  value={checkpoint}
-                  onChange={setCheckpoint}
-                  options={checkpointOpts(checkpoints).map(c => ({ value: c, label: c.replace(/\.safetensors$/, '') }))}
-                />
-                <label htmlFor="portrait-vae">VAE</label>
-                <Dropdown
-                  id="portrait-vae"
-                  aria-label="VAE"
-                  value={vae}
-                  onChange={setVae}
-                  options={modelOpts(vaes, ['sdxl_vae_fp16_fix'], '— baked VAE —')}
-                />
+                {splitWorkflow ? (
+                  <SplitModelFields
+                    idPrefix="portrait"
+                    unets={unets} checkpoints={checkpoints} clips={clips} vaes={vaes}
+                    model={checkpoint} onModelChange={setCheckpoint}
+                    clip={clip} onClipChange={setClip}
+                    vae={vae} onVaeChange={setVae}
+                  />
+                ) : (
+                  <>
+                    <label htmlFor="portrait-checkpoint">Checkpoint</label>
+                    <Dropdown
+                      id="portrait-checkpoint"
+                      aria-label="Checkpoint"
+                      value={checkpoint}
+                      onChange={setCheckpoint}
+                      options={checkpointOpts(checkpoints).map(c => ({ value: c, label: c.replace(/\.safetensors$/, '') }))}
+                    />
+                    <label htmlFor="portrait-vae">VAE</label>
+                    <Dropdown
+                      id="portrait-vae"
+                      aria-label="VAE"
+                      value={vae}
+                      onChange={setVae}
+                      options={modelOpts(vaes, ['sdxl_vae_fp16_fix'], '— baked VAE —')}
+                    />
+                  </>
+                )}
                 <label htmlFor="portrait-lora">LoRA</label>
                 <Dropdown
                   id="portrait-lora"
@@ -290,7 +303,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
               }
               autoFillButton={
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button type="button" className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt)}>
+                  <button type="button" className="img-auto-fill" onClick={() => autoFillImagePrompt(activeChar, activeCharId, promptStyle, negPrompt, setPrompt, setNegPrompt, toast)}>
                     <SparksIcon size={10} style={{ verticalAlign: -1 }} /> auto-fill from card
                   </button>
                   <Dropdown
@@ -309,7 +322,7 @@ const PortraitScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, vae, lora })}
+              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise, prompt, negPrompt, checkpoint, clip, vae, lora })}
               onSavePreset={() => {}}
             />
 

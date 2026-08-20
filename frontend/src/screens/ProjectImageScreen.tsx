@@ -9,9 +9,11 @@ import { useBundleSave } from '../components/useBundleSave';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import ImageCanvasPanel from '../components/ImageCanvasPanel';
+import SplitModelFields from '../components/SplitModelFields';
 import { Dropdown } from '../components/Dropdown';
 import ImageGalleryPanel from '../components/ImageGalleryPanel';
 import { useImageGeneration } from '../components/useImageGeneration';
+import { SPLIT_WORKFLOW_HINTS } from '../utils/workflow';
 import { DEFAULT_NEGATIVE_PROMPT, arrayBufferToDataURL, dataURLToBytes } from '../utils/image';
 
 // Guidance-distilled models (flux, krea2, zturbo) need cfg 1: real CFG makes
@@ -20,8 +22,8 @@ const PROJECT_IMG_WORKFLOWS = [
   { id: 'sdxl_cover', name: 'cover_sdxl_v2', model: 'sd_xl_base_1.0', size: '1344×768', steps: 26, cfg: 7, sampler: 'dpmpp_2m', scheduler: 'karras' },
   { id: 'flux_banner', name: 'flux_banner', model: 'flux1-dev-fp8', size: '1216×832', steps: 20, cfg: 1, sampler: 'euler', scheduler: 'normal' },
   { id: 'painterly', name: 'painterly_square', model: 'juggernautXL_v9', size: '1024×1024', steps: 30, cfg: 7, sampler: 'dpmpp_2m', scheduler: 'karras' },
-  { id: 'krea2', name: 'krea2_turbo', model: 'krea2_turbo_fp8_scaled', size: '1344×768', steps: 8, cfg: 1, sampler: 'euler', scheduler: 'simple' },
-  { id: 'zturbo', name: 'z_image_turbo', model: 'z_image_turbo_bf16', size: '1344×768', steps: 8, cfg: 1, sampler: 'res_multistep', scheduler: 'simple' },
+  { id: 'krea2', name: 'krea2_turbo', model: 'krea2_turbo_fp8_scaled', size: '1344×768', steps: 8, cfg: 1, sampler: 'euler', scheduler: 'simple', split: SPLIT_WORKFLOW_HINTS.krea2 },
+  { id: 'zturbo', name: 'z_image_turbo', model: 'z_image_turbo_bf16', size: '1344×768', steps: 8, cfg: 1, sampler: 'res_multistep', scheduler: 'simple', split: SPLIT_WORKFLOW_HINTS.zturbo },
 ];
 
 const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number }> = ({ projectPath = '', bundleSaveDelay = 2000 }) => {
@@ -40,7 +42,9 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
 
 
   const {
-    samplers, schedulers, checkpoints, checkpoint, setCheckpoint, allWorkflows,
+    samplers, schedulers, checkpoints, unets, clips, vaes,
+    checkpoint, setCheckpoint, clip, setClip, vae, setVae,
+    splitWorkflow, allWorkflows,
     generating, progress, variantImages, selectedVariant, setSelectedVariant,
     clearVariants, stop, runGeneration,
   } = useImageGeneration({
@@ -112,15 +116,32 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
               samplerList={samplers}
               schedulerList={schedulers}
             >
-              <span className="uplabel">Checkpoint</span>
-              <div className="img-kv" style={{ marginBottom: 10 }}>
-                <Dropdown
-                  aria-label="Checkpoint"
-                  value={checkpoint}
-                  onChange={setCheckpoint}
-                  options={(checkpoints.length > 0 ? checkpoints : [PROJECT_IMG_WORKFLOWS[0].model, PROJECT_IMG_WORKFLOWS[1].model, PROJECT_IMG_WORKFLOWS[2].model]).map(c => ({ value: c, label: c.replace(/\.safetensors$/, '') }))}
-                />
-              </div>
+              {splitWorkflow ? (
+                <>
+                  <span className="uplabel">Models</span>
+                  <div className="img-kv" style={{ marginBottom: 10 }}>
+                    <SplitModelFields
+                      idPrefix="projimg"
+                      unets={unets} checkpoints={checkpoints} clips={clips} vaes={vaes}
+                      model={checkpoint} onModelChange={setCheckpoint}
+                      clip={clip} onClipChange={setClip}
+                      vae={vae} onVaeChange={setVae}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="uplabel">Checkpoint</span>
+                  <div className="img-kv" style={{ marginBottom: 10 }}>
+                    <Dropdown
+                      aria-label="Checkpoint"
+                      value={checkpoint}
+                      onChange={setCheckpoint}
+                      options={(checkpoints.length > 0 ? checkpoints : [PROJECT_IMG_WORKFLOWS[0].model, PROJECT_IMG_WORKFLOWS[1].model, PROJECT_IMG_WORKFLOWS[2].model]).map(c => ({ value: c, label: c.replace(/\.safetensors$/, '') }))}
+                    />
+                  </div>
+                </>
+              )}
               <span className="uplabel">Use project context</span>
               <div className="col" style={{ gap: 6 }}>
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, cursor: 'pointer' }}>
@@ -179,7 +200,7 @@ const ProjectImageScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: num
               onPromptChange={setPrompt}
               negPrompt={negPrompt}
               onNegPromptChange={setNegPrompt}
-              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise: 1, prompt, negPrompt, checkpoint, vae: '', lora: '' })}
+              onToggleGenerate={generating ? stop : () => runGeneration({ size: workflow.size, seed, steps, cfg, sampler, scheduler, denoise: 1, prompt, negPrompt, checkpoint, clip, vae, lora: '' })}
               onSavePreset={() => {}}
             />
 

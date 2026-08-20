@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-19 — Completed Phase 10, LLM interaction test harness (`feature/llmtest-harness`).
+> Last updated: 2026-08-19 — Started Phase 11, split-model selection for built-in workflows (`feature/split-model-dropdowns`).
 
 ## Overview
 
@@ -235,12 +235,97 @@ never part of CI or the quality gate.
 
 ---
 
+## Phase 11 — Split-Model Selection for Built-in Workflows
+
+Goal: The built-in split-file workflows (Krea 2 Turbo, Z-Image Turbo) must run with
+whatever model files the user's ComfyUI server actually has, instead of hardcoding
+the official Comfy-Org release filenames. The diffusion model, text encoder (CLIP)
+and VAE become dropdown selections fed from the server's `UNETLoader` /
+`CLIPLoader` / `VAELoader` input lists, substituted into the split templates via
+`{{model}}` / `{{clip}}` / `{{vae}}` placeholders. Dropdowns preselect a
+best-effort match for the workflow's architecture (e.g. a file containing
+`z_image` for Z-Image Turbo) and otherwise force an explicit pick, so a workflow
+that is guaranteed to fail server-side validation is never queued.
+
+- [x] **11.1** Backend: placeholder-driven split templates (`{{model}}`,
+  `{{clip}}`, always-present `{{vae}}` loader), `Clip` in `GenerationParams` and
+  placeholder values
+- [x] **11.2** Backend: `GetComfyUNets` / `GetComfyCLIPs` service + app methods and
+  Wails bindings
+- [x] **11.3** Frontend: shared model-selection state in `useImageGeneration`
+  (unet/clip/vae lists, hint-based preselection on workflow switch, split-workflow
+  validation before queueing)
+- [x] **11.4** Frontend: Portrait and Project Image screens render Model / CLIP /
+  VAE dropdowns for split workflows
+- [x] **11.5** Checkpoint-packaged split models: community Krea 2 / Z-Image
+  merges ship as all-in-one checkpoints (baked encoder + VAE) in
+  `models/checkpoints`, so the Model dropdown lists checkpoints alongside UNet
+  files; picking a checkpoint renders a `CheckpointLoaderSimple` graph that keeps
+  the architecture's latent node and sampling shift, hides the CLIP dropdown and
+  makes the VAE optional (`GenerationParams.ModelKind`)
+- [x] **11.6** Surface image-prompt auto-fill failures: the Portrait screen's
+  auto-fill silently swapped in a hardcoded tag template when the LLM call
+  failed, which read as "natural style generates tag soup" — failures now raise
+  a warning toast naming the error
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
 
 ### 2026-08-19
 
+- Started Phase 11 — Split-Model Selection for Built-in Workflows
+  (`feature/split-model-dropdowns`): the Krea 2 Turbo and Z-Image Turbo built-ins
+  hardcoded the official Comfy-Org filenames, so any server whose files are named
+  differently (or organized into subfolders) failed ComfyUI prompt validation with
+  HTTP 400 `value_not_in_list`. The UNet / CLIP / VAE become dropdown selections
+  substituted via template placeholders, with hint-based preselection. Four
+  substeps defined (11.1–11.4).
+- Completed Phase 11 — Split-Model Selection for Built-in Workflows: split
+  templates now render `{{model}}` / `{{clip}}` / `{{vae}}` placeholders (11.1),
+  the backend exposes `GetComfyUNets` / `GetComfyCLIPs` (11.2),
+  `useImageGeneration` owns the model/clip/vae/lora selections with hint-based
+  preselection and blocks a split generation with missing picks (11.3), and both
+  image screens swap the checkpoint dropdown for Model / Text encoder / VAE
+  dropdowns fed from the server's actual file lists (11.4). 11.3 and 11.4 landed
+  as one commit: the required `clip` request field spans the hook and both
+  screens, so splitting them would have produced a non-compiling intermediate
+  commit.
+- Extended Phase 11 with 11.5 and 11.6 after field testing: the user's Z-Image
+  and Krea 2 models are community all-in-one checkpoints in
+  `models/checkpoints`, invisible to the UNet-only dropdown — the Model
+  dropdown now lists checkpoints too, rendering a `CheckpointLoaderSimple`
+  graph that keeps the architecture's latent node and sampling shift
+  (`GenerationParams.ModelKind`), with the CLIP dropdown hidden and the VAE
+  optional for baked models. Also surfaced the Portrait screen's silent
+  image-prompt auto-fill fallback as a warning toast — a failed LLM call was
+  masquerading as "natural style generates tag soup".
+
+### 2026-08-20
+
+- Fixed the actual root cause behind the "natural style" complaint, exposed by
+  the new 11.6 toast: `App.GenerateImagePrompt` returned
+  `(string, string, error)`, but Wails v2 marshals at most one value plus an
+  error, so the frontend always received `null` and every auto-fill fell back
+  to the tag template. The method now returns a single `ImagePromptResult`
+  struct — auto-fill had never worked through the real bridge (tests mock it
+  and `cmd/llmtest` bypasses it, which is why both looked healthy).
+- Addressed the SonarQube findings on PR #102: placeholder-token constants
+  (`go:S1192`), `matchBuiltInFamily` complexity split into helpers
+  (`go:S3776`), and `String.raw` for the zturbo VAE hint (`typescript:S7780`).
+- Text encoder stays selectable for checkpoint-packaged split models: some
+  community merges ship without a baked encoder, so hiding the CLIP dropdown
+  left them unusable. Empty selection still means the baked encoder; an
+  explicit pick wires a standalone `CLIPLoader` (with the architecture's CLIP
+  type) into the checkpoint graph, and a LoRA's clip patch follows it.
+- Fixed the settings "Test" button for ComfyUI: it fetched
+  `<url>/system_stats` from inside the WebView, where CORS (which ComfyUI does
+  not allow by default) blocked the response — a healthy, curl-able server
+  still reported "Could not connect". The button now calls the backend's
+  `TestComfyUIEndpoint` (the same Go client generation uses, auth token
+  included) and shows the backend's actual error text on failure.
 - Planned Phase 10 — LLM Interaction Test Harness: a manually-run `cmd/llmtest` Go
   CLI exercising all seven real LLM surfaces (endpoint test, bulk generation,
   per-field reroll, image prompts, lore extraction, connections, optimize

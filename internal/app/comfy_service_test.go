@@ -174,6 +174,8 @@ func TestComfyService_DiscoveryViaInjectedClient(t *testing.T) {
 	fake := &fakeComfyClient{lists: map[string][]string{
 		"KSampler.sampler_name":            {"euler", "dpmpp_2m"},
 		"CheckpointLoaderSimple.ckpt_name": {"sdxl.safetensors"},
+		"UNETLoader.unet_name":             {"z_image_turbo_bf16.safetensors"},
+		"CLIPLoader.clip_name":             {"qwen_3_4b.safetensors"},
 	}}
 	set := settings.Settings{Comfy: settings.ComfyConfig{URL: "http://comfy"}}
 	svc := newTestComfyServiceWithClient(&set, fake)
@@ -185,6 +187,14 @@ func TestComfyService_DiscoveryViaInjectedClient(t *testing.T) {
 	ckpts, err := svc.GetComfyCheckpoints()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"sdxl.safetensors"}, ckpts)
+
+	unets, err := svc.GetComfyUNets()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"z_image_turbo_bf16.safetensors"}, unets)
+
+	clips, err := svc.GetComfyCLIPs()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"qwen_3_4b.safetensors"}, clips)
 }
 
 func TestComfyService_DiscoveryPropagatesClientError(t *testing.T) {
@@ -320,6 +330,30 @@ func TestComfyService_NilSlicesNeverCrossWailsBridge(t *testing.T) {
 			name:      "GetComfyLoRAs with data from client",
 			fn:        (*ComfyUIService).GetComfyLoRAs,
 			fakeList:  map[string][]string{"LoraLoader.lora_name": {"lora.safetensors"}},
+			wantEmpty: false,
+		},
+		{
+			name:      "GetComfyUNets with nil from client",
+			fn:        (*ComfyUIService).GetComfyUNets,
+			fakeList:  map[string][]string{"UNETLoader.unet_name": nil},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyUNets with data from client",
+			fn:        (*ComfyUIService).GetComfyUNets,
+			fakeList:  map[string][]string{"UNETLoader.unet_name": {"unet.safetensors"}},
+			wantEmpty: false,
+		},
+		{
+			name:      "GetComfyCLIPs with nil from client",
+			fn:        (*ComfyUIService).GetComfyCLIPs,
+			fakeList:  map[string][]string{"CLIPLoader.clip_name": nil},
+			wantEmpty: true,
+		},
+		{
+			name:      "GetComfyCLIPs with data from client",
+			fn:        (*ComfyUIService).GetComfyCLIPs,
+			fakeList:  map[string][]string{"CLIPLoader.clip_name": {"clip.safetensors"}},
 			wantEmpty: false,
 		},
 	}

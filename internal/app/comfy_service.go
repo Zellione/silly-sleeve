@@ -143,7 +143,7 @@ func (s *ComfyUIService) generateVariants(params comfy.GenerationParams, count i
 	// the selection is known, so an unmodified built-in gets the graph variant
 	// carrying the matching loader nodes. A template the user has hand-edited is
 	// returned unchanged and may reference {{vae}}/{{lora}} itself.
-	params.WorkflowTemplate = comfy.ResolveWorkflowTemplate(params.WorkflowTemplate, params.Vae, params.Lora)
+	params.WorkflowTemplate = comfy.ResolveWorkflowTemplate(params.WorkflowTemplate, params.ModelKind, params.Clip, params.Vae, params.Lora)
 
 	// A CompletedImage slice always crosses the Wails bridge, so start from an
 	// empty slice rather than a nil one (nil arrives in JS as null, the
@@ -272,6 +272,34 @@ func (s *ComfyUIService) GetComfyVAEs() ([]string, error) {
 		return nil, err
 	}
 	values, err := client.GetNodeInputList("VAELoader", "vae_name")
+	if err != nil {
+		return nil, err
+	}
+	return nonNil(values), nil
+}
+
+// GetComfyUNets returns available diffusion model (UNet) file names from
+// ComfyUI. Split-file workflows load these instead of checkpoints.
+func (s *ComfyUIService) GetComfyUNets() ([]string, error) {
+	client, err := s.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("UNETLoader", "unet_name")
+	if err != nil {
+		return nil, err
+	}
+	return nonNil(values), nil
+}
+
+// GetComfyCLIPs returns available standalone text encoder (CLIP) file names
+// from ComfyUI, for split-file workflows without a baked encoder.
+func (s *ComfyUIService) GetComfyCLIPs() ([]string, error) {
+	client, err := s.comfyClient()
+	if err != nil {
+		return nil, err
+	}
+	values, err := client.GetNodeInputList("CLIPLoader", "clip_name")
 	if err != nil {
 		return nil, err
 	}

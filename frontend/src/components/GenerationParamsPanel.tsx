@@ -2,6 +2,18 @@ import React, { useId } from 'react';
 import { DiceIcon } from '../icons';
 import { Dropdown } from './Dropdown';
 
+/**
+ * Case-insensitive regex hints used to preselect the split model files
+ * (diffusion model, text encoder, VAE) for a built-in split workflow from
+ * whatever the ComfyUI server actually has — file names differ between
+ * installs, so these only narrow the dropdown default, never gate generation.
+ */
+export interface SplitModelHints {
+  model: string;
+  clip: string;
+  vae: string;
+}
+
 export interface WorkflowOption {
   id: string;
   name: string;
@@ -11,6 +23,13 @@ export interface WorkflowOption {
   cfg: number;
   sampler: string;
   scheduler: string;
+  /**
+   * Present on built-in workflows whose model ships as split files (UNet +
+   * text encoder + VAE) instead of an all-in-one checkpoint. The UI then
+   * offers diffusion-model / text-encoder / VAE dropdowns instead of the
+   * checkpoint one.
+   */
+  split?: SplitModelHints;
 }
 
 interface GenerationParamsPanelProps {

@@ -110,6 +110,20 @@ export namespace app {
 	        this.paths = source["paths"];
 	    }
 	}
+	export class ImagePromptResult {
+	    positive: string;
+	    negative: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImagePromptResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.positive = source["positive"];
+	        this.negative = source["negative"];
+	    }
+	}
 	export class ImportCardResult {
 	    character: compose.Character;
 	    importedEntries: number;
@@ -307,6 +321,8 @@ export namespace comfy {
 	    width: number;
 	    height: number;
 	    checkpoint: string;
+	    modelKind: string;
+	    clip: string;
 	    vae: string;
 	    lora: string;
 	
@@ -328,6 +344,8 @@ export namespace comfy {
 	        this.width = source["width"];
 	        this.height = source["height"];
 	        this.checkpoint = source["checkpoint"];
+	        this.modelKind = source["modelKind"];
+	        this.clip = source["clip"];
 	        this.vae = source["vae"];
 	        this.lora = source["lora"];
 	    }

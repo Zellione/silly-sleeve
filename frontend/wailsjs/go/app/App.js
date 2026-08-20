@@ -94,6 +94,10 @@ export function GetCharacters() {
   return window['go']['app']['App']['GetCharacters']();
 }
 
+export function GetComfyCLIPs() {
+  return window['go']['app']['App']['GetComfyCLIPs']();
+}
+
 export function GetComfyCheckpoints() {
   return window['go']['app']['App']['GetComfyCheckpoints']();
 }
@@ -112,6 +116,10 @@ export function GetComfySamplers() {
 
 export function GetComfySchedulers() {
   return window['go']['app']['App']['GetComfySchedulers']();
+}
+
+export function GetComfyUNets() {
+  return window['go']['app']['App']['GetComfyUNets']();
 }
 
 export function GetComfyVAEs() {

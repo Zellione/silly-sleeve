@@ -9,6 +9,9 @@ const mockGenerateProjectImage = vi.fn().mockResolvedValue([]);
 const mockGetProjectImage = vi.fn().mockResolvedValue([]);
 const mockSaveProjectImage = vi.fn().mockResolvedValue(undefined);
 const mockSaveProjectBundle = vi.fn().mockResolvedValue(undefined);
+const mockGetComfyUNets = vi.fn().mockResolvedValue([]);
+const mockGetComfyCLIPs = vi.fn().mockResolvedValue([]);
+const mockGetComfyVAEs = vi.fn().mockResolvedValue([]);
 
 vi.mock('../../wailsjs/go/app/App', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
@@ -18,6 +21,10 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   GetComfySamplers: () => Promise.resolve(['euler', 'dpmpp_2m']),
   GetComfySchedulers: () => Promise.resolve(['karras', 'normal']),
   GetComfyCheckpoints: () => Promise.resolve(['sd_xl_base_1.0.safetensors']),
+  GetComfyUNets: () => mockGetComfyUNets(),
+  GetComfyCLIPs: () => mockGetComfyCLIPs(),
+  GetComfyVAEs: () => mockGetComfyVAEs(),
+  GetComfyLoRAs: () => Promise.resolve([]),
   GetComfyWorkflows: () => Promise.resolve([]),
   GetComfyWorkflowTemplate: () => Promise.resolve('{"1":{"class_type":"KSampler"}}'),
 }));
@@ -441,5 +448,52 @@ describe('ProjectImageScreen', () => {
     await user.click(screen.getByText('Use as project image'));
     await waitFor(() => expect(mockSaveProjectImage).toHaveBeenCalled());
     expect(mockSaveProjectBundle).not.toHaveBeenCalled();
+  });
+});
+
+describe('ProjectImageScreen split-model workflows', () => {
+  const switchToWorkflow = async (label: RegExp) => {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('combobox', { name: 'Workflow' }));
+    await user.click(screen.getByRole('option', { name: label }));
+  };
+
+  it('swaps the checkpoint dropdown for split-model dropdowns on a split workflow', async () => {
+    mockGetComfyUNets.mockResolvedValue(['z_image_turbo_bf16.safetensors']);
+    mockGetComfyCLIPs.mockResolvedValue(['qwen_3_4b.safetensors']);
+    mockGetComfyVAEs.mockResolvedValue(['ae.safetensors']);
+    renderWithProviders(<ProjectImageScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow(/z_image_turbo/);
+
+    expect(await screen.findByLabelText('Diffusion model')).toBeInTheDocument();
+    expect(screen.getByLabelText('Text encoder')).toBeInTheDocument();
+    expect(screen.getByLabelText('VAE')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Checkpoint')).not.toBeInTheDocument();
+  });
+
+  it('sends the hint-preselected split files to generation', async () => {
+    mockGetComfyUNets.mockResolvedValue(['z_image_turbo_bf16.safetensors']);
+    mockGetComfyCLIPs.mockResolvedValue(['qwen_3_4b.safetensors']);
+    mockGetComfyVAEs.mockResolvedValue(['ae.safetensors']);
+    mockGetProjectImage.mockResolvedValue([]);
+    mockGenerateProjectImage.mockClear();
+    mockGenerateProjectImage.mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectImageScreen />);
+    await screen.findByLabelText('Checkpoint');
+
+    await switchToWorkflow(/z_image_turbo/);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Diffusion model')).toHaveTextContent('z_image_turbo_bf16'));
+
+    await user.click(screen.getByText('Queue generation'));
+
+    await waitFor(() => expect(mockGenerateProjectImage).toHaveBeenCalled());
+    const params = mockGenerateProjectImage.mock.calls[0][0];
+    expect(params.checkpoint).toBe('z_image_turbo_bf16.safetensors');
+    expect(params.clip).toBe('qwen_3_4b.safetensors');
+    expect(params.vae).toBe('ae.safetensors');
   });
 });

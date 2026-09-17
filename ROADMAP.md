@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-08-19 — Started Phase 11, split-model selection for built-in workflows (`feature/split-model-dropdowns`).
+> Last updated: 2026-09-17 — Upgraded the frontend toolchain to TypeScript 7.0.2, run side-by-side with the TypeScript 6 API for `typescript-eslint` (`feature/typescript-7-upgrade`).
 
 ## Overview
 
@@ -273,6 +273,20 @@ that is guaranteed to fail server-side validation is never queued.
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-09-17
+
+- Upgraded the frontend toolchain to TypeScript 7.0.2 as a maintenance
+  milestone (`feature/typescript-7-upgrade`). TS 7.0 is the native port and
+  ships without a programmatic API, so `typescript-eslint` hard-errors on it.
+  Following the release guidance we run the two compilers side-by-side via npm
+  aliases: `@typescript/native` (alias for `typescript@^7.0.2`) supplies the
+  fast native `tsc` used by `npm run lint` and `npm run build`, while
+  `typescript` (alias for `@typescript/typescript6@^6.0.2`) keeps the TS 6 API
+  that `typescript-eslint` imports through its peer dependency. No source
+  changes were required — `tsc --noEmit` is clean under 7.0.2 and all 935
+  frontend tests pass (88.08% statements). The Dependabot PR for this bump
+  (#57) had been blocked on the unsupported-API error; this supersedes it.
 
 ### 2026-08-19
 

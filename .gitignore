@@ -12,6 +12,9 @@ wails-bootstrap
 # Dependencies
 node_modules/
 
+# Local npm cache (used with `npm --cache ./.npm-cache` in read-only environments)
+.npm-cache/
+
 # IDE
 .vscode/
 .idea/

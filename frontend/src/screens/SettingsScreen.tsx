@@ -101,7 +101,7 @@ const SettingsScreen: React.FC = () => {
     const next = isNew
       ? settings.Settings.createFrom({ ...settingsState, endpoints: [...settingsState.endpoints, updated] })
       : settings.Settings.createFrom({ ...settingsState, endpoints: settingsState.endpoints.map(e => e.id === updated.id ? updated : e) });
-    persist(next);
+    void persist(next);
     setEditing(null);
   };
 
@@ -112,7 +112,7 @@ const SettingsScreen: React.FC = () => {
     if (removed?.isDefault && next.endpoints.length) {
       next = settings.Settings.createFrom({ ...next, endpoints: next.endpoints.map((e, i) => i === 0 ? { ...e, isDefault: true } : e) });
     }
-    persist(next);
+    void persist(next);
     setEditing(null);
   };
 
@@ -122,7 +122,7 @@ const SettingsScreen: React.FC = () => {
       ...settingsState,
       endpoints: settingsState.endpoints.map(e => ({ ...e, isDefault: e.id === id })),
     });
-    persist(next);
+    void persist(next);
     setMoreOpen(null);
   };
 
@@ -131,13 +131,13 @@ const SettingsScreen: React.FC = () => {
     const newId = nextEndpointId(settingsState.endpoints);
     const copy = { ...e, id: newId, name: e.name + ' (copy)', isDefault: false, ok: false };
     const next = settings.Settings.createFrom({ ...settingsState, endpoints: [...settingsState.endpoints, copy] });
-    persist(next);
+    void persist(next);
     setMoreOpen(null);
   };
 
   const setFieldDefaults = (map: Record<string, number>) => {
     if (!settingsState) return;
-    persist(settings.Settings.createFrom({ ...settingsState, fieldEndpoints: map }));
+    void persist(settings.Settings.createFrom({ ...settingsState, fieldEndpoints: map }));
   };
 
   const nextEndpointId = (eps: settings.LLMEndpoint[]) =>

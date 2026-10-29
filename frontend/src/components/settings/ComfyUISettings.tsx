@@ -44,7 +44,7 @@ export const ComfyUISettings: React.FC<ComfyUISettingsProps> = ({ settingsState,
   const handleSaveURL = () => saveComfyConfig({ url: draftURL });
   const handleSaveToken = () => {
     const token = authOn ? draftToken : undefined;
-    saveComfyConfig({ authToken: token });
+    void saveComfyConfig({ authToken: token });
   };
   const handleSaveOutput = () => saveComfyConfig({ outputFolder: draftOutput });
 

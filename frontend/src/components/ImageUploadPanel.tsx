@@ -56,9 +56,13 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
     const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(1);
     setUploadFile({ name, size: `${sizeMB} MB`, dims: '…×…' });
     setImageData(dataUrl);
-    loadImageDimensions(dataUrl).then(({ width, height }) => {
-      updateUploadFileDims(setUploadFile, width, height);
-    });
+    loadImageDimensions(dataUrl)
+      .then(({ width, height }) => {
+        updateUploadFileDims(setUploadFile, width, height);
+      })
+      .catch(() => {
+        // Unreadable dimensions — keep the '…×…' placeholder.
+      });
   }, []);
 
   const processFile = useCallback((file: File) => {

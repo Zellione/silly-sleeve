@@ -236,7 +236,7 @@ const FieldCard: React.FC<{
           <button type="button" className="tool" title="Copy"
             onClick={() => {
               const v = typeof st.value === 'string' ? st.value : JSON.stringify(st.value);
-              navigator.clipboard.writeText(v);
+              void navigator.clipboard.writeText(v);
             }}>
             <CopyIcon size={14} />
           </button>

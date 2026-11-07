@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-09-17 — Upgraded the frontend toolchain to TypeScript 7.0.2, run side-by-side with the TypeScript 6 API for `typescript-eslint` (`feature/typescript-7-upgrade`).
+> Last updated: 2026-11-08 — Started Phase 12 — Web Server Architecture: the app stops running inside a Wails webview and becomes a local Go backend server with the frontend served to a normal browser (`feature/web-server`).
 
 ## Overview
 
@@ -11,7 +11,7 @@ This document tracks the implementation plan for Silly Sleeve, a desktop app for
 | Layer | Technology |
 |---|---|
 | Frontend | React 18 + Vite + TypeScript |
-| Desktop bridge | Wails v2 |
+| Bridge | Local HTTP server (`net/http`) + SSE; browser UI |
 | Backend | Go 1.22+ |
 | Config / project storage | `os.UserConfigDir()` for settings; `.slv` bundles (zip) for projects |
 
@@ -270,9 +270,46 @@ that is guaranteed to fail server-side validation is never queued.
 
 ---
 
+## Phase 12 — Web Server Architecture
+
+Goal: Silly Sleeve stops being a Wails desktop window. A single Go binary runs
+a local backend server (REST + SSE) on localhost and serves the built React app
+from it; the UI is opened in a normal browser. All heavy work — crawling, LLM
+calls, card/lorebook parsing, ComfyUI jobs, bundle assembly and export — stays
+in the Go backend; the browser is a thin input/output shell. Wails is removed
+entirely.
+
+- [~] **12.1** Backend: `internal/server` package — REST bridge over the bound
+  `App` methods (`POST /api/{Method}` JSON RPC), SSE event stream
+  (`GET /api/events`), and static serving of `frontend/dist`
+- [ ] **12.2** Backend: event migration — `App.emit` and `internal/comfy` push
+  through the SSE hub instead of `runtime.EventsEmit`; new `main.go` entry point
+  (port selection, auto-open browser); Wails dependency, `wails.json` and
+  `Greet` removed
+- [ ] **12.3** Backend: file flows without native dialogs — upload endpoint
+  (bytes → temp path), `SaveProjectAsName` (managed library folder),
+  `GetExportDir` + download endpoint, `ImportCardData` / `ImportLorebookData`
+- [ ] **12.4** Frontend: `src/api` client replacing the generated `wailsjs`
+  bindings (fetch RPC, `EventSource` events, file upload/download); stock
+  browser file inputs and HTML5 drag-and-drop replace Wails dialogs and
+  `OnFileDrop`; export results offered as downloads
+- [ ] **12.5** Tooling & docs: dev mode (Vite proxy), CI without Wails, README /
+  AGENTS.md build instructions, final quality gate
+
+---
+
 ## Progress Log
 
 > Always use explicit dates (YYYY-MM-DD) instead of relative terms like "today" or "yesterday".
+
+### 2026-11-08
+
+- Started Phase 12 — Web Server Architecture (`feature/web-server`): the app
+  leaves the Wails webview for a local Go backend server (stdlib `net/http` +
+  SSE, no new dependencies) serving the React app to a normal browser. Heavy
+  work stays in Go; the browser handles input (stock file dialogs, HTML5
+  drag-and-drop) and output (downloads for server-written exports). Wails is
+  dropped entirely. Five substeps defined (12.1–12.5).
 
 ### 2026-09-17
 

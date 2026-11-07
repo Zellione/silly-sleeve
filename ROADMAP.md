@@ -279,7 +279,7 @@ calls, card/lorebook parsing, ComfyUI jobs, bundle assembly and export — stays
 in the Go backend; the browser is a thin input/output shell. Wails is removed
 entirely.
 
-- [~] **12.1** Backend: `internal/server` package — REST bridge over the bound
+- [x] **12.1** Backend: `internal/server` package — REST bridge over the bound
   `App` methods (`POST /api/{Method}` JSON RPC), SSE event stream
   (`GET /api/events`), and static serving of `frontend/dist`
 - [ ] **12.2** Backend: event migration — `App.emit` and `internal/comfy` push
@@ -304,6 +304,12 @@ entirely.
 
 ### 2026-11-08
 
+- Completed 12.1 — `internal/server` package: JSON RPC bridge
+  (`POST /api/{Method}`, positional JSON-array args mirroring the old Wails
+  call semantics, one value plus an error per method), SSE event hub with
+  drop-oldest overflow, SPA-fallback static serving of the built frontend,
+  loopback port probing, and `App.SetEventSink` rewiring `App.emit` from
+  `runtime.EventsEmit` to the hub. 19 new tests, package coverage 84%.
 - Started Phase 12 — Web Server Architecture (`feature/web-server`): the app
   leaves the Wails webview for a local Go backend server (stdlib `net/http` +
   SSE, no new dependencies) serving the React app to a normal browser. Heavy

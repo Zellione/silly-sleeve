@@ -34,6 +34,11 @@ type App struct {
 	projectImage    []byte
 	fieldEndpoints  map[string]int
 
+	// eventSink receives backend→UI events (SSE publish on the server side).
+	// Wired by the server layer via SetEventSink; nil in unit tests, where
+	// emit is a no-op.
+	eventSink func(name string, data any)
+
 	// Lorebook extraction work in progress. Crawled pages sent to the lorebook
 	// are staged here rather than becoming entries; candidates and suggestions
 	// are proposals awaiting the user's review. None of it is part of the
@@ -101,6 +106,14 @@ func (a *App) startup(ctx context.Context) {
 // on App) so it is not picked up as a bound, frontend-callable method.
 func Startup(a *App) func(context.Context) {
 	return a.startup
+}
+
+// SetEventSink wires the backend event publisher (the SSE hub on the server
+// side). It is excluded from the RPC bridge surface by the server layer.
+func (a *App) SetEventSink(fn func(name string, data any)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.eventSink = fn
 }
 
 // GetSettings returns the current settings.

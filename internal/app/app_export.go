@@ -3,14 +3,14 @@ package app
 import (
 	"fmt"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
 	"silly-sleeve/internal/cardexport"
 	"silly-sleeve/internal/compose"
 	"silly-sleeve/internal/lorebook"
 )
 
-// Wails event names emitted during a bulk export run.
+// Event names emitted during a bulk export run. Backend→UI delivery goes
+// through the event sink the server layer wires up (SSE hub); in unit tests
+// the sink is nil and emission is a no-op.
 const (
 	eventExportProgress = "export:progress"
 	eventExportComplete = "export:complete"
@@ -36,15 +36,16 @@ type ExportResult struct {
 	Paths    []string `json:"paths"`
 }
 
-// emit sends a Wails event to the frontend, but only when the context actually
-// carries the Wails event manager. During tests the app runs on a plain
-// background context, so emission is skipped rather than aborting the process
-// (runtime.EventsEmit calls log.Fatalf on a non-Wails context).
+// emit pushes a backend→UI event through the wired event sink. It is a
+// no-op when no sink is set (unit tests run the app without a server).
 func (a *App) emit(name string, data any) {
-	if a.ctx == nil || a.ctx.Value("events") == nil {
+	a.mu.Lock()
+	sink := a.eventSink
+	a.mu.Unlock()
+	if sink == nil {
 		return
 	}
-	runtime.EventsEmit(a.ctx, name, data)
+	sink(name, data)
 }
 
 // ExportCharacterPNG exports a single character as a SillyTavern PNG card.

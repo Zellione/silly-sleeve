@@ -1,11 +1,8 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"silly-sleeve/internal/bundle"
 	"silly-sleeve/internal/compose"
@@ -40,64 +37,12 @@ type ProjectSnapshot struct {
 	CrawlSent        map[string]string
 }
 
-// ProjectManager owns project persistence decomposed out of App: the native
-// save/open/export dialogs, .slv bundle assembly and reading, and SillyTavern
-// character / world-info exports. It is stateless with respect to App's project
-// store — callers pass a snapshot in and apply the loaded bundle out — so App
-// keeps the mutex and state-store orchestration.
-//
-// ctx reads App's context lazily because it is only available after startup.
-type ProjectManager struct {
-	ctx func() context.Context
-}
-
-// PickSaveBundle opens a native save dialog for creating a .slv project bundle.
-func (p *ProjectManager) PickSaveBundle() (string, error) {
-	return runtime.SaveFileDialog(p.ctx(), runtime.SaveDialogOptions{
-		Title:           "Save project bundle",
-		DefaultFilename: "silly-sleeve-project.slv",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
-		},
-	})
-}
-
-// PickOpenBundle opens a native file picker for loading a .slv project bundle.
-func (p *ProjectManager) PickOpenBundle() (string, error) {
-	return runtime.OpenFileDialog(p.ctx(), runtime.OpenDialogOptions{
-		Title: "Open project bundle",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Silly Sleeve Bundle (*.slv)", Pattern: "*.slv"},
-		},
-	})
-}
-
-// PickLorebookFile opens a native file picker for importing a lorebook JSON.
-func (p *ProjectManager) PickLorebookFile() (string, error) {
-	return runtime.OpenFileDialog(p.ctx(), runtime.OpenDialogOptions{
-		Title: "Import lorebook JSON",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Lorebook JSON (*.json)", Pattern: "*.json"},
-		},
-	})
-}
-
-// PickCardFile opens a native file picker for importing a SillyTavern card.
-func (p *ProjectManager) PickCardFile() (string, error) {
-	return runtime.OpenFileDialog(p.ctx(), runtime.OpenDialogOptions{
-		Title: "Import character card",
-		Filters: []runtime.FileFilter{
-			{DisplayName: "Character Card (*.png;*.json)", Pattern: "*.png;*.json"},
-		},
-	})
-}
-
-// PickExportFolder opens a native folder picker for exporting characters.
-func (p *ProjectManager) PickExportFolder() (string, error) {
-	return runtime.OpenDirectoryDialog(p.ctx(), runtime.OpenDialogOptions{
-		Title: "Choose export folder",
-	})
-}
+// ProjectManager owns project persistence decomposed out of App: .slv bundle
+// assembly and reading, and SillyTavern character / world-info exports. It is
+// stateless with respect to App's project store — callers pass a snapshot in
+// and apply the loaded bundle out — so App keeps the mutex and state-store
+// orchestration.
+type ProjectManager struct{}
 
 // SaveBundle assembles a .slv bundle from a project snapshot and writes it.
 // It returns the manifest it persisted (name, tags, status) so the caller can

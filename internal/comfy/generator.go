@@ -40,6 +40,7 @@ type Generator struct {
 	client   *Client
 	listener *WSListener
 	ctx      context.Context
+	emit     EmitFunc
 	promptID string
 
 	mu           sync.Mutex
@@ -81,11 +82,14 @@ func sanitizePromptID(s string) string {
 	return result
 }
 
-// NewGenerator creates a generation orchestrator.
-func NewGenerator(ctx context.Context, baseURL string, token *string) *Generator {
+// NewGenerator creates a generation orchestrator. ctx bounds the generation
+// (cancellation); emit pushes progress/completion/error events to the UI and
+// may be nil (tests).
+func NewGenerator(ctx context.Context, baseURL string, token *string, emit EmitFunc) *Generator {
 	clientID := uuid.New().String()
 	g := &Generator{
 		ctx:  ctx,
+		emit: emit,
 		done: make(chan struct{}),
 	}
 	g.listener = NewWSListener(baseURL, clientID, token, g)
@@ -159,7 +163,7 @@ func (g *Generator) OnProgress(event ProgressEvent) {
 	g.max = event.Max
 	g.mu.Unlock()
 
-	emitEvent(g.ctx, "comfy:progress", event)
+	emitEvent(g.emit, "comfy:progress", event)
 }
 
 // OnBinaryImage is called by WSListener when binary image data arrives.
@@ -260,7 +264,7 @@ func (g *Generator) OnCompleted(event CompletedEvent) {
 	g.images = event.Images
 	g.mu.Unlock()
 
-	emitEvent(g.ctx, "comfy:completed", event)
+	emitEvent(g.emit, "comfy:completed", event)
 	g.markDone(nil)
 }
 
@@ -291,7 +295,7 @@ func saveGeneratedImage(dir, promptID string, index int, data []byte) {
 
 // OnError is called by WSListener on error events.
 func (g *Generator) OnError(event ErrorEvent) {
-	emitEvent(g.ctx, "comfy:error", event)
+	emitEvent(g.emit, "comfy:error", event)
 	g.markDone(fmt.Errorf("generation error: %s", event.Error))
 }
 

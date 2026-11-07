@@ -28,15 +28,6 @@ func TestNewApp(t *testing.T) {
 	assert.Empty(t, app.settings.Endpoints)
 }
 
-func TestGreet(t *testing.T) {
-	app := NewApp()
-	result := app.Greet("World")
-	assert.Equal(t, "Hello World, It's show time!", result)
-
-	result = app.Greet("Foo")
-	assert.Equal(t, "Hello Foo, It's show time!", result)
-}
-
 func TestStartup_LoadsSettings(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
@@ -46,7 +37,7 @@ func TestStartup_LoadsSettings(t *testing.T) {
 	}))
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	assert.NotNil(t, app.ctx)
 	require.Len(t, app.settings.Endpoints, 1)
@@ -60,7 +51,7 @@ func TestStartup_FallbackOnError(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", blockFile)
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	assert.NotNil(t, app.ctx)
 	assert.Empty(t, app.settings.Endpoints)
@@ -250,7 +241,7 @@ func TestStartup_LoadsCachedCrawl(t *testing.T) {
 	require.NoError(t, crawler.SaveCache(crawler.CrawlResult{Title: "BootCache"}))
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	cached := app.GetCachedCrawl()
 	require.NotNil(t, cached)
@@ -293,7 +284,7 @@ func TestCrawlForActiveCharacter_ResolvesBySourceURL(t *testing.T) {
 
 func TestCharacters_InitialState(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	chars := app.GetCharacters()
 	require.Len(t, chars, 1)
@@ -303,7 +294,7 @@ func TestCharacters_InitialState(t *testing.T) {
 
 func TestAddCharacter(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	ch := app.AddCharacter()
 	assert.Equal(t, 2, ch.ID)
@@ -315,7 +306,7 @@ func TestAddCharacter(t *testing.T) {
 
 func TestUpdateCharacter(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	ch := app.GetActiveCharacter()
 	ch.Name = "Elara"
@@ -329,7 +320,7 @@ func TestUpdateCharacter(t *testing.T) {
 
 func TestUpdateCharacter_NotFound(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	err := app.UpdateCharacter(compose.Character{ID: 999})
 	assert.Error(t, err)
@@ -337,7 +328,7 @@ func TestUpdateCharacter_NotFound(t *testing.T) {
 
 func TestDeleteCharacter(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	app.AddCharacter()
 
@@ -351,7 +342,7 @@ func TestDeleteCharacter(t *testing.T) {
 
 func TestDeleteCharacter_LastOneFails(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	err := app.DeleteCharacter(1)
 	assert.Error(t, err)
@@ -360,7 +351,7 @@ func TestDeleteCharacter_LastOneFails(t *testing.T) {
 
 func TestDeleteCharacter_NotFound(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.AddCharacter()
 
 	err := app.DeleteCharacter(999)
@@ -369,7 +360,7 @@ func TestDeleteCharacter_NotFound(t *testing.T) {
 
 func TestDeleteCharacter_UpdatesActive(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.AddCharacter()
 
 	app.SetActiveCharacter(1)
@@ -381,7 +372,7 @@ func TestDeleteCharacter_UpdatesActive(t *testing.T) {
 
 func TestGetActiveCharacter_Default(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	ch := app.GetActiveCharacter()
 	assert.Equal(t, 1, ch.ID)
@@ -389,7 +380,7 @@ func TestGetActiveCharacter_Default(t *testing.T) {
 
 func TestSetActiveCharacter(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.AddCharacter()
 
 	app.SetActiveCharacter(2)
@@ -399,7 +390,7 @@ func TestSetActiveCharacter(t *testing.T) {
 
 func TestGetCardPreview_Default(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	p := app.GetCardPreview()
 	assert.Equal(t, "Untitled", p.Fields.Name)
@@ -410,7 +401,7 @@ func TestGetCardPreview_Default(t *testing.T) {
 
 func TestGetCardPreview_ReflectsActiveCharacter(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	ch := app.GetActiveCharacter()
 	ch.Name = "Elara"
@@ -426,7 +417,7 @@ func TestGetCardPreview_ReflectsActiveCharacter(t *testing.T) {
 
 func TestGetCardPreview_SwitchesWithActiveCharacter(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.AddCharacter()
 
 	second := app.GetCharacters()[1]
@@ -440,7 +431,7 @@ func TestGetCardPreview_SwitchesWithActiveCharacter(t *testing.T) {
 
 func TestSetActiveCharacter_Nonexistent(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	app.SetActiveCharacter(999)
 	ch := app.GetActiveCharacter()
@@ -463,7 +454,7 @@ func TestStartup_InitializesCharacters(t *testing.T) {
 	app := NewApp()
 	assert.Len(t, app.characters, 0)
 
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	assert.Len(t, app.characters, 1)
 	assert.Equal(t, 1, app.activeCharID)
 }
@@ -504,7 +495,7 @@ func TestGenerateCharacterBulk_NoCrawl(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	ch := app.GenerateCharacterBulk(nil)
 	assert.Equal(t, "Untitled", ch.Name)
@@ -537,7 +528,7 @@ func TestGenerateCharacterBulk_WithCrawl(t *testing.T) {
 	defer srv.Close()
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	app.settings = settings.Settings{
 		Endpoints: []settings.LLMEndpoint{{
@@ -569,7 +560,7 @@ func TestGenerateCharacterBulk_LLMErrorReturnsExisting(t *testing.T) {
 	defer srv.Close()
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	app.settings = settings.Settings{
 		Endpoints: []settings.LLMEndpoint{{
@@ -588,7 +579,7 @@ func TestSaveProjectBundle(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters = []compose.Character{
 		{ID: 1, Name: "Alice", Epithet: "Brave"},
 		{ID: 2, Name: "Bob"},
@@ -614,7 +605,7 @@ func TestSaveProjectBundle_NoCrawlTitle(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters = []compose.Character{
 		{ID: 1, Name: "Untitled"},
 	}
@@ -632,7 +623,7 @@ func TestSaveProjectBundle_NoCharacters(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters = nil
 
 	filePath := tmpDir + "/empty.slv"
@@ -645,7 +636,7 @@ func TestOpenProjectBundle_LoadsCharacters(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters[0].Name = "Elara"
 
 	filePath := tmpDir + "/load-test.slv"
@@ -663,7 +654,7 @@ func TestOpenProjectBundle_EmptyCharactersDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters = []compose.Character{}
 
 	filePath := tmpDir + "/empty-char.slv"
@@ -684,7 +675,7 @@ func TestExportCharacter(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters = []compose.Character{
 		{
 			ID:            1,
@@ -734,7 +725,7 @@ func TestExportCharacter_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	_, err := app.ExportCharacter(999, t.TempDir())
 	assert.Error(t, err)
@@ -856,7 +847,7 @@ func TestSavePromptTemplates_Persists(t *testing.T) {
 
 func TestGenerateField_NoCrawl(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters[0].Name = "KeepMe"
 
 	ch := app.GenerateField("appearance", "")
@@ -878,7 +869,7 @@ func TestGenerateField_Success(t *testing.T) {
 	defer srv.Close()
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.settings = settings.Settings{
 		Endpoints: []settings.LLMEndpoint{{
 			ID: 1, Name: "test", URL: srv.URL, Model: "m", IsDefault: true,
@@ -906,7 +897,7 @@ func TestGenerateField_BackfillsMissingFieldPrompt(t *testing.T) {
 	defer srv.Close()
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.settings = settings.Settings{
 		Endpoints: []settings.LLMEndpoint{{
 			ID: 1, Name: "test", URL: srv.URL, Model: "m", IsDefault: true,
@@ -935,7 +926,7 @@ func TestGenerateField_LLMErrorReturnsExisting(t *testing.T) {
 	defer srv.Close()
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.settings = settings.Settings{
 		Endpoints: []settings.LLMEndpoint{{
 			ID: 1, Name: "err", URL: srv.URL, Model: "m", IsDefault: true,
@@ -1032,7 +1023,7 @@ func TestOpenProjectBundle_WithLorebook(t *testing.T) {
 	require.NoError(t, err)
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	m, err := app.OpenProjectBundle(filePath)
 	require.NoError(t, err)
@@ -1046,7 +1037,7 @@ func TestLorebookCharactersRoundtrip(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	app.SaveLorebook([]lorebook.Entry{
 		{UID: 0, Comment: "Scoped", Characters: []string{"1", "2"}},
@@ -1059,7 +1050,7 @@ func TestLorebookCharactersRoundtrip(t *testing.T) {
 	require.NoError(t, app.SaveProjectBundle(filePath))
 
 	app2 := NewApp()
-	app2.startup(context.Background())
+	app2.Startup(context.Background())
 	_, err := app2.OpenProjectBundle(filePath)
 	require.NoError(t, err)
 
@@ -1084,7 +1075,7 @@ func TestOpenProjectBundle_WithPrompts(t *testing.T) {
 	require.NoError(t, err)
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	_, err = app.OpenProjectBundle(filePath)
 	require.NoError(t, err)
@@ -1093,7 +1084,7 @@ func TestOpenProjectBundle_WithPrompts(t *testing.T) {
 
 func TestOpenProjectBundle_NoFileSelected(t *testing.T) {
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	_, err := app.OpenProjectBundle("")
 	assert.Error(t, err)
@@ -1122,7 +1113,7 @@ func TestOpenProjectBundle_RestoresCrawlFromBundle(t *testing.T) {
 	require.NoError(t, err)
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	_, err = app.OpenProjectBundle(filePath)
 	require.NoError(t, err)
@@ -1155,7 +1146,7 @@ func TestOpenProjectBundle_RestoresCrawlFromDisk(t *testing.T) {
 	require.NoError(t, err)
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	_, err = app.OpenProjectBundle(filePath)
 	require.NoError(t, err)
@@ -1178,7 +1169,7 @@ func TestOpenProjectBundle_EmptyCharactersFromBundle(t *testing.T) {
 	require.NoError(t, err)
 
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 
 	_, err = app.OpenProjectBundle(filePath)
 	require.NoError(t, err)

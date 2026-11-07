@@ -26,6 +26,7 @@ const defaultPort = 8090
 // user-facing operations.
 var excludedMethods = map[string]bool{
 	"SetEventSink": true,
+	"Startup":      true,
 }
 
 // Server is the local HTTP server for one app instance.

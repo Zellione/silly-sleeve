@@ -23,6 +23,7 @@ import (
 type ComfyUIService struct {
 	settings *settings.Settings
 	ctx      func() context.Context
+	emit     comfy.EmitFunc
 
 	// newClient is the injectable factory for the HTTP client seam; when nil
 	// the production comfy.NewClient is used.
@@ -153,7 +154,7 @@ func (s *ComfyUIService) generateVariants(params comfy.GenerationParams, count i
 		variantParams := params
 		variantParams.Seed = params.Seed + i
 
-		g := comfy.NewGenerator(s.ctx(), s.settings.Comfy.URL, t)
+		g := comfy.NewGenerator(s.ctx(), s.settings.Comfy.URL, t, s.emit)
 		if err := g.Run(variantParams, nil); err != nil {
 			return nil, fmt.Errorf("variant %d: %w", i+1, err)
 		}

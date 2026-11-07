@@ -43,7 +43,7 @@ func TestAppNewProjectRoundTripsEmptyRoster(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	a := NewApp()
-	a.startup(context.Background())
+	a.Startup(context.Background())
 
 	path, err := a.NewProject("Akame")
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestAppNewProjectSavesBundleImmediately(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	a := NewApp()
-	a.startup(context.Background())
+	a.Startup(context.Background())
 
 	path, err := a.NewProject("Akame")
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestAppNewProjectUniquifiesFilename(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	a := NewApp()
-	a.startup(context.Background())
+	a.Startup(context.Background())
 
 	first, err := a.NewProject("Akame")
 	require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestAppNewProjectEmptyNameUsesUntitled(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	a := NewApp()
-	a.startup(context.Background())
+	a.Startup(context.Background())
 
 	path, err := a.NewProject("   ")
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestAppNewProjectSanitizesFilename(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 	a := NewApp()
-	a.startup(context.Background())
+	a.Startup(context.Background())
 
 	path, err := a.NewProject(`a/b\c:d*e?f"g<h>i|j`)
 	require.NoError(t, err)

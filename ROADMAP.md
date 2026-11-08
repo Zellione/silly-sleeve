@@ -1,6 +1,6 @@
 # Silly Sleeve Roadmap
 
-> Last updated: 2026-11-08 — Started Phase 12 — Web Server Architecture: the app stops running inside a Wails webview and becomes a local Go backend server with the frontend served to a normal browser (`feature/web-server`).
+> Last updated: 2026-11-08 — Completed Phase 12 — Web Server Architecture: the app no longer runs inside a Wails webview; it is a local Go backend server serving the frontend to a normal browser, with the Wails dependency fully removed (`feature/web-server`).
 
 ## Overview
 
@@ -293,7 +293,7 @@ entirely.
   bindings (fetch RPC, `EventSource` events, file upload/download); stock
   browser file inputs and HTML5 drag-and-drop replace Wails dialogs and
   `OnFileDrop`; export results offered as downloads
-- [ ] **12.5** Tooling & docs: dev mode (Vite proxy), CI without Wails, README /
+- [x] **12.5** Tooling & docs: dev mode (Vite proxy), CI without Wails, README /
   AGENTS.md build instructions, final quality gate
 
 ---
@@ -304,6 +304,20 @@ entirely.
 
 ### 2026-11-08
 
+- Completed 12.5 — tooling and docs for the web-server architecture: Vite dev
+  server proxies `/api` to the Go backend (`go run . -no-browser` + `npm run
+dev`), CI drops the Wails CLI / wailsjs generation / GTK+WebKit system deps
+  (frontend jobs are now Node-only; the build job runs `npm run build` then a
+  plain `go build` with no CGo), and README / AGENTS.md / CONTRIBUTING.md
+  describe the new run and release flow (embedded `frontend/dist`,
+  `127.0.0.1:8090` default port, `-listen` / `-no-browser` flags, plain
+  `GOOS`/`GOARCH` cross-compiles). The Wails `build/` scaffolding (plist,
+  manifests, icons) and the last `--wails-drop-target` leftover are removed.
+  Phase 12 final gate: `go vet` / `golangci-lint` clean, Go tests green with
+  `-race` at 91.4% coverage, frontend lint at 0 errors/0 warnings, 935 tests
+  at 81.22% statements / 82.8% line coverage, production build links a 23 MB
+  binary that serves the SPA, the RPC bridge and the SSE stream
+  (smoke-tested end to end).
 - Completed 12.4 — frontend `src/api` client replaces the generated `wailsjs`
   bindings: `client.ts` (fetch JSON-RPC over `POST /api/{Method}`, upload,
   download URL), `events.ts` (shared `EventSource` for `EventsOn`/

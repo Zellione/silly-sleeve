@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-namespace -- ported verbatim from the generated Wails models (namespace-per-package shapes); see wailsjs/go/models.ts upstream */
+/* eslint-disable @typescript-eslint/no-namespace -- hand-ported from the Go backend's JSON model shapes (namespace-per-package, mirroring the old generated bindings). Keep in sync with the structs in internal/ when adding fields. */
 export namespace app {
 	
 	export class CrawlSendResult {

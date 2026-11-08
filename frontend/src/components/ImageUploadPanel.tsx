@@ -130,7 +130,6 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
       <button
         type="button"
         className={`img-dropzone${dragging ? ' dragging' : ''}`}
-        style={{ ['--wails-drop-target' as string]: 'drop' } as React.CSSProperties}
         onDragEnter={/* v8 ignore next */ handleDragEnter}
         onDragOver={e => { e.preventDefault(); }}
         onDragLeave={/* v8 ignore next */ handleDragLeave}

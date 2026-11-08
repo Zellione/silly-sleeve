@@ -19,6 +19,14 @@ export default defineConfig(({ mode }) => ({
       '@': srcDir,
     },
   },
+  server: {
+    proxy: {
+      // Dev mode: the browser loads from Vite (5173) but the Go backend
+      // listens on its default port (`go run .` → 127.0.0.1:8090). Forward
+      // the API so the client stays same-origin; run `go run .` first.
+      '/api': 'http://127.0.0.1:8090',
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

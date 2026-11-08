@@ -49,7 +49,7 @@ go tool cover -func=coverage.out | grep total
 - Every feature, component, hook, and utility must have corresponding `*.test.ts` or `*.test.tsx` files co-located with the source.
 - Use **Vitest** with `@testing-library/react` and `jsdom`.
 - Minimum **80%** code coverage (`npm run test:coverage`).
-- Mock Wails bindings (`wailsjs/go/main/App`) and browser APIs (`localStorage`, `matchMedia`).
+- Mock the API client (`src/api/app`, `src/api/client`, `src/api/events`) and browser APIs (`localStorage`, `matchMedia`).
 
 ```bash
 npm test
@@ -85,7 +85,7 @@ Before opening a PR, ensure:
 - [ ] `cd frontend && npm run lint` passes (tsc + eslint) with **0 errors, 0 warnings**
 - [ ] `go test ./... -race` passes with **≥ 80%** coverage
 - [ ] `npm test` and `npm run test:coverage` pass with **≥ 80%** coverage
-- [ ] `wails build` compiles successfully
+- [ ] `go build ./...` compiles successfully
 - [ ] No test is skipped or marked as `t.Skip()` without a linked issue
 
 ## CI Enforcement

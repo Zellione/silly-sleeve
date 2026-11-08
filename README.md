@@ -2,7 +2,7 @@
 
 Sleeves for your character cards and lore books.
 
-A cross-platform desktop app to create [SillyTavern](https://sillytavern.app/) character cards and lore books using local AI.
+A local tool to create [SillyTavern](https://sillytavern.app/) character cards and lore books using local AI. The heavy lifting (wiki scraping, LLM calls, card and lorebook assembly, exports) runs in a Go backend; the UI is a React app served to your browser from `127.0.0.1`.
 
 ## Features
 
@@ -10,134 +10,72 @@ A cross-platform desktop app to create [SillyTavern](https://sillytavern.app/) c
 - Scrape fandom wikis via the MediaWiki API.
 - Generate SillyTavern character cards (v2 spec) and lore books from scraped content.
 - Save configuration and project bundles.
+- Everything runs on loopback: the backend listens on `127.0.0.1` only and opens your browser automatically.
 
 ## Prerequisites
 
-**Linux** — Wails requires GTK3 and WebKit2GTK development libraries.
+- [Go 1.26+](https://go.dev/doc/install)
+- [Node.js 22+](https://nodejs.org/)
 
-On Debian/Ubuntu:
-
-```bash
-# Ubuntu 22.04+ and recent Debian
-sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev
-
-# Older distros (Ubuntu 20.04, etc.)
-sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
-```
-
-> If you have `libwebkit2gtk-4.1-dev`, build with the `webkit2_41` tag:
-> ```bash
-> wails build -tags webkit2_41
-> ```
-
-On Arch:
-
-```bash
-sudo pacman -S gtk3 webkit2gtk-4.1
-```
-
-On Fedora:
-
-```bash
-sudo dnf install gtk3-devel webkit2gtk3-devel
-```
-
-**macOS** and **Windows** have no extra system dependencies.
-
-## Install Wails CLI
-
-Requires [Go 1.25+](https://go.dev/doc/install). Install the Wails v2 CLI:
-
-```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
-
-Ensure your Go bin directory is on `PATH` so the `wails` command is found:
-
-```bash
-export PATH="$PATH:$(go env GOPATH)/bin"
-```
-
-Verify the installation and check that all system dependencies are present:
-
-```bash
-wails doctor
-```
-
-> `wails doctor` reports any missing GTK/WebKit libraries (see Prerequisites above) and confirms your environment is ready to build.
+No system GUI libraries are required — the app is a plain Go binary that serves the frontend to a normal browser, so it builds headless (CI, containers, servers).
 
 ## Tech Stack
 
-- **Frontend:** React 18 + Vite + TypeScript
-- **Desktop bridge:** Wails v2
-- **Backend:** Go 1.25+
-- **Config / storage:** `os.UserConfigDir()` for settings; `.slv` zip bundles for projects
+- **Frontend:** React 18 + Vite + TypeScript (thin client: input and output only)
+- **Backend:** Go 1.26+ (crawling, LLM, ComfyUI, export, persistence)
+- **Bridge:** local HTTP server (stdlib `net/http`) + Server-Sent Events
+- **Config / storage:** `os.UserConfigDir()` for settings and the managed project library; `.slv` zip bundles for projects
 
 ## Build & Run
 
-> Requires the [Wails CLI](#install-wails-cli) and Go 1.25+ (see above).
+### 1. Build the frontend
+
+```bash
+cd frontend && npm install && npm run build && cd ..
+```
+
+The built `frontend/dist` is embedded into the Go binary at compile time.
+
+### 2. Run
+
+```bash
+go run .
+```
+
+This starts the backend on `http://127.0.0.1:8090` (the next free port is used if 8090 is taken) and opens a browser window. Useful flags:
+
+```bash
+go run . -listen 127.0.0.1:9000   # fixed port
+go run . -no-browser              # don't open a browser
+```
 
 ### Development (hot-reload)
 
-```bash
-cd frontend && npm install && cd ..
-wails dev
-```
-
-### Production build (current platform)
+Run the backend and the Vite dev server in two terminals:
 
 ```bash
-cd frontend && npm install && cd ..
-wails build -clean
+# Terminal 1 — backend (API + events on 127.0.0.1:8090)
+go run . -no-browser
+
+# Terminal 2 — frontend with hot reload on http://localhost:5173
+cd frontend && npm install && npm run dev
 ```
 
-> `-clean` ensures a fresh build by cleaning the build directory first.
+The Vite dev server proxies `/api/*` to the backend, so the UI at `:5173` talks to the same server.
 
 ## Building Release Binaries
 
-### Linux
+The binary embeds the frontend and links without CGo, so cross-compiling is a plain `GOOS`/`GOARCH` build. Build `frontend/dist` first, then:
 
 ```bash
-wails build -clean
-```
+# Current platform
+go build -o build/bin/silly-sleeve .
 
-For Ubuntu 22.04+ with `libwebkit2gtk-4.1-dev`:
-
-```bash
-wails build -clean -tags webkit2_41
-```
-
-Cross-compile for specific architecture:
-
-```bash
-wails build -clean -platform linux/amd64
-wails build -clean -platform linux/arm64
-```
-
-### macOS
-
-```bash
-wails build -clean
-```
-
-Universal binary (Intel + Apple Silicon):
-
-```bash
-wails build -clean -platform darwin/universal
-```
-
-### Windows
-
-From Windows directly:
-
-```bash
-wails build -clean
-```
-
-Cross-compile from Linux (requires `mingw-w64`):
-
-```bash
-wails build -clean -platform windows/amd64
+# Cross-compile
+GOOS=linux GOARCH=amd64 go build -o build/bin/silly-sleeve-linux-amd64 .
+GOOS=linux GOARCH=arm64 go build -o build/bin/silly-sleeve-linux-arm64 .
+GOOS=darwin GOARCH=arm64 go build -o build/bin/silly-sleeve-darwin-arm64 .
+GOOS=windows GOARCH=amd64 go build -o build/bin/silly-sleeve-windows-amd64.exe .
 ```
 
 ## Lint

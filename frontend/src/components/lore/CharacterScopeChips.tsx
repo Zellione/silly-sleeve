@@ -1,5 +1,5 @@
 import React from 'react';
-import { compose } from '../../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 /**
  * Character scoping control: a chip per project character, toggled on to scope

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { CheckIcon } from '../../icons';
 import { useToast } from '../ToastProvider';
 import { useConfirmDialog } from '../ConfirmDialog';
-import { GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '../../../wailsjs/go/app/App';
-import { prompts } from '../../../wailsjs/go/models';
+import { GetPromptTemplates, GetDefaultPromptTemplates, SavePromptTemplates } from '@/api/app';
+import { prompts } from '@/api/models';
 import { errorMessage } from '../../utils/errorMessage';
 
 // eslint-disable-next-line react-refresh/only-export-components

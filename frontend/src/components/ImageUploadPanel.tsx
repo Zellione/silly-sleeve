@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { UploadIcon, ImageIcon, CheckIcon, FolderIcon, DownloadIcon } from '../icons';
-import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime';
-import { ReadImageFile } from '../../wailsjs/go/app/App';
 import { Dropdown } from './Dropdown';
 
 export interface UploadFileInfo {
@@ -73,21 +71,6 @@ const ImageUploadPanel: React.FC<ImageUploadPanelProps> = ({
       }
     };
     reader.readAsDataURL(file);
-  }, [applyImage]);
-
-  // Native (OS) file drops don't populate HTML5 dataTransfer.files in the Wails
-  // webview, so subscribe to Wails' file-drop bridge (scoped to the dropzone via
-  // --wails-drop-target) and read the dropped path's bytes through the backend.
-  useEffect(() => {
-    OnFileDrop((_x, _y, paths) => {
-      if (!paths || paths.length === 0) return;
-      dragCounterRef.current = 0;
-      setDragging(false);
-      ReadImageFile(paths[0])
-        .then(img => applyImage(img.name, img.size, img.dataUrl))
-        .catch(() => {});
-    }, true);
-    return () => OnFileDropOff();
   }, [applyImage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

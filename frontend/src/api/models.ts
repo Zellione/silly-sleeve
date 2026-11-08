@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace -- ported verbatim from the generated Wails models (namespace-per-package shapes); see wailsjs/go/models.ts upstream */
 export namespace app {
 	
 	export class CrawlSendResult {

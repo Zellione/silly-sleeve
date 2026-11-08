@@ -1,5 +1,5 @@
 import React from 'react';
-import { compose, lorebook, loreextract } from '../../../wailsjs/go/models';
+import { compose, lorebook, loreextract } from '@/api/models';
 import { StagedSourcePanel } from './StagedSourcePanel';
 import { CandidateList } from './CandidateList';
 import { SuggestionList } from './SuggestionList';

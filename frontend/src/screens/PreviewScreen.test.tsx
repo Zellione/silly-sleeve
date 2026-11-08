@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PreviewScreen from './PreviewScreen';
-import { compose, lorebook } from '../../wailsjs/go/models';
+import { compose, lorebook } from '@/api/models';
 
 const mockGetCharacters = vi.fn();
 const mockGetActiveCharacter = vi.fn();
@@ -11,7 +11,7 @@ const mockGetPortrait = vi.fn();
 const mockGetCardPreview = vi.fn();
 const mockGetLorebook = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetActiveCharacter: () => mockGetActiveCharacter(),
   SetActiveCharacter: (id: number) => mockSetActiveCharacter(id),

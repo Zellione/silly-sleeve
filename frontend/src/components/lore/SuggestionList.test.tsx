@@ -4,13 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { ExtractPanel } from './ExtractPanel';
 import { useLoreConnections } from './useLoreConnections';
 import { ToastProvider } from '../ToastProvider';
-import { compose, lorebook, loreextract } from '../../../wailsjs/go/models';
+import { compose, lorebook, loreextract } from '@/api/models';
 
 const mockGetLorebookSuggestions = vi.fn();
 const mockSuggestLorebookConnections = vi.fn();
 const mockApplyLorebookSuggestions = vi.fn();
 
-vi.mock('../../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetStagedSources: () => Promise.resolve([]),
   GetLorebookCandidates: () => Promise.resolve([]),
   SetStagedSourceMode: () => Promise.resolve([]),

@@ -3,8 +3,8 @@ import {
   GetStagedSources, SetStagedSourceMode, SetStagedSourceStyle, RemoveStagedSource,
   GetLorebookCandidates, DiscardLorebookCandidates, ExtractLorebookCandidates,
   ApproveLorebookCandidates,
-} from '../../../wailsjs/go/app/App';
-import { loreextract, lorebook } from '../../../wailsjs/go/models';
+} from '@/api/app';
+import { loreextract, lorebook } from '@/api/models';
 import { useToast } from '../ToastProvider';
 import { errorMessage } from '../../utils/errorMessage';
 import { logError, logDebug } from '../../utils/log';

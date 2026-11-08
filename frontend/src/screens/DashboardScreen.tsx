@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '../components/ToastProvider';
 import { useConfirmDialog } from '../components/ConfirmDialog';
 import {
@@ -9,9 +9,10 @@ import { formatRelative } from '../utils/relativeTime';
 import { arrayBufferToDataURL } from '../utils/image';
 import {
   ListProjects, SetProjectStatus, RemoveProject,
-  GetProjectThumbnail, PickOpenBundle, OpenProjectBundle,
-} from '../../wailsjs/go/app/App';
-import { library } from '../../wailsjs/go/models';
+  GetProjectThumbnail, OpenProjectBundle,
+} from '@/api/app';
+import { uploadFile } from '@/api/client';
+import { library } from '@/api/models';
 
 type Filter = 'all' | 'draft' | 'ready' | 'archived';
 const STATUSES: Array<'draft' | 'ready' | 'archived'> = ['draft', 'ready', 'archived'];
@@ -30,6 +31,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
   const [projects, setProjects] = useState<library.Entry[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     ListProjects()
@@ -55,14 +57,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
     }
   }, [onOpenProject, toast]);
 
-  const handlePickOpen = useCallback(async () => {
+  // Browsers pick files, not paths: the standard file dialog hands us a
+  // .slv, which we upload; the server opens the uploaded copy.
+  const handleImportBundle = useCallback(async (file: File) => {
     try {
-      const path = await PickOpenBundle();
-      if (!path) return;
+      const { path } = await uploadFile(file);
       await handleOpen(path);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg !== 'Cancelled') toast({ kind: 'bad', title: 'Open failed', body: msg });
+      toast({ kind: 'bad', title: 'Open failed', body: msg });
     }
   }, [handleOpen, toast]);
 
@@ -115,9 +118,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onOpenProject, onNewP
             <SearchIcon size={14} />
             <input placeholder="Filter by name…" value={q} onChange={e => setQ(e.target.value)} />
           </div>
-          <button type="button" className="btn ghost" onClick={handlePickOpen}>
+          <button type="button" className="btn ghost" onClick={() => importInputRef.current?.click()}>
             <FolderIcon size={14} /> Open project
           </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".slv"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) void handleImportBundle(file);
+              e.target.value = '';
+            }}
+          />
         </div>
       </div>
 

@@ -12,7 +12,7 @@ const mockThumb = vi.fn();
 const mockOpen = vi.fn();
 const mockPickOpen = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   ListProjects: () => mockList(),
   NewProject: vi.fn(),
   SetProjectStatus: (p: string, s: string) => mockSetStatus(p, s),

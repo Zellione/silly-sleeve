@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mapWorkflows, parseSize, aspectFromSize, pickByHint, SPLIT_WORKFLOW_HINTS } from './workflow';
-import { comfy } from '../../wailsjs/go/models';
+import { comfy } from '@/api/models';
 
 describe('mapWorkflows', () => {
   it('maps a workflow, stripping .json and deriving size', () => {

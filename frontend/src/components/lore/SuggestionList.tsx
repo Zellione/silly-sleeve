@@ -1,5 +1,5 @@
 import React from 'react';
-import { loreextract, compose, lorebook } from '../../../wailsjs/go/models';
+import { loreextract, compose, lorebook } from '@/api/models';
 import { LinkIcon, CheckIcon, XIcon } from '../../icons';
 
 const KIND_LABELS: Record<string, string> = {

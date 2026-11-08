@@ -3,33 +3,33 @@ import { render, waitFor, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ExportScreen from './ExportScreen';
 import { ToastProvider } from '../components/ToastProvider';
-import { compose, lorebook } from '../../wailsjs/go/models';
+import { compose, lorebook } from '@/api/models';
 
 const mockGetCharacters = vi.fn();
 const mockGetLorebook = vi.fn();
 const mockExportCharactersBulk = vi.fn();
 const mockExportLorebook = vi.fn();
-const mockPickExportFolder = vi.fn();
-const mockPickSaveBundle = vi.fn();
+const mockGetExportDir = vi.fn();
+const mockSaveProjectAsName = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetLorebook: () => mockGetLorebook(),
   ExportCharactersBulk: (ids: number[], fmt: string, opts: unknown, dest: string) =>
     mockExportCharactersBulk(ids, fmt, opts, dest),
   ExportLorebook: (dest: string) => mockExportLorebook(dest),
-  PickExportFolder: () => mockPickExportFolder(),
-  PickSaveBundle: () => mockPickSaveBundle(),
+  GetExportDir: () => mockGetExportDir(),
+  SaveProjectAsName: (name: string) => mockSaveProjectAsName(name),
   SaveProjectBundle: (path: string) => mockSaveProjectBundle(path),
 }));
 
-vi.mock('../../wailsjs/runtime/runtime', () => ({
+vi.mock('@/api/events', () => ({
   EventsOn: vi.fn(),
   EventsOff: vi.fn(),
 }));
 
-import { EventsOn } from '../../wailsjs/runtime/runtime';
+import { EventsOn } from '@/api/events';
 
 const renderWithProviders = (ui: React.ReactElement) =>
   render(<ToastProvider>{ui}</ToastProvider>);
@@ -56,9 +56,11 @@ describe('ExportScreen', () => {
     mockGetLorebook.mockResolvedValue(mockEntries);
     mockExportCharactersBulk.mockResolvedValue({ exported: 2, failed: 0, paths: ['/a.png', '/b.png'] });
     mockExportLorebook.mockResolvedValue('/mock/world_info.json');
-    mockPickExportFolder.mockResolvedValue('/mock/export');
-    mockPickSaveBundle.mockResolvedValue('/mock/project.slv');
+    mockGetExportDir.mockResolvedValue('/mock/export');
+    mockSaveProjectAsName.mockResolvedValue('/mock/project.slv');
     mockSaveProjectBundle.mockResolvedValue(undefined);
+    // Bundle save asks for a name via prompt; default to a real answer.
+    vi.spyOn(window, 'prompt').mockReturnValue('My Project');
   });
 
   it('renders the page head', async () => {
@@ -118,13 +120,13 @@ describe('ExportScreen', () => {
     await waitFor(() => expect(document.body.textContent).not.toContain('Strip generation metadata'));
   });
 
-  it('browse button calls PickExportFolder and fills the destination', async () => {
+  it('browse button fills the destination with the managed export dir', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
     await waitFor(() => expect(document.body.textContent).toContain('Destination'));
     await user.click(screen.getByTitle('Browse…'));
     await waitFor(() => {
-      expect(mockPickExportFolder).toHaveBeenCalled();
+      expect(mockGetExportDir).toHaveBeenCalled();
       const input = document.querySelector('input[placeholder*="folder"]') as HTMLInputElement;
       expect(input.value).toBe('/mock/export');
     });
@@ -173,7 +175,7 @@ describe('ExportScreen', () => {
     await waitFor(() => expect(document.body.textContent).toContain('Export failed'));
   });
 
-  it('switches to bundle format and saves via PickSaveBundle + SaveProjectBundle', async () => {
+  it('switches to bundle format and saves via SaveProjectAsName + SaveProjectBundle', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExportScreen />);
     await waitFor(() => expect(document.body.textContent).toContain('Silly Sleeve bundle'));
@@ -185,7 +187,8 @@ describe('ExportScreen', () => {
     await waitFor(() => expect(document.body.textContent).toContain('Save bundle'));
     await user.click(findExportButton()!);
     await waitFor(() => {
-      expect(mockPickSaveBundle).toHaveBeenCalled();
+      expect(window.prompt).toHaveBeenCalled();
+      expect(mockSaveProjectAsName).toHaveBeenCalledWith('My Project');
       expect(mockSaveProjectBundle).toHaveBeenCalledWith('/mock/project.slv');
       expect(document.body.textContent).toContain('Bundle saved');
     });

@@ -282,14 +282,14 @@ entirely.
 - [x] **12.1** Backend: `internal/server` package — REST bridge over the bound
   `App` methods (`POST /api/{Method}` JSON RPC), SSE event stream
   (`GET /api/events`), and static serving of `frontend/dist`
-- [ ] **12.2** Backend: event migration — `App.emit` and `internal/comfy` push
+- [x] **12.2** Backend: event migration — `App.emit` and `internal/comfy` push
   through the SSE hub instead of `runtime.EventsEmit`; new `main.go` entry point
   (port selection, auto-open browser); Wails dependency, `wails.json` and
   `Greet` removed
 - [x] **12.3** Backend: file flows without native dialogs — upload endpoint
   (bytes → temp path), `SaveProjectAsName` (managed library folder),
   `GetExportDir` + download endpoint, `ImportCardData` / `ImportLorebookData`
-- [~] **12.4** Frontend: `src/api` client replacing the generated `wailsjs`
+- [x] **12.4** Frontend: `src/api` client replacing the generated `wailsjs`
   bindings (fetch RPC, `EventSource` events, file upload/download); stock
   browser file inputs and HTML5 drag-and-drop replace Wails dialogs and
   `OnFileDrop`; export results offered as downloads
@@ -304,6 +304,25 @@ entirely.
 
 ### 2026-11-08
 
+- Completed 12.4 — frontend `src/api` client replaces the generated `wailsjs`
+  bindings: `client.ts` (fetch JSON-RPC over `POST /api/{Method}`, upload,
+  download URL), `events.ts` (shared `EventSource` for `EventsOn`/
+  `EventsOff`), `app.ts` (typed wrappers for every bound method) and
+  `models.ts`. All 71 imports of `wailsjs/*` rewritten to `@/api/*` (path
+  alias). Native-dialog flows replaced with stock browser mechanisms: open
+  project / card / lorebook import use file inputs + `POST /api/upload`;
+  saves use `window.prompt` + `SaveProjectAsName`; export destination uses
+  `GetExportDir` and exported files are offered as `GET /api/download` links;
+  `ImageUploadPanel` drops the Wails `OnFileDrop` bridge for standard HTML5
+  drop. jsdom gets an `EventSource` fake in the test setup; the stale Wails
+  `runtime` global is gone. 935 frontend tests green; tsc, ESLint and the
+  Vite build are clean.
+- Completed 12.2 — event migration and Wails removal: `App.emit` and
+  `internal/comfy` push through the injectable `EmitFunc`/event sink wired to
+  the SSE hub; `main.go` is now a plain entry point (loopback listener,
+  `-listen` / `-no-browser` flags, auto-open browser); the Wails dependency,
+  `wails.json`, the embedded-webview options and the `Greet` scaffold are
+  deleted; the five native-dialog `ProjectManager` methods are gone.
 - Completed 12.3 — file flows without native dialogs: `POST /api/upload`
   (multipart → `<config>/silly-sleeve/uploads/`, sanitized filenames, 64 MiB
   cap) and `GET /api/download` (confined to the app data dir, RFC 6266

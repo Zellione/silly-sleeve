@@ -28,10 +28,6 @@ node_modules/
 # TypeScript build info
 *.tsbuildinfo
 
-# Wails auto-generated
-frontend/package.json.md5
-frontend/wailsjs/runtime/
-
 # Local approval request (never committed)
 APPROVAL_REQUEST.md
 

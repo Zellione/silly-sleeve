@@ -19,7 +19,7 @@ const mockGetLorebook = vi.fn();
 const mockSaveLorebook = vi.fn();
 const mockExportLorebook = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetActiveCharacter: vi.fn().mockResolvedValue({}),
   AddCharacter: vi.fn(),

@@ -4,18 +4,25 @@ import userEvent from '@testing-library/user-event';
 import { ToastProvider } from '../components/ToastProvider';
 import CharactersScreen from './CharactersScreen';
 import { estimateCharTokens, charSummary, isCharReady } from './characterList';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 const mockGetCharacters = vi.fn();
 const mockAddCharacter = vi.fn();
 const mockSetActiveCharacter = vi.fn();
-const mockImportCard = vi.fn();
+const mockImportCardFile = vi.fn();
+const mockUploadFile = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCharacters: () => mockGetCharacters(),
   AddCharacter: () => mockAddCharacter(),
   SetActiveCharacter: (id: number) => mockSetActiveCharacter(id),
-  ImportCard: () => mockImportCard(),
+  ImportCardFile: (path: string) => mockImportCardFile(path),
+}));
+
+vi.mock('@/api/client', () => ({
+  uploadFile: (file: File) => mockUploadFile(file),
+  call: vi.fn(),
+  downloadURL: (p: string) => `/api/download?path=${encodeURIComponent(p)}`,
 }));
 
 vi.mock('./EditorScreen', () => ({
@@ -165,7 +172,8 @@ describe('CharactersScreen', () => {
   });
 
   it('imports a card and opens the imported character', async () => {
-    mockImportCard.mockResolvedValue({
+    mockUploadFile.mockResolvedValue({ path: '/uploads/card.png', name: 'card.png' });
+    mockImportCardFile.mockResolvedValue({
       character: char({ id: 5, name: 'Yennefer' }),
       importedEntries: 2,
     });
@@ -173,29 +181,38 @@ describe('CharactersScreen', () => {
     renderScreen();
     await waitFor(() => expect(screen.getByText('Elara')).toBeInTheDocument());
 
-    await user.click(screen.getByRole('button', { name: 'Import card' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'card.png', { type: 'image/png' }));
+
     await waitFor(() => expect(screen.getByTestId('editor-screen')).toBeInTheDocument());
+    expect(mockUploadFile).toHaveBeenCalledTimes(1);
+    expect(mockImportCardFile).toHaveBeenCalledWith('/uploads/card.png');
     expect(mockSetActiveCharacter).toHaveBeenCalledWith(5);
     expect(screen.getByText(/\+2 lore entries/)).toBeInTheDocument();
   });
 
-  it('stays on the list when import is cancelled', async () => {
-    mockImportCard.mockResolvedValue(null);
-    const user = userEvent.setup();
+  it('stays on the list when the dialog is dismissed without a file', async () => {
     renderScreen();
     await waitFor(() => expect(screen.getByText('Elara')).toBeInTheDocument());
 
-    await user.click(screen.getByRole('button', { name: 'Import card' }));
+    // Dismissing the native dialog fires change with an empty file list.
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('change'));
+
+    expect(mockUploadFile).not.toHaveBeenCalled();
     expect(screen.queryByTestId('editor-screen')).not.toBeInTheDocument();
   });
 
   it('shows a toast when import fails', async () => {
-    mockImportCard.mockRejectedValue(new Error('nope'));
+    mockUploadFile.mockResolvedValue({ path: '/uploads/card.png', name: 'card.png' });
+    mockImportCardFile.mockRejectedValue(new Error('nope'));
     const user = userEvent.setup();
     renderScreen();
     await waitFor(() => expect(screen.getByText('Elara')).toBeInTheDocument());
 
-    await user.click(screen.getByRole('button', { name: 'Import card' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'card.png', { type: 'image/png' }));
+
     await waitFor(() => {
       expect(screen.getByText('Import failed')).toBeInTheDocument();
     });

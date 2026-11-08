@@ -5,14 +5,15 @@ import {
   PlusIcon, SearchIcon, TrashIcon, CopyIcon,
   MoreIcon, BookIcon, UploadIcon, PenIcon, LinkIcon,
 } from '../icons';
-import { GetLorebook, SaveLorebook, ExportLorebook, PickExportFolder, GetCharacters, ImportLorebook } from '../../wailsjs/go/app/App';
+import { GetLorebook, SaveLorebook, ExportLorebook, GetExportDir, GetCharacters, ImportLorebookFile } from '@/api/app';
+import { uploadFile } from '@/api/client';
 import { useBundleSave } from '../components/useBundleSave';
 import { TagsInput } from '../components/TagsInput';
 import { CharacterScopeChips } from '../components/lore/CharacterScopeChips';
 import { ExtractPanel } from '../components/lore/ExtractPanel';
 import { useLoreConnections } from '../components/lore/useLoreConnections';
 import { reorderByDrag, remapForMerge, renumberFromZero } from '../utils/lorebook';
-import { lorebook, compose } from '../../wailsjs/go/models';
+import { lorebook, compose } from '@/api/models';
 import { errorMessage } from '../utils/errorMessage';
 
 type LorebookTab = 'entries' | 'extract';
@@ -274,6 +275,7 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
   const [dragUid, setDragUid] = useState<number | null>(null);
   const [overUid, setOverUid] = useState<number | null>(null);
   const overUidRef = useRef<number | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingImport, setPendingImport] = useState<lorebook.Entry[] | null>(null);
   const [tab, setTab] = useState<LorebookTab>('entries');
   const { toast } = useToast();
@@ -417,7 +419,8 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
 
   const handleExport = useCallback(async () => {
     try {
-      const folder = await PickExportFolder();
+      // Browsers can't pick folders: use the managed export directory.
+      const folder = await GetExportDir();
       if (!folder) return;
       const filePath = await ExportLorebook(folder);
       toast({ kind: 'ok', title: 'Lorebook exported', body: `Written to ${filePath}.` });
@@ -428,15 +431,19 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
     }
   }, [toast]);
 
-  const handleImport = useCallback(async () => {
+  // Browsers pick files, not paths: handleImport opens the standard file
+  // dialog; handleImportFile uploads the chosen .json and parses it.
+  const handleImport = useCallback(() => {
+    importInputRef.current?.click();
+  }, []);
+
+  const handleImportFile = useCallback(async (file: File) => {
     try {
-      const imported = await ImportLorebook();
-      // Empty array = a file with no entries (inform the user). null/undefined = the
-      // user cancelled the dialog (stay silent).
-      if (!imported || imported.length === 0) {
-        if (imported?.length === 0) {
-          toast({ kind: 'info', title: 'Nothing imported', body: 'No entries found in that file.' });
-        }
+      const { path } = await uploadFile(file);
+      const imported = await ImportLorebookFile(path);
+      // An empty array = a file with no entries (inform the user).
+      if (imported.length === 0) {
+        toast({ kind: 'info', title: 'Nothing imported', body: 'No entries found in that file.' });
         return;
       }
       setPendingImport(imported);
@@ -470,6 +477,17 @@ const LorebookScreen: React.FC<{ projectPath?: string; bundleSaveDelay?: number 
 
   return (
     <>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) void handleImportFile(file);
+          e.target.value = '';
+        }}
+      />
       <PageHead subtitle="Build the world around them"
         title={<>Author the <em style={{fontStyle:'normal',color:'var(--acc-ink)'}}>lorebook</em></>}
         actions={

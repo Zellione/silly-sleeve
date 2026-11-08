@@ -6,7 +6,7 @@ import { ToastProvider } from './ToastProvider';
 
 const mockSaveProjectBundle = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   SaveProjectBundle: (path: string) => mockSaveProjectBundle(path),
 }));
 

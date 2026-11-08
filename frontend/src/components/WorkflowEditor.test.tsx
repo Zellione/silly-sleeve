@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/app/App';
+import { SaveComfyWorkflowTemplate } from '@/api/app';
 import WorkflowEditor from './WorkflowEditor';
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   SaveComfyWorkflowTemplate: vi.fn().mockResolvedValue(undefined),
 }));
 

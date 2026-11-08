@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { SaveComfyWorkflowTemplate } from '../../wailsjs/go/app/App';
+import { SaveComfyWorkflowTemplate } from '@/api/app';
 import { useFocusTrap } from './useFocusTrap';
 import { XIcon } from '../icons';
 import { errorMessage } from '../utils/errorMessage';

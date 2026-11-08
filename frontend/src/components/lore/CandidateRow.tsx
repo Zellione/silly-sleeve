@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { loreextract, compose, lorebook } from '../../../wailsjs/go/models';
+import { loreextract, compose, lorebook } from '@/api/models';
 import { TagsInput } from '../TagsInput';
 import { Dropdown } from '../Dropdown';
 import { CharacterScopeChips } from './CharacterScopeChips';

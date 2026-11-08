@@ -67,8 +67,29 @@ func (a *App) ImportCardData(data []byte) (*ImportCardResult, error) {
 	return a.importCardData(data)
 }
 
+// ImportCardFile imports a card from a server-side file path — the upload
+// endpoint's return value. Large card PNGs cannot travel as a JSON byte
+// array, so the browser uploads first and imports by path.
+func (a *App) ImportCardFile(path string) (*ImportCardResult, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read card file: %w", err)
+	}
+	return a.importCardData(data)
+}
+
 // ImportLorebookData parses lorebook JSON bytes into entries WITHOUT mutating
 // app state; merge/replace is decided by the frontend.
 func (a *App) ImportLorebookData(data []byte) ([]lorebook.Entry, error) {
+	return lorebook.ParseWorldInfo(data)
+}
+
+// ImportLorebookFile parses a lorebook JSON from a server-side file path
+// (the upload endpoint's return value), without mutating app state.
+func (a *App) ImportLorebookFile(path string) ([]lorebook.Entry, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read lorebook file: %w", err)
+	}
 	return lorebook.ParseWorldInfo(data)
 }

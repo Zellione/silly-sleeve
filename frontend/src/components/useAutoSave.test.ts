@@ -5,7 +5,7 @@ import { useAutoSave } from './useAutoSave';
 const mockGetSettings = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetSettings: () => mockGetSettings(),
   SaveProjectBundle: () => mockSaveProjectBundle(),
 }));

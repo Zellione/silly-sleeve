@@ -1,5 +1,5 @@
 import React from 'react';
-import { settings } from '../../wailsjs/go/models';
+import { settings } from '@/api/models';
 import { MoreIcon, CheckIcon, CopyIcon, DownloadIcon, TrashIcon } from '../icons';
 
 export interface LLMEndpointCardProps {

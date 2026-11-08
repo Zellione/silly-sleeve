@@ -1,5 +1,5 @@
 import React from 'react';
-import { crawler } from '../../wailsjs/go/models';
+import { crawler } from '@/api/models';
 
 const SECTION_TAGS: Record<number, string> = { 1: 'lede', 2: 'section', 3: 'subsection' };
 

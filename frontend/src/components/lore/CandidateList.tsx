@@ -1,5 +1,5 @@
 import React from 'react';
-import { loreextract, compose } from '../../../wailsjs/go/models';
+import { loreextract, compose } from '@/api/models';
 import { CandidateRow } from './CandidateRow';
 import { SparksIcon, BoltIcon } from '../../icons';
 

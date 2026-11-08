@@ -1,5 +1,5 @@
 import React from 'react';
-import type { settings } from '../../wailsjs/go/models';
+import type { settings } from '@/api/models';
 import { SLOTS } from '../utils/fieldEndpoints';
 import { Dropdown } from './Dropdown';
 

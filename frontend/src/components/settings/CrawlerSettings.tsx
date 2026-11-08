@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckIcon } from '../../icons';
-import { settings } from '../../../wailsjs/go/models';
+import { settings } from '@/api/models';
 
 export const DEFAULT_USER_AGENT = 'SillySleeve/1.0 (+https://github.com/Zellione/silly-sleeve)';
 export const DEFAULT_RATE_LIMIT_MS = 1000;

@@ -11,9 +11,10 @@ import {
   GetCharacters, GetActiveCharacter, AddCharacter, UpdateCharacter, DeleteCharacter,
   SetActiveCharacter, GetCrawlForCharacter,
   GenerateField, GenerateCharacterBulk,
-  PickSaveBundle, SaveProjectBundle,
-  GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint, ImportCard,
-} from '../../wailsjs/go/app/App';
+  SaveProjectAsName, SaveProjectBundle,
+  GetSettings, GetProjectFieldEndpoints, SetProjectFieldEndpoint, ImportCardFile,
+} from '@/api/app';
+import { uploadFile } from '@/api/client';
 import { SectionContent } from '../components/SectionContent';
 import { Infobox } from '../components/Infobox';
 import { useRowIds } from '../components/useRowIds';
@@ -26,7 +27,7 @@ import {
   FIELDS, type FieldSpec, type FieldState, type FieldValue,
   wordCountLabel, useFieldEditor,
 } from '../components/useFieldEditor';
-import { compose, crawler, settings } from '../../wailsjs/go/models';
+import { compose, crawler, settings } from '@/api/models';
 
 const StatsField: React.FC<{
   value: compose.StatKV[]; onChange: (v: compose.StatKV[]) => void; locked: boolean;
@@ -305,6 +306,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
   );
 
   const warnedNoPathRef = useRef(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const doSaveBundle = useCallback(async (path: string) => {
     try {
@@ -413,10 +415,16 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
     }
   }, [toast, refreshCharacters]);
 
-  const handleImport = useCallback(async () => {
+  // Browsers pick files, not paths: this opens the standard file dialog;
+  // the actual import happens in handleImportFile once a file is chosen.
+  const handleImport = useCallback(() => {
+    importInputRef.current?.click();
+  }, []);
+
+  const handleImportFile = useCallback(async (file: File) => {
     try {
-      const res = await ImportCard();
-      if (!res) return; // cancelled
+      const { path } = await uploadFile(file);
+      const res = await ImportCardFile(path);
       await refreshCharacters();
       setActiveChar(res.character);
       const extra = res.importedEntries > 0 ? ` (+${res.importedEntries} lore entries)` : '';
@@ -453,18 +461,21 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
 
   const handleSaveProject = useCallback(async () => {
     try {
-      const filePath = await PickSaveBundle();
-      if (!filePath) return;
+      // Browsers cannot pick a save location: ask for a name and let the
+      // server place the bundle in the managed library folder.
+      const name = window.prompt('Project name', activeChar?.name?.trim() || '');
+      if (!name || !name.trim()) return;
+      const filePath = await SaveProjectAsName(name.trim());
       await flushActiveCharRef.current();
       await SaveProjectBundle(filePath);
       onProjectPathChange(filePath);
-      toast({ kind: 'ok', title: 'Project saved', body: `Written to ${filePath}.` });
+      toast({ kind: 'ok', title: 'Project saved', body: `Saved as "${name.trim()}" in your library.` });
     } catch (e: any) {
       if (e?.message) {
         toast({ kind: 'bad', title: 'Save project failed', body: e.message });
       }
     }
-  }, [toast, onProjectPathChange]);
+  }, [activeChar, toast, onProjectPathChange]);
 
   const handleCompose = useCallback(async () => {
     if (!activeChar) return;
@@ -578,6 +589,17 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
 
   return (
     <>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".png,.json"
+        style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) void handleImportFile(file);
+          e.target.value = '';
+        }}
+      />
       <PageHead
         subtitle="Let the model format the lore"
         title={<>Compose <em style={{ fontStyle: 'normal', color: 'var(--acc-ink)' }}>{activeChar.name.trim() || 'character'}</em></>}

@@ -1,4 +1,4 @@
-import { comfy } from '../../wailsjs/go/models';
+import { comfy } from '@/api/models';
 import type { WorkflowOption, SplitModelHints } from '../components/GenerationParamsPanel';
 
 /** Split-file model hints for the built-in workflows that need them. */

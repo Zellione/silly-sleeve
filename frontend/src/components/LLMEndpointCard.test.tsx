@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LLMEndpointCard } from './LLMEndpointCard';
-import { settings } from '../../wailsjs/go/models';
+import { settings } from '@/api/models';
 
 const makeEndpoint = (over: Partial<settings.LLMEndpoint> = {}) =>
   settings.LLMEndpoint.createFrom({

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PerFieldDefaults } from './PerFieldDefaults';
-import type { settings } from '../../wailsjs/go/models';
+import type { settings } from '@/api/models';
 
 const eps = [
   { id: 1, name: 'Default', isDefault: true },

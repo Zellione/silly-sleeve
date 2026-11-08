@@ -3,12 +3,12 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ComfyUISettings } from './ComfyUISettings';
 import { ToastProvider } from '../ToastProvider';
-import { settings } from '../../../wailsjs/go/models';
+import { settings } from '@/api/models';
 
 const mockTestComfyUIEndpoint = vi.fn();
 const mockParseComfyWorkflowParams = vi.fn();
 
-vi.mock('../../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   TestComfyUIEndpoint: (url: string, token: string) => mockTestComfyUIEndpoint(url, token),
   ParseComfyWorkflowParams: (json: string) => mockParseComfyWorkflowParams(json),
 }));

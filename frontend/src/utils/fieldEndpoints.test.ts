@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SLOTS, resolveEndpoint } from './fieldEndpoints';
-import type { settings } from '../../wailsjs/go/models';
+import type { settings } from '@/api/models';
 
 const eps = [
   { id: 1, name: 'Default', isDefault: true },

@@ -31,8 +31,9 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 		http.ServeFileFS(w, r, s.dist, upath) // NOSONAR
 		return
 	}
-	if i := strings.IndexByte(upath, '.'); i > 0 {
-		// Looks like a file (has an extension) and it is missing.
+	// A name with a dot after the first character looks like a file with an
+	// extension: if it is missing, that is a real 404.
+	if strings.IndexByte(upath, '.') > 0 {
 		http.NotFound(w, r)
 		return
 	}

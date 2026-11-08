@@ -464,7 +464,7 @@ const EditorScreen: React.FC<EditorScreenProps> = ({ projectPath, onProjectPathC
       // Browsers cannot pick a save location: ask for a name and let the
       // server place the bundle in the managed library folder.
       const name = window.prompt('Project name', activeChar?.name?.trim() || '');
-      if (!name || !name.trim()) return;
+      if (!name?.trim()) return;
       const filePath = await SaveProjectAsName(name.trim());
       await flushActiveCharRef.current();
       await SaveProjectBundle(filePath);

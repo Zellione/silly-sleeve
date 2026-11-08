@@ -74,7 +74,7 @@ export async function uploadFile(file: File): Promise<UploadResult> {
     let msg = `upload failed (HTTP ${res.status})`;
     try {
       const body = (await res.json()) as { error?: unknown };
-      if (body.error) msg = String(body.error);
+      if (body.error) msg = typeof body.error === 'string' ? body.error : JSON.stringify(body.error);
     } catch {
       /* keep default */
     }

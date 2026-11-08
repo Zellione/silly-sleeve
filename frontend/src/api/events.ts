@@ -20,9 +20,7 @@ let source: EventSource | null = null;
 const registrations = new Set<Registration>();
 
 function ensureSource(): EventSource {
-  if (!source) {
-    source = new EventSource('/api/events');
-  }
+  source ??= new EventSource('/api/events');
   return source;
 }
 
@@ -48,7 +46,10 @@ export function EventsOn<T = unknown>(name: string, callback: (payload: T) => vo
  * parity). */
 export function EventsOff(name: string, callback?: Listener): void {
   if (!source) return;
-  for (const reg of [...registrations]) {
+  // Iterating the Set directly (without copying) is safe: the ES spec
+  // guarantees that deleting the current entry during for-of does not
+  // disturb the remaining entries.
+  for (const reg of registrations) {
     if (reg.name !== name) continue;
     if (callback !== undefined && reg.cb !== callback) continue;
     source.removeEventListener(name, reg.raw);

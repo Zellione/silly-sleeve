@@ -34,9 +34,9 @@ Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 // lazily. Provide a controllable fake: tests can emit events on
 // FakeEventSource.instances[last] to drive EventsOn listeners.
 class FakeEventSource {
-  static instances: FakeEventSource[] = [];
-  url: string;
-  private listeners = new Map<string, Set<EventListener>>();
+  static readonly instances: FakeEventSource[] = [];
+  readonly url: string;
+  private readonly listeners = new Map<string, Set<EventListener>>();
 
   constructor(url: string) {
     this.url = url;
@@ -62,7 +62,9 @@ class FakeEventSource {
     for (const cb of this.listeners.get(name) ?? []) cb({ data: payload } as MessageEvent);
   }
 }
-FakeEventSource.instances = [];
+// Reset in place (the property is readonly): no-op under Vitest's default
+// per-file module isolation, defensive otherwise.
+FakeEventSource.instances.length = 0;
 Object.defineProperty(globalThis, 'EventSource', {
   writable: true,
   configurable: true,

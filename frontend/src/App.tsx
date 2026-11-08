@@ -55,7 +55,7 @@ function AppShell() {
         // for a project name and let the server place it in the managed
         // library folder.
         const name = window.prompt('Project name');
-        if (!name || !name.trim()) return;
+        if (!name?.trim()) return;
         path = await SaveProjectAsName(name.trim());
         setProjectPath(path);
         setProjectName(name.trim());

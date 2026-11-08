@@ -118,7 +118,7 @@ const ExportScreen: React.FC = () => {
       // Browsers can't pick a save location: ask for a name and let the
       // server place the bundle in the managed library folder.
       const name = window.prompt('Project name');
-      if (!name || !name.trim()) return;
+      if (!name?.trim()) return;
       const path = await SaveProjectAsName(name.trim());
       setExporting(true);
       await SaveProjectBundle(path);

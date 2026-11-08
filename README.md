@@ -67,6 +67,16 @@ cd frontend && npm install && npm run dev
 The Vite dev server proxies `/api/*` to the backend; it is not part of the normal
 run.
 
+## Makefile
+
+The Makefile wraps the same frontend build and backend commands:
+
+```bash
+make build   # build frontend/dist and the production binary
+make run     # build frontend/dist, then run the backend (opens browser)
+make dev     # build frontend/dist, then run the backend without opening a browser
+```
+
 ## Building Release Binaries
 
 The binary embeds the frontend and links without CGo, so cross-compiling is a plain `GOOS`/`GOARCH` build. Build `frontend/dist` first, then:

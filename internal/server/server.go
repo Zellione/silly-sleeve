@@ -107,7 +107,8 @@ func ProbePort(base int) (int, error) {
 		if err != nil {
 			continue
 		}
-		ln.Close()
+		// Probe only: a close error cannot affect port selection.
+		_ = ln.Close()
 		return p, nil
 	}
 	return 0, fmt.Errorf("no free port in %d..%d", base, base+scan-1)

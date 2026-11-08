@@ -18,6 +18,13 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	if upath == "" {
 		upath = "index.html"
 	}
+	// Defense in depth for the path-traversal rule: the embedded dist is an
+	// fs.FS, whose Open rejects any name containing ".."; reject such names
+	// here as well so the invariant is explicit and checked in one place.
+	if strings.Contains(upath, "..") {
+		http.NotFound(w, r)
+		return
+	}
 	if s.distHas(upath) {
 		http.ServeFileFS(w, r, s.dist, upath)
 		return

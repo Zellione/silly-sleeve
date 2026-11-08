@@ -52,7 +52,10 @@ class FakeEventSource {
     this.listeners.get(name)?.delete(cb);
   }
 
-  close() {}
+  close() {
+    const i = FakeEventSource.instances.indexOf(this);
+    if (i !== -1) FakeEventSource.instances.splice(i, 1);
+  }
 
   emit(name: string, data: unknown) {
     const payload = typeof data === 'string' ? data : JSON.stringify(data);

@@ -1,5 +1,30 @@
 /* eslint-disable @typescript-eslint/no-namespace -- hand-ported from the Go backend's JSON model shapes (namespace-per-package, mirroring the old generated bindings). Keep in sync with the structs in internal/ when adding fields. */
+/**
+ * Shared field-conversion helper for the model classes below. It used to be
+ * copied into every class (13 identical 15-line bodies); the single
+ * module-level implementation replaces all copies, and the constructors call
+ * it directly.
+ */
+function convertValues(a: any, classs: any, asMap: boolean = false): any {
+    if (!a) {
+        return a;
+    }
+    if (a.slice && a.map) {
+        return (a as any[]).map(elem => convertValues(elem, classs));
+    } else if ("object" === typeof a) {
+        if (asMap) {
+            for (const key of Object.keys(a)) {
+                a[key] = new classs(a[key]);
+            }
+            return a;
+        }
+        return new classs(a);
+    }
+    return a;
+}
+
 export namespace app {
+
 	
 	export class CrawlSendResult {
 	    characters: compose.Character[];
@@ -13,29 +38,12 @@ export namespace app {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.characters = this.convertValues(source["characters"], compose.Character);
-	        this.lorebook = this.convertValues(source["lorebook"], lorebook.Entry);
-	        this.staged = this.convertValues(source["staged"], loreextract.StagedSource);
+	        this.characters = convertValues(source["characters"], compose.Character);
+	        this.lorebook = convertValues(source["lorebook"], lorebook.Entry);
+	        this.staged = convertValues(source["staged"], loreextract.StagedSource);
 	        this.activeCharId = source["activeCharId"];
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class CrawlState {
 	    url: string;
@@ -58,26 +66,9 @@ export namespace app {
 	        this.selectors = source["selectors"];
 	        this.roles = source["roles"];
 	        this.sent = source["sent"];
-	        this.set = this.convertValues(source["set"], crawler.CrawlSet);
+	        this.set = convertValues(source["set"], crawler.CrawlSet);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class DroppedImage {
 	    name: string;
@@ -135,27 +126,10 @@ export namespace app {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.character = this.convertValues(source["character"], compose.Character);
+	        this.character = convertValues(source["character"], compose.Character);
 	        this.importedEntries = source["importedEntries"];
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class SendCrawlOutcome {
 	    status: string;
@@ -172,26 +146,9 @@ export namespace app {
 	        this.status = source["status"];
 	        this.kind = source["kind"];
 	        this.name = source["name"];
-	        this.result = this.convertValues(source["result"], CrawlSendResult);
+	        this.result = convertValues(source["result"], CrawlSendResult);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }
@@ -270,26 +227,9 @@ export namespace comfy {
 	        this.name = source["name"];
 	        this.jsonData = source["jsonData"];
 	        this.template = source["template"];
-	        this.params = this.convertValues(source["params"], WorkflowParams);
+	        this.params = convertValues(source["params"], WorkflowParams);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class CompletedImage {
 	    filename: string;
@@ -414,27 +354,10 @@ export namespace compose {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.fields = this.convertValues(source["fields"], CardFields);
-	        this.tokens = this.convertValues(source["tokens"], CardPreviewTokens);
+	        this.fields = convertValues(source["fields"], CardFields);
+	        this.tokens = convertValues(source["tokens"], CardPreviewTokens);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	
 	export class StatKV {
@@ -485,29 +408,12 @@ export namespace compose {
 	        this.relationships = source["relationships"];
 	        this.quotes = source["quotes"];
 	        this.altGreetings = source["altGreetings"];
-	        this.stats = this.convertValues(source["stats"], StatKV);
+	        this.stats = convertValues(source["stats"], StatKV);
 	        this.dirty = source["dirty"];
 	        this.portrait = source["portrait"];
 	        this.sourceUrl = source["sourceUrl"];
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }
@@ -586,8 +492,8 @@ export namespace crawler {
 	        this.url = source["url"];
 	        this.domain = source["domain"];
 	        this.rawHtml = source["rawHtml"];
-	        this.sections = this.convertValues(source["sections"], Section);
-	        this.infobox = this.convertValues(source["infobox"], InfoboxEntry);
+	        this.sections = convertValues(source["sections"], Section);
+	        this.infobox = convertValues(source["infobox"], InfoboxEntry);
 	        this.wordCount = source["wordCount"];
 	        this.statusCode = source["statusCode"];
 	        this.latencyMs = source["latencyMs"];
@@ -596,23 +502,6 @@ export namespace crawler {
 	        this.isMediaWiki = source["isMediaWiki"];
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class CrawlSet {
 	    rootUrl: string;
@@ -625,26 +514,9 @@ export namespace crawler {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.rootUrl = source["rootUrl"];
-	        this.results = this.convertValues(source["results"], CrawlResult);
+	        this.results = convertValues(source["results"], CrawlResult);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	
 
@@ -781,29 +653,12 @@ export namespace loreextract {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.entry = this.convertValues(source["entry"], lorebook.Entry);
+	        this.entry = convertValues(source["entry"], lorebook.Entry);
 	        this.sourceUrl = source["sourceUrl"];
 	        this.adjustments = source["adjustments"];
 	        this.selected = source["selected"];
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class FlagChanges {
 	    constant?: boolean;
@@ -894,30 +749,13 @@ export namespace loreextract {
 	        this.proposedPosition = source["proposedPosition"];
 	        this.currentDepth = source["currentDepth"];
 	        this.proposedDepth = source["proposedDepth"];
-	        this.currentFlags = this.convertValues(source["currentFlags"], FlagChanges);
-	        this.proposedFlags = this.convertValues(source["proposedFlags"], FlagChanges);
+	        this.currentFlags = convertValues(source["currentFlags"], FlagChanges);
+	        this.proposedFlags = convertValues(source["proposedFlags"], FlagChanges);
 	        this.removeKeys = source["removeKeys"];
 	        this.rationale = source["rationale"];
 	        this.selected = source["selected"];
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }
@@ -1009,26 +847,9 @@ export namespace settings {
 	        this.authToken = source["authToken"];
 	        this.outputFolder = source["outputFolder"];
 	        this.defaultWorkflow = source["defaultWorkflow"];
-	        this.workflows = this.convertValues(source["workflows"], comfy.ComfyWorkflow);
+	        this.workflows = convertValues(source["workflows"], comfy.ComfyWorkflow);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class CrawlerConfig {
 	    userAgent?: string;
@@ -1095,32 +916,15 @@ export namespace settings {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.endpoints = this.convertValues(source["endpoints"], LLMEndpoint);
-	        this.comfy = this.convertValues(source["comfy"], ComfyConfig);
-	        this.promptTemplates = this.convertValues(source["promptTemplates"], prompts.TemplateSet);
+	        this.endpoints = convertValues(source["endpoints"], LLMEndpoint);
+	        this.comfy = convertValues(source["comfy"], ComfyConfig);
+	        this.promptTemplates = convertValues(source["promptTemplates"], prompts.TemplateSet);
 	        this.autoSaveMode = source["autoSaveMode"];
 	        this.autoSaveInterval = source["autoSaveInterval"];
 	        this.fieldEndpoints = source["fieldEndpoints"];
-	        this.crawler = this.convertValues(source["crawler"], CrawlerConfig);
+	        this.crawler = convertValues(source["crawler"], CrawlerConfig);
 	    }
 	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }

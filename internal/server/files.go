@@ -3,6 +3,8 @@ package server
 import (
 	"encoding/json"
 	"io"
+	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -60,7 +62,9 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer out.Close()
 	if _, err := io.Copy(out, file); err != nil {
-		os.Remove(dst)
+		if rmErr := os.Remove(dst); rmErr != nil {
+			log.Printf("remove partial upload %s: %v", dst, rmErr)
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -88,6 +92,12 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "path query parameter is required")
 		return
 	}
+	// Reject traversal markers in the raw user input before any filesystem
+	// operation touches the value.
+	if strings.Contains(p, "..") {
+		writeError(w, http.StatusForbidden, "path is outside the app data directory")
+		return
+	}
 	cfgDir, err := library.ConfigDir()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -100,8 +110,10 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "path is outside the app data directory")
 		return
 	}
-	st, err := os.Stat(clean)
-	if err != nil || st.IsDir() {
+	// Serve through a filesystem rooted at the config directory: the fs.FS
+	// contract makes any ".." escape impossible even if a check regressed.
+	fsys := os.DirFS(cfgDir)
+	if st, err := fs.Stat(fsys, rel); err != nil || st.IsDir() {
 		writeError(w, http.StatusNotFound, "file not found")
 		return
 	}
@@ -110,5 +122,5 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	// a valid RFC 6266 quoted-string for the filename parameter.
 	w.Header().Set("Content-Disposition",
 		"attachment; filename="+strconv.Quote(filepath.Base(clean)))
-	http.ServeFile(w, r, clean)
+	http.ServeFileFS(w, r, fsys, rel)
 }

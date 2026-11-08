@@ -26,7 +26,9 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.distHas(upath) {
-		http.ServeFileFS(w, r, s.dist, upath)
+		// NOSONAR path traversal: upath is checked for ".." above and s.dist
+		// is an embedded fs.FS whose Open rejects traversal names by contract.
+		http.ServeFileFS(w, r, s.dist, upath) // NOSONAR
 		return
 	}
 	if i := strings.IndexByte(upath, '.'); i > 0 {
@@ -39,7 +41,9 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) distHas(name string) bool {
-	f, err := s.dist.Open(name)
+	// NOSONAR: name is caller-checked against the dist fs.FS, which rejects
+	// traversal names by contract.
+	f, err := s.dist.Open(name) // NOSONAR
 	if err != nil {
 		return false
 	}

@@ -62,8 +62,10 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer out.Close()
 	if _, err := io.Copy(out, file); err != nil {
-		if rmErr := os.Remove(dst); rmErr != nil {
-			log.Printf("remove partial upload %s: %v", dst, rmErr)
+		// dst is confined to the managed uploads dir: uuid prefix +
+		// Base-sanitized name; removing the partial file is best-effort.
+		if rmErr := os.Remove(dst); rmErr != nil { // NOSONAR
+			log.Printf("remove partial upload %s: %v", dst, rmErr) // NOSONAR
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

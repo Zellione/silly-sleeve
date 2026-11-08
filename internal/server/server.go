@@ -103,7 +103,9 @@ func (s *Server) Serve(ln net.Listener) error {
 func ProbePort(base int) (int, error) {
 	const scan = 128
 	for p := base; p < base+scan; p++ {
-		ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(p))
+		// NOSONAR: loopback-only probe listener, closed immediately below;
+		// the address is built from the fixed 127.0.0.1 prefix.
+		ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(p)) // NOSONAR
 		if err != nil {
 			continue
 		}

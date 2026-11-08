@@ -240,7 +240,13 @@ Once approved:
   ```bash
   git push -u origin <branch-name>
   ```
-- Open a Pull Request describing each commit and its corresponding substep.
+- Open a Pull Request whose description carries the approval information as a
+  standing part of the review — same content as `APPROVAL_REQUEST.md`:
+  - Branch name and the approval date.
+  - Commits mapped to their ROADMAP substeps.
+  - Lint and coverage summary (the quality-gate results).
+  - Any deviations or assumptions made.
+  - `git diff --stat` summary.
 - Ensure CI passes before merge.
 
 If rejected:

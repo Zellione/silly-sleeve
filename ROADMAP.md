@@ -286,10 +286,10 @@ entirely.
   through the SSE hub instead of `runtime.EventsEmit`; new `main.go` entry point
   (port selection, auto-open browser); Wails dependency, `wails.json` and
   `Greet` removed
-- [ ] **12.3** Backend: file flows without native dialogs — upload endpoint
+- [x] **12.3** Backend: file flows without native dialogs — upload endpoint
   (bytes → temp path), `SaveProjectAsName` (managed library folder),
   `GetExportDir` + download endpoint, `ImportCardData` / `ImportLorebookData`
-- [ ] **12.4** Frontend: `src/api` client replacing the generated `wailsjs`
+- [~] **12.4** Frontend: `src/api` client replacing the generated `wailsjs`
   bindings (fetch RPC, `EventSource` events, file upload/download); stock
   browser file inputs and HTML5 drag-and-drop replace Wails dialogs and
   `OnFileDrop`; export results offered as downloads
@@ -304,6 +304,14 @@ entirely.
 
 ### 2026-11-08
 
+- Completed 12.3 — file flows without native dialogs: `POST /api/upload`
+  (multipart → `<config>/silly-sleeve/uploads/`, sanitized filenames, 64 MiB
+  cap) and `GET /api/download` (confined to the app data dir, RFC 6266
+  attachment header) live in `internal/server`. New App methods:
+  `SaveProjectAsName` (first free bundle in the managed projects folder, name
+  becomes the display name), `GetExportDir` (managed exports folder),
+  `ImportCardData` / `ImportLorebookData` (bytes in, parse in Go). The
+  Wails-only `ReadImageFile` and the five native-dialog methods are gone.
 - Completed 12.1 — `internal/server` package: JSON RPC bridge
   (`POST /api/{Method}`, positional JSON-array args mirroring the old Wails
   call semantics, one value plus an error per method), SSE event hub with

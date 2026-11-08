@@ -81,6 +81,8 @@ func validBridgeSignature(t reflect.Type) bool {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", s.handleHealth)
+	mux.HandleFunc("POST /api/upload", s.handleUpload)
+	mux.HandleFunc("GET /api/download", s.handleDownload)
 	mux.HandleFunc("POST /api/events", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "use GET")
 	})

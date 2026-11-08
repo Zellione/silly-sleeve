@@ -40,6 +40,10 @@ export default defineConfig(({ mode }) => ({
         'src/test-setup.ts',
         'src/vite-env.d.ts',
         'src/main.tsx',
+        // Generated-style model classes (ported 1:1 from the backend JSON
+        // shapes) — same treatment as the old generated bindings, which were
+        // excluded as well.
+        'src/api/models.ts',
       ],
     },
   },

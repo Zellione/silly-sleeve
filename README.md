@@ -51,17 +51,21 @@ go run . -no-browser              # don't open a browser
 
 ### Development (hot-reload)
 
-Run the backend and the Vite dev server in two terminals:
+The backend serves the built frontend, so `go run .` alone is enough for a normal
+run — no separate frontend server is needed. The Vite dev server is optional,
+and only for source hot-reload:
 
 ```bash
-# Terminal 1 — backend (API + events on 127.0.0.1:8090)
+# Backend — API, SSE and static frontend on 127.0.0.1:8090
+# (build frontend/dist first with `npm run build`)
 go run . -no-browser
 
-# Terminal 2 — frontend with hot reload on http://localhost:5173
+# Optional — hot-reload UI on http://localhost:5173
 cd frontend && npm install && npm run dev
 ```
 
-The Vite dev server proxies `/api/*` to the backend, so the UI at `:5173` talks to the same server.
+The Vite dev server proxies `/api/*` to the backend; it is not part of the normal
+run.
 
 ## Building Release Binaries
 

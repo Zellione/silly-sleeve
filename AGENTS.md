@@ -37,11 +37,15 @@ opens a browser. Flags: `-listen 127.0.0.1:PORT`, `-no-browser`.
 
 ### Development (hot-reload)
 
+The backend serves the built frontend; `go run .` alone is sufficient. The Vite
+ dev server is optional, for source hot-reload only:
+
 ```bash
-# Terminal 1 — backend
+# Backend — API, SSE and static frontend on 127.0.0.1:8090
+# (build frontend/dist first with `npm run build`)
 go run . -no-browser
 
-# Terminal 2 — Vite dev server on http://localhost:5173 (proxies /api to :8090)
+# Optional — hot-reload UI on http://localhost:5173 (proxies /api to :8090)
 cd frontend && npm install && npm run dev
 ```
 

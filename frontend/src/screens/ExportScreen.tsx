@@ -6,10 +6,11 @@ import {
 } from '../icons';
 import {
   GetCharacters, GetLorebook, ExportCharactersBulk, ExportLorebook,
-  PickExportFolder, PickSaveBundle, SaveProjectBundle,
-} from '../../wailsjs/go/app/App';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
-import { compose, lorebook, cardexport } from '../../wailsjs/go/models';
+  GetExportDir, SaveProjectAsName, SaveProjectBundle,
+} from '@/api/app';
+import { downloadURL } from '@/api/client';
+import { EventsOn, EventsOff } from '@/api/events';
+import { compose, lorebook, cardexport } from '@/api/models';
 
 interface FormatOption {
   id: string;
@@ -53,6 +54,7 @@ const ExportScreen: React.FC = () => {
   const [destination, setDestination] = useState('');
   const [exporting, setExporting] = useState(false);
   const [queue, setQueue] = useState<Record<number, QueueStatus>>({});
+  const [exportedFiles, setExportedFiles] = useState<string[]>([]);
 
   // Embedding options
   const [embedLore, setEmbedLore] = useState(true);
@@ -91,17 +93,20 @@ const ExportScreen: React.FC = () => {
 
   const handlePickFolder = useCallback(async () => {
     try {
-      const folder = await PickExportFolder();
-      if (folder) setDestination(folder);
+      // Browsers can't pick folders: fill in the managed export directory.
+      // The destination field stays editable for a custom path.
+      const dir = await GetExportDir();
+      if (dir) setDestination(dir);
     } catch {
-      // user cancelled
+      // keep the current destination
     }
   }, []);
 
   const handleExportLorebook = useCallback(async () => {
     if (pickedEntries.length === 0 || !destination) return;
     try {
-      await ExportLorebook(destination);
+      const path = await ExportLorebook(destination);
+      setExportedFiles([path]);
       toast({ kind: 'ok', title: 'Lorebook exported', body: `${pickedEntries.length} entries written to ${destination}.` });
     } catch {
       toast({ kind: 'bad', title: 'Lorebook export failed', body: 'Could not write world_info.json.' });
@@ -110,11 +115,15 @@ const ExportScreen: React.FC = () => {
 
   const exportBundle = useCallback(async () => {
     try {
-      const path = await PickSaveBundle();
-      if (!path) return;
+      // Browsers can't pick a save location: ask for a name and let the
+      // server place the bundle in the managed library folder.
+      const name = window.prompt('Project name');
+      if (!name?.trim()) return;
+      const path = await SaveProjectAsName(name.trim());
       setExporting(true);
       await SaveProjectBundle(path);
-      toast({ kind: 'ok', title: 'Bundle saved', body: `Project written to ${path}.` });
+      setExportedFiles([]);
+      toast({ kind: 'ok', title: 'Bundle saved', body: `Saved as "${name.trim()}" in your library.` });
     } catch {
       toast({ kind: 'bad', title: 'Bundle save failed', body: 'Could not write the .slv bundle.' });
     } finally {
@@ -141,6 +150,7 @@ const ExportScreen: React.FC = () => {
     setQueue(Object.fromEntries(pickedChars.map(id => [id, 'queued' as QueueStatus])));
     try {
       const res = await ExportCharactersBulk(pickedChars, fmt, opts, destination);
+      setExportedFiles(res.paths);
       if (res.failed === 0) {
         toast({ kind: 'ok', title: 'Export complete', body: `${res.exported} character${plural(res.exported)} written to ${destination}.` });
       } else {
@@ -339,6 +349,17 @@ const ExportScreen: React.FC = () => {
                 <div style={{ marginTop: 10, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--ink-3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span>└─ characters/</span>
                   {treePaths.map(p => <span key={p.id}>{p.label}</span>)}
+                </div>
+              )}
+              {exportedFiles.length > 0 && (
+                <div className="col" style={{ marginTop: 12, gap: 4 }}>
+                  <span className="uplabel" style={{ color: 'var(--ink-3)' }}>Written files — download from the server</span>
+                  {exportedFiles.map(p => (
+                    <a key={p} href={downloadURL(p)} download
+                      style={{ fontFamily: 'var(--f-mono)', fontSize: 12 }}>
+                      ⬇ {p.split('/').pop()}
+                    </a>
+                  ))}
                 </div>
               )}
             </div>

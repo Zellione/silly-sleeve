@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { SaveProjectBundle } from '../../wailsjs/go/app/App';
+import { SaveProjectBundle } from '@/api/app';
 import { useToast } from './ToastProvider';
 
 /**

@@ -11,8 +11,8 @@ import {
   LorebookScreen, ImagesScreen, PreviewScreen, ExportScreen,
   SettingsScreen,
 } from './screens';
-import { GetSettings, NewProject, PickSaveBundle, SaveProjectBundle } from '../wailsjs/go/app/App';
-import { settings } from '../wailsjs/go/models';
+import { GetSettings, NewProject, SaveProjectAsName, SaveProjectBundle } from '@/api/app';
+import { settings } from '@/api/models';
 import { logError } from './utils/log';
 
 function AppShell() {
@@ -51,10 +51,14 @@ function AppShell() {
     try {
       let path = projectPath;
       if (!path) {
-        // No bundle path (library unavailable at creation): ask where to save.
-        path = await PickSaveBundle();
-        if (!path) return;
+        // No bundle path yet: browsers cannot pick a save location, so ask
+        // for a project name and let the server place it in the managed
+        // library folder.
+        const name = window.prompt('Project name');
+        if (!name?.trim()) return;
+        path = await SaveProjectAsName(name.trim());
         setProjectPath(path);
+        setProjectName(name.trim());
       }
       await SaveProjectBundle(path);
       toast({ kind: 'ok', title: 'Project saved' });

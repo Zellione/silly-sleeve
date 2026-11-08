@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 )
 
 func newTestProjectManager() *ProjectManager {
-	return &ProjectManager{ctx: func() context.Context { return context.Background() }}
+	return &ProjectManager{}
 }
 
 func TestProjectManager_SaveAndReadBundle_RoundTrip(t *testing.T) {

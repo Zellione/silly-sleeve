@@ -30,21 +30,46 @@ const localStorageMock = (() => {
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
-(globalThis as any).runtime = {
-  EventsOnMultiple: (_eventName: string, _callback: (...data: any) => void, _maxCallbacks: number) => {
-    return () => {};
-  },
-  EventsOn: (_eventName: string, _callback: (...data: any) => void) => {
-    return () => {};
-  },
-  EventsOnce: (_eventName: string, _callback: (...data: any) => void) => { },
-  EventsOff: (_eventName: string) => { },
-  EventsOffAll: () => { },
-  EventsEmit: (_eventName: string, ..._data: any) => { },
-  OnFileDrop: (_callback: (x: number, y: number, paths: string[]) => void, _useDropTarget: boolean) => { },
-  OnFileDropOff: () => { },
-  LogPrint: (_message: string) => { },
-};
+// jsdom has no EventSource; the API client's SSE subscription creates one
+// lazily. Provide a controllable fake: tests can emit events on
+// FakeEventSource.instances[last] to drive EventsOn listeners.
+class FakeEventSource {
+  static readonly instances: FakeEventSource[] = [];
+  readonly url: string;
+  private readonly listeners = new Map<string, Set<EventListener>>();
+
+  constructor(url: string) {
+    this.url = url;
+    FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(name: string, cb: EventListener) {
+    if (!this.listeners.has(name)) this.listeners.set(name, new Set());
+    this.listeners.get(name)!.add(cb);
+  }
+
+  removeEventListener(name: string, cb: EventListener) {
+    this.listeners.get(name)?.delete(cb);
+  }
+
+  close() {
+    const i = FakeEventSource.instances.indexOf(this);
+    if (i !== -1) FakeEventSource.instances.splice(i, 1);
+  }
+
+  emit(name: string, data: unknown) {
+    const payload = typeof data === 'string' ? data : JSON.stringify(data);
+    for (const cb of this.listeners.get(name) ?? []) cb({ data: payload } as MessageEvent);
+  }
+}
+// Reset in place (the property is readonly): no-op under Vitest's default
+// per-file module isolation, defensive otherwise.
+FakeEventSource.instances.length = 0;
+Object.defineProperty(globalThis, 'EventSource', {
+  writable: true,
+  configurable: true,
+  value: FakeEventSource,
+});
 
 (HTMLDialogElement.prototype as any).showModal = function () {
   this.open = true;

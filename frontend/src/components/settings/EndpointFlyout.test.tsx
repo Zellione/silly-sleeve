@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EndpointFlyout } from './EndpointFlyout';
 import { ToastProvider } from '../ToastProvider';
-import { settings } from '../../../wailsjs/go/models';
+import { settings } from '@/api/models';
 
-vi.mock('../../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   TestLLMEndpoint: vi.fn(),
 }));
 

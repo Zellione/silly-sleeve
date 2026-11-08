@@ -31,7 +31,7 @@ func appWithChars(t *testing.T) *App {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	app := NewApp()
-	app.startup(context.Background())
+	app.Startup(context.Background())
 	app.characters = []compose.Character{
 		{ID: 1, Name: "Alice", Personality: "Brave.", Appearance: "Tall.", Portrait: testPNGBytes(t)},
 		{ID: 2, Name: "Bob", Personality: "Calm.", Appearance: "Short."},

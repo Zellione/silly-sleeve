@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/ToastProvider';
 import { PlusIcon, ArrowIcon } from '../icons';
 import {
-  GetCharacters, AddCharacter, SetActiveCharacter, ImportCard,
-} from '../../wailsjs/go/app/App';
+  GetCharacters, AddCharacter, SetActiveCharacter, ImportCardFile,
+} from '@/api/app';
+import { uploadFile } from '@/api/client';
 import EditorScreen from './EditorScreen';
 import { logError } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
 import { arrayBufferToDataURL } from '../utils/image';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 import { estimateCharTokens, charSummary, isCharReady } from './characterList';
 
 interface CharactersScreenProps {
@@ -22,6 +23,7 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({ projectPath,
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [characters, setCharacters] = useState<compose.Character[]>([]);
   const [opened, setOpened] = useState<compose.Character | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = useCallback(() => {
     GetCharacters()
@@ -54,10 +56,16 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({ projectPath,
     }
   };
 
-  const handleImport = async () => {
+  // Browsers pick files, not paths: handleImport opens the standard file
+  // dialog; handleImportFile uploads the chosen card and imports it.
+  const handleImport = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportFile = async (file: File) => {
     try {
-      const res = await ImportCard();
-      if (!res) return; // cancelled
+      const { path } = await uploadFile(file);
+      const res = await ImportCardFile(path);
       const extra = res.importedEntries > 0 ? ` (+${res.importedEntries} lore entries)` : '';
       toast({ kind: 'ok', title: 'Card imported', body: `Imported "${res.character.name}"${extra}.` });
       await SetActiveCharacter(res.character.id);
@@ -85,6 +93,17 @@ export const CharactersScreen: React.FC<CharactersScreenProps> = ({ projectPath,
 
   return (
     <>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".png,.json"
+        style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) void handleImportFile(file);
+          e.target.value = '';
+        }}
+      />
       <PageHead
         title="Characters"
         subtitle="Everyone in this project. Open a character to edit their card on its own page."

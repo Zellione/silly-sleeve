@@ -1,4 +1,4 @@
-import type { settings } from '../../wailsjs/go/models';
+import type { settings } from '@/api/models';
 
 export interface Slot {
   id: string;

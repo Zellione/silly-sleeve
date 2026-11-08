@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PageHead } from '../components/Layout';
 import { CharacterStrip } from '../components/CharacterStrip';
 import { ArrowIcon, CheckIcon, XIcon } from '../icons';
-import { GetCharacters, GetActiveCharacter, SetActiveCharacter, GetPortrait, GetCardPreview, GetLorebook } from '../../wailsjs/go/app/App';
-import { compose, lorebook } from '../../wailsjs/go/models';
+import { GetCharacters, GetActiveCharacter, SetActiveCharacter, GetPortrait, GetCardPreview, GetLorebook } from '@/api/app';
+import { compose, lorebook } from '@/api/models';
 import { arrayBufferToDataURL } from '../utils/image';
 import { logError } from '../utils/log';
 

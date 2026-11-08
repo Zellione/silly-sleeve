@@ -14,7 +14,7 @@ const mockUpdateCrawlSummary = vi.fn();
 const mockRemoveCrawlResult = vi.fn();
 const mockRefetchCrawlResult = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCrawlState: () => mockGetCrawlState(),
   SaveCrawlState: (st: unknown) => mockSaveCrawlState(st),
   SendCrawlResult: (url: string, role: string, overwrite: boolean) =>

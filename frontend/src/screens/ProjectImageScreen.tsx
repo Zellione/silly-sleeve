@@ -4,7 +4,7 @@ import { useToast } from '../components/ToastProvider';
 import {
   SparksIcon, UploadIcon, CheckIcon, ImageIcon,
 } from '../icons';
-import { GenerateProjectImage, GetProjectImage, SaveProjectImage } from '../../wailsjs/go/app/App';
+import { GenerateProjectImage, GetProjectImage, SaveProjectImage } from '@/api/app';
 import { useBundleSave } from '../components/useBundleSave';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';

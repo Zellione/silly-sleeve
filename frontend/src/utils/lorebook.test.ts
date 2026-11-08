@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { reorderByDrag, remapForMerge, renumberFromZero } from './lorebook';
-import { lorebook } from '../../wailsjs/go/models';
+import { lorebook } from '@/api/models';
 
 const mk = (uid: number, order: number, comment = ''): lorebook.Entry =>
   new lorebook.Entry({ uid, order, comment });

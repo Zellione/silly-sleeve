@@ -13,7 +13,7 @@ const mockGetComfyUNets = vi.fn().mockResolvedValue([]);
 const mockGetComfyCLIPs = vi.fn().mockResolvedValue([]);
 const mockGetComfyVAEs = vi.fn().mockResolvedValue([]);
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GenerateProjectImage: (...args: any[]) => mockGenerateProjectImage(...args),
   GetProjectImage: () => mockGetProjectImage(),
   SaveProjectImage: (data: number[]) => mockSaveProjectImage(data),

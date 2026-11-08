@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EditorScreen from './EditorScreen';
 import { ToastProvider } from '../components/ToastProvider';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 const mockCharacter: compose.Character = compose.Character.createFrom({
   id: 1,
@@ -41,14 +41,15 @@ const mockGetCrawlForCharacter = vi.fn();
 const mockCountTokens = vi.fn();
 const mockGenerateField = vi.fn();
 const mockGenerateCharacterBulk = vi.fn();
-const mockPickSaveBundle = vi.fn();
 const mockSaveProjectBundle = vi.fn();
+const mockSaveProjectAsName = vi.fn();
 const mockGetSettings = vi.fn();
 const mockGetProjectFieldEndpoints = vi.fn();
 const mockSetProjectFieldEndpoint = vi.fn();
-const mockImportCard = vi.fn();
+const mockImportCardFile = vi.fn();
+const mockUploadFile = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCharacters: () => mockGetCharacters(),
   GetActiveCharacter: () => mockGetActiveCharacter(),
   AddCharacter: () => mockAddCharacter(),
@@ -59,12 +60,18 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   CountTokens: (t: any) => mockCountTokens(t),
   GenerateField: (fieldID: any, customPrompt: any) => mockGenerateField(fieldID, customPrompt),
   GenerateCharacterBulk: (locked: any) => mockGenerateCharacterBulk(locked),
-  PickSaveBundle: () => mockPickSaveBundle(),
   SaveProjectBundle: (p: any) => mockSaveProjectBundle(p),
+  SaveProjectAsName: (name: any) => mockSaveProjectAsName(name),
   GetSettings: () => mockGetSettings(),
   GetProjectFieldEndpoints: () => mockGetProjectFieldEndpoints(),
   SetProjectFieldEndpoint: (slot: any, id: any) => mockSetProjectFieldEndpoint(slot, id),
-  ImportCard: () => mockImportCard(),
+  ImportCardFile: (path: any) => mockImportCardFile(path),
+}));
+
+vi.mock('@/api/client', () => ({
+  uploadFile: (file: File) => mockUploadFile(file),
+  call: vi.fn(),
+  downloadURL: (p: string) => `/api/download?path=${encodeURIComponent(p)}`,
 }));
 
 const renderWithProviders = (ui: React.ReactElement) =>
@@ -88,6 +95,11 @@ describe('EditorScreen', () => {
     mockGetSettings.mockResolvedValue({ endpoints: [], fieldEndpoints: {}, autoSaveMode: 'off' });
     mockGetProjectFieldEndpoints.mockResolvedValue({});
     mockSetProjectFieldEndpoint.mockResolvedValue(undefined);
+    mockSaveProjectAsName.mockResolvedValue('/mock/test.slv');
+    mockSaveProjectBundle.mockResolvedValue(undefined);
+    mockUploadFile.mockResolvedValue({ path: '/uploads/card.png', name: 'card.png' });
+    // Browser save flow asks for a name via prompt; default to 'Elara'.
+    vi.spyOn(window, 'prompt').mockReturnValue('Elara');
   });
 
   it('shows an empty state when the project has no characters', async () => {
@@ -459,7 +471,7 @@ describe('EditorScreen', () => {
   });
 
   it('calls SaveProjectBundle on save project click', async () => {
-    mockPickSaveBundle.mockResolvedValue('/mock/test.slv');
+    mockSaveProjectAsName.mockResolvedValue('/mock/test.slv');
     mockSaveProjectBundle.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderEditor();
@@ -471,12 +483,15 @@ describe('EditorScreen', () => {
     await user.click(screen.getByText('Save project'));
 
     await waitFor(() => {
-      expect(mockPickSaveBundle).toHaveBeenCalled();
+      // Browser save flow: prompt for a name, then save the bundle.
+      expect(window.prompt).toHaveBeenCalled();
+      expect(mockSaveProjectAsName).toHaveBeenCalledWith('Elara');
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/mock/test.slv');
     });
   });
 
   it('handles save project error gracefully', async () => {
-    mockPickSaveBundle.mockRejectedValue(new Error('permission denied'));
+    mockSaveProjectAsName.mockRejectedValue(new Error('permission denied'));
     const user = userEvent.setup();
     renderEditor();
 
@@ -553,7 +568,7 @@ describe('EditorScreen', () => {
     mockSaveProjectBundle.mockImplementation(async () => {
       callOrder.push('bundle');
     });
-    mockPickSaveBundle.mockResolvedValue('/mock/test.slv');
+    mockSaveProjectAsName.mockResolvedValue('/mock/test.slv');
     const user = userEvent.setup();
     renderEditor();
 
@@ -619,7 +634,7 @@ describe('EditorScreen', () => {
       stats: [],
       dirty: false,
     });
-    mockImportCard.mockResolvedValue({
+    mockImportCardFile.mockResolvedValue({
       character: importedChar,
       importedEntries: 3,
     });
@@ -635,10 +650,14 @@ describe('EditorScreen', () => {
     const importBtn = screen.getByRole('button', { name: /import card/i });
     expect(importBtn).toBeInTheDocument();
 
-    await user.click(importBtn);
+    // The button opens the native file dialog; in the test we pick the file
+    // by uploading directly into the hidden input.
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'pix.png', { type: 'image/png' }));
 
     await waitFor(() => {
-      expect(mockImportCard).toHaveBeenCalled();
+      expect(mockUploadFile).toHaveBeenCalledTimes(1);
+      expect(mockImportCardFile).toHaveBeenCalledWith('/uploads/card.png');
     });
 
     await waitFor(() => {
@@ -647,22 +666,18 @@ describe('EditorScreen', () => {
     });
   });
 
-  it('is a no-op when the dialog is cancelled', async () => {
-    mockImportCard.mockResolvedValue(null);
-
-    const user = userEvent.setup();
+  it('is a no-op when the dialog is dismissed without a file', async () => {
     renderEditor();
 
     await waitFor(() => {
       expect(screen.getByText('Add character')).toBeInTheDocument();
     });
 
-    const importBtn = screen.getByRole('button', { name: /import card/i });
-    await user.click(importBtn);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('change'));
 
-    await waitFor(() => {
-      expect(mockImportCard).toHaveBeenCalled();
-    });
+    expect(mockUploadFile).not.toHaveBeenCalled();
+    expect(mockImportCardFile).not.toHaveBeenCalled();
 
     // Assert no error toast and character count unchanged
     expect(screen.queryByText(/Import failed/)).not.toBeInTheDocument();

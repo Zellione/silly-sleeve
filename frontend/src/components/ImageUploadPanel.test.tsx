@@ -1,19 +1,7 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ImageUploadPanel from './ImageUploadPanel';
-
-const mockReadImageFile = vi.fn();
-vi.mock('../../wailsjs/go/app/App', () => ({
-  ReadImageFile: (path: string) => mockReadImageFile(path),
-}));
-
-vi.mock('../../wailsjs/runtime/runtime', () => ({
-  OnFileDrop: vi.fn(),
-  OnFileDropOff: vi.fn(),
-}));
-
-import { OnFileDrop, OnFileDropOff } from '../../wailsjs/runtime/runtime';
 
 const baseProps = {
   aspectRatio: '3/4',
@@ -25,54 +13,78 @@ const baseProps = {
   onUseImage: vi.fn(),
 };
 
-describe('ImageUploadPanel native file drop', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockReadImageFile.mockResolvedValue({
-      name: 'dropped.png', size: 2 * 1024 * 1024, dataUrl: 'data:image/png;base64,AAAA',
-    });
-  });
+function makeImageFile(name = 'dropped.png', size = 2048): File {
+  return new File([new Uint8Array(size)], name, { type: 'image/png' });
+}
 
-  it('marks the dropzone as a Wails drop target', () => {
+// Dispatch a standard HTML5 drop carrying files onto the dropzone. jsdom's
+// DragEvent constructor does not reliably carry a DataTransfer, so the
+// dataTransfer property is attached to a bubbling Event — React's synthetic
+// handler only reads e.dataTransfer.files.
+function dropFile(zone: HTMLElement, file: File) {
+  const event = new Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'dataTransfer', {
+    value: { files: [file] },
+  });
+  zone.dispatchEvent(event);
+}
+
+describe('ImageUploadPanel', () => {
+  it('shows a file dropped on the dropzone', async () => {
     const { container } = render(<ImageUploadPanel {...baseProps} />);
     const zone = container.querySelector('.img-dropzone') as HTMLElement;
-    expect(zone.style.getPropertyValue('--wails-drop-target')).toBe('drop');
-  });
 
-  it('registers a native file-drop handler and unregisters on unmount', () => {
-    const { unmount } = render(<ImageUploadPanel {...baseProps} />);
-    expect(OnFileDrop).toHaveBeenCalledWith(expect.any(Function), true);
-    unmount();
-    expect(OnFileDropOff).toHaveBeenCalled();
-  });
-
-  it('reads a dropped file path and shows the file', async () => {
-    render(<ImageUploadPanel {...baseProps} />);
-    const dropCallback = (OnFileDrop as unknown as Mock).mock.calls[0][0];
-
-    dropCallback(0, 0, ['/home/user/pics/dropped.png']);
+    dropFile(zone, makeImageFile('dropped.png', 2 * 1024 * 1024));
 
     await waitFor(() => {
-      expect(mockReadImageFile).toHaveBeenCalledWith('/home/user/pics/dropped.png');
       expect(document.body.textContent).toContain('dropped.png');
-      expect(document.body.textContent).toContain('2.0 MB');
     });
+    expect(document.body.textContent).toContain('2.0 MB');
   });
 
-  it('ignores an empty drop', () => {
-    render(<ImageUploadPanel {...baseProps} />);
-    const dropCallback = (OnFileDrop as unknown as Mock).mock.calls[0][0];
-    dropCallback(0, 0, []);
-    expect(mockReadImageFile).not.toHaveBeenCalled();
+  it('ignores a drop without files', () => {
+    const { container } = render(<ImageUploadPanel {...baseProps} />);
+    const zone = container.querySelector('.img-dropzone') as HTMLElement;
+
+    const event = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'dataTransfer', { value: { files: [] } });
+    zone.dispatchEvent(event);
+
+    expect(document.body.textContent).toContain('None — drop or browse on the left.');
   });
 
   it('passes the dropped image data URL to onUseImage', async () => {
     const onUseImage = vi.fn();
-    render(<ImageUploadPanel {...baseProps} onUseImage={onUseImage} />);
-    const dropCallback = (OnFileDrop as unknown as Mock).mock.calls[0][0];
-    dropCallback(0, 0, ['/home/user/pics/dropped.png']);
+    const { container } = render(<ImageUploadPanel {...baseProps} onUseImage={onUseImage} />);
+    const zone = container.querySelector('.img-dropzone') as HTMLElement;
+
+    dropFile(zone, makeImageFile('dropped.png', 1024));
+
     await waitFor(() => screen.getByText('Use image'));
     await userEvent.click(screen.getByText('Use image'));
-    expect(onUseImage).toHaveBeenCalledWith('data:image/png;base64,AAAA');
+    expect(onUseImage).toHaveBeenCalledWith(
+      expect.stringMatching(/^data:image\/png;base64,/),
+    );
+  });
+
+  it('reads a file chosen through the browse input', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ImageUploadPanel {...baseProps} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await user.upload(input, makeImageFile('picked.png', 512));
+
+    await waitFor(() => {
+      expect(document.body.textContent).toContain('picked.png');
+    });
+  });
+
+  it('clears the selection with "Choose a different file"', async () => {
+    const { container } = render(<ImageUploadPanel {...baseProps} />);
+    const zone = container.querySelector('.img-dropzone') as HTMLElement;
+    dropFile(zone, makeImageFile('one.png', 512));
+    await waitFor(() => screen.getByText('Choose a different file'));
+    await userEvent.click(screen.getByText('Choose a different file'));
+    expect(document.body.textContent).toContain('None — drop or browse on the left.');
   });
 });

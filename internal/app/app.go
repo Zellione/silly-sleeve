@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	"silly-sleeve/internal/cardimport"
@@ -34,6 +33,11 @@ type App struct {
 	projectImage    []byte
 	fieldEndpoints  map[string]int
 
+	// eventSink receives backend→UI events (SSE publish on the server side).
+	// Wired by the server layer via SetEventSink; nil in unit tests, where
+	// emit is a no-op.
+	eventSink func(name string, data any)
+
 	// Lorebook extraction work in progress. Crawled pages sent to the lorebook
 	// are staged here rather than becoming entries; candidates and suggestions
 	// are proposals awaiting the user's review. None of it is part of the
@@ -57,17 +61,20 @@ func NewApp() *App {
 	a.comfy = &ComfyUIService{
 		settings: &a.settings,
 		ctx:      ctxFn,
+		emit:     a.emit,
 	}
 	a.charGen = NewCharacterGenerator(ctxFn, llm.DefaultCompleter)
-	a.project = &ProjectManager{ctx: ctxFn}
+	a.project = &ProjectManager{}
 	a.loreGen = loreextract.NewExtractor(llm.DefaultCompleter)
 	a.loreConn = loreextract.NewConnector(llm.DefaultCompleter)
 	return a
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
+// Startup initializes the app for serving: it stores the application context
+// (used to bound long-running operations) and loads settings, the crawl cache
+// and the library. It is excluded from the RPC bridge surface by the server
+// layer. Unit tests call it directly.
+func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	s, err := settings.Load()
 	if err != nil {
@@ -96,11 +103,12 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-// Startup exposes the unexported lifecycle hook to the main package for
-// wiring into Wails' OnStartup. It is a package-level function (not a method
-// on App) so it is not picked up as a bound, frontend-callable method.
-func Startup(a *App) func(context.Context) {
-	return a.startup
+// SetEventSink wires the backend event publisher (the SSE hub on the server
+// side). It is excluded from the RPC bridge surface by the server layer.
+func (a *App) SetEventSink(fn func(name string, data any)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.eventSink = fn
 }
 
 // GetSettings returns the current settings.
@@ -358,11 +366,6 @@ func (a *App) GetCrawlForCharacter(id int) *crawler.CrawlResult {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.crawlForSourceURLLocked(a.sourceURLForCharLocked(id))
-}
-
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
 // GetCharacters returns all characters in the current project.
@@ -628,11 +631,6 @@ func (a *App) SetProjectFieldEndpoint(slot string, endpointID int) {
 	a.fieldEndpoints[slot] = endpointID
 }
 
-// PickSaveBundle opens a native save dialog for creating a .slv project bundle.
-func (a *App) PickSaveBundle() (string, error) {
-	return a.project.PickSaveBundle()
-}
-
 // SaveProjectBundle writes the current project state as a .slv bundle.
 func (a *App) SaveProjectBundle(filePath string) error {
 	a.mu.Lock()
@@ -722,11 +720,6 @@ func (a *App) registerInLibrary(filePath string, manifest project.ProjectManifes
 	}
 }
 
-// PickOpenBundle opens a native file picker for loading a .slv project bundle.
-func (a *App) PickOpenBundle() (string, error) {
-	return a.project.PickOpenBundle()
-}
-
 // OpenProjectBundle loads a project from a .slv bundle file.
 func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error) {
 	b, err := a.project.ReadBundle(filePath)
@@ -770,11 +763,6 @@ func (a *App) OpenProjectBundle(filePath string) (project.ProjectManifest, error
 	a.registerInLibrary(filePath, b.Manifest, active)
 
 	return b.Manifest, nil
-}
-
-// PickExportFolder opens a native folder picker for exporting characters.
-func (a *App) PickExportFolder() (string, error) {
-	return a.project.PickExportFolder()
 }
 
 // ExportCharacter exports a single character as SillyTavern-compatible JSON.
@@ -825,46 +813,10 @@ func (a *App) ExportLorebook(folderPath string) (string, error) {
 	return a.project.ExportLorebook(entries, folderPath)
 }
 
-// ImportLorebook opens a file dialog, reads a lorebook JSON file, and returns
-// the parsed entries WITHOUT mutating app state. Merge/replace is decided by the
-// frontend. A cancelled dialog returns (nil, nil).
-func (a *App) ImportLorebook() ([]lorebook.Entry, error) {
-	path, err := a.project.PickLorebookFile()
-	if err != nil {
-		return nil, err
-	}
-	if path == "" {
-		return nil, nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read lorebook file: %w", err)
-	}
-	return lorebook.ParseWorldInfo(data)
-}
-
-// ImportCardResult is returned by ImportCard after a successful import.
+// ImportCardResult is returned by a card import after a successful parse.
 type ImportCardResult struct {
 	Character       compose.Character `json:"character"`
 	ImportedEntries int               `json:"importedEntries"`
-}
-
-// ImportCard opens a file dialog, parses a SillyTavern card (PNG v2/v3 or JSON),
-// adds it as a new character in the current project, and merges any embedded
-// character_book entries into the lorebook. A cancelled dialog returns (nil, nil).
-func (a *App) ImportCard() (*ImportCardResult, error) {
-	path, err := a.project.PickCardFile()
-	if err != nil {
-		return nil, err
-	}
-	if path == "" {
-		return nil, nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read card file: %w", err)
-	}
-	return a.importCardData(data)
 }
 
 // importCardData parses card bytes, appends the character, and merges lorebook

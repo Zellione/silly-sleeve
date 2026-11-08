@@ -1,12 +1,12 @@
 # Project Overview
 
-This is a cross-platform desktop application built with **Wails v2** (Go backend + React frontend) for creating SillyTavern character cards and lore books.
+This is a local web application (Go backend + React frontend) for creating SillyTavern character cards and lore books. The Go backend does the heavy work — wiki scraping, LLM calls, ComfyUI jobs, card/lorebook assembly, exports — and serves the React app to a normal browser over loopback; the browser handles input and output only.
 
 ## Tech Stack
 
-- **Language:** Go 1.25+
-- **Frontend:** React 18 + Vite + TypeScript
-- **Desktop bridge:** Wails v2
+- **Language:** Go 1.26+
+- **Frontend:** React 18 + Vite + TypeScript (thin client)
+- **Bridge:** local HTTP server (stdlib `net/http`) + Server-Sent Events
 - **Lint:** `golangci-lint` (Go), ESLint (React)
 - **Test:** Go standard `testing` + `stretchr/testify`; Vitest + Testing Library (React)
 - **Config:** `os.UserConfigDir()` for cross-platform config storage
@@ -15,44 +15,49 @@ This is a cross-platform desktop application built with **Wails v2** (Go backend
 
 ## Build & Run
 
-Requires [Wails CLI](https://wails.io/docs/gettingstarted/installation).
+Requires Go 1.26+ and Node 22+. No system GUI libraries — the binary
+links without CGo and runs headless.
 
-### Linux prerequisites
+### 1. Build the frontend
 
 ```bash
-# Ubuntu 22.04+
-sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev
-# Ubuntu 20.04 / older Debian
-sudo apt install libgtk-3-dev libwebkit2gtk-4.0-dev
-# Arch
-sudo pacman -S gtk3 webkit2gtk-4.1
-# Fedora
-sudo dnf install gtk3-devel webkit2gtk3-devel
+cd frontend && npm install && npm run build && cd ..
 ```
+
+The built `frontend/dist` is embedded into the binary via `go:embed`.
+
+### 2. Run
+
+```bash
+go run .
+```
+
+Starts the backend on `http://127.0.0.1:8090` (next free port if taken) and
+opens a browser. Flags: `-listen 127.0.0.1:PORT`, `-no-browser`.
 
 ### Development (hot-reload)
 
+The backend serves the built frontend; `go run .` alone is sufficient. The Vite
+ dev server is optional, for source hot-reload only:
+
 ```bash
-cd frontend && npm install && cd ..
-wails dev
+# Backend — API, SSE and static frontend on 127.0.0.1:8090
+# (build frontend/dist first with `npm run build`)
+go run . -no-browser
+
+# Optional — hot-reload UI on http://localhost:5173 (proxies /api to :8090)
+cd frontend && npm install && npm run dev
 ```
 
 ### Production build
 
 ```bash
-cd frontend && npm install && cd ..
-wails build -clean
+cd frontend && npm install && npm run build && cd ..
+go build -o build/bin/silly-sleeve .
 ```
 
-> With `libwebkit2gtk-4.1-dev` (Ubuntu 22.04+), add the build tag:
-> ```bash
-> wails build -clean -tags webkit2_41
-> ```
-
-> In headless environments without GTK3 / WebKit2GTK dev libraries, the
-> CGo link step will fail. This is expected — verify Go compilation with
-> `go build ./...` and the frontend with `cd frontend && npm run build`
-> instead.
+Cross-compiling is a plain `GOOS`/`GOARCH` build (no CGo): e.g.
+`GOOS=windows GOARCH=amd64 go build -o build/bin/silly-sleeve.exe .`
 
 ## Lint
 
@@ -152,7 +157,7 @@ Only ever load references if needed !
 - **Match the README's tone.** Practical, mental-model-first, prescriptive ("Reach for it when…"). No marketing fluff.
 - **Update the `Last updated` date** in `ROADMAP.md` when making material changes.
 - **Run all lint + test + coverage checks before committing.** Execute `go vet ./...`, `golangci-lint run ./...`, `go test ./... -race -cover`, `cd frontend && npm run lint`, and `cd frontend && npm run test:coverage && cd ..`. Only commit when all commands exit with **0 errors, 0 warnings, and ≥ 80% coverage**.
-- **Run `wails build -clean` at milestone completion** to verify the binary compiles and links correctly on the target platform. Add `-tags webkit2_41` on Ubuntu 22.04+ with `libwebkit2gtk-4.1-dev`.
+- **Run `go build ./...` at milestone completion** to verify the backend compiles cleanly; `cd frontend && npm run build` verifies the frontend. (The binary embeds `frontend/dist`, so build the frontend first if you also want to run it.)
 
 ### Never
 
@@ -193,8 +198,9 @@ For each substep (e.g., `1.1`, `1.2`):
    golangci-lint run ./...
    go test ./... -race -cover
    cd frontend && npm run lint && npm run test:coverage && cd ..
-   wails build -clean
+   go build -o build/bin/silly-sleeve .
    ```
+   (Build the frontend first — `cd frontend && npm run build && cd ..` — since the binary embeds `frontend/dist`.)
 3. Verify **0 errors, 0 warnings**, and **≥80% coverage**.
 4. Commit using the substep number in the subject line:
    ```text
@@ -211,10 +217,9 @@ For each substep (e.g., `1.1`, `1.2`):
    go vet ./...
    golangci-lint run ./...
    go test ./... -race -cover
-   cd frontend && npm run lint && npm run test:coverage && cd ..
-   wails build -clean
+   cd frontend && npm run lint && npm run test:coverage && npm run build && cd ..
+   go build -o build/bin/silly-sleeve .
    ```
-   > Add `-tags webkit2_41` on Ubuntu 22.04+ with `libwebkit2gtk-4.1-dev`.
 - **Do not push.**
 
 ### 4. Approval Gate
@@ -239,7 +244,13 @@ Once approved:
   ```bash
   git push -u origin <branch-name>
   ```
-- Open a Pull Request describing each commit and its corresponding substep.
+- Open a Pull Request whose description carries the approval information as a
+  standing part of the review — same content as `APPROVAL_REQUEST.md`:
+  - Branch name and the approval date.
+  - Commits mapped to their ROADMAP substeps.
+  - Lint and coverage summary (the quality-gate results).
+  - Any deviations or assumptions made.
+  - `git diff --stat` summary.
 - Ensure CI passes before merge.
 
 If rejected:

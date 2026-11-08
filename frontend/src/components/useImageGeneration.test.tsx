@@ -17,7 +17,7 @@ const mockGetLoRAs = vi.fn();
 const mockGetWorkflows = vi.fn();
 const mockGetTemplate = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetComfySamplers: () => mockGetSamplers(),
   GetComfySchedulers: () => mockGetSchedulers(),
   GetComfyCheckpoints: () => mockGetCheckpoints(),
@@ -29,7 +29,7 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   GetComfyWorkflowTemplate: (id: string) => mockGetTemplate(id),
 }));
 
-vi.mock('../../wailsjs/runtime/runtime', () => ({
+vi.mock('@/api/events', () => ({
   EventsOn: vi.fn(),
   EventsOff: vi.fn(),
 }));

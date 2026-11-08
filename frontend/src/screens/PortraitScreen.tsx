@@ -8,9 +8,9 @@ import {
   GetCharacters, SetActiveCharacter, GetActiveCharacter,
   GeneratePortrait, GenerateImagePrompt,
   GetPortrait, SavePortrait,
-} from '../../wailsjs/go/app/App';
+} from '@/api/app';
 import { useBundleSave } from '../components/useBundleSave';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 import ImageUploadPanel from '../components/ImageUploadPanel';
 import GenerationParamsPanel from '../components/GenerationParamsPanel';
 import SplitModelFields from '../components/SplitModelFields';

@@ -1,4 +1,4 @@
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 /** Rough token estimate over a character's prose fields (~1.35 tokens/word). */
 export function estimateCharTokens(c: compose.Character): number {

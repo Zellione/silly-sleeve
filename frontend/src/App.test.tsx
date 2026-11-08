@@ -2,17 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import App from './App';
-import { settings } from '../wailsjs/go/models';
+import { settings } from '@/api/models';
 
 const mockGetSettings = vi.fn();
 const mockNewProject = vi.fn();
 const mockSaveProjectBundle = vi.fn();
-const mockPickSaveBundle = vi.fn();
+const mockSaveProjectAsName = vi.fn();
+const mockPrompt = vi.fn();
 
-vi.mock('../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetSettings: () => mockGetSettings(),
   SaveProjectBundle: (p: string) => mockSaveProjectBundle(p),
-  PickSaveBundle: () => mockPickSaveBundle(),
+  SaveProjectAsName: (name: string) => mockSaveProjectAsName(name),
   SaveSettings: vi.fn(),
   TestLLMEndpoint: vi.fn(),
   GetCachedCrawl: vi.fn().mockResolvedValue(null),
@@ -69,7 +70,10 @@ describe('App', () => {
     vi.clearAllMocks();
     mockNewProject.mockResolvedValue('/lib/Untitled.slv');
     mockSaveProjectBundle.mockResolvedValue(undefined);
-    mockPickSaveBundle.mockResolvedValue('/picked/path.slv');
+    mockSaveProjectAsName.mockResolvedValue('/lib/My Project.slv');
+    // Browsers ask for a save name via prompt; default to a real answer.
+    mockPrompt.mockReturnValue('My Project');
+    vi.spyOn(window, 'prompt').mockImplementation(mockPrompt);
   });
 
   it('renders the projects picker on start', async () => {
@@ -241,11 +245,11 @@ describe('App', () => {
     await waitFor(() => {
       expect(mockSaveProjectBundle).toHaveBeenCalledWith('/lib/Untitled.slv');
     });
-    expect(mockPickSaveBundle).not.toHaveBeenCalled();
+    expect(mockSaveProjectAsName).not.toHaveBeenCalled();
     expect(screen.getByText('Project saved')).toBeInTheDocument();
   });
 
-  it('falls back to the save dialog when the project has no bundle path', async () => {
+  it('falls back to a name prompt when the project has no bundle path', async () => {
     const user = userEvent.setup();
     mockGetSettings.mockResolvedValue(settings.Settings.createFrom({ endpoints: [] }));
     mockNewProject.mockResolvedValue('');
@@ -254,9 +258,10 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/picked/path.slv');
+      expect(mockSaveProjectBundle).toHaveBeenCalledWith('/lib/My Project.slv');
     });
-    expect(mockPickSaveBundle).toHaveBeenCalledTimes(1);
+    expect(mockPrompt).toHaveBeenCalledTimes(1);
+    expect(mockSaveProjectAsName).toHaveBeenCalledWith('My Project');
   });
 
   it('shows an error toast when saving fails', async () => {

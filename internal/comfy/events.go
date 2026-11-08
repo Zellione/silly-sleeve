@@ -1,17 +1,13 @@
 package comfy
 
-import (
-	"context"
+// EmitFunc pushes a backend→UI event. The server layer wires it to the SSE
+// hub; a nil emitter (unit tests) makes emitEvent a no-op.
+type EmitFunc func(name string, data any)
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-)
-
-// emitEvent sends a Wails event to the frontend.
-// When the context is not a valid Wails application context (e.g. in tests),
-// the call is silently ignored.
-func emitEvent(ctx context.Context, name string, data any) {
-	if ctx == nil {
+// emitEvent sends a backend→UI event through the emitter.
+func emitEvent(emit EmitFunc, name string, data any) {
+	if emit == nil {
 		return
 	}
-	runtime.EventsEmit(ctx, name, data)
+	emit(name, data)
 }

@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SettingsScreen from './SettingsScreen';
 import { ToastProvider } from '../components/ToastProvider';
-import { settings, prompts, llm } from '../../wailsjs/go/models';
+import { settings, prompts, llm } from '@/api/models';
 
 const mockGetSettings = vi.fn();
 const mockSaveSettings = vi.fn();
@@ -12,7 +12,7 @@ const mockGetPromptTemplates = vi.fn();
 const mockGetDefaultPromptTemplates = vi.fn();
 const mockSavePromptTemplates = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetSettings: () => mockGetSettings(),
   SaveSettings: (...args: any[]) => mockSaveSettings(...args),
   TestLLMEndpoint: (...args: any[]) => mockTestLLMEndpoint(...args),

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   GetLorebookSuggestions, SuggestLorebookConnections, ApplyLorebookSuggestions,
-} from '../../../wailsjs/go/app/App';
-import { loreextract, lorebook, compose } from '../../../wailsjs/go/models';
+} from '@/api/app';
+import { loreextract, lorebook, compose } from '@/api/models';
 import { useToast } from '../ToastProvider';
 import { errorMessage } from '../../utils/errorMessage';
 

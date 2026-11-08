@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Infobox } from './Infobox';
-import { crawler } from '../../wailsjs/go/models';
+import { crawler } from '@/api/models';
 
 const entry = (key: string, value: string, section?: string) =>
   crawler.InfoboxEntry.createFrom({ key, value, section });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { GetSettings } from '../../wailsjs/go/app/App';
+import { GetSettings } from '@/api/app';
 
 interface UseAutoSaveOptions {
   projectPath: string;

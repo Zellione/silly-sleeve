@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CharacterStrip } from './CharacterStrip';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 const chars = [
   compose.Character.createFrom({ id: 1, name: 'Elara', epithet: 'The Lark' }),

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { CountTokens } from '../../wailsjs/go/app/App';
-import { compose } from '../../wailsjs/go/models';
+import { CountTokens } from '@/api/app';
+import { compose } from '@/api/models';
 
 export interface FieldSpec {
   id: string;

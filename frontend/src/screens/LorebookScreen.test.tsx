@@ -8,18 +8,19 @@ const mockGetLorebook = vi.fn();
 const mockSaveLorebook = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 const mockExportLorebook = vi.fn();
-const mockPickExportFolder = vi.fn();
+const mockGetExportDir = vi.fn();
 const mockGetCharacters = vi.fn();
-const mockImportLorebook = vi.fn();
+const mockImportLorebookFile = vi.fn();
+const mockUploadFile = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetLorebook: () => mockGetLorebook(),
   SaveLorebook: (...args: unknown[]) => mockSaveLorebook(...args),
   SaveProjectBundle: (...args: unknown[]) => mockSaveProjectBundle(...args),
   ExportLorebook: (...args: unknown[]) => mockExportLorebook(...args),
-  PickExportFolder: () => mockPickExportFolder(),
+  GetExportDir: () => mockGetExportDir(),
   GetCharacters: () => mockGetCharacters(),
-  ImportLorebook: () => mockImportLorebook(),
+  ImportLorebookFile: (path: string) => mockImportLorebookFile(path),
   // The Extract tab's bindings. It only mounts when that tab is selected, but
   // the module mock replaces the whole module, so they have to exist here.
   GetStagedSources: () => Promise.resolve([]),
@@ -33,6 +34,12 @@ vi.mock('../../wailsjs/go/app/App', () => ({
   GetLorebookSuggestions: () => Promise.resolve([]),
   SuggestLorebookConnections: () => Promise.resolve([]),
   ApplyLorebookSuggestions: () => Promise.resolve({ lorebook: [], characters: [], staged: [], activeCharId: 0 }),
+}));
+
+vi.mock('@/api/client', () => ({
+  uploadFile: (file: File) => mockUploadFile(file),
+  call: vi.fn(),
+  downloadURL: (p: string) => `/api/download?path=${encodeURIComponent(p)}`,
 }));
 
 const renderWithToast = (ui: React.ReactElement) =>
@@ -57,12 +64,13 @@ describe('LorebookScreen', () => {
     mockGetLorebook.mockResolvedValue([]);
     mockSaveLorebook.mockResolvedValue(undefined);
     mockSaveProjectBundle.mockResolvedValue(undefined);
-    mockPickExportFolder.mockResolvedValue('');
+    mockGetExportDir.mockResolvedValue('');
     mockGetCharacters.mockResolvedValue([
       { id: 7, name: 'Aria' },
       { id: 8, name: 'Bram' },
     ]);
-    mockImportLorebook.mockResolvedValue([]);
+    mockUploadFile.mockResolvedValue({ path: '/uploads/lorebook.json', name: 'lorebook.json' });
+    mockImportLorebookFile.mockResolvedValue([]);
   });
 
   it('renders after loading', async () => {
@@ -233,7 +241,7 @@ describe('LorebookScreen', () => {
   });
 
   it('calls export on export button click', async () => {
-    mockPickExportFolder.mockResolvedValue('/mock/export/path');
+    mockGetExportDir.mockResolvedValue('/mock/export/path');
     mockExportLorebook.mockResolvedValue('/mock/export/path/world_info.json');
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);
@@ -242,7 +250,7 @@ describe('LorebookScreen', () => {
     });
     await user.click(screen.getByText('Export world_info.json'));
     await waitFor(() => {
-      expect(mockPickExportFolder).toHaveBeenCalled();
+      expect(mockGetExportDir).toHaveBeenCalled();
       expect(mockExportLorebook).toHaveBeenCalledWith('/mock/export/path');
     });
   });
@@ -358,11 +366,14 @@ describe('LorebookScreen', () => {
 
   it('imports and merges, remapping UIDs onto existing entries', async () => {
     mockGetLorebook.mockResolvedValue([{ uid: 0, comment: 'Existing', key: [] }]);
-    mockImportLorebook.mockResolvedValue([{ uid: 0, comment: 'Imported', key: [] }]);
+    mockImportLorebookFile.mockResolvedValue([{ uid: 0, comment: 'Imported', key: [] }]);
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);
     await waitFor(() => expect(screen.getByText('Existing')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    // The button opens the native dialog; pick the file via the hidden input.
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'lorebook.json', { type: 'application/json' }));
     await user.click(await screen.findByRole('button', { name: /^Merge/i }));
     await waitFor(() => {
       const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; comment: string }>;
@@ -373,11 +384,12 @@ describe('LorebookScreen', () => {
 
   it('imports and replaces, renumbering from zero', async () => {
     mockGetLorebook.mockResolvedValue([{ uid: 0, comment: 'Existing', key: [] }]);
-    mockImportLorebook.mockResolvedValue([{ uid: 9, comment: 'Imported', key: [] }]);
+    mockImportLorebookFile.mockResolvedValue([{ uid: 9, comment: 'Imported', key: [] }]);
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);
     await waitFor(() => expect(screen.getByText('Existing')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'lorebook.json', { type: 'application/json' }));
     await user.click(await screen.findByRole('button', { name: /^Replace/i }));
     await waitFor(() => {
       const saved = mockSaveLorebook.mock.calls.at(-1)![0] as Array<{ uid: number; comment: string }>;
@@ -386,22 +398,25 @@ describe('LorebookScreen', () => {
   });
 
   it('does nothing when import is cancelled or empty', async () => {
-    mockImportLorebook.mockResolvedValue([]);
+    mockImportLorebookFile.mockResolvedValue([]);
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);
     await waitFor(() => expect(screen.getByText('New entry')).toBeInTheDocument());
     mockSaveLorebook.mockClear();
-    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    // An empty file yields no entries: the merge/replace dialog stays closed.
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'empty.json', { type: 'application/json' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: /^Merge/i })).toBeNull());
     expect(mockSaveLorebook).not.toHaveBeenCalled();
   });
 
   it('shows an error toast when import fails', async () => {
-    mockImportLorebook.mockRejectedValue(new Error('file unreadable'));
+    mockImportLorebookFile.mockRejectedValue(new Error('file unreadable'));
     const user = userEvent.setup();
     renderWithToast(<LorebookScreen />);
     await waitFor(() => expect(screen.getByText('New entry')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /Import \.json/i }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array(16)], 'bad.json', { type: 'application/json' }));
     await waitFor(() => expect(screen.getByText('Import failed')).toBeInTheDocument());
     expect(mockSaveLorebook).not.toHaveBeenCalled();
   });

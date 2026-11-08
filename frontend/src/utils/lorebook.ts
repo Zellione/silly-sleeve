@@ -1,4 +1,4 @@
-import { lorebook } from '../../wailsjs/go/models';
+import { lorebook } from '@/api/models';
 
 type Entry = lorebook.Entry;
 

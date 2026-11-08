@@ -13,8 +13,8 @@ import { EndpointFlyout } from '../components/settings/EndpointFlyout';
 import { ComfyUISettings } from '../components/settings/ComfyUISettings';
 import { CrawlerSettings } from '../components/settings/CrawlerSettings';
 import { PromptTemplateEditor } from '../components/settings/PromptTemplateEditor';
-import { GetSettings, SaveSettings, TestLLMEndpoint } from '../../wailsjs/go/app/App';
-import { settings } from '../../wailsjs/go/models';
+import { GetSettings, SaveSettings, TestLLMEndpoint } from '@/api/app';
+import { settings } from '@/api/models';
 import { errorMessage } from '../utils/errorMessage';
 
 /* ─── Section nav ───────────────────────────────────────── */

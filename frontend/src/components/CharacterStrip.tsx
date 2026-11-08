@@ -1,7 +1,7 @@
 import React from 'react';
 import { PlusIcon } from '../icons';
 import { arrayBufferToDataURL } from '../utils/image';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 export const CharacterStrip: React.FC<{
   characters: compose.Character[];

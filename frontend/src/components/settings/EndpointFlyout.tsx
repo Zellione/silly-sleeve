@@ -4,8 +4,8 @@ import {
 } from '../../icons';
 import { useToast } from '../ToastProvider';
 import { AuthTokenBlock } from '../AuthTokenBlock';
-import { TestLLMEndpoint } from '../../../wailsjs/go/app/App';
-import { settings } from '../../../wailsjs/go/models';
+import { TestLLMEndpoint } from '@/api/app';
+import { settings } from '@/api/models';
 import { errorMessage } from '../../utils/errorMessage';
 
 export type EndpointFlyoutProps = Readonly<{

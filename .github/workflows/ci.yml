@@ -130,27 +130,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # frontend/wailsjs/runtime is Wails-generated and gitignored; regenerate
-      # it (and go:embed's dummy target) before touching the frontend so its
-      # imports resolve, same as the build job further down.
-      - name: Create dummy frontend/dist for go:embed
-        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
-          # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
-          # GO-2026-6617 / GO-2026-6613 / GO-2026-6612 / GO-2026-6809 and the earlier
-          # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 (fixed in go1.25.13). Staying on
-          # the 1.26 line for now: golangci-lint v2.12.2 (built with go1.26) panics on
-          # go1.27 export data. Move to '1.27' once a go1.27-compatible linter ships.
-          go-version: '1.26'
-          check-latest: true
-      - name: Install Wails CLI
-        # Pinned to a full commit SHA (not a mutable tag) for supply-chain
-        # integrity; this is wails v2.14.0.
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@857398f61118eae7a6d9f5f18ffdd391590703e3
-      - name: Generate wailsjs bindings
-        run: wails generate module
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -203,24 +182,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Create dummy frontend/dist for go:embed
-        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
-          # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
-          # GO-2026-6617 / GO-2026-6613 / GO-2026-6612 / GO-2026-6809 and the earlier
-          # GO-2026-6218 / GO-2026-6090 / GO-2026-5972 (fixed in go1.25.13). Staying on
-          # the 1.26 line for now: golangci-lint v2.12.2 (built with go1.26) panics on
-          # go1.27 export data. Move to '1.27' once a go1.27-compatible linter ships.
-          go-version: '1.26'
-          check-latest: true
-      - name: Install Wails CLI
-        # Pinned to a full commit SHA (not a mutable tag) for supply-chain
-        # integrity; this is wails v2.14.0.
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@857398f61118eae7a6d9f5f18ffdd391590703e3
-      - name: Generate wailsjs bindings
-        run: wails generate module
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -248,10 +209,9 @@ jobs:
     needs: [changes, test-go, test-frontend]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # The whole job takes ~10 minutes when the runners are healthy, and ~25
-    # when the apt mirrors are degraded (observed 2026-08-18: the system
-    # dependency install alone crawled to 15+ minutes). Without a ceiling a
-    # genuinely wedged install occupies a runner for the 6-hour default.
+    # No GTK/WebKit system dependencies are needed anymore: the app is a plain
+    # Go binary that serves the built frontend to a browser, so it links
+    # without any CGo platform libraries.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -270,34 +230,13 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - name: Install system dependencies
-        # Caches the installed packages so later runs restore them in seconds
-        # instead of re-downloading from the azure apt mirror, whose recurring
-        # degradation is what the timeout comment above documents. Pinned to a
-        # full commit SHA (not a mutable tag) for supply-chain integrity; this
-        # is cache-apt-pkgs-action v1.6.3.
-        uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
-        with:
-          packages: libgtk-3-dev libwebkit2gtk-4.1-dev
-          version: 1.0
-      - name: Install Wails CLI
-        # Pinned to a full commit SHA (not a mutable tag) for supply-chain
-        # integrity; this is wails v2.14.0.
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@857398f61118eae7a6d9f5f18ffdd391590703e3
-      # frontend/wailsjs/runtime is Wails-generated and gitignored; the
-      # "Build frontend" step below runs tsc directly (not through `wails
-      # build`), so its imports need the bindings regenerated first. A
-      # temporary go:embed target unblocks generation before the real one
-      # lands from "Build frontend"'s own `vite build` output.
-      - name: Create dummy frontend/dist for go:embed
-        run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - name: Generate wailsjs bindings
-        run: wails generate module
       - name: Build frontend
         run: |
           cd frontend && npm ci --ignore-scripts && npm run build && cd ..
-      - name: Build native binary
-        run: wails build -clean -tags webkit2_41
+      - name: Build binary
+        # go:embed picks up frontend/dist (built above) and embeds it into
+        # the binary; the app serves it over plain HTTP.
+        run: go build -o build/bin/silly-sleeve .
       - name: Verify binary exists
         run: |
-          ls -la build/bin/silly-sleeve* || ls -la build/bin/
+          ls -la build/bin/silly-sleeve || ls -la build/bin/

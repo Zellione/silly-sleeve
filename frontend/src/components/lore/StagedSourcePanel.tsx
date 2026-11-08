@@ -1,5 +1,5 @@
 import React from 'react';
-import { loreextract } from '../../../wailsjs/go/models';
+import { loreextract } from '@/api/models';
 import { Dropdown } from '../Dropdown';
 import { TrashIcon, BookIcon } from '../../icons';
 import type { ExtractionMode, ContentStyle } from './useLoreStaging';

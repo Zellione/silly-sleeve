@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ExtractPanel } from './ExtractPanel';
 import { ToastProvider } from '../ToastProvider';
-import { compose } from '../../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 const mockGetStagedSources = vi.fn();
 const mockGetLorebookCandidates = vi.fn();
@@ -14,7 +14,7 @@ const mockExtractLorebookCandidates = vi.fn();
 const mockDiscardLorebookCandidates = vi.fn();
 const mockApproveLorebookCandidates = vi.fn();
 
-vi.mock('../../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetStagedSources: () => mockGetStagedSources(),
   GetLorebookCandidates: () => mockGetLorebookCandidates(),
   SetStagedSourceMode: (...a: any[]) => mockSetStagedSourceMode(...a),

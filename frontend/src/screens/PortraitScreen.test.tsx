@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PortraitScreen from './PortraitScreen';
 import { ToastProvider } from '../components/ToastProvider';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 import { DEFAULT_NEGATIVE_PROMPT } from '../utils/image';
 
 const mockGetCharacters = vi.fn();
@@ -22,7 +22,7 @@ const mockGetPortrait = vi.fn().mockResolvedValue([]);
 const mockSavePortrait = vi.fn().mockResolvedValue(undefined);
 const mockSaveProjectBundle = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   GetCharacters: () => mockGetCharacters(),
   SetActiveCharacter: (id: number) => mockSetActiveCharacter(id),
   GetActiveCharacter: () => mockGetActiveCharacter(),

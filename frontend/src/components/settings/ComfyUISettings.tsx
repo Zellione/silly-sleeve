@@ -4,8 +4,8 @@ import {
 } from '../../icons';
 import { useToast } from '../ToastProvider';
 import { AuthTokenBlock } from '../AuthTokenBlock';
-import { ParseComfyWorkflowParams, TestComfyUIEndpoint } from '../../../wailsjs/go/app/App';
-import { settings, comfy } from '../../../wailsjs/go/models';
+import { ParseComfyWorkflowParams, TestComfyUIEndpoint } from '@/api/app';
+import { settings, comfy } from '@/api/models';
 import WorkflowEditor from '../WorkflowEditor';
 
 export type ComfyUISettingsProps = Readonly<{

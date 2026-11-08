@@ -64,7 +64,7 @@ func TestGenerator_Run_ContextCancelled(t *testing.T) {
 	wsURL := "http://" + strings.TrimPrefix(wsSrv.URL, "http://")
 
 	ctx, cancel := context.WithCancel(context.Background())
-	g := NewGenerator(ctx, srv.URL, nil)
+	g := NewGenerator(ctx, srv.URL, nil, nil)
 	g.listener.BaseURL = wsURL
 
 	errCh := make(chan error, 1)
@@ -131,7 +131,7 @@ func TestGenerator_Run_QueuesPromptWithReplacedPlaceholders(t *testing.T) {
 	t.Logf("wsURL=%s srvURL=%s", wsURL, srv.URL)
 
 	//nolint:staticcheck // nil context is safe — emitEvent handles nil by returning early
-	g := NewGenerator(nil, srv.URL, nil)
+	g := NewGenerator(nil, srv.URL, nil, nil)
 	g.listener.BaseURL = wsURL
 
 	params := GenerationParams{
@@ -157,7 +157,7 @@ func TestGenerator_Run_QueuesPromptWithReplacedPlaceholders(t *testing.T) {
 }
 
 func TestGenerator_Run_InvalidJSON(t *testing.T) {
-	g := NewGenerator(context.Background(), "http://localhost:1", nil)
+	g := NewGenerator(context.Background(), "http://localhost:1", nil, nil)
 	params := GenerationParams{
 		WorkflowTemplate: `not-valid-json`,
 	}
@@ -210,7 +210,7 @@ func TestGenerator_Run_FixesBarePlaceholders(t *testing.T) {
 	wsURL := "http://" + strings.TrimPrefix(wsSrv.URL, "http://")
 
 	//nolint:staticcheck
-	g := NewGenerator(nil, srv.URL, nil)
+	g := NewGenerator(nil, srv.URL, nil, nil)
 	g.listener.BaseURL = wsURL
 
 	params := GenerationParams{
@@ -236,7 +236,7 @@ func TestGenerator_Run_FixesBarePlaceholders(t *testing.T) {
 }
 
 func TestGenerator_Run_EmptyTemplate(t *testing.T) {
-	g := NewGenerator(context.Background(), "http://localhost:1", nil)
+	g := NewGenerator(context.Background(), "http://localhost:1", nil, nil)
 	params := GenerationParams{
 		WorkflowTemplate: `null`,
 	}

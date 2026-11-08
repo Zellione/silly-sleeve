@@ -4,10 +4,10 @@ import {
   GetComfySamplers, GetComfySchedulers, GetComfyCheckpoints,
   GetComfyUNets, GetComfyCLIPs, GetComfyVAEs, GetComfyLoRAs,
   GetComfyWorkflows, GetComfyWorkflowTemplate,
-} from '../../wailsjs/go/app/App';
-import { comfy } from '../../wailsjs/go/models';
+} from '@/api/app';
+import { comfy } from '@/api/models';
 import type { WorkflowOption } from './GenerationParamsPanel';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff } from '@/api/events';
 import { mapWorkflows, parseSize, pickByHint } from '../utils/workflow';
 import { arrayBufferToDataURL } from '../utils/image';
 

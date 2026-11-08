@@ -9,13 +9,13 @@ import {
 import {
   GetCrawlState, SaveCrawlState, SendCrawlResult, GetCharacters, UpdateCrawlSummary,
   RemoveCrawlResult, RefetchCrawlResult,
-} from '../../wailsjs/go/app/App';
+} from '@/api/app';
 import { SectionContent } from '../components/SectionContent';
 import { Infobox } from '../components/Infobox';
 import { logError } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
 import { pageSlug } from '../utils/pageSlug';
-import { app, compose, crawler } from '../../wailsjs/go/models';
+import { app, compose, crawler } from '@/api/models';
 
 type Sub = 'chars' | 'lore';
 type RoleValue = 'character' | 'lorebook';

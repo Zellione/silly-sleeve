@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import {
   useFieldEditor, FIELDS, wordCountLabel, fieldStateFromChar, charsFromFieldState,
 } from './useFieldEditor';
-import { compose } from '../../wailsjs/go/models';
+import { compose } from '@/api/models';
 
 const mockCountTokens = vi.fn();
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   CountTokens: (t: string) => mockCountTokens(t),
 }));
 

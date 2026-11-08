@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import CrawlerScreen from './CrawlerScreen';
 import { ToastProvider } from '../components/ToastProvider';
 import { ConfirmProvider } from '../components/ConfirmDialog';
-import { crawler } from '../../wailsjs/go/models';
+import { crawler } from '@/api/models';
 
 const mockCrawlPage = vi.fn();
 const mockGetCrawlState = vi.fn();
@@ -14,7 +14,7 @@ const mockSendCrawlResult = vi.fn();
 const mockRemoveCrawlResult = vi.fn();
 const mockSaveProjectBundle = vi.fn();
 
-vi.mock('../../wailsjs/go/app/App', () => ({
+vi.mock('@/api/app', () => ({
   CrawlPage: (...args: any[]) => mockCrawlPage(...args),
   GetCrawlState: () => mockGetCrawlState(),
   SaveCrawlState: (...args: any[]) => mockSaveCrawlState(...args),

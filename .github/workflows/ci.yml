@@ -81,7 +81,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
           # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
@@ -107,7 +107,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
           # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
@@ -135,7 +135,7 @@ jobs:
       # imports resolve, same as the build job further down.
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
           # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
@@ -172,7 +172,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
           # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
@@ -205,7 +205,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create dummy frontend/dist for go:embed
         run: mkdir -p frontend/dist && echo "<!doctype html><html></html>" > frontend/dist/index.html
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
           # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
@@ -255,7 +255,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           # Floating '1.26' resolves to the latest 1.26.x in the actions/go-versions
           # manifest (1.26.10): 1.26.9 / 1.26.10 carry the stdlib fixes for
